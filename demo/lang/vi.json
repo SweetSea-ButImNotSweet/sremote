@@ -1,0 +1,51 @@
+{
+  "app": {
+    "title": "SRemote Demo",
+    "meta_description": "Developer test harness for SRemote userscript cross-frame media controller",
+    "page_title": "SRemote Demo - Developer Test Harness"
+  },
+  "slot": {
+    "title": "Slot {number}",
+    "url_label": "URL iframe Slot {number}",
+    "url_placeholder": "Nhập URL iframe...",
+    "btn_load": "Load",
+    "placeholder_empty": "Chưa tải iframe. Nhập URL và nhấn \"Load\".",
+    "placeholder_slot1": "Chưa tải iframe. Nhấn \"Load\" để nạp."
+  },
+  "controls": {
+    "seek_label": "Tua:",
+    "play": "▶ Play",
+    "pause": "❚❚ Pause",
+    "seek_back": "-10s",
+    "seek_fwd": "+10s",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "pip": "PiP",
+    "fullscreen": "Fullscreen",
+    "vol_label": "Vol:",
+    "rate_label": "Tốc độ:"
+  },
+  "status": {
+    "connection_label": "Kết nối:",
+    "media_label": "Media:",
+    "conn_idle": "Chưa nạp iframe",
+    "conn_loading": "Đang tải iframe & kết nối...",
+    "conn_connected": "Đã kết nối ({instanceId})",
+    "conn_disconnected": "Ngắt kết nối ({reason})",
+    "conn_error_userscript": "SRemote userscript chưa được cài hoặc chưa chạy",
+    "media_none": "--",
+    "media_detached": "Media detached",
+    "media_playing": "Đang phát (Playing)",
+    "media_paused": "Tạm dừng (Paused)",
+    "media_ended": "Đã phát xong (Ended)",
+    "media_buffering": "Đang chờ đệm (Buffering)...",
+    "media_error": "Lỗi phát media trong iframe"
+  },
+  "badge": {
+    "idle": "Chưa nạp",
+    "loading": "Đang nạp",
+    "ready": "Sẵn sàng",
+    "error": "Lỗi",
+    "disconnected": "Ngắt kết nối"
+  }
+}

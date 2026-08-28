@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRemote - Embed & Adapter Cookbook</title>
+  <meta name="description" content="Thư viện code nhúng mẫu và Adapter kết nối SRemote cho YouTube, Spotify, SoundCloud, Vimeo, Bilibili và HTML5.">
+
+  <!-- Highlight.js for Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <!-- Dùng chung bộ CSS Flat UI của hệ thống & CSS riêng của Cookbook -->
+  <link rel="stylesheet" href="../assets/css/header.css">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="assets/css/recipes.css">
+  <script src="../assets/js/header.js" defer></script>
+</head>
+<body>
+
+  <!-- Top Navbar / Header Component -->
+  <sremote-header active="cookbook"></sremote-header>
+
+  <!-- Main Cookbook Grid -->
+  <div class="cookbook-layout">
+
+    <!-- Left Sidebar: Platform Selector -->
+    <aside class="sidebar">
+      <div class="panel">
+        <div class="panel-heading">
+          <span id="label-sidebar-title">🎯 Chọn nền tảng</span>
+        </div>
+        <div class="panel-body" style="padding: 8px;">
+          <div id="platform-list">
+            <!-- Platform item list dynamically generated -->
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top: 12px;">
+        <div class="panel-heading">
+          <span id="label-info-title">💡 Mẹo tích hợp nhanh</span>
+        </div>
+        <div class="panel-body" style="font-size: 12px; color: #555555; line-height: 1.5;" id="sidebar-tips-text">
+          - Các dịch vụ có SDK chính thức (YouTube, SoundCloud, Spotify, Vimeo) khuyên dùng <code>useAdapter()</code>.<br>
+          - Bilibili & HTML5 video hỗ trợ trực tiếp không cần adapter qua <code>sremote.hello()</code>.
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Live Workspace -->
+    <main>
+      <div class="panel">
+        <div class="panel-heading">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="current-platform-name" style="font-weight: 700;">YouTube Iframe API</span>
+            <span class="panel-title-badge" id="current-platform-mode">Adapter Mode</span>
+          </div>
+          <span id="status-indicator" style="font-size: 12px; color: var(--text-muted);"></span>
+        </div>
+
+        <div class="panel-body">
+          <div class="split-view">
+
+            <!-- Left Side: Live Sandbox & Controls -->
+            <div>
+              <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 13.5px;" id="label-live-preview">▶ Live Preview & Test</h4>
+
+              <div class="player-container" id="player-mount-point">
+                <!-- Live iframe or player mounted here -->
+              </div>
+
+              <!-- SRemote Testing Toolbar -->
+              <div class="control-toolbar">
+                <button type="button" class="btn btn-default btn-sm" onclick="triggerAction('play')" id="btn-play">▶ Play</button>
+                <button type="button" class="btn btn-default btn-sm" onclick="triggerAction('pause')" id="btn-pause">⏸ Pause</button>
+                <button type="button" class="btn btn-default btn-sm" onclick="triggerAction('toggle')" id="btn-toggle">🔄 Toggle</button>
+                <button type="button" class="btn btn-default btn-sm" onclick="triggerAction('seek', -10)">⏪ -10s</button>
+                <button type="button" class="btn btn-default btn-sm" onclick="triggerAction('seek', 10)">⏩ +10s</button>
+                <button type="button" class="btn btn-default btn-sm" onclick="triggerAction('mute')" id="btn-mute">🔇 Mute</button>
+                <button type="button" class="btn btn-default btn-sm" onclick="triggerAction('pip')" id="btn-pip">🖼️ PiP</button>
+              </div>
+
+              <!-- Seek Slider & Live Time -->
+              <div class="seek-bar-container">
+                <input type="range" class="seek-slider" id="preview-seek-slider" min="0" max="100" value="0" step="0.1" oninput="onSeekSliderInput(this.value)" onchange="onSeekSliderChange(this.value)">
+                <span class="seek-time-label" id="preview-time-label">0:00 / 0:00</span>
+              </div>
+
+              <!-- Context Note Box -->
+              <div class="note-box" id="platform-note-box">
+                <!-- Context advice rendered here -->
+              </div>
+            </div>
+
+            <!-- Right Side: Code Generator & Snippets -->
+            <div class="code-column">
+              <div class="code-tabs">
+                <button type="button" class="code-tab-btn active" id="tab-btn-html" onclick="switchCodeTab('html')">📄 HTML Embed</button>
+                <button type="button" class="code-tab-btn" id="tab-btn-js" onclick="switchCodeTab('js')">⚡ JS Adapter / Setup</button>
+              </div>
+
+              <div class="code-container">
+                <button type="button" class="btn-copy-code" onclick="copyCurrentCode()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <span id="copy-btn-label">Copy Code</span>
+                </button>
+                <pre><code class="hljs" id="code-snippet-display"></code></pre>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div style="max-width: 1400px; margin: 0 auto; padding: 0 16px;">
+      <p id="footer-text">
+        SRemote Frame Controller &copy; 2026 sweetsea &bull; Giấy phép LGPL-3.0 &bull; Sẵn sàng cho mọi nền tảng Media.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Modular Scripts: Data -> Runtime -> UI -->
+  <script src="assets/js/recipes-data.js"></script>
+  <script src="assets/js/recipes-runtime.js"></script>
+  <script src="assets/js/recipes-ui.js"></script>
+</body>
+</html>

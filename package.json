@@ -1,0 +1,36 @@
+{
+  "name": "sremote",
+  "version": "1.0.0",
+  "description": "SRemote - Allow a parent page to control media inside an iframe with permission",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build:unmin": "vite build",
+    "build:min": "cross-env MINIFY=true vite build",
+    "build": "npm run build:unmin && npm run build:min",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
+    "format": "biome format --write .",
+    "knip": "knip"
+  },
+  "keywords": [
+    "userscript",
+    "iframe",
+    "media-controller"
+  ],
+  "author": "sweetsea",
+  "license": "LGPL-3.0",
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.10",
+    "clean-css": "^5.3.3",
+    "cross-env": "^10.1.0",
+    "eslint": "^10.9.1",
+    "knip": "^6.32.3",
+    "vite": "^8.2.2",
+    "vite-plugin-monkey": "^8.1.0"
+  },
+  "allowScripts": {
+    "core-js@2.6.12": true
+  }
+}

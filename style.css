@@ -1,0 +1,629 @@
+/* ==========================================================================
+   SRemote Flat UI Design System (2010s Bootstrap / GitHub Classic)
+   - No shadows (box-shadow, text-shadow, drop-shadow)
+   - Clean 1px solid borders
+   - 3px-4px radius
+   - Reusable layout components, panels, buttons, and markdown styling
+   ========================================================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+:root {
+  --bg-page: #f8f9fa;
+  --bg-panel: #ffffff;
+  --bg-panel-header: #f5f5f5;
+  --bg-code: #282c34;
+  --bg-code-inline: #f0f0f0;
+
+  --border-color: #e1e4e8;
+  --border-panel: #dcdcdc;
+  --border-subtle: #eeeeee;
+  --border-primary: #337ab7;
+
+  --text-main: #333333;
+  --text-muted: #777777;
+  --text-heading: #222222;
+  --text-link: #337ab7;
+  --text-link-hover: #23527c;
+
+  --btn-default-bg: #ffffff;
+  --btn-default-border: #cccccc;
+  --btn-default-hover: #ebebeb;
+
+  --btn-primary-bg: #337ab7;
+  --btn-primary-border: #2e6da4;
+  --btn-primary-hover: #286090;
+
+  --btn-success-bg: #5cb85c;
+  --btn-success-border: #4cae4c;
+  --btn-success-hover: #449d44;
+
+  --btn-github-bg: #24292e;
+  --btn-github-border: #1b1f23;
+  --btn-github-hover: #1b1f23;
+
+  --radius: 4px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: Consolas, Monaco, "Courier New", Courier, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-main);
+  background-color: var(--bg-page);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--text-link);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--text-link-hover);
+  text-decoration: underline;
+}
+
+/* Main App Layout */
+.app-layout {
+  max-width: 1200px;
+  width: 100%;
+  margin: 28px auto 40px;
+  padding: 0 20px;
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  flex: 1;
+}
+
+/* Single Column Frameless Doc Container (Root index.html) */
+.single-doc-container {
+  max-width: 960px;
+  width: 100%;
+  margin: 28px auto 40px;
+  padding: 0 20px;
+  flex: 1;
+  box-sizing: border-box;
+}
+
+/* Left Sidebar */
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 24px;
+}
+
+/* Content Area */
+.main-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Panel Component */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  overflow: visible;
+}
+
+.panel-heading {
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-heading);
+  background-color: var(--bg-panel-header);
+  border-bottom: 1px solid var(--border-panel);
+  border-top-left-radius: calc(var(--radius) - 1px);
+  border-top-right-radius: calc(var(--radius) - 1px);
+}
+
+.panel-body {
+  padding: 16px;
+}
+
+.panel-title-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  background: #eef5fb;
+  border: 1px solid #bce8f1;
+  color: var(--btn-primary-bg);
+  border-radius: 3px;
+}
+
+/* Action Buttons Container */
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Button Styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  text-decoration: none;
+  font-family: inherit;
+  transition: background-color 0.1s, border-color 0.1s;
+}
+
+.btn:hover, .btn:focus {
+  text-decoration: none;
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+.btn-default {
+  color: #333333;
+  background-color: var(--btn-default-bg);
+  border-color: var(--btn-default-border);
+}
+
+.btn-default:hover {
+  background-color: var(--btn-default-hover);
+  border-color: #adadad;
+  color: #333333;
+}
+
+.btn-primary {
+  color: #ffffff;
+  background-color: var(--btn-primary-bg);
+  border-color: var(--btn-primary-border);
+}
+
+.btn-primary:hover {
+  background-color: var(--btn-primary-hover);
+  border-color: #204d74;
+  color: #ffffff;
+}
+
+.btn-success {
+  color: #ffffff;
+  background-color: var(--btn-success-bg);
+  border-color: var(--btn-success-border);
+}
+
+.btn-success:hover {
+  background-color: var(--btn-success-hover);
+  border-color: #398439;
+  color: #ffffff;
+}
+
+.btn-github {
+  color: #ffffff;
+  background-color: var(--btn-github-bg);
+  border-color: var(--btn-github-border);
+}
+
+.btn-github:hover {
+  background-color: #111417;
+  border-color: #000000;
+  color: #ffffff;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 3px;
+}
+
+/* Split Dropdown Button for Userscript Install */
+.btn-group-dropdown {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+.btn-group-dropdown .btn-main {
+  flex: 1;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+  justify-content: center;
+}
+
+.btn-group-dropdown .btn-toggle {
+  padding: 8px 10px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+}
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  margin-top: 4px;
+  background-color: #ffffff;
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius);
+  padding: 5px 0;
+  list-style: none;
+}
+
+.dropdown-menu.show {
+  display: block;
+}
+
+.dropdown-item {
+  display: block;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333333;
+  text-decoration: none;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background-color: #f5f5f5;
+  color: var(--text-link);
+  text-decoration: none;
+}
+
+.dropdown-item small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.dropdown-divider {
+  height: 1px;
+  margin: 4px 0;
+  background-color: var(--border-panel);
+}
+
+/* Language Switcher in Sidebar */
+.lang-box {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-panel);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.lang-switcher {
+  display: inline-flex;
+  border: 1px solid var(--border-panel);
+  border-radius: 3px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.lang-btn {
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: #666666;
+  cursor: pointer;
+  font-family: inherit;
+  border-right: 1px solid var(--border-panel);
+}
+
+.lang-btn:last-child {
+  border-right: none;
+}
+
+.lang-btn:hover {
+  background-color: #f0f0f0;
+  color: #333333;
+}
+
+.lang-btn.active {
+  background-color: var(--btn-primary-bg);
+  color: #ffffff;
+}
+
+/* Markdown Rendered Content Styling */
+.markdown-body {
+  color: var(--text-main);
+  line-height: 1.65;
+}
+
+.markdown-body h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-panel);
+}
+
+.markdown-body h2 {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 28px 0 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-panel);
+}
+
+.markdown-body h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333333;
+  margin: 20px 0 10px;
+}
+
+.markdown-body h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #444444;
+  margin: 16px 0 8px;
+}
+
+.markdown-body p {
+  margin-bottom: 14px;
+}
+
+.markdown-body blockquote {
+  padding: 10px 16px;
+  margin: 14px 0;
+  font-size: 13.5px;
+  border-left: 4px solid var(--btn-primary-bg);
+  background-color: #f4f8fa;
+  color: #555555;
+}
+
+.markdown-body hr {
+  border: 0;
+  border-top: 1px solid var(--border-panel);
+  margin: 24px 0;
+}
+
+.markdown-body ol, .markdown-body ul {
+  padding-left: 24px;
+  margin: 10px 0 16px;
+}
+
+.markdown-body li {
+  margin-bottom: 6px;
+}
+
+.markdown-body code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 2px 5px;
+  color: #c7254e;
+  background-color: var(--bg-code-inline);
+  border: 1px solid #e1e1e8;
+  border-radius: var(--radius);
+}
+
+.markdown-body pre {
+  display: block;
+  padding: 12px 16px;
+  margin: 12px 0 18px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #f8f8f2;
+  background-color: var(--bg-code);
+  border: 1px solid #1e1e1e;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+}
+
+.markdown-body pre code {
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+  white-space: pre;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 16px 0;
+  border: 1px solid var(--border-panel);
+}
+
+.markdown-body table th,
+.markdown-body table td {
+  border: 1px solid var(--border-panel);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-body table th {
+  background-color: #f5f5f5;
+  font-weight: 700;
+}
+
+.markdown-body table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Doc Header Meta Bar */
+.doc-meta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border-panel);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.doc-source-tag {
+  font-family: var(--font-mono);
+  color: #337ab7;
+  background: #eef5fb;
+  padding: 2px 6px;
+  border: 1px solid #bce8f1;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.loading-spinner {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Docs Specific TOC Menu Component */
+.toc-search-box {
+  margin-bottom: 12px;
+}
+
+.toc-search-input {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius);
+  font-family: inherit;
+  outline: none;
+  background: #ffffff;
+}
+
+.toc-search-input:focus {
+  border-color: var(--btn-primary-bg);
+}
+
+.toc-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.toc-group-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toc-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toc-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  font-size: 12.5px;
+  color: #444444;
+  border-radius: 3px;
+  text-decoration: none;
+  transition: background-color 0.1s, color 0.1s;
+}
+
+.toc-link:hover {
+  background-color: #f0f0f0;
+  color: var(--text-link);
+  text-decoration: none;
+}
+
+.toc-link.active {
+  background-color: var(--btn-primary-bg);
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+.toc-badge {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  padding: 1px 4px;
+  background: #f0f0f0;
+  border-radius: 3px;
+  color: #666666;
+}
+
+.toc-link.active .toc-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Footer */
+.footer {
+  background: #ffffff;
+  border-top: 1px solid var(--border-panel);
+  padding: 18px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: auto;
+}
+
+/* Responsive */
+@media (max-width: 820px) {
+  .app-layout {
+    flex-direction: column;
+    margin-top: 16px;
+  }
+  .sidebar {
+    width: 100%;
+    position: static;
+  }
+  .toc-nav {
+    max-height: 300px;
+  }
+}

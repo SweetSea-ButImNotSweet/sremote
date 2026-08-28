@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRemote - Universal Embedded Media Controller</title>
+  <meta name="description" content="SRemote Userscript & Documentation Hub">
+
+  <!-- Marked.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- Highlight.js for Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <link rel="stylesheet" href="assets/css/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="assets/js/header.js" defer></script>
+</head>
+<body>
+  <!-- Shared Header Component -->
+  <sremote-header active="home"></sremote-header>
+
+  <!-- Main Single Column Clean Layout -->
+  <main class="single-doc-container">
+    <div class="doc-meta-bar">
+      <h1 id="sec-doc-title" style="font-size: 18px; margin: 0; font-weight: 700; color: var(--text-heading);">📖 Tài liệu Kỹ thuật</h1>
+      <span id="doc-renderer-badge">Rendered by <strong>Marked.js</strong></span>
+    </div>
+
+    <!-- Dynamic Markdown Container (Frameless) -->
+    <article class="markdown-body" id="markdown-container">
+      <div class="loading-spinner">Đang tải và xử lý nội dung Markdown...</div>
+    </article>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div style="max-width: 1000px; margin: 0 auto; padding: 0 20px;">
+      <p id="footer-text">
+        SRemote Frame Controller &copy; 2026 sweetsea &bull; Giấy phép LGPL-3.0 &bull; Hỗ trợ mọi trình duyệt & Tampermonkey.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Script: UI Logic & Live Markdown Loader -->
+  <script>
+    const i18nUI = {
+      vi: {
+        pageTitle: "SRemote - Universal Embedded Media Controller",
+        secDocTitle: "📖 Tài liệu Kỹ thuật",
+        footerText: "SRemote Frame Controller © 2026 sweetsea • Giấy phép LGPL-3.0 • Hỗ trợ mọi trình duyệt & Tampermonkey.",
+        mdSource: "README/vi.md"
+      },
+      en: {
+        pageTitle: "SRemote - Universal Embedded Media Controller",
+        secDocTitle: "📖 Technical Documentation",
+        footerText: "SRemote Frame Controller © 2026 sweetsea • Licensed under LGPL-3.0 • Supports all browsers & Tampermonkey.",
+        mdSource: "README.md"
+      }
+    };
+
+    let currentLang = 'vi';
+
+    // Configure Marked.js options
+    if (typeof marked !== 'undefined') {
+      marked.use({
+        gfm: true,
+        breaks: true,
+        mangle: false,
+        highlight: function(code, lang) {
+          if (typeof hljs !== 'undefined') {
+            const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+            return hljs.highlight(code, { language }).value;
+          }
+          return code;
+        }
+      });
+    }
+
+    async function loadLiveMarkdown(sourceFile) {
+      const container = document.getElementById('markdown-container');
+
+      try {
+        const res = await fetch(sourceFile + '?t=' + Date.now());
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+
+        let markdownText = await res.text();
+
+        // Strip the top language toggle link from the raw markdown if present
+        markdownText = markdownText.replace(/^\[\s*(English|Tiếng Việt)[\s\S]*?\n\n/i, '');
+
+        if (typeof marked !== 'undefined') {
+          container.innerHTML = marked.parse(markdownText);
+          if (typeof hljs !== 'undefined') {
+            container.querySelectorAll('pre code').forEach((block) => {
+              hljs.highlightElement(block);
+            });
+          }
+        } else {
+          container.innerHTML = `<pre>${markdownText}</pre>`;
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải file markdown:', err);
+        container.innerHTML = `
+          <div style="border-left: 4px solid #d9534f; background: #fdf7f7; color: #a94442; padding: 12px; border-radius: 3px;">
+            <h4 style="margin-bottom: 6px;">⚠️ Không thể tải file tài liệu Markdown (${sourceFile})</h4>
+            <p>Chi tiết lỗi: ${err.message}. Vui lòng kiểm tra lại đường dẫn file hoặc web server.</p>
+          </div>
+        `;
+      }
+    }
+
+    function setLanguage(lang) {
+      if (!i18nUI[lang]) return;
+      currentLang = lang;
+      localStorage.setItem('sremote_lang', lang);
+      document.documentElement.lang = lang;
+
+      // Update UI texts
+      document.title = i18nUI[lang].pageTitle;
+      const secTitle = document.getElementById('sec-doc-title');
+      if (secTitle) secTitle.textContent = i18nUI[lang].secDocTitle;
+      const footer = document.getElementById('footer-text');
+      if (footer) footer.textContent = i18nUI[lang].footerText;
+
+      // Fetch and live-render corresponding markdown file
+      loadLiveMarkdown(i18nUI[lang].mdSource);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedLang = localStorage.getItem('sremote_lang') || 'vi';
+      setLanguage(savedLang);
+    });
+  </script>
+</body>
+</html>

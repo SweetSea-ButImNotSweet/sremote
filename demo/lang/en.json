@@ -1,0 +1,51 @@
+{
+  "app": {
+    "title": "SRemote Demo",
+    "meta_description": "Developer test harness for SRemote userscript cross-frame media controller",
+    "page_title": "SRemote Demo - Developer Test Harness"
+  },
+  "slot": {
+    "title": "Slot {number}",
+    "url_label": "Iframe URL Slot {number}",
+    "url_placeholder": "Enter iframe URL...",
+    "btn_load": "Load",
+    "placeholder_empty": "Iframe not loaded. Enter URL and click \"Load\".",
+    "placeholder_slot1": "Iframe not loaded. Click \"Load\" to mount."
+  },
+  "controls": {
+    "seek_label": "Seek:",
+    "play": "▶ Play",
+    "pause": "❚❚ Pause",
+    "seek_back": "-10s",
+    "seek_fwd": "+10s",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "pip": "PiP",
+    "fullscreen": "Fullscreen",
+    "vol_label": "Vol:",
+    "rate_label": "Speed:"
+  },
+  "status": {
+    "connection_label": "Connection:",
+    "media_label": "Media:",
+    "conn_idle": "Awaiting iframe load",
+    "conn_loading": "Loading iframe & connecting...",
+    "conn_connected": "Connected ({instanceId})",
+    "conn_disconnected": "Disconnected ({reason})",
+    "conn_error_userscript": "SRemote userscript is not installed or not running",
+    "media_none": "--",
+    "media_detached": "Media detached",
+    "media_playing": "Playing",
+    "media_paused": "Paused",
+    "media_ended": "Ended",
+    "media_buffering": "Buffering...",
+    "media_error": "Media error inside iframe"
+  },
+  "badge": {
+    "idle": "Idle",
+    "loading": "Loading",
+    "ready": "Ready",
+    "error": "Error",
+    "disconnected": "Disconnected"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@5/overview/configuration-schema.json",
+  "entry": [
+    "src/main.js",
+    "assets/js/header.js",
+    "demo/script.js",
+    "demo/i18n.js",
+    "docs/assets/js/docs-viewer.js",
+    "docs/assets/js/recipes-data.js",
+    "docs/assets/js/recipes-runtime.js",
+    "docs/assets/js/recipes-ui.js"
+  ],
+  "project": ["src/**/*.{js,cjs,mjs}", "assets/**/*.{js,cjs,mjs}", "demo/**/*.{js,cjs,mjs}", "docs/**/*.{js,cjs,mjs}"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreUnresolved": ["$"]
+}

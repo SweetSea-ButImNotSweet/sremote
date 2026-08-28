@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRemote Demo - Developer Test Harness</title>
+  <meta name="description" content="Developer test harness for SRemote userscript cross-frame media controller">
+  <link rel="stylesheet" href="../assets/css/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../assets/js/header.js" defer></script>
+</head>
+<body>
+  <!-- Shared Header Component -->
+  <sremote-header active="demo"></sremote-header>
+
+  <!-- Main Content -->
+  <main class="main-container">
+    <div class="slots-grid">
+      <!-- Slot 1 -->
+      <section class="slot-panel" id="slot-panel-1" aria-labelledby="slot-heading-1">
+        <div class="slot-header">
+          <h2 class="slot-title" id="slot-heading-1" data-i18n="slot.title" data-i18n-params='{"number":1}'>Slot 1</h2>
+          <span class="slot-badge badge-idle" id="badge-1" data-i18n="badge.idle">Chưa nạp</span>
+        </div>
+
+        <form class="slot-url-row" id="form-1" onsubmit="return false;">
+          <label for="url-input-1" class="visually-hidden" data-i18n="slot.url_label" data-i18n-params='{"number":1}'>URL iframe Slot 1</label>
+          <input
+            type="url"
+            id="url-input-1"
+            class="url-input"
+            data-i18n-placeholder="slot.url_placeholder"
+            placeholder="Nhập URL iframe..."
+            value="https://commons.wikimedia.org/wiki/File:Big_Buck_Bunny_4K.webm?embedplayer=yes"
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button type="button" class="btn btn-primary" id="load-btn-1" data-i18n="slot.btn_load">Load</button>
+        </form>
+
+        <div class="iframe-container" id="iframe-container-1">
+          <div class="iframe-placeholder" id="placeholder-1" data-i18n="slot.placeholder_slot1">Chưa tải iframe. Nhấn "Load" để nạp.</div>
+        </div>
+
+        <!-- Seek / Progress Slider Row -->
+        <div class="seek-row">
+          <label for="seek-range-1" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
+          <input type="range" id="seek-range-1" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
+          <span class="slider-val time-val" id="time-val-1">0:00 / 0:00</span>
+        </div>
+
+        <!-- Action Control Buttons -->
+        <div class="controls-row" id="controls-1">
+          <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-1" data-i18n="controls.play" disabled>▶ Play</button>
+          <button type="button" class="btn btn-ctrl" id="seek-back-btn-1" data-i18n="controls.seek_back" disabled>-10s</button>
+          <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-1" data-i18n="controls.seek_fwd" disabled>+10s</button>
+          <button type="button" class="btn btn-ctrl" id="mute-btn-1" data-i18n="controls.mute" disabled>Mute</button>
+          <button type="button" class="btn btn-ctrl" id="pip-btn-1" data-i18n="controls.pip" disabled>PiP</button>
+          <button type="button" class="btn btn-ctrl" id="fs-btn-1" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
+        </div>
+
+        <!-- Volume & Playback Rate Row -->
+        <div class="sliders-row">
+          <label for="vol-range-1" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
+          <input type="range" id="vol-range-1" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
+          <span class="slider-val" id="vol-val-1">100%</span>
+
+          <label for="rate-select-1" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
+          <select id="rate-select-1" class="select-input" disabled>
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1.0x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2.0x</option>
+          </select>
+        </div>
+
+        <div class="status-panel" id="status-panel-1" aria-live="polite">
+          <div class="status-row">
+            <span class="status-label" data-i18n="status.connection_label">Kết nối:</span>
+            <span class="status-text" id="conn-state-1">Chờ nạp iframe</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label" data-i18n="status.media_label">Media:</span>
+            <span class="status-text" id="media-state-1">--</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slot 2 -->
+      <section class="slot-panel" id="slot-panel-2" aria-labelledby="slot-heading-2">
+        <div class="slot-header">
+          <h2 class="slot-title" id="slot-heading-2" data-i18n="slot.title" data-i18n-params='{"number":2}'>Slot 2</h2>
+          <span class="slot-badge badge-idle" id="badge-2" data-i18n="badge.idle">Chưa nạp</span>
+        </div>
+
+        <form class="slot-url-row" id="form-2" onsubmit="return false;">
+          <label for="url-input-2" class="visually-hidden" data-i18n="slot.url_label" data-i18n-params='{"number":2}'>URL iframe Slot 2</label>
+          <input
+            type="url"
+            id="url-input-2"
+            class="url-input"
+            data-i18n-placeholder="slot.url_placeholder"
+            placeholder="Nhập URL iframe..."
+            value=""
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button type="button" class="btn btn-primary" id="load-btn-2" data-i18n="slot.btn_load">Load</button>
+        </form>
+
+        <div class="iframe-container" id="iframe-container-2">
+          <div class="iframe-placeholder" id="placeholder-2" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
+        </div>
+
+        <div class="seek-row">
+          <label for="seek-range-2" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
+          <input type="range" id="seek-range-2" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
+          <span class="slider-val time-val" id="time-val-2">0:00 / 0:00</span>
+        </div>
+
+        <div class="controls-row" id="controls-2">
+          <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-2" data-i18n="controls.play" disabled>▶ Play</button>
+          <button type="button" class="btn btn-ctrl" id="seek-back-btn-2" data-i18n="controls.seek_back" disabled>-10s</button>
+          <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-2" data-i18n="controls.seek_fwd" disabled>+10s</button>
+          <button type="button" class="btn btn-ctrl" id="mute-btn-2" data-i18n="controls.mute" disabled>Mute</button>
+          <button type="button" class="btn btn-ctrl" id="pip-btn-2" data-i18n="controls.pip" disabled>PiP</button>
+          <button type="button" class="btn btn-ctrl" id="fs-btn-2" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
+        </div>
+
+        <div class="sliders-row">
+          <label for="vol-range-2" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
+          <input type="range" id="vol-range-2" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
+          <span class="slider-val" id="vol-val-2">100%</span>
+
+          <label for="rate-select-2" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
+          <select id="rate-select-2" class="select-input" disabled>
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1.0x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2.0x</option>
+          </select>
+        </div>
+
+        <div class="status-panel" id="status-panel-2" aria-live="polite">
+          <div class="status-row">
+            <span class="status-label" data-i18n="status.connection_label">Kết nối:</span>
+            <span class="status-text" id="conn-state-2">Chờ nạp iframe</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label" data-i18n="status.media_label">Media:</span>
+            <span class="status-text" id="media-state-2">--</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slot 3 -->
+      <section class="slot-panel" id="slot-panel-3" aria-labelledby="slot-heading-3">
+        <div class="slot-header">
+          <h2 class="slot-title" id="slot-heading-3" data-i18n="slot.title" data-i18n-params='{"number":3}'>Slot 3</h2>
+          <span class="slot-badge badge-idle" id="badge-3" data-i18n="badge.idle">Chưa nạp</span>
+        </div>
+
+        <form class="slot-url-row" id="form-3" onsubmit="return false;">
+          <label for="url-input-3" class="visually-hidden" data-i18n="slot.url_label" data-i18n-params='{"number":3}'>URL iframe Slot 3</label>
+          <input
+            type="url"
+            id="url-input-3"
+            class="url-input"
+            data-i18n-placeholder="slot.url_placeholder"
+            placeholder="Nhập URL iframe..."
+            value=""
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button type="button" class="btn btn-primary" id="load-btn-3" data-i18n="slot.btn_load">Load</button>
+        </form>
+
+        <div class="iframe-container" id="iframe-container-3">
+          <div class="iframe-placeholder" id="placeholder-3" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
+        </div>
+
+        <div class="seek-row">
+          <label for="seek-range-3" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
+          <input type="range" id="seek-range-3" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
+          <span class="slider-val time-val" id="time-val-3">0:00 / 0:00</span>
+        </div>
+
+        <div class="controls-row" id="controls-3">
+          <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-3" data-i18n="controls.play" disabled>▶ Play</button>
+          <button type="button" class="btn btn-ctrl" id="seek-back-btn-3" data-i18n="controls.seek_back" disabled>-10s</button>
+          <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-3" data-i18n="controls.seek_fwd" disabled>+10s</button>
+          <button type="button" class="btn btn-ctrl" id="mute-btn-3" data-i18n="controls.mute" disabled>Mute</button>
+          <button type="button" class="btn btn-ctrl" id="pip-btn-3" data-i18n="controls.pip" disabled>PiP</button>
+          <button type="button" class="btn btn-ctrl" id="fs-btn-3" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
+        </div>
+
+        <div class="sliders-row">
+          <label for="vol-range-3" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
+          <input type="range" id="vol-range-3" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
+          <span class="slider-val" id="vol-val-3">100%</span>
+
+          <label for="rate-select-3" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
+          <select id="rate-select-3" class="select-input" disabled>
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1.0x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2.0x</option>
+          </select>
+        </div>
+
+        <div class="status-panel" id="status-panel-3" aria-live="polite">
+          <div class="status-row">
+            <span class="status-label" data-i18n="status.connection_label">Kết nối:</span>
+            <span class="status-text" id="conn-state-3">Chờ nạp iframe</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label" data-i18n="status.media_label">Media:</span>
+            <span class="status-text" id="media-state-3">--</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slot 4 -->
+      <section class="slot-panel" id="slot-panel-4" aria-labelledby="slot-heading-4">
+        <div class="slot-header">
+          <h2 class="slot-title" id="slot-heading-4" data-i18n="slot.title" data-i18n-params='{"number":4}'>Slot 4</h2>
+          <span class="slot-badge badge-idle" id="badge-4" data-i18n="badge.idle">Chưa nạp</span>
+        </div>
+
+        <form class="slot-url-row" id="form-4" onsubmit="return false;">
+          <label for="url-input-4" class="visually-hidden" data-i18n="slot.url_label" data-i18n-params='{"number":4}'>URL iframe Slot 4</label>
+          <input
+            type="url"
+            id="url-input-4"
+            class="url-input"
+            data-i18n-placeholder="slot.url_placeholder"
+            placeholder="Nhập URL iframe..."
+            value=""
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button type="button" class="btn btn-primary" id="load-btn-4" data-i18n="slot.btn_load">Load</button>
+        </form>
+
+        <div class="iframe-container" id="iframe-container-4">
+          <div class="iframe-placeholder" id="placeholder-4" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
+        </div>
+
+        <div class="seek-row">
+          <label for="seek-range-4" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
+          <input type="range" id="seek-range-4" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
+          <span class="slider-val time-val" id="time-val-4">0:00 / 0:00</span>
+        </div>
+
+        <div class="controls-row" id="controls-4">
+          <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-4" data-i18n="controls.play" disabled>▶ Play</button>
+          <button type="button" class="btn btn-ctrl" id="seek-back-btn-4" data-i18n="controls.seek_back" disabled>-10s</button>
+          <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-4" data-i18n="controls.seek_fwd" disabled>+10s</button>
+          <button type="button" class="btn btn-ctrl" id="mute-btn-4" data-i18n="controls.mute" disabled>Mute</button>
+          <button type="button" class="btn btn-ctrl" id="pip-btn-4" data-i18n="controls.pip" disabled>PiP</button>
+          <button type="button" class="btn btn-ctrl" id="fs-btn-4" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
+        </div>
+
+        <div class="sliders-row">
+          <label for="vol-range-4" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
+          <input type="range" id="vol-range-4" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
+          <span class="slider-val" id="vol-val-4">100%</span>
+
+          <label for="rate-select-4" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
+          <select id="rate-select-4" class="select-input" disabled>
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1.0x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2.0x</option>
+          </select>
+        </div>
+
+        <div class="status-panel" id="status-panel-4" aria-live="polite">
+          <div class="status-row">
+            <span class="status-label" data-i18n="status.connection_label">Kết nối:</span>
+            <span class="status-text" id="conn-state-4">Chờ nạp iframe</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label" data-i18n="status.media_label">Media:</span>
+            <span class="status-text" id="media-state-4">--</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slot 5 -->
+      <section class="slot-panel" id="slot-panel-5" aria-labelledby="slot-heading-5">
+        <div class="slot-header">
+          <h2 class="slot-title" id="slot-heading-5" data-i18n="slot.title" data-i18n-params='{"number":5}'>Slot 5</h2>
+          <span class="slot-badge badge-idle" id="badge-5" data-i18n="badge.idle">Chưa nạp</span>
+        </div>
+
+        <form class="slot-url-row" id="form-5" onsubmit="return false;">
+          <label for="url-input-5" class="visually-hidden" data-i18n="slot.url_label" data-i18n-params='{"number":5}'>Iframe URL Slot 5</label>
+          <input
+            type="url"
+            id="url-input-5"
+            class="url-input"
+            data-i18n-placeholder="slot.url_placeholder"
+            placeholder="Nhập URL iframe..."
+            value=""
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button type="button" class="btn btn-primary" id="load-btn-5" data-i18n="slot.btn_load">Load</button>
+        </form>
+
+        <div class="iframe-container" id="iframe-container-5">
+          <div class="iframe-placeholder" id="placeholder-5" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
+        </div>
+
+        <div class="seek-row">
+          <label for="seek-range-5" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
+          <input type="range" id="seek-range-5" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
+          <span class="slider-val time-val" id="time-val-5">0:00 / 0:00</span>
+        </div>
+
+        <div class="controls-row" id="controls-5">
+          <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-5" data-i18n="controls.play" disabled>▶ Play</button>
+          <button type="button" class="btn btn-ctrl" id="seek-back-btn-5" data-i18n="controls.seek_back" disabled>-10s</button>
+          <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-5" data-i18n="controls.seek_fwd" disabled>+10s</button>
+          <button type="button" class="btn btn-ctrl" id="mute-btn-5" data-i18n="controls.mute" disabled>Mute</button>
+          <button type="button" class="btn btn-ctrl" id="pip-btn-5" data-i18n="controls.pip" disabled>PiP</button>
+          <button type="button" class="btn btn-ctrl" id="fs-btn-5" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
+        </div>
+
+        <div class="sliders-row">
+          <label for="vol-range-5" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
+          <input type="range" id="vol-range-5" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
+          <span class="slider-val" id="vol-val-5">100%</span>
+
+          <label for="rate-select-5" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
+          <select id="rate-select-5" class="select-input" disabled>
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1.0x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2.0x</option>
+          </select>
+        </div>
+
+        <div class="status-panel" id="status-panel-5" aria-live="polite">
+          <div class="status-row">
+            <span class="status-label" data-i18n="status.connection_label">Kết nối:</span>
+            <span class="status-text" id="conn-state-5">Chờ nạp iframe</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label" data-i18n="status.media_label">Media:</span>
+            <span class="status-text" id="media-state-5">--</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slot 6 -->
+      <section class="slot-panel" id="slot-panel-6" aria-labelledby="slot-heading-6">
+        <div class="slot-header">
+          <h2 class="slot-title" id="slot-heading-6" data-i18n="slot.title" data-i18n-params='{"number":6}'>Slot 6</h2>
+          <span class="slot-badge badge-idle" id="badge-6" data-i18n="badge.idle">Chưa nạp</span>
+        </div>
+
+        <form class="slot-url-row" id="form-6" onsubmit="return false;">
+          <label for="url-input-6" class="visually-hidden" data-i18n="slot.url_label" data-i18n-params='{"number":6}'>URL iframe Slot 6</label>
+          <input
+            type="url"
+            id="url-input-6"
+            class="url-input"
+            data-i18n-placeholder="slot.url_placeholder"
+            placeholder="Nhập URL iframe..."
+            value=""
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button type="button" class="btn btn-primary" id="load-btn-6" data-i18n="slot.btn_load">Load</button>
+        </form>
+
+        <div class="iframe-container" id="iframe-container-6">
+          <div class="iframe-placeholder" id="placeholder-6" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
+        </div>
+
+        <div class="seek-row">
+          <label for="seek-range-6" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
+          <input type="range" id="seek-range-6" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
+          <span class="slider-val time-val" id="time-val-6">0:00 / 0:00</span>
+        </div>
+
+        <div class="controls-row" id="controls-6">
+          <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-6" data-i18n="controls.play" disabled>▶ Play</button>
+          <button type="button" class="btn btn-ctrl" id="seek-back-btn-6" data-i18n="controls.seek_back" disabled>-10s</button>
+          <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-6" data-i18n="controls.seek_fwd" disabled>+10s</button>
+          <button type="button" class="btn btn-ctrl" id="mute-btn-6" data-i18n="controls.mute" disabled>Mute</button>
+          <button type="button" class="btn btn-ctrl" id="pip-btn-6" data-i18n="controls.pip" disabled>PiP</button>
+          <button type="button" class="btn btn-ctrl" id="fs-btn-6" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
+        </div>
+
+        <div class="sliders-row">
+          <label for="vol-range-6" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
+          <input type="range" id="vol-range-6" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
+          <span class="slider-val" id="vol-val-6">100%</span>
+
+          <label for="rate-select-6" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
+          <select id="rate-select-6" class="select-input" disabled>
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1.0x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2.0x</option>
+          </select>
+        </div>
+
+        <div class="status-panel" id="status-panel-6" aria-live="polite">
+          <div class="status-row">
+            <span class="status-label" data-i18n="status.connection_label">Kết nối:</span>
+            <span class="status-text" id="conn-state-6">Chờ nạp iframe</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label" data-i18n="status.media_label">Media:</span>
+            <span class="status-text" id="media-state-6">--</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="i18n.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

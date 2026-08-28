@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRemote - Tài liệu Kỹ thuật & Tra cứu API</title>
+  <meta name="description" content="Tài liệu chi tiết và hướng dẫn sử dụng thư viện SRemote Userscript & Frame Controller.">
+
+  <!-- Marked.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- Highlight.js (Full bundle) with VSCode Dark Modern Theme -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <!-- Dùng chung bộ CSS Flat UI của hệ thống & CSS riêng của Docs -->
+  <link rel="stylesheet" href="../assets/css/header.css">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="assets/css/docs.css">
+  <script src="../assets/js/header.js" defer></script>
+</head>
+<body>
+  <!-- Shared Header Component -->
+  <sremote-header active="docs"></sremote-header>
+
+  <!-- Main 2-Column Layout -->
+  <div class="app-layout">
+
+    <!-- Left Sidebar: Documentation Table of Contents (TOC) -->
+    <aside class="sidebar">
+      <div class="panel">
+        <div class="panel-heading">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>SRemote Docs</span>
+            <span class="panel-title-badge">v1.0.0</span>
+          </div>
+          <a href="../index.html" class="btn btn-default btn-sm" title="Về trang chủ" id="link-home">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span id="label-home-btn">Trang chủ</span>
+          </a>
+        </div>
+        <div class="panel-body">
+
+          <!-- Search box for API filtering -->
+          <div class="toc-search-box">
+            <input type="text" id="toc-search-input" class="toc-search-input" placeholder="🔍 Tìm nhanh API hoặc tài liệu..." autocomplete="off">
+          </div>
+
+          <!-- TOC Navigation Groups -->
+          <nav class="toc-nav" id="toc-container">
+
+            <!-- Nhóm: Giới thiệu chung -->
+            <div class="toc-group">
+              <div class="toc-group-title">
+                <span id="toc-group-general">📖 Giới thiệu chung</span>
+              </div>
+              <ul class="toc-list">
+                <li>
+                  <a href="?path=content/setup/vi.md" class="toc-link" data-path="content/setup/vi.md" data-en-path="content/setup/en.md">
+                    <span class="toc-label" data-vi="Hướng dẫn tích hợp & Iframe" data-en="Iframe Setup & Integration">Hướng dẫn tích hợp & Iframe</span>
+                    <span class="toc-badge">Guide</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="?path=content/guides/vi/errors.md" class="toc-link" data-path="content/guides/vi/errors.md" data-en-path="content/guides/en/errors.md">
+                    <span class="toc-label" data-vi="Mã lỗi & Khắc phục sự cố" data-en="Error Codes & Troubleshooting">Mã lỗi & Khắc phục sự cố</span>
+                    <span class="toc-badge">Errors</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="?path=content/api/vi/README.md" class="toc-link" data-path="content/api/vi/README.md" data-en-path="content/api/en/README.md">
+                    <span class="toc-label" data-vi="Bảng tổng hợp API" data-en="API Index Reference">Bảng tổng hợp API</span>
+                    <span class="toc-badge">Index</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Nhóm: Kết nối & Chế độ phát -->
+            <div class="toc-group">
+              <div class="toc-group-title">
+                <span id="toc-group-connect">🔌 Kết nối & Chế độ phát</span>
+              </div>
+              <ul class="toc-list">
+                <li><a href="?path=content/api/vi/hello.md" class="toc-link" data-path="content/api/vi/hello.md"><code>hello()</code></a></li>
+                <li><a href="?path=content/api/vi/assignId.md" class="toc-link" data-path="content/api/vi/assignId.md"><code>assignId()</code></a></li>
+                <li><a href="?path=content/api/vi/setMultiMode.md" class="toc-link" data-path="content/api/vi/setMultiMode.md"><code>setMultiMode()</code></a></li>
+                <li><a href="?path=content/api/vi/isMultiMode.md" class="toc-link" data-path="content/api/vi/isMultiMode.md"><code>isMultiMode()</code></a></li>
+                <li><a href="?path=content/api/vi/setExclusive.md" class="toc-link" data-path="content/api/vi/setExclusive.md"><code>setExclusive()</code></a></li>
+                <li><a href="?path=content/api/vi/lock.md" class="toc-link" data-path="content/api/vi/lock.md"><code>lock()</code></a></li>
+              </ul>
+            </div>
+
+            <!-- Nhóm: Điều khiển phát & Âm lượng -->
+            <div class="toc-group">
+              <div class="toc-group-title">
+                <span id="toc-group-playback">🎮 Điều khiển & Âm thanh</span>
+              </div>
+              <ul class="toc-list">
+                <li><a href="?path=content/api/vi/play.md" class="toc-link" data-path="content/api/vi/play.md"><code>play()</code></a></li>
+                <li><a href="?path=content/api/vi/pause.md" class="toc-link" data-path="content/api/vi/pause.md"><code>pause()</code></a></li>
+                <li><a href="?path=content/api/vi/toggle.md" class="toc-link" data-path="content/api/vi/toggle.md"><code>toggle()</code></a></li>
+                <li><a href="?path=content/api/vi/stop.md" class="toc-link" data-path="content/api/vi/stop.md"><code>stop()</code></a></li>
+                <li><a href="?path=content/api/vi/playbackRate.md" class="toc-link" data-path="content/api/vi/playbackRate.md"><code>playbackRate()</code></a></li>
+                <li><a href="?path=content/api/vi/seek.md" class="toc-link" data-path="content/api/vi/seek.md"><code>seek()</code></a></li>
+                <li><a href="?path=content/api/vi/seekTo.md" class="toc-link" data-path="content/api/vi/seekTo.md"><code>seekTo()</code></a></li>
+                <li><a href="?path=content/api/vi/volume.md" class="toc-link" data-path="content/api/vi/volume.md"><code>volume()</code></a></li>
+                <li><a href="?path=content/api/vi/mute.md" class="toc-link" data-path="content/api/vi/mute.md"><code>mute()</code></a></li>
+                <li><a href="?path=content/api/vi/pip.md" class="toc-link" data-path="content/api/vi/pip.md"><code>pip()</code></a></li>
+              </ul>
+            </div>
+
+            <!-- Nhóm: CSS Iframe -->
+            <div class="toc-group">
+              <div class="toc-group-title">
+                <span id="toc-group-config">🎨 CSS Iframe</span>
+              </div>
+              <ul class="toc-list">
+                <li><a href="?path=content/api/vi/setIframeCSS.md" class="toc-link" data-path="content/api/vi/setIframeCSS.md"><code>setIframeCSS()</code></a></li>
+                <li><a href="?path=content/api/vi/getIframeCSS.md" class="toc-link" data-path="content/api/vi/getIframeCSS.md"><code>getIframeCSS()</code></a></li>
+                <li><a href="?path=content/api/vi/removeIframeCSS.md" class="toc-link" data-path="content/api/vi/removeIframeCSS.md"><code>removeIframeCSS()</code></a></li>
+              </ul>
+            </div>
+
+            <!-- Nhóm: Trạng thái & Quản lý -->
+            <div class="toc-group">
+              <div class="toc-group-title">
+                <span id="toc-group-state">📊 Trạng thái & Quản lý</span>
+              </div>
+              <ul class="toc-list">
+                <li><a href="?path=content/api/vi/status.md" class="toc-link" data-path="content/api/vi/status.md"><code>status()</code></a></li>
+                <li><a href="?path=content/api/vi/list.md" class="toc-link" data-path="content/api/vi/list.md"><code>list()</code></a></li>
+                <li><a href="?path=content/api/vi/query.md" class="toc-link" data-path="content/api/vi/query.md"><code>query()</code></a></li>
+                <li><a href="?path=content/api/vi/getIframe.md" class="toc-link" data-path="content/api/vi/getIframe.md"><code>getIframe()</code></a></li>
+                <li><a href="?path=content/api/vi/note.md" class="toc-link" data-path="content/api/vi/note.md"><code>note()</code></a></li>
+              </ul>
+            </div>
+
+            <!-- Nhóm: Sự kiện, Adapter & Metadata -->
+            <div class="toc-group">
+              <div class="toc-group-title">
+                <span id="toc-group-events">📡 Sự kiện, Giao tiếp & Adapter</span>
+              </div>
+              <ul class="toc-list">
+                <li><a href="?path=content/api/vi/on.md" class="toc-link" data-path="content/api/vi/on.md"><code>on()</code></a></li>
+                <li><a href="?path=content/api/vi/off.md" class="toc-link" data-path="content/api/vi/off.md"><code>off()</code></a></li>
+                <li><a href="?path=content/api/vi/call.md" class="toc-link" data-path="content/api/vi/call.md"><code>call()</code></a></li>
+                <li><a href="?path=content/api/vi/postWindowMessage.md" class="toc-link" data-path="content/api/vi/postWindowMessage.md"><code>postWindowMessage()</code></a></li>
+                <li><a href="?path=content/api/vi/onWindowMessage.md" class="toc-link" data-path="content/api/vi/onWindowMessage.md"><code>onWindowMessage()</code></a></li>
+                <li><a href="?path=content/api/vi/useAdapter.md" class="toc-link" data-path="content/api/vi/useAdapter.md"><code>useAdapter()</code></a></li>
+                <li><a href="?path=content/api/vi/getCustomAdapter.md" class="toc-link" data-path="content/api/vi/getCustomAdapter.md"><code>getCustomAdapter()</code></a></li>
+                <li><a href="?path=content/api/vi/removeAdapter.md" class="toc-link" data-path="content/api/vi/removeAdapter.md"><code>removeAdapter()</code></a></li>
+                <li><a href="?path=content/api/vi/bindMediaSession.md" class="toc-link" data-path="content/api/vi/bindMediaSession.md"><code>bindMediaSession()</code></a></li>
+                <li><a href="?path=content/api/vi/bindMetadata.md" class="toc-link" data-path="content/api/vi/bindMetadata.md"><code>bindMetadata()</code></a></li>
+              </ul>
+            </div>
+
+            <!-- Nhóm: Chẩn đoán & Debug -->
+            <div class="toc-group">
+              <div class="toc-group-title">
+                <span id="toc-group-debug">🛠️ Chẩn đoán & Debug</span>
+              </div>
+              <ul class="toc-list">
+                <li>
+                  <a href="?path=content/api/vi/debug.md" class="toc-link" data-path="content/api/vi/debug.md">
+                    <span class="toc-label" data-vi="Bộ công cụ debug" data-en="Debug Test Suite">Bộ công cụ <code>debug</code></span>
+                    <span class="toc-badge">Suite</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+          </nav>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Main Content: Documentation View -->
+    <main class="main-content">
+      <div class="panel">
+        <div class="panel-heading">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="doc-heading-title">📖 Tài liệu</span>          </div>
+
+          <div class="docs-header-btn-group" style="display: flex; align-items: center; gap: 10px;">
+            <span id="doc-rendered-badge" style="font-size: 11.5px; font-weight: normal; color: var(--text-muted);">Rendered by <strong>Marked.js</strong></span>
+            <button type="button" class="btn btn-default btn-copy-url" id="btn-copy-link" title="Sao chép liên kết tài liệu này">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+              <span id="copy-btn-text">Sao chép Link</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="panel-body">
+          <!-- Dynamic Markdown Container -->
+          <article class="markdown-body" id="markdown-container">
+            <div class="loading-spinner">Đang nạp dữ liệu Markdown...</div>
+          </article>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+      <p id="footer-text">
+        SRemote Frame Controller &copy; 2026 sweetsea &bull; Giấy phép LGPL-3.0 &bull; Hỗ trợ mọi trình duyệt & Tampermonkey.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Documentation Engine Script -->
+  <script src="assets/js/docs-viewer.js"></script>
+</body>
+</html>
