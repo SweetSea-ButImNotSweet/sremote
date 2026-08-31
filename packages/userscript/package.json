@@ -1,0 +1,12 @@
+{
+  "name": "@sremote/userscript",
+  "version": "2.0.0",
+  "description": "SRemote - Allow a parent page to control media inside an iframe with permission",
+  "type": "module",
+  "private": true,
+  "scripts": { "dev": "vite", "build:unmin": "vite build", "build:min": "cross-env MINIFY=true vite build", "build": "npm run build:unmin && npm run build:min" },
+  "keywords": ["userscript", "iframe", "media-controller", "sremote"],
+  "author": "sweetsea",
+  "license": "LGPL-3.0",
+  "dependencies": { "@sremote/shared": "*" }
+}

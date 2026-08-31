@@ -10,6 +10,10 @@
 (function initSRemoteDemo() {
   'use strict';
 
+  // SRemote Client from SDK Wrapper (or fallback to window.sremote)
+  const client = window.SRemoteWrapper ? window.SRemoteWrapper.createSRemoteClient() : window.sremote;
+  const sremoteApi = client || window.sremote;
+
   // Constants
   const TOTAL_SLOTS = 6;
   const IFRAME_ALLOW_POLICY = 'autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';
@@ -19,11 +23,11 @@
    * Dynamically aligns digit width and zero-padding between currentTime and duration
    * for any time scale: seconds, minutes, hours, 10h, 100h, 1000h, ...:
    *
-   * - Under 10 mins:         m:ss / m:ss         (e.g., 1:10 / 5:50)
-   * - 10 mins to < 1 hour:   mm:ss / mm:ss       (e.g., 01:10 / 10:50)
-   * - 1 hour to < 10 hours:  h:mm:ss / h:mm:ss   (e.g., 0:01:10 / 1:50:50)
-   * - 10h to < 100h:         hh:mm:ss / hh:mm:ss (e.g., 01:10:00 / 10:00:00)
-   * - 100h to < 1000h:       hhh:mm:ss / hhh:mm:ss (e.g., 001:10:00 / 100:00:00)
+   * - Under 10 mins:         m:ss / m:ss             (e.g., 1:10 / 5:50)
+   * - 10 mins to < 1 hour:   mm:ss / mm:ss           (e.g., 01:10 / 10:50)
+   * - 1 hour to < 10 hours:  h:mm:ss / h:mm:ss       (e.g., 0:01:10 / 1:50:50)
+   * - 10h to < 100h:         hh:mm:ss / hh:mm:ss     (e.g., 01:10:00 / 10:00:00)
+   * - 100h to < 1000h:       hhh:mm:ss / hhh:mm:ss   (e.g., 001:10:00 / 100:00:00)
    * - 1000h+:                hhhh:mm:ss / hhhh:mm:ss (e.g., 0001:10:00 / 1000:00:00)
    */
   function formatTime(seconds, referenceDuration = 0) {
@@ -67,15 +71,7 @@
 
       // State
       this.connectionStatus = 'idle'; // 'idle' | 'loading' | 'connected' | 'disconnected' | 'error'
-      this.mediaState = {
-        paused: true,
-        currentTime: 0,
-        duration: 0,
-        volume: 1,
-        muted: false,
-        playbackRate: 1,
-        mediaType: null,
-      };
+      this.mediaState = { paused: true, currentTime: 0, duration: 0, volume: 1, muted: false, playbackRate: 1, mediaType: null };
 
       // Cache DOM Elements
       this.dom = {
@@ -239,35 +235,76 @@
       this.dom.iframeContainer.appendChild(iframe);
 
       // 3. Pre-assign ID in SRemote Parent Controller
-      if (window.sremote && typeof window.sremote.assignId === 'function') {
-        window.sremote.assignId(iframe, this.instanceId);
+      if (sremoteApi?.instances?.assign) {
+        sremoteApi.instances.assign(iframe, this.instanceId);
+      } else if (sremoteApi && typeof sremoteApi.assignId === 'function') {
+        sremoteApi.assignId(iframe, this.instanceId);
       }
 
-      // 4. Trigger SRemote handshake on iframe load
+      // 4. Multi-stage Handshake Discovery (Immediate + DOMContentLoaded + window.onload + Periodic Handshake Retries)
+      // Attempt immediate handshake in case iframe is already evaluating
+      this.triggerHandshake();
+
+      // Attempt to listen directly to iframe contentWindow DOMContentLoaded (works for same-origin or local demo frames)
+      try {
+        iframe.contentWindow?.addEventListener?.('DOMContentLoaded', () => {
+          if (this.iframeEl !== iframe) return;
+          this.triggerHandshake();
+        });
+      } catch {}
+
+      // Full iframe window load event
       iframe.addEventListener('load', () => {
         if (this.iframeEl !== iframe) return; // Discard stale load events
         this.triggerHandshake();
       });
 
-      // Fallback handshake trigger in case iframe load fires quickly or is delayed
-      this.triggerHandshake();
+      // Clear any prior handshake retry timer
+      if (this.handshakeRetryTimer) {
+        clearInterval(this.handshakeRetryTimer);
+        this.handshakeRetryTimer = null;
+      }
+
+      // For slow-loading players like SoundCloud widget / Spotify / Dailymotion:
+      // Send handshake retries at increasing intervals until connection is accepted or times out
+      let retryCount = 0;
+      const maxRetries = 15; // Retry for ~15 seconds
+      this.handshakeRetryTimer = setInterval(() => {
+        if (this.iframeEl !== iframe || this.connectionStatus === 'connected') {
+          clearInterval(this.handshakeRetryTimer);
+          this.handshakeRetryTimer = null;
+          return;
+        }
+
+        retryCount++;
+        this.triggerHandshake();
+
+        if (retryCount >= maxRetries) {
+          clearInterval(this.handshakeRetryTimer);
+          this.handshakeRetryTimer = null;
+        }
+      }, 1000);
     }
 
     triggerHandshake() {
-      if (!window.sremote || typeof window.sremote.hello !== 'function') {
+      if (!sremoteApi || typeof sremoteApi.hello !== 'function') {
         this.setConnectionStatus('error', this.t('status.conn_error_userscript'));
         return;
       }
 
       try {
         // Enforce multi-mode so commands require instanceId and don't conflict
-        window.sremote.setMultiMode?.(true);
+        if (sremoteApi?.instances?.setMultiMode) {
+          sremoteApi.instances.setMultiMode(true);
+        } else {
+          sremoteApi.setMultiMode?.(true);
+        }
 
         // Targeted hello to this specific iframe's contentWindow
         if (this.iframeEl?.contentWindow) {
-          window.sremote.hello({ target: this.iframeEl.contentWindow, multiMode: true });
+          sremoteApi.hello({ target: this.iframeEl.contentWindow, multiMode: true });
         } else {
-          window.sremote.hello({ multiMode: true });
+          sremoteApi.hello({ multiMode: true });
         }
       } catch (err) {
         console.warn(`[Slot ${this.slotNumber}] Handshake trigger error:`, err);
@@ -275,39 +312,39 @@
     }
 
     sendSRemoteCommand(action, value) {
-      if (!window.sremote) {
-        console.warn(`[Slot ${this.slotNumber}] window.sremote not found.`);
+      if (!sremoteApi) {
+        console.warn(`[Slot ${this.slotNumber}] sremote SDK not found.`);
         return;
       }
 
       try {
         switch (action) {
           case 'play':
-            window.sremote.play(this.instanceId);
+            sremoteApi.play(this.instanceId);
             break;
           case 'pause':
-            window.sremote.pause(this.instanceId);
+            sremoteApi.pause(this.instanceId);
             break;
           case 'toggle':
-            window.sremote.toggle(this.instanceId);
+            sremoteApi.toggle(this.instanceId);
             break;
           case 'seek':
-            window.sremote.seek(value, this.instanceId);
+            sremoteApi.seek(value, this.instanceId);
             break;
           case 'seekTo':
-            window.sremote.seekTo(value, this.instanceId);
+            sremoteApi.seekTo(value, this.instanceId);
             break;
           case 'volume':
-            window.sremote.volume(value, this.instanceId);
+            sremoteApi.volume(value, this.instanceId);
             break;
           case 'mute':
-            window.sremote.mute(value, this.instanceId);
+            sremoteApi.mute(value, this.instanceId);
             break;
           case 'playbackRate':
-            window.sremote.playbackRate(value, this.instanceId);
+            sremoteApi.playbackRate(value, this.instanceId);
             break;
           case 'pip':
-            window.sremote.pip(undefined, this.instanceId);
+            sremoteApi.pip(undefined, this.instanceId);
             break;
           default:
             console.warn(`[Slot ${this.slotNumber}] Unknown command action: ${action}`);
@@ -495,17 +532,17 @@
 
   // Setup Global SRemote Event Dispatcher
   function setupSRemoteListener() {
-    if (!window.sremote || typeof window.sremote.on !== 'function') {
-      // Retry in case userscript injects slightly after DOMContentLoaded
+    if (!sremoteApi || typeof sremoteApi.on !== 'function') {
+      // Retry in case userscript or client initializes slightly after DOMContentLoaded
       setTimeout(setupSRemoteListener, 200);
       return;
     }
 
     // Force multiMode across SRemote parent controller
-    window.sremote.setMultiMode?.(true);
+    sremoteApi.setMultiMode?.(true);
 
     // Register wildcard listener to capture all lifecycle & media events
-    window.sremote.on('*', payload => {
+    sremoteApi.on('*', payload => {
       const action = payload.action || payload.event;
       const instanceId = payload.instanceId;
 
@@ -517,10 +554,10 @@
           return;
         }
 
-        // 2. Match via sremote.getIframe(instanceId)
-        if (typeof window.sremote.getIframe === 'function') {
+        // 2. Match via sremoteApi.getIframe(instanceId)
+        if (typeof sremoteApi.getIframe === 'function') {
           try {
-            const ifr = window.sremote.getIframe(instanceId);
+            const ifr = sremoteApi.getIframe(instanceId);
             if (ifr) {
               const slotByIfr = slots.find(s => s.iframeEl === ifr);
               if (slotByIfr) {
@@ -544,11 +581,11 @@
       }
 
       // 4. Fallback for accept event without matched slot: check existing iframes in list()
-      if (action === 'accept' && typeof window.sremote.list === 'function') {
+      if (action === 'accept' && typeof sremoteApi.list === 'function') {
         try {
-          const list = window.sremote.list();
+          const list = sremoteApi.list();
           for (const item of list) {
-            const ifr = window.sremote.getIframe?.(item.instanceId);
+            const ifr = sremoteApi.getIframe?.(item.instanceId);
             if (ifr) {
               const s = slots.find(slot => slot.iframeEl === ifr);
               if (s) {
@@ -563,14 +600,14 @@
 
     // Periodic state synchronization check (re-enables controls if instance is already accepted/ready)
     setInterval(() => {
-      if (typeof window.sremote?.list === 'function') {
+      if (typeof sremoteApi?.list === 'function') {
         try {
-          const list = window.sremote.list();
+          const list = sremoteApi.list();
           for (const item of list) {
             if (!item.instanceId) continue;
             let targetSlot = slots.find(s => s.instanceId === item.instanceId);
-            if (!targetSlot && typeof window.sremote.getIframe === 'function') {
-              const ifr = window.sremote.getIframe(item.instanceId);
+            if (!targetSlot && typeof sremoteApi.getIframe === 'function') {
+              const ifr = sremoteApi.getIframe(item.instanceId);
               if (ifr) {
                 targetSlot = slots.find(s => s.iframeEl === ifr);
                 if (targetSlot) targetSlot.instanceId = item.instanceId;
@@ -584,22 +621,189 @@
       }
     }, 1000);
 
-    console.log('%c[SRemote Demo] Connected to SRemote userscript controller', 'color: #10b981; font-weight: bold;');
+    console.log('%c[SRemote Demo] Connected to SRemote SDK client', 'color: #10b981; font-weight: bold;');
+  }
+
+  // Setup Global Toolbar & Exclusive Mode Controller
+  function setupGlobalToolbar() {
+    const exclusiveBtnGroup = document.getElementById('exclusive-btn-group');
+    const globalPlayAllBtn = document.getElementById('global-play-all');
+    const globalPauseAllBtn = document.getElementById('global-pause-all');
+    const globalMuteAllBtn = document.getElementById('global-mute-all');
+    const globalUnmuteAllBtn = document.getElementById('global-unmute-all');
+    const slotFilterSelect = document.getElementById('slot-filter-select');
+
+    // 1. Exclusive Mode Selection Handler (Tắt, Auto, Slot 1..6)
+    if (exclusiveBtnGroup) {
+      const buttons = exclusiveBtnGroup.querySelectorAll('.btn-exclusive');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          buttons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+
+          const rawMode = btn.dataset.mode;
+          let mode = null;
+          if (rawMode === 'auto') {
+            mode = 'auto';
+          } else if (rawMode && rawMode !== 'null') {
+            mode = rawMode; // e.g. 'slot_1', 'slot_2', ...
+          }
+
+          if (sremoteApi && typeof sremoteApi.setExclusive === 'function') {
+            try {
+              sremoteApi.setExclusive(mode);
+              console.log(`%c[SRemote Demo] Exclusive mode set to: ${mode}`, 'color: #0366d6; font-weight: bold;');
+            } catch (err) {
+              console.error('[SRemote Demo] Error setting exclusive mode:', err);
+            }
+          }
+        });
+      });
+    }
+
+    // 3. Global Play All
+    if (globalPlayAllBtn) {
+      globalPlayAllBtn.addEventListener('click', () => {
+        slots.forEach(slot => {
+          if (slot.connectionStatus === 'connected') {
+            slot.sendSRemoteCommand('play');
+          }
+        });
+      });
+    }
+
+    // 4. Global Pause All
+    if (globalPauseAllBtn) {
+      globalPauseAllBtn.addEventListener('click', () => {
+        if (sremoteApi && typeof sremoteApi.pauseAll === 'function') {
+          sremoteApi.pauseAll();
+        } else {
+          slots.forEach(slot => {
+            if (slot.connectionStatus === 'connected') {
+              slot.sendSRemoteCommand('pause');
+            }
+          });
+        }
+      });
+    }
+
+    // 5. Global Mute All
+    if (globalMuteAllBtn) {
+      globalMuteAllBtn.addEventListener('click', () => {
+        slots.forEach(slot => {
+          if (slot.connectionStatus === 'connected') {
+            slot.sendSRemoteCommand('mute', true);
+          }
+        });
+      });
+    }
+
+    // 6. Global Unmute All
+    if (globalUnmuteAllBtn) {
+      globalUnmuteAllBtn.addEventListener('click', () => {
+        slots.forEach(slot => {
+          if (slot.connectionStatus === 'connected') {
+            slot.sendSRemoteCommand('mute', false);
+          }
+        });
+      });
+    }
+
+    // 7. Slot Display Filter
+    if (slotFilterSelect) {
+      slotFilterSelect.addEventListener('change', () => {
+        const val = slotFilterSelect.value;
+        slots.forEach((slot, index) => {
+          const slotNum = index + 1;
+          let isVisible = true;
+
+          if (val === '1-3') {
+            isVisible = slotNum >= 1 && slotNum <= 3;
+          } else if (val === '4-6') {
+            isVisible = slotNum >= 4 && slotNum <= 6;
+          } else if (val === 'active') {
+            isVisible = slot.connectionStatus === 'connected' || slot.connectionStatus === 'loading';
+          }
+
+          if (isVisible) {
+            slot.dom.panel.classList.remove('hidden');
+          } else {
+            slot.dom.panel.classList.add('hidden');
+          }
+        });
+      });
+    }
+  }
+
+  /**
+   * Setup copy-to-clipboard handler for sample URLs section.
+   */
+  function setupSampleUrlsSection() {
+    const copyButtons = document.querySelectorAll('.btn-copy');
+    copyButtons.forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const targetId = btn.getAttribute('data-target');
+        const codeEl = document.getElementById(targetId);
+        if (!codeEl) return;
+
+        const textToCopy = codeEl.textContent.trim();
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(textToCopy);
+          } else {
+            // Fallback for older browsers / non-HTTPS local contexts
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+          }
+
+          const originalText = btn.textContent;
+          const copiedText = window.i18n?.t('samples.copied') || 'Copied!';
+          btn.textContent = copiedText;
+          btn.classList.add('copied');
+
+          setTimeout(() => {
+            btn.textContent = window.i18n?.t('samples.btn_copy') || originalText;
+            btn.classList.remove('copied');
+          }, 1800);
+        } catch (err) {
+          console.warn('[SRemote Demo] Failed to copy sample URL:', err);
+        }
+      });
+    });
   }
 
   // Initialize
   document.addEventListener('DOMContentLoaded', () => {
     setupSRemoteListener();
+    setupGlobalToolbar();
+    setupSampleUrlsSection();
 
     // Listen for language changes and refresh all slots dynamic content
     window.i18n?.onLanguageChange(() => {
       slots.forEach(slot => slot.refreshLanguage());
     });
 
-    // Auto-load Slot 1 prefilled URL
+    // 1. Auto-load Slot 1 prefilled URL
     const slot1 = slots[0];
     if (slot1 && slot1.dom.urlInput.value) {
       slot1.loadUrl(slot1.dom.urlInput.value.trim());
+    }
+
+    // 2. Trigger independent standalone sremote.hello() handshake once DOM is fully ready
+    if (sremoteApi && typeof sremoteApi.hello === 'function') {
+      try {
+        sremoteApi.setMultiMode?.(true);
+        sremoteApi.hello({ multiMode: true });
+        console.log('%c[SRemote Demo] Broadcasted standalone sremote.hello() on DOMContentLoaded', 'color: #0366d6;');
+      } catch (err) {
+        console.warn('[SRemote Demo] Failed to broadcast sremote.hello() on DOMContentLoaded:', err);
+      }
     }
   });
 })();

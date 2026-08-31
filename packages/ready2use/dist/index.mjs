@@ -1,0 +1,1476 @@
+//#region src/core/dom-utils.js
+function e(e) {
+	return typeof document > "u" || !e ? null : typeof e == "string" ? document.querySelector(e) : e && e.nodeType === 1 ? e : null;
+}
+function t(e, t = "100%", n = "100%") {
+	let r = document.createElement("div");
+	r.id = `sremote-temp-node-${e}`, r.style.width = typeof t == "number" ? `${t}px` : t, r.style.height = typeof n == "number" ? `${n}px` : n;
+	let i = document.createElement("div");
+	return i.style.display = "none", i.appendChild(r), document.body && document.body.appendChild(i), {
+		hiddenWrapper: i,
+		tempNode: r,
+		cleanup: () => {
+			try {
+				i.parentNode && i.parentNode.removeChild(i);
+			} catch {}
+		}
+	};
+}
+function n(e, t = "100%", n = "100%", r = null) {
+	e && (r && e.setAttribute("data-sremote-id", r), t !== void 0 && (e.style.width = typeof t == "number" ? `${t}px` : t), n !== void 0 && (e.style.height = typeof n == "number" ? `${n}px` : n));
+}
+//#endregion
+//#region src/core/base-provider.js
+var r = 0, i = null;
+async function a(e = {}) {
+	if (e.sremote && typeof e.sremote == "object" && e.sremote.adapters) return e.sremote;
+	if (typeof window < "u" && window.sremote && window.sremote.adapters) return window.sremote;
+	if (typeof globalThis < "u" && globalThis.sremote && globalThis.sremote.adapters) return globalThis.sremote;
+	if (i) return i;
+	try {
+		let e = await import("@sremote/wrapper");
+		return i = e?.sremote || e?.default?.sremote || e?.default || null, i;
+	} catch {
+		return null;
+	}
+}
+var o = class {
+	constructor(e) {
+		this.name = e || "generic-provider";
+	}
+	async loadSdk() {
+		return Promise.resolve();
+	}
+	generateInstanceId(e) {
+		return e && typeof e == "string" ? e.trim() : `${this.name}-player-${++r}-${Math.random().toString(36).slice(2, 7)}`;
+	}
+	async initPlayer(e, t) {
+		throw Error(`[${this.constructor.name}] initPlayer() must be implemented by subclass`);
+	}
+	createAdapter(e, t) {
+		throw Error(`[${this.constructor.name}] createAdapter() must be implemented by subclass`);
+	}
+	getCapabilities(e = null) {
+		if (e && e.capabilities && typeof e.capabilities == "object") return { ...e.capabilities };
+		let t = (t) => !!(e && typeof e[t] == "function");
+		return {
+			play: t("play"),
+			pause: t("pause"),
+			toggle: t("toggle") || t("play") && t("pause"),
+			stop: t("stop") || t("pause"),
+			seek: t("seek") || t("seekTo") || t("setCurrentTime"),
+			volume: t("setVolume"),
+			muted: t("setMuted"),
+			speed: t("setPlaybackRate"),
+			playbackRate: t("setPlaybackRate"),
+			pip: t("requestPip") || t("pip"),
+			quality: t("setQuality"),
+			subtitles: t("setSubtitle") || t("getSubtitles"),
+			shuffle: t("setShuffle"),
+			repeat: t("setRepeat"),
+			next: t("next"),
+			previous: t("previous"),
+			load: t("load"),
+			hasAdapter: !0,
+			hasNative: !1,
+			hasMediaSession: !1
+		};
+	}
+	async create(e = {}) {
+		let t = typeof e == "string" ? { videoId: e } : { ...e }, n = this.generateInstanceId(t.instanceId);
+		await this.loadSdk();
+		let { player: r, element: i, iframe: a, destroy: o } = await this.initPlayer(t, n), s = a || i, c = this.createAdapter(r, {
+			options: t,
+			instanceId: n,
+			element: s,
+			iframe: a || (s?.tagName === "IFRAME" ? s : null)
+		}), l = this.getCapabilities(c);
+		return c && !c.capabilities && (c.capabilities = l), {
+			element: s,
+			iframe: a || (s?.tagName === "IFRAME" ? s : null),
+			adapter: c,
+			player: r,
+			instanceId: n,
+			capabilities: l,
+			destroy: () => {
+				try {
+					typeof o == "function" ? o() : r && typeof r.destroy == "function" && r.destroy();
+				} catch {}
+				try {
+					s && s.parentNode && s.parentNode.removeChild(s);
+				} catch {}
+			}
+		};
+	}
+	async mount(t, n = {}) {
+		let r = e(t);
+		if (!r) throw Error(`[SRemote:${this.name}] Target container '${t}' not found in DOM`);
+		let i = await this.create(n);
+		r.appendChild(i.element);
+		let o = await a(typeof n == "string" ? {} : n);
+		return o?.adapters && o.adapters.register(i.adapter, i.instanceId), {
+			...i,
+			destroy: () => {
+				try {
+					o?.adapters && o.adapters.unregister(i.instanceId);
+				} catch {}
+				i.destroy();
+			}
+		};
+	}
+}, s = /* @__PURE__ */ new Map();
+function c(e) {
+	if (typeof window > "u") return Promise.reject(/* @__PURE__ */ Error("Window is not available"));
+	if (s.has(e)) return s.get(e);
+	let t = new Promise((t, n) => {
+		let r = document.querySelector(`script[src="${e}"]`);
+		if (r) {
+			if (r.getAttribute("data-loaded") === "true") {
+				t();
+				return;
+			}
+			r.addEventListener("load", () => t(), { once: !0 }), r.addEventListener("error", (e) => n(e), { once: !0 });
+			return;
+		}
+		let i = document.createElement("script");
+		i.src = e, i.async = !0, i.onload = () => {
+			i.setAttribute("data-loaded", "true"), t();
+		}, i.onerror = (t) => {
+			s.delete(e), n(t);
+		}, document.head.appendChild(i);
+	});
+	return s.set(e, t), t;
+}
+var l = null;
+function u() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.YT && window.YT.Player ? Promise.resolve(window.YT) : l || (l = new Promise((e, t) => {
+		let n = window.onYouTubeIframeAPIReady;
+		window.onYouTubeIframeAPIReady = () => {
+			if (typeof n == "function") try {
+				n();
+			} catch {}
+			e(window.YT);
+		}, c("https://www.youtube.com/iframe_api").catch((e) => {
+			l = null, t(e);
+		});
+	}), l);
+}
+var d = null;
+function f() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.Vimeo && window.Vimeo.Player ? Promise.resolve(window.Vimeo) : d || (d = c("https://player.vimeo.com/api/player.js").then(() => window.Vimeo).catch((e) => {
+		throw d = null, e;
+	}), d);
+}
+var p = null;
+function m() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.SC && window.SC.Widget ? Promise.resolve(window.SC) : p || (p = c("https://w.soundcloud.com/player/api.js").then(() => window.SC).catch((e) => {
+		throw p = null, e;
+	}), p);
+}
+var h = null;
+function g() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.dailymotion && window.dailymotion.createPlayer ? Promise.resolve(window.dailymotion) : h || (h = c("https://player.dailymotion.com/api/player.js").then(() => window.dailymotion).catch((e) => {
+		throw h = null, e;
+	}), h);
+}
+var _ = null;
+function v() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.Twitch && window.Twitch.Player ? Promise.resolve(window.Twitch) : _ || (_ = c("https://player.twitch.tv/js/embed/v1.js").then(() => window.Twitch).catch((e) => {
+		throw _ = null, e;
+	}), _);
+}
+var y = null;
+function b() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.Mixcloud && window.Mixcloud.PlayerWidget ? Promise.resolve(window.Mixcloud) : y || (y = c("https://widget.mixcloud.com/media/js/widgetApi.js").then(() => window.Mixcloud).catch((e) => {
+		throw y = null, e;
+	}), y);
+}
+var x = null;
+function S() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.SpotifyIframeApi ? Promise.resolve(window.SpotifyIframeApi) : x || (x = new Promise((e, t) => {
+		let n = window.onSpotifyIframeApiReady;
+		window.onSpotifyIframeApiReady = (t) => {
+			if (window.SpotifyIframeApi = t, typeof n == "function") try {
+				n(t);
+			} catch {}
+			e(t);
+		}, c("https://open.spotify.com/embed/iframe-api/v1").catch((e) => {
+			x = null, t(e);
+		});
+	}), x);
+}
+var C = null;
+function w(e = null) {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.FB ? Promise.resolve(window.FB) : C || (C = new Promise((t, n) => {
+		let r = window.fbAsyncInit;
+		window.fbAsyncInit = () => {
+			if (window.FB && e && window.FB.init({
+				appId: e,
+				xfbml: !0,
+				version: "v18.0"
+			}), typeof r == "function") try {
+				r();
+			} catch {}
+			t(window.FB);
+		}, c("https://connect.facebook.net/en_US/sdk.js").catch((e) => {
+			C = null, n(e);
+		});
+	}), C);
+}
+var T = new class extends o {
+	constructor() {
+		super("youtube");
+	}
+	async loadSdk() {
+		return u();
+	}
+	async initPlayer(e, r) {
+		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || "100%", s = e.videoId, { hiddenWrapper: c, tempNode: l, cleanup: u } = t(r, a, o);
+		return new Promise((t, d) => {
+			let f = null, p = null;
+			f = new i.Player(l.id, {
+				width: a,
+				height: o,
+				videoId: s,
+				playerVars: {
+					enablejsapi: 1,
+					origin: typeof window < "u" ? window.location.origin : void 0,
+					...e.playerVars
+				},
+				events: {
+					onReady: () => {
+						p = f.getIFrame ? f.getIFrame() : document.getElementById(l.id), p && p.parentNode === c && c.removeChild(p), u(), p && n(p, a, o, r), t({
+							player: f,
+							element: p,
+							iframe: p,
+							destroy: () => {
+								try {
+									f && typeof f.destroy == "function" && f.destroy();
+								} catch {}
+								u();
+							}
+						});
+					},
+					onError: (e) => {
+						u(), d(e);
+					}
+				}
+			});
+		});
+	}
+	createAdapter(e) {
+		let t = typeof window < "u" ? window.YT : null, n = {
+			paused: !0,
+			currentTime: 0,
+			duration: 0,
+			volume: 1,
+			muted: !1,
+			playbackRate: 1
+		}, r = () => {
+			try {
+				if (e && typeof e.getPlayerState == "function") {
+					let r = e.getPlayerState(), i = t ? r === t.PlayerState.PLAYING || r === t.PlayerState.BUFFERING : r === 1 || r === 3;
+					n.paused = !i, n.currentTime = e.getCurrentTime ? e.getCurrentTime() : 0, n.duration = e.getDuration ? e.getDuration() : 0, n.volume = e.getVolume ? e.getVolume() / 100 : 1, n.muted = e.isMuted ? e.isMuted() : !1, n.playbackRate = e.getPlaybackRate ? e.getPlaybackRate() : 1;
+				}
+			} catch {}
+			return n;
+		};
+		return {
+			play() {
+				e && typeof e.playVideo == "function" && e.playVideo();
+			},
+			pause() {
+				e && typeof e.pauseVideo == "function" && e.pauseVideo();
+			},
+			toggle() {
+				if (!e) return;
+				let n = typeof e.getPlayerState == "function" ? e.getPlayerState() : -1;
+				(t ? n === t.PlayerState.PLAYING || n === t.PlayerState.BUFFERING : n === 1 || n === 3) ? e.pauseVideo() : e.playVideo();
+			},
+			stop() {
+				e && typeof e.stopVideo == "function" && e.stopVideo();
+			},
+			seek(t) {
+				if (e && typeof e.getCurrentTime == "function" && typeof e.seekTo == "function") {
+					let n = e.getCurrentTime() || 0;
+					e.seekTo(Math.max(0, n + Number(t)), !0);
+				}
+			},
+			seekTo(t) {
+				e && typeof e.seekTo == "function" && e.seekTo(Number(t), !0);
+			},
+			getCurrentTime() {
+				return e && typeof e.getCurrentTime == "function" ? e.getCurrentTime() : 0;
+			},
+			getDuration() {
+				return e && typeof e.getDuration == "function" ? e.getDuration() : 0;
+			},
+			getVolume() {
+				return e && typeof e.getVolume == "function" ? e.getVolume() / 100 : 1;
+			},
+			setVolume(t) {
+				if (e && typeof e.setVolume == "function") {
+					let n = Number(t);
+					n <= 1 && n > 0 && (n *= 100), e.setVolume(Math.min(100, Math.max(0, n)));
+				}
+			},
+			getMuted() {
+				return e && typeof e.isMuted == "function" ? e.isMuted() : !1;
+			},
+			setMuted(t) {
+				e && (t ? typeof e.mute == "function" && e.mute() : typeof e.unMute == "function" && e.unMute());
+			},
+			getPlaybackRate() {
+				return e && typeof e.getPlaybackRate == "function" ? e.getPlaybackRate() : 1;
+			},
+			setPlaybackRate(t) {
+				e && typeof e.setPlaybackRate == "function" && e.setPlaybackRate(Number(t));
+			},
+			paused() {
+				if (!e || typeof e.getPlayerState != "function") return !0;
+				let n = e.getPlayerState();
+				return !(t ? n === t.PlayerState.PLAYING || n === t.PlayerState.BUFFERING : n === 1 || n === 3);
+			},
+			next() {
+				e && typeof e.nextVideo == "function" && e.nextVideo();
+			},
+			previous() {
+				e && typeof e.previousVideo == "function" && e.previousVideo();
+			},
+			setRepeat(t) {
+				if (e && typeof e.setLoop == "function") {
+					let n = t === "one" || t === "all" || t === !0;
+					e.setLoop(n);
+				}
+			},
+			setShuffle(t) {
+				e && typeof e.setShuffle == "function" && e.setShuffle(!!t);
+			},
+			setSubtitle(t) {
+				if (e) {
+					if (!t || t === "off") {
+						if (typeof e.setOption == "function") try {
+							e.setOption("captions", "track", {}), e.setOption("cc", "track", {}), e.setOption("captions", "reload", !0);
+						} catch {}
+						if (typeof e.unloadModule == "function") try {
+							e.unloadModule("captions");
+						} catch {}
+					} else {
+						let n = String(t);
+						if (typeof e.loadModule == "function") try {
+							e.loadModule("captions");
+						} catch {}
+						if (typeof e.setOption == "function") try {
+							e.setOption("captions", "track", { languageCode: n }), e.setOption("cc", "track", { languageCode: n }), e.setOption("captions", "reload", !0);
+						} catch {}
+					}
+				}
+			},
+			getSubtitles() {
+				if (e && typeof e.getOption == "function") try {
+					let t = e.getOption("captions", "tracklist");
+					if (Array.isArray(t) && t.length > 0) return t;
+					let n = e.getOption("captions", "track");
+					return n && Object.keys(n).length > 0 ? [n] : [];
+				} catch {
+					return [];
+				}
+				return [];
+			},
+			load(t) {
+				e && (typeof t == "string" ? typeof e.loadVideoById == "function" && e.loadVideoById(t) : t && typeof t == "object" && typeof e.loadVideoById == "function" && e.loadVideoById(t));
+			},
+			getState() {
+				return r();
+			}
+		};
+	}
+}(), E = {
+	create: (e) => T.create(e),
+	mount: (e, t) => T.mount(e, t),
+	provider: T
+}, D = new class extends o {
+	constructor() {
+		super("vimeo");
+	}
+	async loadSdk() {
+		return f();
+	}
+	async initPlayer(e, r) {
+		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || "100%", s = e.videoId || e.id || e.url || "76979871", { hiddenWrapper: c, tempNode: l, cleanup: u } = t(r, a, o), d = {
+			id: typeof s == "number" ? s : void 0,
+			url: typeof s == "string" ? s.startsWith("http") ? s : `https://player.vimeo.com/video/${s}` : void 0,
+			width: typeof a == "number" ? a : void 0,
+			height: typeof o == "number" ? o : void 0,
+			autoplay: e.autoplay ?? !1,
+			muted: e.muted ?? !1,
+			...e.playerOptions
+		}, f = new i.Player(l, d);
+		await f.ready();
+		let p = l.querySelector("iframe") || l;
+		return p && p.parentNode === c && c.removeChild(p), u(), p && n(p, a, o, r), {
+			player: f,
+			element: p,
+			iframe: p?.tagName === "IFRAME" ? p : null,
+			destroy: () => {
+				try {
+					f && typeof f.destroy == "function" && f.destroy();
+				} catch {}
+				u();
+			}
+		};
+	}
+	createAdapter(e) {
+		let t = !0, n = 0, r = 0, i = 1, a = !1, o = 1;
+		e && typeof e.getDuration == "function" && e.getDuration().then((e) => {
+			n = e || 0;
+		}).catch(() => {});
+		let s = {
+			play() {
+				e && typeof e.play == "function" && e.play().catch(() => {});
+			},
+			pause() {
+				e && typeof e.pause == "function" && e.pause().catch(() => {});
+			},
+			toggle() {
+				e && (typeof e.getPaused == "function" ? e.getPaused().then((t) => {
+					t ? e.play().catch(() => {}) : e.pause().catch(() => {});
+				}).catch(() => {
+					t ? e.play().catch(() => {}) : e.pause().catch(() => {});
+				}) : t ? e.play().catch(() => {}) : e.pause().catch(() => {}));
+			},
+			stop() {
+				e && typeof e.pause == "function" && typeof e.setCurrentTime == "function" && e.pause().then(() => e.setCurrentTime(0)).catch(() => {});
+			},
+			seek(t) {
+				e && typeof e.getCurrentTime == "function" && typeof e.setCurrentTime == "function" && e.getCurrentTime().then((n) => {
+					e.setCurrentTime(Math.max(0, n + Number(t))).catch(() => {});
+				}).catch(() => {});
+			},
+			seekTo(t) {
+				e && typeof e.setCurrentTime == "function" && e.setCurrentTime(Number(t)).catch(() => {});
+			},
+			getCurrentTime() {
+				return r;
+			},
+			getDuration() {
+				return n;
+			},
+			getVolume() {
+				return i;
+			},
+			setVolume(t) {
+				i = Number(t), e && typeof e.setVolume == "function" && e.setVolume(Math.min(1, Math.max(0, i))).catch(() => {});
+			},
+			getMuted() {
+				return a;
+			},
+			setMuted(t) {
+				a = !!t, e && typeof e.setMuted == "function" && e.setMuted(a).catch(() => {});
+			},
+			getPlaybackRate() {
+				return o;
+			},
+			setPlaybackRate(t) {
+				o = Number(t), e && typeof e.setPlaybackRate == "function" && e.setPlaybackRate(o).catch(() => {});
+			},
+			paused() {
+				return t;
+			},
+			setRepeat(t) {
+				if (e && typeof e.setLoop == "function") {
+					let n = t === "one" || t === "all" || t === !0;
+					e.setLoop(n).catch(() => {});
+				}
+			},
+			setQuality(t) {
+				e && typeof e.setQuality == "function" && e.setQuality(String(t)).catch(() => {});
+			},
+			async getQualities() {
+				if (e && typeof e.getQualities == "function") try {
+					let t = await e.getQualities();
+					return Array.isArray(t) ? t.map((e) => e.id || e.label || String(e)) : [];
+				} catch {
+					return [];
+				}
+				return [];
+			},
+			setSubtitle(t) {
+				e && typeof e.enableTextTrack == "function" && (!t || t === "off" ? e.disableTextTrack?.().catch(() => {}) : e.enableTextTrack(String(t)).catch(() => {}));
+			},
+			async getSubtitles() {
+				if (e && typeof e.getTextTracks == "function") try {
+					let t = await e.getTextTracks();
+					return Array.isArray(t) ? t : [];
+				} catch {
+					return [];
+				}
+				return [];
+			},
+			load(t) {
+				e && typeof e.loadVideo == "function" && e.loadVideo(t).catch(() => {});
+			},
+			getState() {
+				return {
+					paused: t,
+					currentTime: r,
+					duration: n,
+					volume: i,
+					muted: a,
+					playbackRate: o
+				};
+			}
+		};
+		return e && typeof e.on == "function" && (e.on("play", () => {
+			t = !1, s.emit?.("play", { state: {
+				paused: !1,
+				currentTime: r,
+				duration: n
+			} });
+		}), e.on("pause", () => {
+			t = !0, s.emit?.("pause", { state: {
+				paused: !0,
+				currentTime: r,
+				duration: n
+			} });
+		}), e.on("timeupdate", (e) => {
+			r = e.seconds || 0, n = e.duration || n, s.emit?.("timeupdate", { state: {
+				paused: t,
+				currentTime: r,
+				duration: n
+			} });
+		}), e.on("seeked", (e) => {
+			r = e.seconds || 0, s.emit?.("seeked", { state: {
+				paused: t,
+				currentTime: r,
+				duration: n
+			} }), s.emit?.("timeupdate", { state: {
+				paused: t,
+				currentTime: r,
+				duration: n
+			} });
+		}), e.on("ended", () => {
+			t = !0, s.emit?.("ended", { state: {
+				paused: !0,
+				ended: !0,
+				currentTime: n,
+				duration: n
+			} });
+		}), e.on("volumechange", (e) => {
+			typeof e.volume == "number" && (i = e.volume), typeof e.muted == "boolean" && (a = e.muted), s.emit?.("volumechange", { state: {
+				volume: i,
+				muted: a
+			} });
+		})), s;
+	}
+}(), O = {
+	create: (e) => D.create(e),
+	mount: (e, t) => D.mount(e, t),
+	provider: D
+}, k = new class extends o {
+	constructor() {
+		super("soundcloud");
+	}
+	async loadSdk() {
+		return m();
+	}
+	async initPlayer(e, t) {
+		let r = await this.loadSdk(), i = e.width || "100%", a = e.height || (e.visual ? "300" : "166"), o = e.trackUrl || e.url || "https://api.soundcloud.com/tracks/293", s = e.autoplay ?? e.auto_play ?? !1, c = e.visual ?? !1, l = document.createElement("iframe");
+		l.id = `sremote-sc-${t}`, l.allow = "autoplay", l.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(o)}&color=${encodeURIComponent(e.color || "#ff5500")}&auto_play=${s}&visual=${c}&hide_cover=${!!e.hideCover}&show_teaser=${!!e.showTeaser}`, n(l, i, a, t);
+		let u = r.Widget(l);
+		return await new Promise((e) => {
+			u.bind(r.Widget.Events.READY, () => {
+				e();
+			}), setTimeout(e, 2e3);
+		}), {
+			player: u,
+			element: l,
+			iframe: l,
+			destroy: () => {
+				try {
+					u && typeof u.unbind == "function" && (u.unbind(r.Widget.Events.READY), u.unbind(r.Widget.Events.PLAY), u.unbind(r.Widget.Events.PAUSE), u.unbind(r.Widget.Events.PLAY_PROGRESS), u.unbind(r.Widget.Events.SEEK), u.unbind(r.Widget.Events.FINISH));
+				} catch {}
+			}
+		};
+	}
+	createAdapter(e) {
+		let t = typeof window < "u" ? window.SC : null, n = !1, r = 0, i = 0, a = 1, o = !1;
+		e && typeof e.getDuration == "function" && e.getDuration((e) => {
+			r = (e || 0) / 1e3;
+		});
+		let s = {
+			play() {
+				e && typeof e.play == "function" && (e.play(), n = !0);
+			},
+			pause() {
+				e && typeof e.pause == "function" && (e.pause(), n = !1);
+			},
+			toggle() {
+				e && typeof e.toggle == "function" && (e.toggle(), n = !n);
+			},
+			stop() {
+				e && typeof e.pause == "function" && typeof e.seekTo == "function" && (e.pause(), e.seekTo(0), n = !1);
+			},
+			seek(t) {
+				e && typeof e.getPosition == "function" && typeof e.seekTo == "function" && e.getPosition((n) => {
+					let r = Math.max(0, (n || 0) + Number(t) * 1e3);
+					e.seekTo(r);
+				});
+			},
+			seekTo(t) {
+				e && typeof e.seekTo == "function" && e.seekTo(Number(t) * 1e3);
+			},
+			getCurrentTime() {
+				return i;
+			},
+			getDuration() {
+				return r;
+			},
+			getVolume() {
+				return a;
+			},
+			setVolume(t) {
+				a = Number(t), e && typeof e.setVolume == "function" && e.setVolume(Math.min(100, Math.max(0, a * 100)));
+			},
+			getMuted() {
+				return o;
+			},
+			setMuted(t) {
+				o = !!t, e && typeof e.setVolume == "function" && e.setVolume(o ? 0 : a * 100);
+			},
+			paused() {
+				return !n;
+			},
+			next() {
+				e && typeof e.next == "function" && e.next();
+			},
+			previous() {
+				e && typeof e.prev == "function" && e.prev();
+			},
+			load(t, n = {}) {
+				e && typeof e.load == "function" && e.load(t, n);
+			},
+			getState() {
+				return {
+					paused: !n,
+					currentTime: i,
+					duration: r,
+					volume: a,
+					muted: o
+				};
+			}
+		};
+		return t && e && typeof e.bind == "function" && (e.bind(t.Widget.Events.PLAY, () => {
+			n = !0, s.emit?.("play", { state: {
+				paused: !1,
+				currentTime: i,
+				duration: r
+			} });
+		}), e.bind(t.Widget.Events.PAUSE, () => {
+			n = !1, s.emit?.("pause", { state: {
+				paused: !0,
+				currentTime: i,
+				duration: r
+			} });
+		}), e.bind(t.Widget.Events.PLAY_PROGRESS, (e) => {
+			i = (e?.currentPosition || 0) / 1e3, e?.duration && (r = e.duration / 1e3), s.emit?.("timeupdate", { state: {
+				paused: !n,
+				currentTime: i,
+				duration: r
+			} });
+		}), e.bind(t.Widget.Events.SEEK, (e) => {
+			i = (e?.currentPosition || 0) / 1e3, s.emit?.("seeked", { state: {
+				paused: !n,
+				currentTime: i,
+				duration: r
+			} }), s.emit?.("timeupdate", { state: {
+				paused: !n,
+				currentTime: i,
+				duration: r
+			} });
+		}), e.bind(t.Widget.Events.FINISH, () => {
+			n = !1, s.emit?.("ended", { state: {
+				paused: !0,
+				ended: !0,
+				currentTime: r,
+				duration: r
+			} });
+		})), s;
+	}
+}(), A = {
+	create: (e) => k.create(e),
+	mount: (e, t) => k.mount(e, t),
+	provider: k
+}, j = new class extends o {
+	constructor() {
+		super("dailymotion");
+	}
+	async loadSdk() {
+		return g();
+	}
+	async initPlayer(e, r) {
+		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || "100%", s = e.video || e.videoId || "x7tgad0", { hiddenWrapper: c, tempNode: l, cleanup: u } = t(r, a, o), d = {
+			video: s,
+			params: {
+				autoplay: e.autoplay ?? !1,
+				mute: e.mute ?? e.muted ?? !1,
+				...e.params
+			},
+			...e.playerOptions
+		}, f = await i.createPlayer(l, d), p = l.querySelector("iframe") || l;
+		return p && p.parentNode === c && c.removeChild(p), u(), p && n(p, a, o, r), {
+			player: f,
+			element: p,
+			iframe: p?.tagName === "IFRAME" ? p : null,
+			destroy: () => {
+				try {
+					f && typeof f.destroy == "function" && f.destroy();
+				} catch {}
+				u();
+			}
+		};
+	}
+	createAdapter(e) {
+		let t = typeof window < "u" ? window.dailymotion : null, n = !0, r = 0, i = 0, a = 1, o = !1, s = {
+			play() {
+				e && typeof e.play == "function" && e.play();
+			},
+			pause() {
+				e && typeof e.pause == "function" && e.pause();
+			},
+			toggle() {
+				e && (n ? s.play() : s.pause());
+			},
+			stop() {
+				e && typeof e.pause == "function" && typeof e.seek == "function" && (e.pause(), e.seek(0));
+			},
+			seek(t) {
+				e && typeof e.seek == "function" && e.seek(Math.max(0, i + Number(t)));
+			},
+			seekTo(t) {
+				e && typeof e.seek == "function" && e.seek(Number(t));
+			},
+			getCurrentTime() {
+				return i;
+			},
+			getDuration() {
+				return r;
+			},
+			getVolume() {
+				return a;
+			},
+			setVolume(t) {
+				a = Number(t), e && typeof e.setVolume == "function" && e.setVolume(Math.min(1, Math.max(0, a)));
+			},
+			getMuted() {
+				return o;
+			},
+			setMuted(t) {
+				o = !!t, e && typeof e.setMuted == "function" && e.setMuted(o);
+			},
+			paused() {
+				return n;
+			},
+			setQuality(t) {
+				e && typeof e.setQuality == "function" && e.setQuality(String(t));
+			},
+			async getQualities() {
+				if (e && typeof e.getQualities == "function") try {
+					let t = await e.getQualities();
+					return Array.isArray(t) ? t : [];
+				} catch {
+					return [];
+				}
+				return [];
+			},
+			setSubtitle(t) {
+				e && typeof e.setSubtitle == "function" && e.setSubtitle(t ? String(t) : "off");
+			},
+			async getSubtitles() {
+				if (e && typeof e.getSubtitles == "function") try {
+					let t = await e.getSubtitles();
+					return Array.isArray(t) ? t : [];
+				} catch {
+					return [];
+				}
+				return [];
+			},
+			load(t) {
+				e && typeof e.load == "function" && e.load(t);
+			},
+			getState() {
+				return {
+					paused: n,
+					currentTime: i,
+					duration: r,
+					volume: a,
+					muted: o
+				};
+			}
+		};
+		if (e && typeof e.on == "function") {
+			let c = t?.events || {};
+			c.PLAYER_PLAY && e.on(c.PLAYER_PLAY, () => {
+				n = !1, s.emit?.("play", { state: {
+					paused: !1,
+					currentTime: i,
+					duration: r
+				} });
+			}), c.PLAYER_PAUSE && e.on(c.PLAYER_PAUSE, () => {
+				n = !0, s.emit?.("pause", { state: {
+					paused: !0,
+					currentTime: i,
+					duration: r
+				} });
+			}), c.PLAYER_TIMEUPDATE && e.on(c.PLAYER_TIMEUPDATE, (e) => {
+				i = e?.videoTime ?? e?.time ?? i, r = e?.videoDuration ?? e?.duration ?? r, s.emit?.("timeupdate", { state: {
+					paused: n,
+					currentTime: i,
+					duration: r
+				} });
+			}), c.PLAYER_SEEKED && e.on(c.PLAYER_SEEKED, (e) => {
+				i = e?.videoTime ?? e?.time ?? i, s.emit?.("seeked", { state: {
+					paused: n,
+					currentTime: i,
+					duration: r
+				} }), s.emit?.("timeupdate", { state: {
+					paused: n,
+					currentTime: i,
+					duration: r
+				} });
+			}), c.PLAYER_END && e.on(c.PLAYER_END, () => {
+				n = !0, s.emit?.("ended", { state: {
+					paused: !0,
+					ended: !0,
+					currentTime: r,
+					duration: r
+				} });
+			}), c.PLAYER_VOLUMECHANGE && e.on(c.PLAYER_VOLUMECHANGE, (e) => {
+				e?.volume !== void 0 && (a = e.volume), e?.muted !== void 0 && (o = e.muted), s.emit?.("volumechange", { state: {
+					volume: a,
+					muted: o
+				} });
+			});
+		}
+		return s;
+	}
+}(), M = {
+	create: (e) => j.create(e),
+	mount: (e, t) => j.mount(e, t),
+	provider: j
+}, N = new class extends o {
+	constructor() {
+		super("twitch");
+	}
+	async loadSdk() {
+		return v();
+	}
+	async initPlayer(e, r) {
+		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || "100%", { hiddenWrapper: s, tempNode: c, cleanup: l } = t(r, a, o), u = typeof window < "u" && window.location.hostname || "localhost", d = Array.isArray(e.parent) ? e.parent : [e.parent || u], f = {
+			width: "100%",
+			height: "100%",
+			channel: e.channel || (!e.video && !e.collection ? "the8bitdrummer" : void 0),
+			video: e.video,
+			collection: e.collection,
+			parent: d,
+			autoplay: e.autoplay ?? !1,
+			muted: e.muted ?? !1,
+			...e.playerOptions
+		}, p = new i.Player(c.id, f);
+		await new Promise((e) => {
+			p.addEventListener(i.Player.READY, () => e(), { once: !0 }), setTimeout(e, 2500);
+		});
+		let m = c.querySelector("iframe") || c;
+		return m && m.parentNode === s && s.removeChild(m), l(), m && n(m, a, o, r), {
+			player: p,
+			element: m,
+			iframe: m?.tagName === "IFRAME" ? m : null,
+			destroy: () => {
+				try {
+					p && typeof p.destroy == "function" && p.destroy();
+				} catch {}
+				l();
+			}
+		};
+	}
+	createAdapter(e) {
+		let t = typeof window < "u" ? window.Twitch : null, n = {
+			play() {
+				e && typeof e.play == "function" && e.play();
+			},
+			pause() {
+				e && typeof e.pause == "function" && e.pause();
+			},
+			toggle() {
+				!e || typeof e.isPaused != "function" || (e.isPaused() ? e.play() : e.pause());
+			},
+			stop() {
+				e && typeof e.pause == "function" && typeof e.seek == "function" && (e.pause(), e.seek(0));
+			},
+			seek(t) {
+				e && typeof e.getCurrentTime == "function" && typeof e.seek == "function" && e.seek(Math.max(0, (e.getCurrentTime() || 0) + Number(t)));
+			},
+			seekTo(t) {
+				e && typeof e.seek == "function" && e.seek(Number(t));
+			},
+			getCurrentTime() {
+				return e && typeof e.getCurrentTime == "function" ? e.getCurrentTime() : 0;
+			},
+			getDuration() {
+				return e && typeof e.getDuration == "function" ? e.getDuration() : 0;
+			},
+			getVolume() {
+				return e && typeof e.getVolume == "function" ? e.getVolume() : 1;
+			},
+			setVolume(t) {
+				e && typeof e.setVolume == "function" && e.setVolume(Math.min(1, Math.max(0, Number(t))));
+			},
+			getMuted() {
+				return e && typeof e.getMuted == "function" ? e.getMuted() : !1;
+			},
+			setMuted(t) {
+				e && typeof e.setMuted == "function" && e.setMuted(!!t);
+			},
+			paused() {
+				return e && typeof e.isPaused == "function" ? e.isPaused() : !0;
+			},
+			load(t) {
+				e && (typeof t == "string" ? typeof e.setChannel == "function" && e.setChannel(t) : t?.video && typeof e.setVideo == "function" ? e.setVideo(t.video) : t?.channel && typeof e.setChannel == "function" && e.setChannel(t.channel));
+			},
+			getState() {
+				return {
+					paused: !e?.isPaused || e.isPaused(),
+					currentTime: e?.getCurrentTime ? e.getCurrentTime() : 0,
+					duration: e?.getDuration ? e.getDuration() : 0,
+					volume: e?.getVolume ? e.getVolume() : 1,
+					muted: e?.getMuted ? e.getMuted() : !1
+				};
+			}
+		};
+		return t && e && typeof e.addEventListener == "function" && (e.addEventListener(t.Player.PLAY, () => {
+			n.emit?.("play", { state: {
+				paused: !1,
+				currentTime: e.getCurrentTime ? e.getCurrentTime() : 0,
+				duration: e.getDuration ? e.getDuration() : 0
+			} });
+		}), e.addEventListener(t.Player.PAUSE, () => {
+			n.emit?.("pause", { state: {
+				paused: !0,
+				currentTime: e.getCurrentTime ? e.getCurrentTime() : 0,
+				duration: e.getDuration ? e.getDuration() : 0
+			} });
+		}), e.addEventListener(t.Player.ENDED, () => {
+			n.emit?.("ended", { state: {
+				paused: !0,
+				ended: !0,
+				currentTime: e.getDuration ? e.getDuration() : 0,
+				duration: e.getDuration ? e.getDuration() : 0
+			} });
+		})), n;
+	}
+}(), P = {
+	create: (e) => N.create(e),
+	mount: (e, t) => N.mount(e, t),
+	provider: N
+}, F = new class extends o {
+	constructor() {
+		super("mixcloud");
+	}
+	async loadSdk() {
+		return b();
+	}
+	async initPlayer(e, t) {
+		let r = await this.loadSdk(), i = e.width || "100%", a = e.height || (e.mini ? "60" : "120"), o = e.feed || e.url || "/spartacus/party-time/", s = e.autoplay ?? e.auto_play ?? !1, c = e.mini ?? !0, l = e.hideCover ?? !0, u = e.light ?? !0, d = document.createElement("iframe");
+		d.id = `sremote-mixcloud-${t}`, d.allow = "autoplay", d.src = `https://player-widget.mixcloud.com/widget/iframe/?feed=${encodeURIComponent(o)}&hide_cover=${+!!l}&mini=${+!!c}&light=${+!!u}&autoplay=${+!!s}`, n(d, i, a, t);
+		let f = r.PlayerWidget(d);
+		return f.ready && await Promise.race([f.ready, new Promise((e) => setTimeout(e, 2500))]), {
+			player: f,
+			element: d,
+			iframe: d,
+			destroy: () => {}
+		};
+	}
+	createAdapter(e) {
+		let t = !1, n = 0, r = 0;
+		e && typeof e.getDuration == "function" && e.getDuration().then((e) => {
+			n = e || 0;
+		}).catch(() => {});
+		let i = {
+			play() {
+				e && typeof e.play == "function" && (e.play(), t = !0);
+			},
+			pause() {
+				e && typeof e.pause == "function" && (e.pause(), t = !1);
+			},
+			toggle() {
+				e && typeof e.togglePlay == "function" && (e.togglePlay(), t = !t);
+			},
+			stop() {
+				e && typeof e.pause == "function" && typeof e.seek == "function" && (e.pause(), e.seek(0), t = !1);
+			},
+			seek(t) {
+				e && typeof e.seek == "function" && e.seek(Math.max(0, r + Number(t)));
+			},
+			seekTo(t) {
+				e && typeof e.seek == "function" && e.seek(Number(t));
+			},
+			getCurrentTime() {
+				return r;
+			},
+			getDuration() {
+				return n;
+			},
+			paused() {
+				return !t;
+			},
+			load(t) {
+				e && typeof e.load == "function" && e.load(t, !0);
+			},
+			getState() {
+				return {
+					paused: !t,
+					currentTime: r,
+					duration: n
+				};
+			}
+		};
+		return e?.events && (e.events.play?.on?.(() => {
+			t = !0, i.emit?.("play", { state: {
+				paused: !1,
+				currentTime: r,
+				duration: n
+			} });
+		}), e.events.pause?.on?.(() => {
+			t = !1, i.emit?.("pause", { state: {
+				paused: !0,
+				currentTime: r,
+				duration: n
+			} });
+		}), e.events.progress?.on?.((e, a) => {
+			r = e || 0, a && (n = a), i.emit?.("timeupdate", { state: {
+				paused: !t,
+				currentTime: r,
+				duration: n
+			} });
+		}), e.events.ended?.on?.(() => {
+			t = !1, i.emit?.("ended", { state: {
+				paused: !0,
+				ended: !0,
+				currentTime: n,
+				duration: n
+			} });
+		})), i;
+	}
+}(), I = {
+	create: (e) => F.create(e),
+	mount: (e, t) => F.mount(e, t),
+	provider: F
+}, L = new class extends o {
+	constructor() {
+		super("spotify");
+	}
+	async loadSdk() {
+		return S();
+	}
+	async initPlayer(e, r) {
+		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || (e.compact ? "152" : "352"), s = e.uri || e.url || "spotify:track:4cOdK2wGLETKBW3PvgPWqT", { hiddenWrapper: c, tempNode: l, cleanup: u } = t(r, a, o);
+		return new Promise((t, d) => {
+			try {
+				i.createController(l, {
+					uri: s,
+					width: a,
+					height: o,
+					...e.controllerOptions
+				}, (e) => {
+					let i = l.querySelector("iframe") || l;
+					i && i.parentNode === c && c.removeChild(i), u(), i && n(i, a, o, r), t({
+						player: e,
+						element: i,
+						iframe: i?.tagName === "IFRAME" ? i : null,
+						destroy: () => {
+							try {
+								e && typeof e.destroy == "function" && e.destroy();
+							} catch {}
+							u();
+						}
+					});
+				});
+			} catch (e) {
+				u(), d(e);
+			}
+		});
+	}
+	createAdapter(e) {
+		let t = !0, n = 0, r = 0, i = {
+			play() {
+				e && typeof e.resume == "function" ? e.resume() : e && typeof e.play == "function" && e.play();
+			},
+			pause() {
+				e && typeof e.pause == "function" && e.pause();
+			},
+			toggle() {
+				e && typeof e.togglePlay == "function" && e.togglePlay();
+			},
+			stop() {
+				e && typeof e.pause == "function" && typeof e.seek == "function" && (e.pause(), e.seek(0));
+			},
+			seek(t) {
+				e && typeof e.seek == "function" && e.seek(Math.max(0, n + Number(t)));
+			},
+			seekTo(t) {
+				e && typeof e.seek == "function" && e.seek(Number(t));
+			},
+			getCurrentTime() {
+				return n;
+			},
+			getDuration() {
+				return r;
+			},
+			paused() {
+				return t;
+			},
+			load(t) {
+				e && typeof e.loadUri == "function" && e.loadUri(t);
+			},
+			getState() {
+				return {
+					paused: t,
+					currentTime: n,
+					duration: r
+				};
+			}
+		};
+		return e && typeof e.addListener == "function" && (e.addListener("playback_started", (e) => {
+			t = !1, n = (e?.data?.position || 0) / 1e3, r = (e?.data?.duration || 0) / 1e3, i.emit?.("play", { state: {
+				paused: !1,
+				currentTime: n,
+				duration: r
+			} }), i.emit?.("timeupdate", { state: {
+				paused: !1,
+				currentTime: n,
+				duration: r
+			} });
+		}), e.addListener("playback_update", (e) => {
+			t = !!e?.data?.isPaused, n = (e?.data?.position || 0) / 1e3, r = (e?.data?.duration || 0) / 1e3, i.emit?.("timeupdate", { state: {
+				paused: t,
+				currentTime,
+				duration: r
+			} }), t && i.emit?.("pause", { state: {
+				paused: !0,
+				currentTime: n,
+				duration: r
+			} });
+		})), i;
+	}
+}(), R = {
+	create: (e) => L.create(e),
+	mount: (e, t) => L.mount(e, t),
+	provider: L
+}, z = new class extends o {
+	constructor() {
+		super("tiktok");
+	}
+	async initPlayer(e, t) {
+		let r = e.width || "100%", i = e.height || "600px", a = e.videoId || e.id || "6718335390845095173", o = document.createElement("iframe");
+		return o.id = `sremote-tiktok-${t}`, o.allow = "autoplay; fullscreen; encrypted-media", o.allowFullscreen = !0, o.src = `https://www.tiktok.com/player/v1/${a}?music_info=${e.musicInfo === !1 ? 0 : 1}&description=${e.description === !1 ? 0 : 1}&autoplay=${+!!e.autoplay}`, n(o, r, i, t), {
+			player: { iframe: o },
+			element: o,
+			iframe: o,
+			destroy: () => {}
+		};
+	}
+	createAdapter(e, t) {
+		let n = t?.iframe || e?.iframe, r = !1, i = !1, a = 0, o = 0;
+		function s(e, t) {
+			if (n?.contentWindow) {
+				let r = {
+					"x-tiktok-player": !0,
+					type: e
+				};
+				t !== void 0 && (r.value = t), n.contentWindow.postMessage(r, "https://www.tiktok.com");
+			}
+		}
+		let c = {
+			play() {
+				s("play");
+			},
+			pause() {
+				s("pause");
+			},
+			toggle() {
+				s(r ? "pause" : "play");
+			},
+			stop() {
+				s("pause"), s("seekTo", 0);
+			},
+			seek(e) {
+				let t = Math.max(0, a + Number(e));
+				a = t, s("seekTo", t);
+			},
+			seekTo(e) {
+				a = Number(e), s("seekTo", a);
+			},
+			getVolume() {
+				return +!i;
+			},
+			setVolume(e) {
+				Number(e) <= 0 ? c.setMuted(!0) : i && c.setMuted(!1);
+			},
+			getMuted() {
+				return i;
+			},
+			setMuted(e) {
+				let t = e === void 0 ? !i : !!e;
+				i = t, s(t ? "mute" : "unMute");
+			},
+			getCurrentTime() {
+				return a;
+			},
+			getDuration() {
+				return o;
+			},
+			paused() {
+				return !r;
+			},
+			getState() {
+				return {
+					paused: !r,
+					currentTime: a,
+					duration: o,
+					muted: i
+				};
+			}
+		};
+		return typeof window < "u" && window.addEventListener("message", (e) => {
+			if (e.origin !== "https://www.tiktok.com" || !e.data || !e.data["x-tiktok-player"]) return;
+			let { type: t, value: n } = e.data;
+			t === "onStateChange" ? n === 1 ? (r = !0, c.emit?.("play", { state: {
+				paused: !1,
+				currentTime: a,
+				duration: o
+			} })) : n === 2 ? (r = !1, c.emit?.("pause", { state: {
+				paused: !0,
+				currentTime: a,
+				duration: o
+			} })) : n === 0 && (r = !1, c.emit?.("ended", { state: {
+				paused: !0,
+				ended: !0,
+				currentTime: o,
+				duration: o
+			} })) : t === "onCurrentTime" ? n && (typeof n.currentTime == "number" && (a = n.currentTime), typeof n.duration == "number" && (o = n.duration), c.emit?.("timeupdate", { state: {
+				paused: !r,
+				currentTime: a,
+				duration: o
+			} })) : t === "onMute" && (i = !!n, c.emit?.("volumechange", { state: { muted: i } }));
+		}), c;
+	}
+}(), B = {
+	create: (e) => z.create(e),
+	mount: (e, t) => z.mount(e, t),
+	provider: z
+}, V = new class extends o {
+	constructor() {
+		super("niconico");
+	}
+	async initPlayer(e, t) {
+		let r = e.width || "100%", i = e.height || "100%", a = e.watchId || e.videoId || e.id || "so46693656", o = `niconico-player-${t}`, s = document.createElement("iframe");
+		return s.id = o, s.allow = "autoplay; encrypted-media; fullscreen", s.allowFullscreen = !0, s.src = `https://embed.nicovideo.jp/watch/${a}?jsapi=1&playerId=${o}&autoplay=${+!!e.autoplay}`, n(s, r, i, t), {
+			player: {
+				iframe: s,
+				playerId: o
+			},
+			element: s,
+			iframe: s,
+			destroy: () => {}
+		};
+	}
+	createAdapter(e, t) {
+		let n = t?.iframe || e?.iframe, r = e?.playerId || n?.id, i = 0, a = 0, o = !1, s = 1;
+		function c(e, t = {}) {
+			n?.contentWindow && n.contentWindow.postMessage({
+				sourceConnectorType: 1,
+				playerId: r,
+				eventName: e,
+				data: t
+			}, "https://embed.nicovideo.jp");
+		}
+		let l = {
+			play() {
+				c("play");
+			},
+			pause() {
+				c("pause");
+			},
+			toggle() {
+				c(o ? "pause" : "play");
+			},
+			stop() {
+				c("pause"), c("seek", { time: 0 });
+			},
+			seek(e) {
+				c("seek", { time: Math.max(0, a + Number(e)) * 1e3 });
+			},
+			seekTo(e) {
+				c("seek", { time: Number(e) * 1e3 });
+			},
+			getVolume() {
+				return s;
+			},
+			setVolume(e) {
+				s = Number(e), c("volumeChange", { volume: s });
+			},
+			setMuted(e) {
+				c("mute", { mute: !!e });
+			},
+			getCurrentTime() {
+				return a;
+			},
+			getDuration() {
+				return i;
+			},
+			paused() {
+				return !o;
+			},
+			getState() {
+				return {
+					paused: !o,
+					currentTime: a,
+					duration: i,
+					volume: s
+				};
+			}
+		};
+		return typeof window < "u" && window.addEventListener("message", (e) => {
+			if (e.origin !== "https://embed.nicovideo.jp" || e.data?.playerId !== r) return;
+			let { eventName: t, data: n } = e.data;
+			t === "loadComplete" ? n?.videoInfo?.lengthInSeconds && (i = n.videoInfo.lengthInSeconds / 1e3) : t === "playerMetadataChange" ? (n?.duration !== void 0 && (i = n.duration / 1e3), n?.currentTime !== void 0 && (a = n.currentTime / 1e3, l.emit?.("timeupdate", { state: {
+				paused: !o,
+				currentTime: a,
+				duration: i
+			} }))) : t === "playerStatusChange" && (n?.playerStatus === 2 ? (o = !0, l.emit?.("play", { state: {
+				paused: !1,
+				currentTime: a,
+				duration: i
+			} })) : n?.playerStatus === 3 ? (o = !1, l.emit?.("pause", { state: {
+				paused: !0,
+				currentTime: a,
+				duration: i
+			} })) : n?.playerStatus === 4 && (o = !1, l.emit?.("ended", { state: {
+				paused: !0,
+				ended: !0,
+				currentTime: i,
+				duration: i
+			} })));
+		}), l;
+	}
+}(), H = {
+	create: (e) => V.create(e),
+	mount: (e, t) => V.mount(e, t),
+	provider: V
+};
+//#endregion
+//#region src/providers/bilibili.js
+function U(e = {}) {
+	let t = new window.URLSearchParams(), n = e.bvid || (typeof e.videoId == "string" && e.videoId.startsWith("BV") ? e.videoId : null), r = e.aid || e.avid || (typeof e.videoId == "number" || typeof e.videoId == "string" && !e.videoId.startsWith("BV") ? e.videoId : null);
+	if (n) t.set("bvid", n);
+	else if (r) {
+		let e = String(r).replace(/^av/i, "");
+		t.set("aid", e);
+	} else if (e.id) {
+		let n = String(e.id);
+		n.startsWith("BV") ? t.set("bvid", n) : t.set("aid", n.replace(/^av/i, ""));
+	} else t.set("bvid", "BV1xx411c7mD");
+	e.cid && t.set("cid", e.cid), e.page && t.set("page", e.page), (e.t || e.startTime) && t.set("t", e.t || e.startTime);
+	let i = e.autoplay ?? !0;
+	return t.set("autoplay", i ? "1" : "0"), e.danmaku !== void 0 && t.set("danmaku", e.danmaku ? "1" : "0"), (e.highQuality !== void 0 || e.high_quality !== void 0) && t.set("high_quality", e.highQuality ?? e.high_quality ? "1" : "0"), `https://player.bilibili.com/player.html?${t.toString()}`;
+}
+var W = new class extends o {
+	constructor() {
+		super("bilibili");
+	}
+	async initPlayer(e, t) {
+		let r = e.width || "100%", i = e.height || "100%", a = document.createElement("iframe");
+		return a.id = `sremote-bilibili-${t}`, a.allow = "autoplay; encrypted-media; fullscreen", a.allowFullscreen = !0, a.style.border = "none", a.src = U(e), n(a, r, i, t), {
+			player: {
+				iframe: a,
+				options: e
+			},
+			element: a,
+			iframe: a,
+			destroy: () => {}
+		};
+	}
+	createAdapter(e, t) {
+		let n = t?.iframe || e?.iframe;
+		return { load(e, t = 1) {
+			if (n) {
+				if (typeof e == "object" && e) n.src = U({
+					...e,
+					autoplay: !0
+				});
+				else {
+					let r = String(e);
+					r.startsWith("BV") ? n.src = U({
+						bvid: r,
+						page: t,
+						autoplay: !0
+					}) : n.src = U({
+						aid: r,
+						page: t,
+						autoplay: !0
+					});
+				}
+			}
+		} };
+	}
+}(), G = {
+	create: (e) => W.create(e),
+	mount: (e, t) => W.mount(e, t),
+	provider: W
+}, K = new class extends o {
+	constructor() {
+		super("facebook");
+	}
+	async loadSdk() {
+		return w();
+	}
+	async initPlayer(e, t) {
+		let r = e.width || "500px", i = e.height || "auto", a = e.videoUrl || e.url || "https://www.facebook.com/facebook/videos/10153231379946729/", o = document.createElement("div");
+		o.id = `sremote-facebook-${t}`;
+		let s = document.createElement("div");
+		if (s.className = "fb-video", s.setAttribute("data-href", a), s.setAttribute("data-width", typeof r == "number" ? `${r}` : r), s.setAttribute("data-show-text", e.showText ? "true" : "false"), s.setAttribute("data-autoplay", e.autoplay ? "true" : "false"), s.setAttribute("data-allowfullscreen", "true"), o.appendChild(s), n(o, r, i, t), e.useSdk !== !1) try {
+			let t = await this.loadSdk(e.appId);
+			t && typeof t.XFBML?.parse == "function" && t.XFBML.parse(o);
+		} catch {}
+		return {
+			player: {
+				container: o,
+				videoUrl: a
+			},
+			element: o,
+			destroy: () => {}
+		};
+	}
+	createAdapter() {
+		return {};
+	}
+}(), q = {
+	create: (e) => K.create(e),
+	mount: (e, t) => K.mount(e, t),
+	provider: K
+}, J = {
+	BaseProvider: o,
+	youtube: E,
+	vimeo: O,
+	soundcloud: A,
+	dailymotion: M,
+	twitch: P,
+	mixcloud: I,
+	spotify: R,
+	tiktok: B,
+	niconico: H,
+	bilibili: G,
+	facebook: q
+};
+//#endregion
+export { o as BaseProvider, G as bilibili, M as dailymotion, J as default, q as facebook, I as mixcloud, H as niconico, A as soundcloud, R as spotify, B as tiktok, P as twitch, O as vimeo, E as youtube };

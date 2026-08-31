@@ -1,4 +1,4 @@
-[ English ](../docs/README.md) | [ Tiếng Việt ]
+[ English ](../README.md) | [ Tiếng Việt ]
 
 # SRemote
 *(hay, Sea's Remote, nghĩa là: Điều khiển từ xa của Sea)*
@@ -28,6 +28,48 @@ Vì những lí do trên, SRemote ra đời chỉ để làm đúng một nhiệ
 3. Khi tải lại trang web có nhúng media, nếu trang yêu cầu cấp quyền điều khiển, hãy chọn **Đồng ý** (có thể chọn tích chọn nhớ quyền cho trang web đó).
 
 ## Tôi có website riêng muốn tích hợp cái này thì làm như nào?
+
+Bạn có thể tích hợp qua 2 cách:
+
+### Cách 1: Dùng thư viện `@sremote/wrapper` (Khuyên dùng cho Web App hiện đại)
+Nếu dự án của bạn dùng React, Vue, Svelte, Vite hay Next.js:
+```bash
+npm install @sremote/wrapper
+```
+```javascript
+import { createSRemote, showInstallModal } from '@sremote/wrapper';
+
+const remote = createSRemote();
+await remote.ready();
+
+// Kiểm tra nếu userscript chưa có, mở modal hướng dẫn người dùng cài đặt
+if (!remote.isUserscriptAvailable()) {
+  remote.showInstallModal();
+}
+
+// Điều khiển như bình thường, wrapper tự động lo liệu phần bắt tay & adapter
+remote.play();
+```
+
+### Cách 2: Dùng gói preset `@sremote/ready2use` (Mì ăn liền cho YouTube, v.v.)
+Nếu bạn muốn nhúng và điều khiển các player bên thứ 3 (như YouTube) mà không cần tự load SDK hay tự viết adapter từ đầu:
+```bash
+npm install @sremote/ready2use @sremote/wrapper
+```
+```javascript
+import { youtube } from '@sremote/ready2use';
+
+// Tự động chèn iframe vào DOM và kết nối sẵn với SRemote
+const { remote } = await youtube.mount('#player-container', {
+  videoId: 'dQw4w9WgXcQ'
+});
+
+await remote.play();
+await remote.seek(15);
+await remote.load('M7lc1UVf-VE'); // Đổi video khác
+```
+
+### Cách 3: Dùng trực tiếp qua `window.sremote` (Thuần HTML/JS)
 1. Nhúng `iframe` chứa video/audio từ nguồn bạn cần phát. Đừng quên bật đầy đủ các quyền qua thuộc tính `allow` (đặc biệt cần thiết với YouTube, Spotify hay các dịch vụ streaming bảo vệ bản quyền):
    ```html
    <iframe
@@ -53,24 +95,48 @@ Vì những lí do trên, SRemote ra đời chỉ để làm đúng một nhiệ
    ```
 4. Gọi các hàm điều khiển trực tiếp qua đối tượng toàn cục `window.sremote` (ví dụ: `sremote.play()`, `sremote.pause()`, `sremote.seek(10)`).
 
+---
+
+## Bảng tra cứu độ tương thích nhanh (Compatibility Snapshot)
+
+| Nền tảng | Cơ chế hỗ trợ | Ghi chú tích hợp |
+| :--- | :---: | :--- |
+| **HTML5 Media thuần (Plyr, VideoJS...)** | ✅ Tự động (Zero-Config) | Nhúng vào là chạy trực tiếp |
+| **Bilibili Embed** | ✅ Tự động (Zero-Config) | Nhúng với `autoplay=1` |
+| **YouTube** | ⚡ Adapter Mode | Cần thêm `enablejsapi=1` |
+| **SoundCloud** | ⚡ Adapter Mode | Kết nối qua SoundCloud Widget API |
+| **Spotify** | ⚡ Adapter Mode | Kết nối qua Spotify IFrame API |
+| **Vimeo / Dailymotion / Twitch** | ⚡ Adapter Mode | Kết nối qua Player SDK chính thức |
+| **NicoNico Douga** | ⚡ PostMessage Mode | Kết nối qua giao thức 2 chiều |
+
+---
+
 ## Tài liệu & Tra cứu API
-- Xem hướng dẫn chi tiết và danh mục toàn bộ API tại [Tài liệu Kỹ thuật SRemote](../docs/content/guides/docs/index.html).
-- Xem thư viện mẫu nhúng iframe & code Adapter tại [Cookbook](../docs/content/guides/docs/recipes.html).
-- Demo trực tiếp: [Live Demo](../docs/content/guides/demo/index.html).
+- Xem hướng dẫn chi tiết và danh mục toàn bộ API tại [Tài liệu Kỹ thuật SRemote](../docs/index.html).
+- Xem thư viện mẫu nhúng iframe & code Adapter tại [Cookbook](../docs/recipes.html).
+- Trải nghiệm thử nghiệm đa slot: [Live Demo](../demo/index.html).
+
+---
 
 ## Giới hạn kĩ thuật đã biết
-1. Ưu tiên dùng trực tiếp API chính thức từ iframe (nếu dịch vụ có hỗ trợ). SRemote cung cấp `useAdapter` nếu bạn cần gom về một giao diện điều khiển chung.
-2. Một số dịch vụ yêu cầu người dùng tương tác vào nút Phát (Play) lần đầu. Theo những gì tui đã biết cho tới thời điểm hiện tại thì có 2 khả năng: một là do chính sách chặn tự động phát (may sao bên Firefox người dùng có thể chọn Cho phép tự động phát video có âm thanh). Hai là có thể do watcher trong một số dịch vụ không chịu nạp nguồn media nếu như state nội bộ trong đó báo chưa thấy nút Phát
+1. Ưu tiên dùng trực tiếp API chính thức từ iframe (nếu dịch vụ có hỗ trợ). SRemote cung cấp `adapters.set` nếu bạn cần gom về một giao diện điều khiển chung.
+2. Một số dịch vụ yêu cầu người dùng tương tác vào nút Phát (Play) lần đầu. Theo những gì tui đã biết cho tới thời điểm hiện tại thì có 2 khả năng: một là do chính sách chặn tự động phát (may sao bên Firefox người dùng có thể chọn Cho phép tự động phát video có âm thanh). Hai là có thể do watcher trong một số dịch vụ không chịu nạp nguồn media nếu như state nội bộ trong đó báo chưa thấy nút Phát.
 3. SRemote không phải là cây đũa thần của Harry Potter cho mọi dịch vụ. Một số trường hợp hiếm gặp sẽ không hỗ trợ nếu trang nhúng không sử dụng thẻ HTML5 Video/Audio tiêu chuẩn hoặc không đăng ký MediaSession API.
 4. SRemote chỉ đóng vai trò làm remote điều khiển media đã nhúng, không có khả năng vượt rào (bypass) các hạn chế nhúng hay chặn phát từ phía dịch vụ.
+
+---
 
 ## Báo cáo lỗi
 1. Mô tả chi tiết lỗi gặp phải và các bước tái hiện.
 2. Tên dịch vụ, URL trang web hoặc link test xảy ra lỗi.
 3. Bản thử nghiệm tối giản (Minimal reproduction) nếu có thể.
 
+---
+
 ## Donate
 (Sẽ chèn sau khi tui hỏi được ngân hàng có cách nào tạo STK mà không cần lập tài khoản mới)
 
+---
+
 ## License
-Dự án được phân phối dưới giấy phép **GNU Lesser General Public License v3.0 (LGPL-3.0)** - xem chi tiết tại file [LICENSE](../docs/LICENSE).
+Dự án được phân phối dưới giấy phép **GNU Lesser General Public License v3.0 (LGPL-3.0)** - xem chi tiết tại file [LICENSE](../LICENSE).

@@ -1,0 +1,161 @@
+{
+  "categories": [
+    { "id": "official_api", "titleVi": "🟢 API / SDK chính thức", "titleEn": "🟢 Official API / SDK" },
+    { "id": "unofficial_api", "titleVi": "🔵 API / SDK không chính thức", "titleEn": "🔵 Unofficial API / SDK" },
+    { "id": "native_no_api", "titleVi": "⚪ Không có API", "titleEn": "⚪ No API Needed" }
+  ],
+  "platforms": [
+    {
+      "id": "youtube",
+      "category": "official_api",
+      "name": "YouTube",
+      "mode": "Adapter Mode",
+      "noteVi": "<strong>Lưu ý với YouTube:</strong> Thêm tham số <code>enablejsapi=1&autoplay=1&mute=1</code> vào URL embed và nhúng script <code>https://www.youtube.com/iframe_api</code> để lắng nghe trạng thái player qua <code>sremote.adapters.set()</code>.",
+      "noteEn": "<strong>YouTube Note:</strong> Append <code>enablejsapi=1&autoplay=1&mute=1</code> to the embed URL and load <code>https://www.youtube.com/iframe_api</code> to bind player events via <code>sremote.adapters.set()</code>."
+    },
+    {
+      "id": "soundcloud",
+      "category": "official_api",
+      "name": "SoundCloud",
+      "mode": "Adapter Mode",
+      "noteVi": "<strong>Lưu ý với SoundCloud:</strong> Thêm <code>auto_play=true</code> và sử dụng SoundCloud Widget API (<code>api.soundcloud.com/widget.js</code>) để điều khiển qua SRemote Adapter.",
+      "noteEn": "<strong>SoundCloud Note:</strong> Use <code>auto_play=true</code> and bind with SoundCloud Widget API (<code>api.soundcloud.com/widget.js</code>) wrapped inside an SRemote Custom Adapter."
+    },
+    {
+      "id": "vimeo",
+      "category": "official_api",
+      "name": "Vimeo",
+      "mode": "Adapter Mode",
+      "noteVi": "<strong>Lưu ý với Vimeo:</strong> Thêm tham số <code>autoplay=1&muted=1</code> vào URL embed và nhúng thư viện <code>@vimeo/player</code> qua CDN.",
+      "noteEn": "<strong>Vimeo Note:</strong> Append <code>autoplay=1&muted=1</code> to embed URL and link via <code>@vimeo/player</code> SDK."
+    },
+    {
+      "id": "dailymotion",
+      "category": "official_api",
+      "name": "Dailymotion",
+      "mode": "Adapter Mode",
+      "noteVi": "<strong>Lưu ý với Dailymotion:</strong> Thêm tham số <code>autoplay=1&mute=1</code> vào URL embed và nhúng thư viện <code>@dailymotion/player-sdk</code> qua CDN để liên kết với SRemote qua <code>sremote.adapters.set()</code>.",
+      "noteEn": "<strong>Dailymotion Note:</strong> Add <code>autoplay=1&mute=1</code> to the embed URL and load <code>@dailymotion/player-sdk</code> via CDN to bind with SRemote via <code>sremote.adapters.set()</code>."
+    },
+    {
+      "id": "twitch",
+      "category": "official_api",
+      "name": "Twitch",
+      "mode": "Adapter Mode",
+      "noteVi": "<strong>Lưu ý với Twitch:</strong> Twitch bắt buộc tham số <code>parent</code> trùng với domain của trang web (ví dụ: <code>parent=localhost</code>). Dùng Twitch Interactive Player JS SDK (<code>https://player.twitch.tv/js/embed/v1.js</code>).",
+      "noteEn": "<strong>Twitch Note:</strong> Twitch requires matching <code>parent</code> domain parameter (e.g. <code>parent=localhost</code>). Use the official Twitch Interactive Player SDK (<code>https://player.twitch.tv/js/embed/v1.js</code>)."
+    },
+    {
+      "id": "mixcloud",
+      "category": "official_api",
+      "name": "Mixcloud",
+      "mode": "Adapter Mode",
+      "noteVi": "<strong>Lưu ý với Mixcloud:</strong> Thêm <code>autoplay=1</code> vào URL widget và nhúng <code>https://widget.mixcloud.com/media/js/widgetApi.js</code> để khởi tạo <code>Mixcloud.PlayerWidget</code>.",
+      "noteEn": "<strong>Mixcloud Note:</strong> Append <code>autoplay=1</code> to widget URL and import <code>https://widget.mixcloud.com/media/js/widgetApi.js</code> for <code>Mixcloud.PlayerWidget</code>."
+    },
+    {
+      "id": "spotify",
+      "category": "official_api",
+      "name": "Spotify",
+      "mode": "Adapter Mode",
+      "noteVi": "<strong>Lưu ý với Spotify:</strong> Spotify dùng WebAssembly + EME DRM (không có thẻ HTML5 &lt;audio&gt;). Cần nạp Spotify IFrame API (<code>open.spotify.com/embed/iframe-api/v1</code>) để tạo Controller điều khiển.",
+      "noteEn": "<strong>Spotify Note:</strong> Spotify utilizes WebAssembly + DRM (no HTML5 &lt;audio&gt; tag). Load the Spotify IFrame API script (<code>open.spotify.com/embed/iframe-api/v1</code>) to bind with EmbedController."
+    },
+    {
+      "id": "tiktok",
+      "category": "official_api",
+      "name": "TikTok",
+      "mode": "Official Player Adapter",
+      "noteVi": "<strong>TikTok Official Embed Player:</strong> Sử dụng URL player chính thức của TikTok (<code>www.tiktok.com/player/v1/{id}</code>) và giao tiếp 2 chiều qua <code>Window.postMessage</code> với schema <code>{'x-tiktok-player': true, type: '...'}</code>.",
+      "noteEn": "<strong>TikTok Official Embed Player:</strong> Uses the official player endpoint (<code>www.tiktok.com/player/v1/{id}</code>) communicating via 2-way <code>Window.postMessage</code> with <code>{'x-tiktok-player': true, type: '...'}</code> schema."
+    },
+    {
+      "id": "niconico",
+      "category": "unofficial_api",
+      "name": "NicoNico",
+      "mode": "PostMessage Adapter Mode",
+      "noteVi": "<strong>Đặc thù NicoNico (Niconico Douga):</strong> Sử dụng giao thức <code>postMessage</code> nội bộ xuất ngoài (<code>sourceConnectorType: 1</code>, <code>jsapi=1</code> và <code>playerId</code>) điều khiển HTML5 player bên trong iframe. Thời gian gửi đi tính theo milliseconds (<code>time: sec * 1000</code>).",
+      "noteEn": "<strong>NicoNico Technical Note:</strong> NicoNico Douga utilizes an undocumented internal 2-way <code>postMessage</code> protocol with <code>sourceConnectorType: 1</code>, <code>jsapi=1</code> and <code>playerId</code> controlling its internal HTML5 video. Seeking expects milliseconds (<code>time: sec * 1000</code>)."
+    },
+    {
+      "id": "bilibili",
+      "category": "native_no_api",
+      "name": "Bilibili",
+      "mode": "Zero-Config Native",
+      "noteVi": "<strong>Đặc thù Bilibili:</strong> Bilibili dùng thẻ HTML5 Media tiêu chuẩn bên trong iframe nên <strong>SRemote hỗ trợ trực tiếp 100% không cần viết adapter</strong>! Thêm <code>autoplay=1</code> để tự chạy.",
+      "noteEn": "<strong>Bilibili Technical Note:</strong> Bilibili uses standard HTML5 media inside its iframe, so <strong>SRemote works natively out-of-the-box with zero adapter code</strong>! Use <code>autoplay=1</code> for autoplay."
+    },
+    {
+      "id": "html5",
+      "category": "native_no_api",
+      "name": "HTML5",
+      "mode": "Zero-Config Native",
+      "noteVi": "<strong>HTML5 Chuẩn:</strong> Các thẻ <code>&lt;video autoplay muted&gt;</code> nhúng qua iframe hoạt động hoàn toàn tự động với SRemote mà không cần bất kỳ adapter nào.",
+      "noteEn": "<strong>Standard HTML5:</strong> <code>&lt;video autoplay muted&gt;</code> elements embedded via iframes work out-of-the-box natively with zero configuration."
+    },
+    {
+      "id": "facebook",
+      "category": "native_no_api",
+      "name": "Facebook",
+      "mode": "Raw Embed Test",
+      "noteVi": "<strong>Facebook Video Embed:</strong> Mẫu nhúng Facebook JavaScript SDK XFBML để kiểm thử.",
+      "noteEn": "<strong>Facebook Video Embed:</strong> Facebook JavaScript SDK XFBML raw embed for testing."
+    }
+  ],
+  "dict": {
+    "vi": {
+      "backDocs": "📖 Tài liệu API",
+      "demoLink": "▶ Live Demo",
+      "sidebarTitle": "🎯 Nền tảng hỗ trợ",
+      "infoTitle": "💡 Mẹo tích hợp nhanh",
+      "livePreview": "Xem trước",
+      "htmlBlockTitle": "📄 1. Mã nhúng HTML (HTML Embed)",
+      "jsBlockTitle": "⚡ 2. Cài đặt JS (JavaScript Setup)",
+      "ready2useBlockTitle": "✨ Cài đặt & Sử dụng (JavaScript)",
+      "copyHtmlBtn": "Sao chép HTML",
+      "copyJsBtn": "Sao chép JS",
+      "copied": "✓ Đã chép!",
+      "statusReady": "Sẵn sàng nạp",
+      "statusCommand": "Lệnh",
+      "btnPlay": "▶ Play",
+      "btnPause": "⏸ Pause",
+      "btnStop": "⏹ Stop",
+      "btnToggle": "🔄 Toggle",
+      "btnSeekBack": "⏪ -10s",
+      "btnSeekFwd": "⏩ +10s",
+      "btnMute": "🔇 Mute",
+      "btnPip": "🖼️ PiP",
+      "btnFullscreen": "⛶ Toàn màn hình",
+      "btnReload": "🔁 Nạp lại",
+      "volLabel": "Âm lượng:",
+      "rateLabel": "Tốc độ:"
+    },
+    "en": {
+      "backDocs": "📖 API Docs",
+      "demoLink": "▶ Live Demo",
+      "sidebarTitle": "🎯 Supported Platforms",
+      "infoTitle": "💡 Quick Integration Tips",
+      "livePreview": "Live Preview",
+      "htmlBlockTitle": "📄 1. HTML Embed Snippet",
+      "jsBlockTitle": "⚡ 2. JS Setup / Adapter",
+      "ready2useBlockTitle": "✨ Setup & Usage (JavaScript)",
+      "copyHtmlBtn": "Copy HTML",
+      "copyJsBtn": "Copy JS",
+      "copied": "✓ Copied!",
+      "statusReady": "Ready to load",
+      "statusCommand": "Command",
+      "btnPlay": "▶ Play",
+      "btnPause": "⏸ Pause",
+      "btnStop": "⏹ Stop",
+      "btnToggle": "🔄 Toggle",
+      "btnSeekBack": "⏪ -10s",
+      "btnSeekFwd": "⏩ +10s",
+      "btnMute": "🔇 Mute",
+      "btnPip": "🖼️ PiP",
+      "btnFullscreen": "⛶ Fullscreen",
+      "btnReload": "🔁 Reload",
+      "volLabel": "Volume:",
+      "rateLabel": "Speed:"
+    }
+  }
+}

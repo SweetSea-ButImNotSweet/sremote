@@ -19,8 +19,8 @@
     vi: {
       brandTitle: 'SRemote',
       home: 'Trang chủ',
-      docs: 'Tài liệu API',
-      cookbook: 'Cookbook',
+      docs: 'Hướng dẫn sử dụng',
+      cookbook: 'Hướng dẫn triển khai',
       demo: 'Live Demo',
       install: 'Cài đặt Userscript',
       optUnmin: 'Bản tiêu chuẩn (Mặc định)',
@@ -37,8 +37,8 @@
     en: {
       brandTitle: 'SRemote',
       home: 'Home',
-      docs: 'API Docs',
-      cookbook: 'Cookbook',
+      docs: 'Documentation',
+      cookbook: 'Integration Recipes',
       demo: 'Live Demo',
       install: 'Install Userscript',
       optUnmin: 'Standard Build (Default)',
@@ -134,7 +134,7 @@
           <div class="header-left">
             <a href="${homeHref}" class="header-brand" title="SRemote Home">
               <span class="header-title">${dict.brandTitle}</span>
-              <span class="header-version-badge">v1.0.0</span>
+              <span class="header-version-badge">v2.0.0</span>
             </a>
 
             <nav class="header-nav" aria-label="Main navigation">

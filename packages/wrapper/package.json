@@ -1,0 +1,22 @@
+{
+  "name": "@sremote/wrapper",
+  "version": "2.0.0",
+  "description": "SRemote parent wrapper to communicate with iframes using SRemote userscript",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./src/index.d.ts",
+  "exports": { ".": { "types": "./src/index.d.ts", "import": "./dist/index.mjs", "require": "./dist/index.cjs" } },
+  "dependencies": {
+    "@sremote/shared": "^2.0.0"
+  },
+  "files": ["dist", "src/index.d.ts", "README.md"],
+  "publishConfig": { "access": "public" },
+  "scripts": { "build": "vite build", "dev": "vite build --watch" },
+  "keywords": ["sremote", "iframe", "media", "video-controller", "sdk", "wrapper"],
+  "author": "sweetsea (https://github.com/SweetSea-ButImNotSweet)",
+  "repository": { "type": "git", "url": "https://github.com/SweetSea-ButImNotSweet/sremote.git", "directory": "packages/wrapper" },
+  "homepage": "https://github.com/SweetSea-ButImNotSweet/sremote#readme",
+  "bugs": { "url": "https://github.com/SweetSea-ButImNotSweet/sremote/issues" },
+  "license": "LGPL-3.0"
+}

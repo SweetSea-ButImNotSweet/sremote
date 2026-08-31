@@ -41,11 +41,27 @@
     "media_buffering": "Đang chờ đệm (Buffering)...",
     "media_error": "Lỗi phát media trong iframe"
   },
-  "badge": {
-    "idle": "Chưa nạp",
-    "loading": "Đang nạp",
-    "ready": "Sẵn sàng",
-    "error": "Lỗi",
-    "disconnected": "Ngắt kết nối"
+  "badge": { "idle": "Chưa nạp", "loading": "Đang nạp", "ready": "Sẵn sàng", "error": "Lỗi", "disconnected": "Ngắt kết nối" },
+  "toolbar": {
+    "title": "Bảng điều khiển chung (Global Toolbar)",
+    "exclusive_mode": "Độc quyền (Exclusive):",
+    "exclusive_off": "Tắt",
+    "exclusive_auto": "Auto",
+    "play_all": "Phát tất cả",
+    "pause_all": "Dừng tất cả",
+    "mute_all": "Tắt tiếng tất cả",
+    "unmute_all": "Bật tiếng tất cả",
+    "filter_view": "Hiển thị:",
+    "view_all": "Tất cả 6 Slots",
+    "view_active": "Chỉ Slot đang chạy",
+    "view_1_3": "Slot 1-3",
+    "view_4_6": "Slot 4-6"
+  },
+  "samples": {
+    "title": "URL Mẫu Để Kiểm Thử (Copy & Paste)",
+    "description": "Các liên kết mẫu phục vụ mục đích kiểm thử khả năng tương thích của SRemote. Hãy sao chép liên kết bên dưới và dán vào ô URL của Slot bất kỳ.",
+    "btn_copy": "Sao chép",
+    "copied": "Đã sao chép!",
+    "disclaimer": "Lưu ý pháp lý: Các liên kết mẫu trên thuộc quyền sở hữu của các đơn vị/nền tảng tương ứng. SRemote là công cụ trung lập phục vụ kiểm thử và không lưu trữ hay phân phối nội dung có bản quyền."
   }
 }

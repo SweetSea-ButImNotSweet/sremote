@@ -1,0 +1,127 @@
+dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  border: none;
+  background: transparent;
+  color: #263238;
+  font-size: 13.5px;
+  box-sizing: border-box;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+dialog:not([open]) {
+  display: none;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(1px);
+}
+
+.sv-box {
+  width: min(420px, calc(100vw - 32px));
+  padding: 18px 20px;
+  box-sizing: border-box;
+  background: #f7f8fa;
+  border: 1px solid #aeb7c2;
+  border-radius: 6px;
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  pointer-events: auto;
+}
+
+.sv-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 8px;
+  color: #1769aa;
+}
+
+.sv-text {
+  margin-bottom: 14px;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sv-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  font-size: 12.5px;
+  cursor: pointer;
+  user-select: none;
+  color: #5b6570;
+  pointer-events: auto;
+}
+
+.sv-remember:hover {
+  color: #263238;
+}
+
+.sv-remember input {
+  cursor: pointer;
+  margin: 0;
+  accent-color: #2479b3;
+  pointer-events: auto;
+  appearance: checkbox;
+  -webkit-appearance: checkbox;
+  width: 15px;
+  height: 15px;
+  opacity: 1;
+  position: static;
+  z-index: auto;
+  vertical-align: middle;
+}
+
+.sv-remember span {
+  pointer-events: auto;
+  user-select: none;
+}
+
+.sv-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+@media (prefers-color-scheme: dark) {
+  dialog {
+    color: #e4e8eb;
+  }
+
+  .sv-box {
+    background: #292f35;
+    color: #e5e9ec;
+    border-color: #59636e;
+    box-shadow:
+      0 8px 28px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .sv-title {
+    color: #5eb5e6;
+  }
+
+  .sv-text {
+    color: #b9c1c8;
+  }
+
+  .sv-remember {
+    color: #aeb7bf;
+  }
+
+  .sv-remember:hover {
+    color: #e5e9ec;
+  }
+
+  .sv-remember input {
+    accent-color: #5eb5e6;
+  }
+}

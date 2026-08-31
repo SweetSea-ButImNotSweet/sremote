@@ -1,8 +1,6 @@
 export default [
   // Global ignore patterns
-  {
-    ignores: ['dist/**', 'node_modules/**', 'scripts/**', 'docs/**', 'playwright-report/**', 'tests-results/**', 'songscript/**', '**/*.json', '**/*.md'],
-  },
+  { ignores: ['dist/**', 'node_modules/**', 'scripts/**', 'docs/**', 'playwright-report/**', 'tests-results/**', 'songscript/**', '**/*.json', '**/*.md'] },
   // JS Config (ESLint 9+ Flat Config)
   {
     files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
@@ -75,13 +73,6 @@ export default [
         unsafeWindow: 'readonly',
       },
     },
-    rules: {
-      'no-unused-vars': 'warn',
-      'no-console': 'off',
-      'no-alert': 'off',
-      'no-cond-assign': 'off',
-      'no-undef': 'warn',
-      'arrow-body-style': ['error', 'as-needed'],
-    },
+    rules: { 'no-unused-vars': 'warn', 'no-console': 'off', 'no-alert': 'off', 'no-cond-assign': 'off', 'no-undef': 'warn', 'arrow-body-style': ['error', 'as-needed'] },
   },
 ];

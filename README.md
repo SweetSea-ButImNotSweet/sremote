@@ -35,6 +35,48 @@ Because of these limitations, **SRemote** was created with a single mission: to 
 ---
 
 ## How do I integrate SRemote into my own website?
+
+You can integrate SRemote in two ways:
+
+### Option 1: Using `@sremote/wrapper` (Recommended for Modern Web Apps)
+For modern frontend stacks (React, Vue, Svelte, Vite, Next.js):
+```bash
+npm install @sremote/wrapper
+```
+```javascript
+import { createSRemote, showInstallModal } from '@sremote/wrapper';
+
+const remote = createSRemote();
+await remote.ready();
+
+// Check if userscript is missing and show install prompt
+if (!remote.isUserscriptAvailable()) {
+  remote.showInstallModal();
+}
+
+// Control playback - the wrapper handles handshakes & adapters automatically
+remote.play();
+```
+
+### Option 2: Using `@sremote/ready2use` (Out-of-the-Box Player Presets)
+If you want to embed and control 3rd-party players (YouTube, etc.) without manually writing SDK loaders or adapters:
+```bash
+npm install @sremote/ready2use @sremote/wrapper
+```
+```javascript
+import { youtube } from '@sremote/ready2use';
+
+// Mount player into DOM and automatically bind to SRemote
+const { remote } = await youtube.mount('#player-container', {
+  videoId: 'dQw4w9WgXcQ'
+});
+
+await remote.play();
+await remote.seek(15);
+await remote.load('M7lc1UVf-VE');
+```
+
+### Option 3: Direct Global API via `window.sremote` (Vanilla HTML/JS)
 1. Embed the `iframe` containing the audio/video you want to play. Make sure to enable required permissions via the `allow` attribute (especially important for YouTube, Spotify, and DRM-protected streams):
    ```html
    <iframe
@@ -62,6 +104,20 @@ Because of these limitations, **SRemote** was created with a single mission: to 
 
 ---
 
+## Compatibility Snapshot
+
+| Platform / Service | Support Mechanism | Integration Notes |
+| :--- | :---: | :--- |
+| **Pure HTML5 (Plyr, VideoJS, etc.)** | ✅ Native Zero-Config | Works immediately out-of-the-box |
+| **Bilibili Embed** | ✅ Native Zero-Config | Embed with `autoplay=1` |
+| **YouTube** | ⚡ Adapter Mode | Append `enablejsapi=1` |
+| **SoundCloud** | ⚡ Adapter Mode | Connected via SoundCloud Widget API |
+| **Spotify** | ⚡ Adapter Mode | Connected via Spotify IFrame API |
+| **Vimeo / Dailymotion / Twitch** | ⚡ Adapter Mode | Connected via official Player SDKs |
+| **NicoNico Douga** | ⚡ PostMessage Mode | Connected via 2-way postMessage protocol |
+
+---
+
 ## Documentation & API Reference
 - Technical guides and complete API index: [SRemote Documentation](docs/index.html)
 - Embed templates and adapter code examples: [Cookbook](docs/recipes.html)
@@ -70,7 +126,7 @@ Because of these limitations, **SRemote** was created with a single mission: to 
 ---
 
 ## Known Limitations
-1. **Prefer Official APIs:** If an iframe provider already offers an official embedded API, prioritize using it. SRemote provides `sremote.useAdapter()` if you want a single unified control interface across multiple providers.
+1. **Prefer Official APIs:** If an iframe provider already offers an official embedded API, prioritize using it. SRemote provides `sremote.adapters.set()` if you want a single unified control interface across multiple providers.
 2. **Initial User Interaction (Autoplay):** Some services require at least one user gesture on the Play button before audio/video can stream, due to browser autoplay policies or internal state watchers.
 3. **Not a Magic Wand:** SRemote cannot control players that do not use standard HTML5 `<video>` / `<audio>` elements or do not register actions with the `MediaSession` API.
 4. **No DRM/Embed Bypass:** SRemote is purely a playback remote controller; it does not bypass geographic restrictions, domain embed blocks, or DRM protections enforced by services.

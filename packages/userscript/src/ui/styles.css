@@ -1,0 +1,154 @@
+/* Userscript-specific Badge & Floating UI styles */
+.sv-badge-wrapper {
+  position: fixed;
+  left: 10px;
+  bottom: 10px;
+  z-index: 2147483646;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f4f6f8;
+  color: #263238;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border: 1px solid #aeb7c2;
+  border-radius: 3px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  user-select: none;
+  opacity: 0.9;
+  transition:
+    opacity 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.sv-badge-wrapper:hover {
+  opacity: 1;
+  border-color: #7f8b97;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.sv-dot-btn {
+  width: 8px;
+  height: 8px;
+  background: #28a745;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 700;
+  color: transparent;
+  border: none;
+  padding: 0;
+  transition:
+    width 0.12s ease,
+    height 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.sv-badge-wrapper:hover .sv-dot-btn {
+  width: 14px;
+  height: 14px;
+  background: #9b2c2c;
+  color: #f7c5c5;
+}
+
+.sv-badge-wrapper:hover .sv-dot-btn:hover {
+  background: #c0392b;
+  color: #fff;
+}
+
+.sv-label {
+  cursor: pointer;
+  color: #263238;
+  font-weight: 600;
+}
+
+.sv-actions {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  margin-left: 2px;
+  padding-left: 6px;
+  border-left: 1px solid #c5cbd1;
+}
+
+.sv-badge-wrapper:hover .sv-actions {
+  display: inline-flex;
+}
+
+.sv-tooltip {
+  display: none;
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  padding-bottom: 5px;
+  pointer-events: auto;
+  min-width: 280px;
+  max-width: min(450px, calc(100vw - 32px));
+  box-sizing: border-box;
+}
+
+.sv-tooltip-inner {
+  background: #fff;
+  color: #374151;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 9px 11px;
+  border: 1px solid #aeb7c2;
+  border-radius: 3px;
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.sv-badge-wrapper:hover .sv-tooltip,
+.sv-tooltip:hover {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sv-badge-wrapper {
+    background: #292f35;
+    color: #e5e9ec;
+    border-color: #59636e;
+    box-shadow:
+      0 2px 6px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .sv-badge-wrapper:hover {
+    border-color: #707b86;
+    box-shadow:
+      0 3px 9px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .sv-label {
+    color: #e5e9ec;
+  }
+
+  .sv-actions {
+    border-left-color: #4b555f;
+  }
+
+  .sv-tooltip-inner {
+    background: #292f35;
+    color: #d5dbe0;
+    border-color: #59636e;
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+}

@@ -221,15 +221,7 @@
   }
 
   // Export i18n API to window
-  window.i18n = {
-    t,
-    setLanguage,
-    onLanguageChange,
-    getLanguage: () => currentLang,
-    getSupportedLanguages: () => [...SUPPORTED_LANGS],
-    updateDOM,
-    init,
-  };
+  window.i18n = { t, setLanguage, onLanguageChange, getLanguage: () => currentLang, getSupportedLanguages: () => [...SUPPORTED_LANGS], updateDOM, init };
 
   // Run initialization when DOM is ready
   if (document.readyState === 'loading') {

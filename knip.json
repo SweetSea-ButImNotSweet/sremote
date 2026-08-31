@@ -1,16 +1,35 @@
 {
   "$schema": "https://unpkg.com/knip@5/overview/configuration-schema.json",
-  "entry": [
-    "src/main.js",
-    "assets/js/header.js",
-    "demo/script.js",
-    "demo/i18n.js",
-    "docs/assets/js/docs-viewer.js",
-    "docs/assets/js/recipes-data.js",
-    "docs/assets/js/recipes-runtime.js",
-    "docs/assets/js/recipes-ui.js"
-  ],
-  "project": ["src/**/*.{js,cjs,mjs}", "assets/**/*.{js,cjs,mjs}", "demo/**/*.{js,cjs,mjs}", "docs/**/*.{js,cjs,mjs}"],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "assets/js/header.js",
+        "demo/script.js",
+        "demo/i18n.js",
+        "docs/assets/js/docs-viewer.js",
+        "docs/assets/js/recipes-data.js",
+        "docs/assets/js/recipes-runtime.js",
+        "docs/assets/js/recipes-ui.js"
+      ],
+      "project": ["assets/**/*.{js,cjs,mjs}", "demo/**/*.{js,cjs,mjs}", "docs/**/*.{js,cjs,mjs}"],
+      "ignore": ["docs/recipes/**"]
+    },
+    "packages/userscript": {
+      "entry": ["src/main.js"],
+      "project": ["src/**/*.{js,cjs,mjs}"]
+    },
+    "packages/shared": {
+      "project": ["src/**/*.{js,cjs,mjs}"]
+    },
+    "packages/wrapper": {
+      "entry": ["src/index.js"],
+      "project": ["src/**/*.{js,cjs,mjs}"]
+    },
+    "packages/ready2use": {
+      "entry": ["src/index.js"],
+      "project": ["src/**/*.{js,cjs,mjs}"]
+    }
+  },
   "ignoreExportsUsedInFile": true,
   "ignoreUnresolved": ["$"]
 }

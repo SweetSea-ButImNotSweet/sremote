@@ -15,7 +15,41 @@
 
   <!-- Main Content -->
   <main class="main-container">
-    <div class="slots-grid">
+    <!-- Global Toolbar -->
+    <header class="global-toolbar" aria-label="Global Controls">
+      <div class="toolbar-section">
+        <span class="toolbar-label" data-i18n="toolbar.exclusive_mode">Độc quyền (Exclusive):</span>
+        <div class="exclusive-btn-group" id="exclusive-btn-group" role="radiogroup" aria-label="Exclusive Mode Selection">
+          <button type="button" class="btn btn-sm btn-exclusive active" data-mode="null" data-i18n="toolbar.exclusive_off">Tắt</button>
+          <button type="button" class="btn btn-sm btn-exclusive" data-mode="auto" data-i18n="toolbar.exclusive_auto">Auto</button>
+          <button type="button" class="btn btn-sm btn-exclusive" data-mode="slot_1">1</button>
+          <button type="button" class="btn btn-sm btn-exclusive" data-mode="slot_2">2</button>
+          <button type="button" class="btn btn-sm btn-exclusive" data-mode="slot_3">3</button>
+          <button type="button" class="btn btn-sm btn-exclusive" data-mode="slot_4">4</button>
+          <button type="button" class="btn btn-sm btn-exclusive" data-mode="slot_5">5</button>
+          <button type="button" class="btn btn-sm btn-exclusive" data-mode="slot_6">6</button>
+        </div>
+      </div>
+
+      <div class="toolbar-section toolbar-actions">
+        <button type="button" class="btn btn-sm btn-action" id="global-play-all" data-i18n="toolbar.play_all">Phát tất cả</button>
+        <button type="button" class="btn btn-sm btn-action" id="global-pause-all" data-i18n="toolbar.pause_all">Dừng tất cả</button>
+        <button type="button" class="btn btn-sm btn-action" id="global-mute-all" data-i18n="toolbar.mute_all">Tắt tiếng tất cả</button>
+        <button type="button" class="btn btn-sm btn-action" id="global-unmute-all" data-i18n="toolbar.unmute_all">Bật tiếng tất cả</button>
+      </div>
+
+      <div class="toolbar-section toolbar-filter">
+        <label for="slot-filter-select" class="toolbar-label" data-i18n="toolbar.filter_view">Hiển thị:</label>
+        <select id="slot-filter-select" class="select-input select-filter">
+          <option value="all" data-i18n="toolbar.view_all" selected>Tất cả 6 Slots</option>
+          <option value="active" data-i18n="toolbar.view_active">Chỉ Slot đang chạy</option>
+          <option value="1-3" data-i18n="toolbar.view_1_3">Slot 1-3</option>
+          <option value="4-6" data-i18n="toolbar.view_4_6">Slot 4-6</option>
+        </select>
+      </div>
+    </header>
+
+    <div class="slots-grid" id="slots-grid">
       <!-- Slot 1 -->
       <section class="slot-panel" id="slot-panel-1" aria-labelledby="slot-heading-1">
         <div class="slot-header">
@@ -31,7 +65,7 @@
             class="url-input"
             data-i18n-placeholder="slot.url_placeholder"
             placeholder="Nhập URL iframe..."
-            value="https://commons.wikimedia.org/wiki/File:Big_Buck_Bunny_4K.webm?embedplayer=yes"
+            value="../docs/demo-frames/sample-player.html"
             autocomplete="off"
             spellcheck="false"
           >
@@ -42,38 +76,45 @@
           <div class="iframe-placeholder" id="placeholder-1" data-i18n="slot.placeholder_slot1">Chưa tải iframe. Nhấn "Load" để nạp.</div>
         </div>
 
-        <!-- Seek / Progress Slider Row -->
-        <div class="seek-row">
-          <label for="seek-range-1" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
-          <input type="range" id="seek-range-1" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
-          <span class="slider-val time-val" id="time-val-1">0:00 / 0:00</span>
-        </div>
+        <!-- Slot Controls Group -->
+        <div class="slot-controls">
+          <!-- Seek / Progress Slider Row -->
+          <div class="seek-row">
+            <label for="seek-range-1" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
+            <input type="range" id="seek-range-1" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
+            <span class="slider-val time-val" id="time-val-1">0:00 / 0:00</span>
+          </div>
 
-        <!-- Action Control Buttons -->
-        <div class="controls-row" id="controls-1">
-          <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-1" data-i18n="controls.play" disabled>▶ Play</button>
-          <button type="button" class="btn btn-ctrl" id="seek-back-btn-1" data-i18n="controls.seek_back" disabled>-10s</button>
-          <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-1" data-i18n="controls.seek_fwd" disabled>+10s</button>
-          <button type="button" class="btn btn-ctrl" id="mute-btn-1" data-i18n="controls.mute" disabled>Mute</button>
-          <button type="button" class="btn btn-ctrl" id="pip-btn-1" data-i18n="controls.pip" disabled>PiP</button>
-          <button type="button" class="btn btn-ctrl" id="fs-btn-1" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
-        </div>
+          <!-- Action Control Buttons -->
+          <div class="controls-row" id="controls-1">
+            <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-1" data-i18n="controls.play" disabled>▶ Play</button>
+            <button type="button" class="btn btn-ctrl" id="seek-back-btn-1" data-i18n="controls.seek_back" disabled>-10s</button>
+            <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-1" data-i18n="controls.seek_fwd" disabled>+10s</button>
+            <button type="button" class="btn btn-ctrl" id="mute-btn-1" data-i18n="controls.mute" disabled>Mute</button>
+            <button type="button" class="btn btn-ctrl" id="pip-btn-1" data-i18n="controls.pip" disabled>PiP</button>
+            <button type="button" class="btn btn-ctrl" id="fs-btn-1" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
+          </div>
 
-        <!-- Volume & Playback Rate Row -->
-        <div class="sliders-row">
-          <label for="vol-range-1" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
-          <input type="range" id="vol-range-1" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
-          <span class="slider-val" id="vol-val-1">100%</span>
+          <!-- Volume & Playback Rate Row -->
+          <div class="sliders-row">
+            <div class="slider-group vol-group">
+              <label for="vol-range-1" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
+              <input type="range" id="vol-range-1" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
+              <span class="slider-val" id="vol-val-1">100%</span>
+            </div>
 
-          <label for="rate-select-1" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
-          <select id="rate-select-1" class="select-input" disabled>
-            <option value="0.5">0.5x</option>
-            <option value="0.75">0.75x</option>
-            <option value="1" selected>1.0x</option>
-            <option value="1.25">1.25x</option>
-            <option value="1.5">1.5x</option>
-            <option value="2">2.0x</option>
-          </select>
+            <div class="slider-group rate-group">
+              <label for="rate-select-1" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
+              <select id="rate-select-1" class="select-input" disabled>
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1.0x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2.0x</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div class="status-panel" id="status-panel-1" aria-live="polite">
@@ -114,35 +155,41 @@
           <div class="iframe-placeholder" id="placeholder-2" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
         </div>
 
-        <div class="seek-row">
-          <label for="seek-range-2" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
-          <input type="range" id="seek-range-2" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
-          <span class="slider-val time-val" id="time-val-2">0:00 / 0:00</span>
-        </div>
+        <div class="slot-controls">
+          <div class="seek-row">
+            <label for="seek-range-2" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
+            <input type="range" id="seek-range-2" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
+            <span class="slider-val time-val" id="time-val-2">0:00 / 0:00</span>
+          </div>
 
-        <div class="controls-row" id="controls-2">
-          <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-2" data-i18n="controls.play" disabled>▶ Play</button>
-          <button type="button" class="btn btn-ctrl" id="seek-back-btn-2" data-i18n="controls.seek_back" disabled>-10s</button>
-          <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-2" data-i18n="controls.seek_fwd" disabled>+10s</button>
-          <button type="button" class="btn btn-ctrl" id="mute-btn-2" data-i18n="controls.mute" disabled>Mute</button>
-          <button type="button" class="btn btn-ctrl" id="pip-btn-2" data-i18n="controls.pip" disabled>PiP</button>
-          <button type="button" class="btn btn-ctrl" id="fs-btn-2" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
-        </div>
+          <div class="controls-row" id="controls-2">
+            <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-2" data-i18n="controls.play" disabled>▶ Play</button>
+            <button type="button" class="btn btn-ctrl" id="seek-back-btn-2" data-i18n="controls.seek_back" disabled>-10s</button>
+            <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-2" data-i18n="controls.seek_fwd" disabled>+10s</button>
+            <button type="button" class="btn btn-ctrl" id="mute-btn-2" data-i18n="controls.mute" disabled>Mute</button>
+            <button type="button" class="btn btn-ctrl" id="pip-btn-2" data-i18n="controls.pip" disabled>PiP</button>
+            <button type="button" class="btn btn-ctrl" id="fs-btn-2" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
+          </div>
 
-        <div class="sliders-row">
-          <label for="vol-range-2" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
-          <input type="range" id="vol-range-2" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
-          <span class="slider-val" id="vol-val-2">100%</span>
+          <div class="sliders-row">
+            <div class="slider-group vol-group">
+              <label for="vol-range-2" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
+              <input type="range" id="vol-range-2" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
+              <span class="slider-val" id="vol-val-2">100%</span>
+            </div>
 
-          <label for="rate-select-2" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
-          <select id="rate-select-2" class="select-input" disabled>
-            <option value="0.5">0.5x</option>
-            <option value="0.75">0.75x</option>
-            <option value="1" selected>1.0x</option>
-            <option value="1.25">1.25x</option>
-            <option value="1.5">1.5x</option>
-            <option value="2">2.0x</option>
-          </select>
+            <div class="slider-group rate-group">
+              <label for="rate-select-2" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
+              <select id="rate-select-2" class="select-input" disabled>
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1.0x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2.0x</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div class="status-panel" id="status-panel-2" aria-live="polite">
@@ -183,35 +230,41 @@
           <div class="iframe-placeholder" id="placeholder-3" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
         </div>
 
-        <div class="seek-row">
-          <label for="seek-range-3" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
-          <input type="range" id="seek-range-3" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
-          <span class="slider-val time-val" id="time-val-3">0:00 / 0:00</span>
-        </div>
+        <div class="slot-controls">
+          <div class="seek-row">
+            <label for="seek-range-3" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
+            <input type="range" id="seek-range-3" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
+            <span class="slider-val time-val" id="time-val-3">0:00 / 0:00</span>
+          </div>
 
-        <div class="controls-row" id="controls-3">
-          <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-3" data-i18n="controls.play" disabled>▶ Play</button>
-          <button type="button" class="btn btn-ctrl" id="seek-back-btn-3" data-i18n="controls.seek_back" disabled>-10s</button>
-          <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-3" data-i18n="controls.seek_fwd" disabled>+10s</button>
-          <button type="button" class="btn btn-ctrl" id="mute-btn-3" data-i18n="controls.mute" disabled>Mute</button>
-          <button type="button" class="btn btn-ctrl" id="pip-btn-3" data-i18n="controls.pip" disabled>PiP</button>
-          <button type="button" class="btn btn-ctrl" id="fs-btn-3" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
-        </div>
+          <div class="controls-row" id="controls-3">
+            <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-3" data-i18n="controls.play" disabled>▶ Play</button>
+            <button type="button" class="btn btn-ctrl" id="seek-back-btn-3" data-i18n="controls.seek_back" disabled>-10s</button>
+            <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-3" data-i18n="controls.seek_fwd" disabled>+10s</button>
+            <button type="button" class="btn btn-ctrl" id="mute-btn-3" data-i18n="controls.mute" disabled>Mute</button>
+            <button type="button" class="btn btn-ctrl" id="pip-btn-3" data-i18n="controls.pip" disabled>PiP</button>
+            <button type="button" class="btn btn-ctrl" id="fs-btn-3" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
+          </div>
 
-        <div class="sliders-row">
-          <label for="vol-range-3" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
-          <input type="range" id="vol-range-3" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
-          <span class="slider-val" id="vol-val-3">100%</span>
+          <div class="sliders-row">
+            <div class="slider-group vol-group">
+              <label for="vol-range-3" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
+              <input type="range" id="vol-range-3" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
+              <span class="slider-val" id="vol-val-3">100%</span>
+            </div>
 
-          <label for="rate-select-3" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
-          <select id="rate-select-3" class="select-input" disabled>
-            <option value="0.5">0.5x</option>
-            <option value="0.75">0.75x</option>
-            <option value="1" selected>1.0x</option>
-            <option value="1.25">1.25x</option>
-            <option value="1.5">1.5x</option>
-            <option value="2">2.0x</option>
-          </select>
+            <div class="slider-group rate-group">
+              <label for="rate-select-3" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
+              <select id="rate-select-3" class="select-input" disabled>
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1.0x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2.0x</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div class="status-panel" id="status-panel-3" aria-live="polite">
@@ -252,35 +305,41 @@
           <div class="iframe-placeholder" id="placeholder-4" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
         </div>
 
-        <div class="seek-row">
-          <label for="seek-range-4" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
-          <input type="range" id="seek-range-4" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
-          <span class="slider-val time-val" id="time-val-4">0:00 / 0:00</span>
-        </div>
+        <div class="slot-controls">
+          <div class="seek-row">
+            <label for="seek-range-4" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
+            <input type="range" id="seek-range-4" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
+            <span class="slider-val time-val" id="time-val-4">0:00 / 0:00</span>
+          </div>
 
-        <div class="controls-row" id="controls-4">
-          <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-4" data-i18n="controls.play" disabled>▶ Play</button>
-          <button type="button" class="btn btn-ctrl" id="seek-back-btn-4" data-i18n="controls.seek_back" disabled>-10s</button>
-          <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-4" data-i18n="controls.seek_fwd" disabled>+10s</button>
-          <button type="button" class="btn btn-ctrl" id="mute-btn-4" data-i18n="controls.mute" disabled>Mute</button>
-          <button type="button" class="btn btn-ctrl" id="pip-btn-4" data-i18n="controls.pip" disabled>PiP</button>
-          <button type="button" class="btn btn-ctrl" id="fs-btn-4" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
-        </div>
+          <div class="controls-row" id="controls-4">
+            <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-4" data-i18n="controls.play" disabled>▶ Play</button>
+            <button type="button" class="btn btn-ctrl" id="seek-back-btn-4" data-i18n="controls.seek_back" disabled>-10s</button>
+            <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-4" data-i18n="controls.seek_fwd" disabled>+10s</button>
+            <button type="button" class="btn btn-ctrl" id="mute-btn-4" data-i18n="controls.mute" disabled>Mute</button>
+            <button type="button" class="btn btn-ctrl" id="pip-btn-4" data-i18n="controls.pip" disabled>PiP</button>
+            <button type="button" class="btn btn-ctrl" id="fs-btn-4" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
+          </div>
 
-        <div class="sliders-row">
-          <label for="vol-range-4" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
-          <input type="range" id="vol-range-4" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
-          <span class="slider-val" id="vol-val-4">100%</span>
+          <div class="sliders-row">
+            <div class="slider-group vol-group">
+              <label for="vol-range-4" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
+              <input type="range" id="vol-range-4" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
+              <span class="slider-val" id="vol-val-4">100%</span>
+            </div>
 
-          <label for="rate-select-4" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
-          <select id="rate-select-4" class="select-input" disabled>
-            <option value="0.5">0.5x</option>
-            <option value="0.75">0.75x</option>
-            <option value="1" selected>1.0x</option>
-            <option value="1.25">1.25x</option>
-            <option value="1.5">1.5x</option>
-            <option value="2">2.0x</option>
-          </select>
+            <div class="slider-group rate-group">
+              <label for="rate-select-4" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
+              <select id="rate-select-4" class="select-input" disabled>
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1.0x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2.0x</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div class="status-panel" id="status-panel-4" aria-live="polite">
@@ -321,35 +380,41 @@
           <div class="iframe-placeholder" id="placeholder-5" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
         </div>
 
-        <div class="seek-row">
-          <label for="seek-range-5" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
-          <input type="range" id="seek-range-5" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
-          <span class="slider-val time-val" id="time-val-5">0:00 / 0:00</span>
-        </div>
+        <div class="slot-controls">
+          <div class="seek-row">
+            <label for="seek-range-5" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
+            <input type="range" id="seek-range-5" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
+            <span class="slider-val time-val" id="time-val-5">0:00 / 0:00</span>
+          </div>
 
-        <div class="controls-row" id="controls-5">
-          <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-5" data-i18n="controls.play" disabled>▶ Play</button>
-          <button type="button" class="btn btn-ctrl" id="seek-back-btn-5" data-i18n="controls.seek_back" disabled>-10s</button>
-          <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-5" data-i18n="controls.seek_fwd" disabled>+10s</button>
-          <button type="button" class="btn btn-ctrl" id="mute-btn-5" data-i18n="controls.mute" disabled>Mute</button>
-          <button type="button" class="btn btn-ctrl" id="pip-btn-5" data-i18n="controls.pip" disabled>PiP</button>
-          <button type="button" class="btn btn-ctrl" id="fs-btn-5" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
-        </div>
+          <div class="controls-row" id="controls-5">
+            <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-5" data-i18n="controls.play" disabled>▶ Play</button>
+            <button type="button" class="btn btn-ctrl" id="seek-back-btn-5" data-i18n="controls.seek_back" disabled>-10s</button>
+            <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-5" data-i18n="controls.seek_fwd" disabled>+10s</button>
+            <button type="button" class="btn btn-ctrl" id="mute-btn-5" data-i18n="controls.mute" disabled>Mute</button>
+            <button type="button" class="btn btn-ctrl" id="pip-btn-5" data-i18n="controls.pip" disabled>PiP</button>
+            <button type="button" class="btn btn-ctrl" id="fs-btn-5" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
+          </div>
 
-        <div class="sliders-row">
-          <label for="vol-range-5" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
-          <input type="range" id="vol-range-5" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
-          <span class="slider-val" id="vol-val-5">100%</span>
+          <div class="sliders-row">
+            <div class="slider-group vol-group">
+              <label for="vol-range-5" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
+              <input type="range" id="vol-range-5" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
+              <span class="slider-val" id="vol-val-5">100%</span>
+            </div>
 
-          <label for="rate-select-5" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
-          <select id="rate-select-5" class="select-input" disabled>
-            <option value="0.5">0.5x</option>
-            <option value="0.75">0.75x</option>
-            <option value="1" selected>1.0x</option>
-            <option value="1.25">1.25x</option>
-            <option value="1.5">1.5x</option>
-            <option value="2">2.0x</option>
-          </select>
+            <div class="slider-group rate-group">
+              <label for="rate-select-5" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
+              <select id="rate-select-5" class="select-input" disabled>
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1.0x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2.0x</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div class="status-panel" id="status-panel-5" aria-live="polite">
@@ -390,35 +455,41 @@
           <div class="iframe-placeholder" id="placeholder-6" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
         </div>
 
-        <div class="seek-row">
-          <label for="seek-range-6" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
-          <input type="range" id="seek-range-6" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
-          <span class="slider-val time-val" id="time-val-6">0:00 / 0:00</span>
-        </div>
+        <div class="slot-controls">
+          <div class="seek-row">
+            <label for="seek-range-6" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
+            <input type="range" id="seek-range-6" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
+            <span class="slider-val time-val" id="time-val-6">0:00 / 0:00</span>
+          </div>
 
-        <div class="controls-row" id="controls-6">
-          <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-6" data-i18n="controls.play" disabled>▶ Play</button>
-          <button type="button" class="btn btn-ctrl" id="seek-back-btn-6" data-i18n="controls.seek_back" disabled>-10s</button>
-          <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-6" data-i18n="controls.seek_fwd" disabled>+10s</button>
-          <button type="button" class="btn btn-ctrl" id="mute-btn-6" data-i18n="controls.mute" disabled>Mute</button>
-          <button type="button" class="btn btn-ctrl" id="pip-btn-6" data-i18n="controls.pip" disabled>PiP</button>
-          <button type="button" class="btn btn-ctrl" id="fs-btn-6" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
-        </div>
+          <div class="controls-row" id="controls-6">
+            <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-6" data-i18n="controls.play" disabled>▶ Play</button>
+            <button type="button" class="btn btn-ctrl" id="seek-back-btn-6" data-i18n="controls.seek_back" disabled>-10s</button>
+            <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-6" data-i18n="controls.seek_fwd" disabled>+10s</button>
+            <button type="button" class="btn btn-ctrl" id="mute-btn-6" data-i18n="controls.mute" disabled>Mute</button>
+            <button type="button" class="btn btn-ctrl" id="pip-btn-6" data-i18n="controls.pip" disabled>PiP</button>
+            <button type="button" class="btn btn-ctrl" id="fs-btn-6" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
+          </div>
 
-        <div class="sliders-row">
-          <label for="vol-range-6" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
-          <input type="range" id="vol-range-6" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
-          <span class="slider-val" id="vol-val-6">100%</span>
+          <div class="sliders-row">
+            <div class="slider-group vol-group">
+              <label for="vol-range-6" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
+              <input type="range" id="vol-range-6" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
+              <span class="slider-val" id="vol-val-6">100%</span>
+            </div>
 
-          <label for="rate-select-6" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
-          <select id="rate-select-6" class="select-input" disabled>
-            <option value="0.5">0.5x</option>
-            <option value="0.75">0.75x</option>
-            <option value="1" selected>1.0x</option>
-            <option value="1.25">1.25x</option>
-            <option value="1.5">1.5x</option>
-            <option value="2">2.0x</option>
-          </select>
+            <div class="slider-group rate-group">
+              <label for="rate-select-6" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
+              <select id="rate-select-6" class="select-input" disabled>
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1.0x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2.0x</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div class="status-panel" id="status-panel-6" aria-live="polite">
@@ -433,9 +504,114 @@
         </div>
       </section>
     </div>
+
+    <!-- Sample Links Section for Testing (Safe Copy & Paste) -->
+    <section class="samples-section" aria-labelledby="samples-heading">
+      <div class="samples-header">
+        <h2 class="samples-title" id="samples-heading" data-i18n="samples.title">Bảng URL Mẫu & Kiểm Thử (Copy & Paste)</h2>
+        <p class="samples-desc" data-i18n="samples.description">Danh sách URL phân loại theo từng dịch vụ. Bạn có thể sao chép liên kết bên dưới và dán vào ô URL của Slot bất kỳ để kiểm thử.</p>
+      </div>
+
+      <div class="samples-table-wrapper">
+        <table class="samples-table">
+          <thead>
+            <tr>
+              <th scope="col" class="service-col-head">
+                <span class="service-tag service-youtube">YouTube</span>
+              </th>
+              <th scope="col" class="service-col-head">
+                <span class="service-tag service-vimeo">Vimeo</span>
+              </th>
+              <th scope="col" class="service-col-head">
+                <span class="service-tag service-soundcloud">SoundCloud</span>
+              </th>
+              <th scope="col" class="service-col-head">
+                <span class="service-tag service-dailymotion">Dailymotion</span>
+              </th>
+              <th scope="col" class="service-col-head">
+                <span class="service-tag service-tiktok">TikTok</span>
+              </th>
+              <th scope="col" class="service-col-head highlight-col">
+                <span class="service-tag service-html5">HTML5 Video</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Row for URLs & Copy Actions -->
+            <tr class="samples-content-row">
+              <!-- YouTube Column -->
+              <td class="service-col-cell">
+                <div class="sample-links-list">
+                  <div class="sample-link-item">
+                    <code class="sample-url" id="sample-url-yt-1">https://www.youtube.com/watch?v=3oH34VkrIxg</code>
+                    <button type="button" class="btn btn-sm btn-copy" data-target="sample-url-yt-1" data-i18n="samples.btn_copy">Sao chép</button>
+                  </div>
+                  <div class="sample-link-item">
+                    <code class="sample-url" id="sample-url-yt-2">https://www.youtube.com/watch?v=KJI_3HaLtmc</code>
+                    <button type="button" class="btn btn-sm btn-copy" data-target="sample-url-yt-2" data-i18n="samples.btn_copy">Sao chép</button>
+                  </div>
+                  <div class="sample-link-item">
+                    <code class="sample-url" id="sample-url-yt-3">https://www.youtube.com/watch?v=H4d7PeX6NoM</code>
+                    <button type="button" class="btn btn-sm btn-copy" data-target="sample-url-yt-3" data-i18n="samples.btn_copy">Sao chép</button>
+                  </div>
+                  <div class="sample-link-item">
+                    <code class="sample-url" id="sample-url-yt-4">https://www.youtube.com/watch?v=A77p_8E7OFs</code>
+                    <button type="button" class="btn btn-sm btn-copy" data-target="sample-url-yt-4" data-i18n="samples.btn_copy">Sao chép</button>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Vimeo Column -->
+              <td class="service-col-cell">
+                <div class="sample-links-list">
+                  <span class="url-empty-hint">(Để trống - Tự điền link)</span>
+                </div>
+              </td>
+
+              <!-- SoundCloud Column -->
+              <td class="service-col-cell">
+                <div class="sample-links-list">
+                  <span class="url-empty-hint">(Để trống - Tự điền link)</span>
+                </div>
+              </td>
+
+              <!-- Dailymotion Column -->
+              <td class="service-col-cell">
+                <div class="sample-links-list">
+                  <span class="url-empty-hint">(Để trống - Tự điền link)</span>
+                </div>
+              </td>
+
+              <!-- TikTok Column -->
+              <td class="service-col-cell">
+                <div class="sample-links-list">
+                  <span class="url-empty-hint">(Để trống - Tự điền link)</span>
+                </div>
+              </td>
+
+              <!-- HTML5 Video Column -->
+              <td class="service-col-cell highlight-col">
+                <div class="sample-links-list">
+                  <div class="sample-link-item">
+                    <code class="sample-url" id="sample-url-html5">../docs/demo-frames/sample-player.html</code>
+                    <button type="button" class="btn btn-sm btn-copy" data-target="sample-url-html5" data-i18n="samples.btn_copy">Sao chép</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="samples-disclaimer" data-i18n="samples.disclaimer">
+        Lưu ý pháp lý: Các liên kết mẫu trên thuộc quyền sở hữu của các đơn vị/nền tảng tương ứng. SRemote là công cụ trung lập phục vụ kiểm thử và không lưu trữ hay phân phối nội dung có bản quyền.
+      </div>
+    </section>
   </main>
 
+  <script src="../packages/wrapper/dist/index.global.js"></script>
   <script src="i18n.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
+

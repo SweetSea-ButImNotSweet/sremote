@@ -1,0 +1,78 @@
+export const I18N = {
+  vi: {
+    dialogTitle: 'SRemote: Cho phép điều khiển video?',
+    dialogText: 'Trang này muốn điều khiển media trong iframe thông qua SRemote.',
+    rememberChoice: 'Nhớ lựa chọn cho trang này',
+    denyBtn: 'Từ chối',
+    allowBtn: 'Đồng ý',
+    keyDialogTitle: '🔑 SRemote: Passkey xác thực',
+    keyDialogDesc: 'Passkey đã được tạo cho {domain}:',
+    keyDialogHint: 'Passkey đã được tự động sao chép vào Clipboard. Dùng cho API hello({ key }).',
+    copyKeyBtn: 'Sao chép Key',
+    copiedBtn: 'Đã chép',
+    closeBtn: 'Đóng',
+    badgeTooltipPrefix: 'Trang ',
+    badgeTooltipSuffix: '\nđang điều khiển video này qua SRemote',
+    badgeDontShow: 'Đừng hiện lại',
+    badgeDontShowTitle: 'Ẩn chỉ báo này cho trang hiện tại',
+    badgeCloseTitle: 'Ẩn',
+    menuReset: '🔄 SRemote: Đặt lại quyền cho {domain}',
+    menuUnhideBadge: '👁️ SRemote: Hiện lại tất cả Badge đã ẩn',
+    menuClearAll: '🧹 SRemote: Xóa toàn bộ dữ liệu & quyền',
+    menuGenerateKey: '🔑 SRemote: Tạo & Copy Passkey ({domain})',
+    menuDeleteKey: '🗑️ SRemote: Xóa Passkey ({domain})',
+    menuToggleLock: '🔒 SRemote: Khóa chủ động ({domain})',
+    targetTop: 'trang này (Top)',
+    targetIframe: 'iframe này',
+    alertResetDone: '[SRemote] Đã reset quyền và chỉ báo cho: {origin}\n(Tải lại trang để áp dụng)',
+    alertUnhideDone: '[SRemote] Đã khôi phục hiển thị tất cả các badge SRemote.',
+    confirmClearAll: '[SRemote] Bạn có chắc muốn xóa toàn bộ quyền và cài đặt của SRemote?',
+    alertClearDone: '[SRemote] Đã dọn dẹp sạch toàn bộ dữ liệu của SRemote.',
+    alertKeyDeleted: '[SRemote] Đã xóa Passkey của {domain}.\n(Tải lại trang để áp dụng)',
+    alertLockEnabled: '[SRemote] Đã kích hoạt Khóa SRemote cho {domain}.\nBất kỳ lệnh hello nào cũng bắt buộc phải có đúng Passkey!',
+    alertLockDisabled: '[SRemote] Đã mở khóa SRemote cho {domain}.',
+  },
+  en: {
+    dialogTitle: 'SRemote: Allow media control?',
+    dialogText: 'This page wants to control media inside the frame via SRemote.',
+    rememberChoice: 'Remember for this site',
+    denyBtn: 'Deny',
+    allowBtn: 'Allow',
+    keyDialogTitle: '🔑 SRemote: Authentication Passkey',
+    keyDialogDesc: 'Generated Passkey for {domain}:',
+    keyDialogHint: 'Passkey copied to clipboard. Use it in hello({ key }).',
+    copyKeyBtn: 'Copy Key',
+    copiedBtn: 'Copied',
+    closeBtn: 'Close',
+    badgeTooltipPrefix: 'Page ',
+    badgeTooltipSuffix: '\nis controlling this video via SRemote',
+    badgeDontShow: "Don't show again",
+    badgeDontShowTitle: 'Hide this indicator for the current site',
+    badgeCloseTitle: 'Hide',
+    menuReset: '🔄 SRemote: Reset permissions for {target}',
+    menuUnhideBadge: '👁️ SRemote: Unhide all badges',
+    menuClearAll: '🧹 SRemote: Clear all data & permissions',
+    menuGenerateKey: '🔑 SRemote: Generate & Copy Passkey ({domain})',
+    menuDeleteKey: '🗑️ SRemote: Delete Passkey ({domain})',
+    menuToggleLock: '🔒 SRemote: Active Lock ({domain})',
+    targetTop: 'this site (Top)',
+    targetIframe: 'this iframe',
+    alertResetDone: '[SRemote] Reset permissions and badges for: {origin}\n(Reload page to apply)',
+    alertUnhideDone: '[SRemote] Restored display for all SRemote badges.',
+    confirmClearAll: '[SRemote] Are you sure you want to clear all SRemote permissions and settings?',
+    alertClearDone: '[SRemote] Cleaned up all SRemote data.',
+    alertKeyDeleted: '[SRemote] Deleted Passkey for {domain}.\n(Reload page to apply)',
+    alertLockEnabled: '[SRemote] Enabled SRemote Lock for {domain}.\nAny hello command now strictly requires valid Passkey!',
+    alertLockDisabled: '[SRemote] Disabled SRemote Lock for {domain}.',
+  },
+};
+
+export function t(key, params = {}) {
+  const navLang = (navigator.language || navigator.userLanguage || 'vi').toLowerCase();
+  const lang = navLang.startsWith('vi') ? 'vi' : 'en';
+  let text = I18N[lang]?.[key] || I18N.en?.[key] || key;
+  for (const [k, v] of Object.entries(params)) {
+    text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+  }
+  return text;
+}

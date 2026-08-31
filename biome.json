@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.13/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": { "includes": ["**", "!!**/dist", "!!**/node_modules", "!!**/playwright-report", "!!**/tests-results", "!!eslint-report.json", "!!**/*.css"] },
   "formatter": {
@@ -8,29 +8,16 @@
     "indentStyle": "space",
     "indentWidth": 2,
     "lineEnding": "lf",
-    "lineWidth": 160,
+    "lineWidth": 180,
     "attributePosition": "auto",
-    "bracketSameLine": false,
+    "bracketSameLine": true,
     "bracketSpacing": true,
-    "expand": "auto",
+    "expand": "never",
     "useEditorconfig": true,
     "includes": ["**"]
   },
-  "assist": {
-    "actions": {
-      "source": {
-        "organizeImports": "off"
-      }
-    }
-  },
-  "linter": {
-    "enabled": false,
-    "rules": {
-      "style": {
-        "useNamingConvention": "off"
-      }
-    }
-  },
+  "assist": { "actions": { "source": { "organizeImports": "off" } } },
+  "linter": { "enabled": false, "rules": { "style": { "useNamingConvention": "off" } } },
   "javascript": {
     "formatter": {
       "jsxQuoteStyle": "double",
@@ -38,12 +25,14 @@
       "trailingCommas": "all",
       "semicolons": "always",
       "arrowParentheses": "asNeeded",
-      "bracketSameLine": false,
+      "bracketSameLine": true,
+      "bracketSpacing": true,
+      "expand": "never",
       "quoteStyle": "single",
-      "attributePosition": "auto",
-      "bracketSpacing": true
+      "attributePosition": "auto"
     }
   },
+  "json": { "formatter": { "enabled": true, "expand": "never", "bracketSpacing": true } },
   "css": { "parser": { "cssModules": true, "tailwindDirectives": true }, "formatter": null, "linter": null, "assist": null },
-  "html": { "formatter": { "indentScriptAndStyle": false, "selfCloseVoidElements": "always" } }
+  "html": { "formatter": { "indentScriptAndStyle": false, "selfCloseVoidElements": "always", "bracketSameLine": true } }
 }

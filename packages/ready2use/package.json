@@ -1,0 +1,21 @@
+{
+  "name": "@sremote/ready2use",
+  "version": "2.0.0",
+  "description": "Ready-to-use out-of-the-box providers and adapters for SRemote",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./src/index.d.ts",
+  "exports": { ".": { "types": "./src/index.d.ts", "import": "./dist/index.mjs", "require": "./dist/index.cjs" } },
+  "files": ["dist", "src/index.d.ts", "README.md"],
+  "publishConfig": { "access": "public" },
+  "scripts": { "build": "vite build", "dev": "vite build --watch" },
+  "keywords": ["sremote", "youtube", "vimeo", "html5", "adapter", "ready-to-use", "player", "preset"],
+  "author": "sweetsea (https://github.com/SweetSea-ButImNotSweet)",
+  "repository": { "type": "git", "url": "https://github.com/SweetSea-ButImNotSweet/sremote.git", "directory": "packages/ready2use" },
+  "homepage": "https://github.com/SweetSea-ButImNotSweet/sremote#readme",
+  "bugs": { "url": "https://github.com/SweetSea-ButImNotSweet/sremote/issues" },
+  "license": "LGPL-3.0",
+  "peerDependencies": { "@sremote/wrapper": "^2.0.0" },
+  "devDependencies": { "@sremote/wrapper": "^2.0.0" }
+}

@@ -9,6 +9,9 @@
   <!-- Marked.js via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
+  <!-- Mermaid.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
   <!-- Highlight.js (Full bundle) with VSCode Dark Modern Theme -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -32,7 +35,7 @@
         <div class="panel-heading">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span>SRemote Docs</span>
-            <span class="panel-title-badge">v1.0.0</span>
+            <span class="panel-title-badge">v2.0.0</span>
           </div>
           <a href="../index.html" class="btn btn-default btn-sm" title="Về trang chủ" id="link-home">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -52,26 +55,56 @@
           <!-- TOC Navigation Groups -->
           <nav class="toc-nav" id="toc-container">
 
-            <!-- Nhóm: Giới thiệu chung -->
+            <!-- Nhóm: Bắt đầu (Getting Started) -->
             <div class="toc-group">
               <div class="toc-group-title">
-                <span id="toc-group-general">📖 Giới thiệu chung</span>
+                <span id="toc-group-general">🚀 Bắt đầu</span>
               </div>
               <ul class="toc-list">
                 <li>
-                  <a href="?path=content/setup/vi.md" class="toc-link" data-path="content/setup/vi.md" data-en-path="content/setup/en.md">
-                    <span class="toc-label" data-vi="Hướng dẫn tích hợp & Iframe" data-en="Iframe Setup & Integration">Hướng dẫn tích hợp & Iframe</span>
+                  <a href="content/guides/vi/00-developer-overview.md" class="toc-link" data-path="content/guides/vi/00-developer-overview.md" data-en-path="content/guides/en/00-developer-overview.md">
+                    <span class="toc-label" data-vi="00. Tổng quan Kiến trúc cho Dev" data-en="00. Developer Architecture Overview">00. Tổng quan Kiến trúc cho Dev</span>
+                    <span class="toc-badge">Arch</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="content/guides/vi/01-iframe-setup.md" class="toc-link" data-path="content/guides/vi/01-iframe-setup.md" data-en-path="content/guides/en/01-iframe-setup.md">
+                    <span class="toc-label" data-vi="01. Tạo thẻ Iframe đúng chuẩn" data-en="01. Iframe Setup Guide">01. Tạo thẻ Iframe đúng chuẩn</span>
                     <span class="toc-badge">Guide</span>
                   </a>
                 </li>
                 <li>
-                  <a href="?path=content/guides/vi/errors.md" class="toc-link" data-path="content/guides/vi/errors.md" data-en-path="content/guides/en/errors.md">
-                    <span class="toc-label" data-vi="Mã lỗi & Khắc phục sự cố" data-en="Error Codes & Troubleshooting">Mã lỗi & Khắc phục sự cố</span>
-                    <span class="toc-badge">Errors</span>
+                  <a href="content/guides/vi/02-compatibility-check.md" class="toc-link" data-path="content/guides/vi/02-compatibility-check.md" data-en-path="content/guides/en/02-compatibility-check.md">
+                    <span class="toc-label" data-vi="02. Kiểm tra tính tương thích & Bảng dịch vụ" data-en="02. Compatibility & Service Matrix">02. Kiểm tra tương thích</span>
+                    <span class="toc-badge">Matrix</span>
                   </a>
                 </li>
                 <li>
-                  <a href="?path=content/api/vi/README.md" class="toc-link" data-path="content/api/vi/README.md" data-en-path="content/api/en/README.md">
+                  <a href="content/guides/vi/03-wrapper-integration.md" class="toc-link" data-path="content/guides/vi/03-wrapper-integration.md" data-en-path="content/guides/en/03-wrapper-integration.md">
+                    <span class="toc-label" data-vi="03. Cài đặt Wrapper & Tích hợp" data-en="03. SRemote Wrapper Integration">03. Cài đặt Wrapper & Tích hợp</span>
+                    <span class="toc-badge">Code</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="content/guides/vi/04-testing-debugging.md" class="toc-link" data-path="content/guides/vi/04-testing-debugging.md" data-en-path="content/guides/en/04-testing-debugging.md">
+                    <span class="toc-label" data-vi="04. Thử nghiệm & Chẩn đoán" data-en="04. Testing & Debugging">04. Thử nghiệm & Chẩn đoán</span>
+                    <span class="toc-badge">Debug</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="content/guides/vi/05-ux-best-practices.md" class="toc-link" data-path="content/guides/vi/05-ux-best-practices.md" data-en-path="content/guides/en/05-ux-best-practices.md">
+                    <span class="toc-label" data-vi="05. Best Practices & End-User" data-en="05. UX Best Practices & Users">05. Best Practices & End-User</span>
+                    <span class="toc-badge">UX</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="content/guides/vi/06-troubleshooting.md" class="toc-link" data-path="content/guides/vi/06-troubleshooting.md" data-en-path="content/guides/en/06-troubleshooting.md">
+                    <span class="toc-label" data-vi="06. Xử lý sự cố thường gặp" data-en="06. Troubleshooting Guide">06. Xử lý sự cố thường gặp</span>
+                    <span class="toc-badge">Troubleshoot</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="content/api/vi/README.md" class="toc-link" data-path="content/api/vi/README.md" data-en-path="content/api/en/README.md">
                     <span class="toc-label" data-vi="Bảng tổng hợp API" data-en="API Index Reference">Bảng tổng hợp API</span>
                     <span class="toc-badge">Index</span>
                   </a>
@@ -79,93 +112,118 @@
               </ul>
             </div>
 
-            <!-- Nhóm: Kết nối & Chế độ phát -->
+            <!-- Nhóm: Vòng đời, Sự kiện & Bảo mật -->
             <div class="toc-group">
               <div class="toc-group-title">
-                <span id="toc-group-connect">🔌 Kết nối & Chế độ phát</span>
+                <span id="toc-group-events">📡 Sự kiện & Vòng đời</span>
               </div>
               <ul class="toc-list">
-                <li><a href="?path=content/api/vi/hello.md" class="toc-link" data-path="content/api/vi/hello.md"><code>hello()</code></a></li>
-                <li><a href="?path=content/api/vi/assignId.md" class="toc-link" data-path="content/api/vi/assignId.md"><code>assignId()</code></a></li>
-                <li><a href="?path=content/api/vi/setMultiMode.md" class="toc-link" data-path="content/api/vi/setMultiMode.md"><code>setMultiMode()</code></a></li>
-                <li><a href="?path=content/api/vi/isMultiMode.md" class="toc-link" data-path="content/api/vi/isMultiMode.md"><code>isMultiMode()</code></a></li>
-                <li><a href="?path=content/api/vi/setExclusive.md" class="toc-link" data-path="content/api/vi/setExclusive.md"><code>setExclusive()</code></a></li>
-                <li><a href="?path=content/api/vi/lock.md" class="toc-link" data-path="content/api/vi/lock.md"><code>lock()</code></a></li>
+                <li><a href="content/api/vi/lifecycle/hello.md" class="toc-link" data-path="content/api/vi/lifecycle/hello.md"><code>hello()</code></a></li>
+                <li><a href="content/api/vi/lifecycle/on.md" class="toc-link" data-path="content/api/vi/lifecycle/on.md"><code>on()</code></a></li>
+                <li><a href="content/api/vi/lifecycle/off.md" class="toc-link" data-path="content/api/vi/lifecycle/off.md"><code>off()</code></a></li>
+                <li><a href="content/api/vi/lifecycle/lock.md" class="toc-link" data-path="content/api/vi/lifecycle/lock.md"><code>lock()</code></a></li>
+                <li><a href="content/api/vi/lifecycle/bindMediaSession.md" class="toc-link" data-path="content/api/vi/lifecycle/bindMediaSession.md"><code>bindMediaSession()</code></a></li>
+                <li><a href="content/api/vi/lifecycle/bindMetadata.md" class="toc-link" data-path="content/api/vi/lifecycle/bindMetadata.md"><code>bindMetadata()</code></a></li>
               </ul>
             </div>
 
-            <!-- Nhóm: Điều khiển phát & Âm lượng -->
+            <!-- Nhóm: Điều khiển phát nhanh (Quick Controls) -->
             <div class="toc-group">
               <div class="toc-group-title">
-                <span id="toc-group-playback">🎮 Điều khiển & Âm thanh</span>
+                <span id="toc-group-playback">🎮 Điều khiển phát nhanh</span>
               </div>
               <ul class="toc-list">
-                <li><a href="?path=content/api/vi/play.md" class="toc-link" data-path="content/api/vi/play.md"><code>play()</code></a></li>
-                <li><a href="?path=content/api/vi/pause.md" class="toc-link" data-path="content/api/vi/pause.md"><code>pause()</code></a></li>
-                <li><a href="?path=content/api/vi/toggle.md" class="toc-link" data-path="content/api/vi/toggle.md"><code>toggle()</code></a></li>
-                <li><a href="?path=content/api/vi/stop.md" class="toc-link" data-path="content/api/vi/stop.md"><code>stop()</code></a></li>
-                <li><a href="?path=content/api/vi/playbackRate.md" class="toc-link" data-path="content/api/vi/playbackRate.md"><code>playbackRate()</code></a></li>
-                <li><a href="?path=content/api/vi/seek.md" class="toc-link" data-path="content/api/vi/seek.md"><code>seek()</code></a></li>
-                <li><a href="?path=content/api/vi/seekTo.md" class="toc-link" data-path="content/api/vi/seekTo.md"><code>seekTo()</code></a></li>
-                <li><a href="?path=content/api/vi/volume.md" class="toc-link" data-path="content/api/vi/volume.md"><code>volume()</code></a></li>
-                <li><a href="?path=content/api/vi/mute.md" class="toc-link" data-path="content/api/vi/mute.md"><code>mute()</code></a></li>
-                <li><a href="?path=content/api/vi/pip.md" class="toc-link" data-path="content/api/vi/pip.md"><code>pip()</code></a></li>
+                <li><a href="content/api/vi/playback/play.md" class="toc-link" data-path="content/api/vi/playback/play.md"><code>play()</code></a></li>
+                <li><a href="content/api/vi/playback/pause.md" class="toc-link" data-path="content/api/vi/playback/pause.md"><code>pause()</code></a></li>
+                <li><a href="content/api/vi/playback/toggle.md" class="toc-link" data-path="content/api/vi/playback/toggle.md"><code>toggle()</code></a></li>
+                <li><a href="content/api/vi/playback/stop.md" class="toc-link" data-path="content/api/vi/playback/stop.md"><code>stop()</code></a></li>
+                <li><a href="content/api/vi/playback/rate.md" class="toc-link" data-path="content/api/vi/playback/rate.md"><code>rate() / playbackRate()</code></a></li>
+                <li><a href="content/api/vi/playback/seek.md" class="toc-link" data-path="content/api/vi/playback/seek.md"><code>seek()</code></a></li>
+                <li><a href="content/api/vi/playback/seekTo.md" class="toc-link" data-path="content/api/vi/playback/seekTo.md"><code>seekTo()</code></a></li>
+                <li><a href="content/api/vi/playback/volume.md" class="toc-link" data-path="content/api/vi/playback/volume.md"><code>volume()</code></a></li>
+                <li><a href="content/api/vi/playback/mute.md" class="toc-link" data-path="content/api/vi/playback/mute.md"><code>mute()</code></a></li>
+                <li><a href="content/api/vi/playback/pip.md" class="toc-link" data-path="content/api/vi/playback/pip.md"><code>pip()</code></a></li>
+                <li><a href="content/api/vi/playback/status.md" class="toc-link" data-path="content/api/vi/playback/status.md"><code>status()</code></a></li>
               </ul>
             </div>
 
-            <!-- Nhóm: CSS Iframe -->
+            <!-- Nhóm: Quản lý Instance (instances.*) -->
             <div class="toc-group">
               <div class="toc-group-title">
-                <span id="toc-group-config">🎨 CSS Iframe</span>
+                <span id="toc-group-instances">🗂️ Quản lý Instance (<code>instances.*</code>)</span>
               </div>
               <ul class="toc-list">
-                <li><a href="?path=content/api/vi/setIframeCSS.md" class="toc-link" data-path="content/api/vi/setIframeCSS.md"><code>setIframeCSS()</code></a></li>
-                <li><a href="?path=content/api/vi/getIframeCSS.md" class="toc-link" data-path="content/api/vi/getIframeCSS.md"><code>getIframeCSS()</code></a></li>
-                <li><a href="?path=content/api/vi/removeIframeCSS.md" class="toc-link" data-path="content/api/vi/removeIframeCSS.md"><code>removeIframeCSS()</code></a></li>
+                <li><a href="content/api/vi/instances/assign.md" class="toc-link" data-path="content/api/vi/instances/assign.md"><code>instances.assign()</code></a></li>
+                <li><a href="content/api/vi/instances/getIframe.md" class="toc-link" data-path="content/api/vi/instances/getIframe.md"><code>instances.getIframe()</code></a></li>
+                <li><a href="content/api/vi/instances/list.md" class="toc-link" data-path="content/api/vi/instances/list.md"><code>instances.list()</code></a></li>
+                <li><a href="content/api/vi/instances/setMultiMode.md" class="toc-link" data-path="content/api/vi/instances/setMultiMode.md"><code>instances.setMultiMode()</code></a></li>
+                <li><a href="content/api/vi/instances/isMultiMode.md" class="toc-link" data-path="content/api/vi/instances/isMultiMode.md"><code>instances.isMultiMode()</code></a></li>
+                <li><a href="content/api/vi/instances/setExclusive.md" class="toc-link" data-path="content/api/vi/instances/setExclusive.md"><code>instances.setExclusive()</code></a></li>
+                <li><a href="content/api/vi/instances/query.md" class="toc-link" data-path="content/api/vi/instances/query.md"><code>instances.query()</code></a></li>
+                <li><a href="content/api/vi/instances/note.md" class="toc-link" data-path="content/api/vi/instances/note.md"><code>instances.note()</code></a></li>
               </ul>
             </div>
 
-            <!-- Nhóm: Trạng thái & Quản lý -->
+            <!-- Nhóm: Ready2use Presets (@sremote/ready2use) -->
             <div class="toc-group">
               <div class="toc-group-title">
-                <span id="toc-group-state">📊 Trạng thái & Quản lý</span>
+                <span id="toc-group-ready2use">📦 SRemote Ready2use</span>
               </div>
               <ul class="toc-list">
-                <li><a href="?path=content/api/vi/status.md" class="toc-link" data-path="content/api/vi/status.md"><code>status()</code></a></li>
-                <li><a href="?path=content/api/vi/list.md" class="toc-link" data-path="content/api/vi/list.md"><code>list()</code></a></li>
-                <li><a href="?path=content/api/vi/query.md" class="toc-link" data-path="content/api/vi/query.md"><code>query()</code></a></li>
-                <li><a href="?path=content/api/vi/getIframe.md" class="toc-link" data-path="content/api/vi/getIframe.md"><code>getIframe()</code></a></li>
-                <li><a href="?path=content/api/vi/note.md" class="toc-link" data-path="content/api/vi/note.md"><code>note()</code></a></li>
+                <li>
+                  <a href="content/api/vi/ready2use.md" class="toc-link" data-path="content/api/vi/ready2use.md" data-en-path="content/api/en/ready2use.md">
+                    <span class="toc-label" data-vi="Tài liệu @sremote/ready2use" data-en="@sremote/ready2use API">Tài liệu <code>@sremote/ready2use</code></span>
+                    <span class="toc-badge">Preset</span>
+                  </a>
+                </li>
               </ul>
             </div>
 
-            <!-- Nhóm: Sự kiện, Adapter & Metadata -->
+            <!-- Nhóm: Custom Adapters (adapters.*) -->
             <div class="toc-group">
               <div class="toc-group-title">
-                <span id="toc-group-events">📡 Sự kiện, Giao tiếp & Adapter</span>
+                <span id="toc-group-adapters">🔌 Custom Adapters (<code>adapters.*</code>)</span>
               </div>
               <ul class="toc-list">
-                <li><a href="?path=content/api/vi/on.md" class="toc-link" data-path="content/api/vi/on.md"><code>on()</code></a></li>
-                <li><a href="?path=content/api/vi/off.md" class="toc-link" data-path="content/api/vi/off.md"><code>off()</code></a></li>
-                <li><a href="?path=content/api/vi/call.md" class="toc-link" data-path="content/api/vi/call.md"><code>call()</code></a></li>
-                <li><a href="?path=content/api/vi/postWindowMessage.md" class="toc-link" data-path="content/api/vi/postWindowMessage.md"><code>postWindowMessage()</code></a></li>
-                <li><a href="?path=content/api/vi/onWindowMessage.md" class="toc-link" data-path="content/api/vi/onWindowMessage.md"><code>onWindowMessage()</code></a></li>
-                <li><a href="?path=content/api/vi/useAdapter.md" class="toc-link" data-path="content/api/vi/useAdapter.md"><code>useAdapter()</code></a></li>
-                <li><a href="?path=content/api/vi/getCustomAdapter.md" class="toc-link" data-path="content/api/vi/getCustomAdapter.md"><code>getCustomAdapter()</code></a></li>
-                <li><a href="?path=content/api/vi/removeAdapter.md" class="toc-link" data-path="content/api/vi/removeAdapter.md"><code>removeAdapter()</code></a></li>
-                <li><a href="?path=content/api/vi/bindMediaSession.md" class="toc-link" data-path="content/api/vi/bindMediaSession.md"><code>bindMediaSession()</code></a></li>
-                <li><a href="?path=content/api/vi/bindMetadata.md" class="toc-link" data-path="content/api/vi/bindMetadata.md"><code>bindMetadata()</code></a></li>
+                <li><a href="content/api/vi/adapters/register.md" class="toc-link" data-path="content/api/vi/adapters/register.md"><code>adapters.register()</code></a></li>
+                <li><a href="content/api/vi/adapters/get.md" class="toc-link" data-path="content/api/vi/adapters/get.md"><code>adapters.get()</code></a></li>
+                <li><a href="content/api/vi/adapters/unregister.md" class="toc-link" data-path="content/api/vi/adapters/unregister.md"><code>adapters.unregister()</code></a></li>
+              </ul>
+            </div>
+
+
+            <!-- Nhóm: Giao tiếp & RPC (rpc.*) -->
+            <div class="toc-group">
+              <div class="toc-group-title">
+                <span id="toc-group-rpc">⚡ Giao tiếp & RPC (<code>rpc.*</code>)</span>
+              </div>
+              <ul class="toc-list">
+                <li><a href="content/api/vi/rpc/call.md" class="toc-link" data-path="content/api/vi/rpc/call.md"><code>rpc.call()</code></a></li>
+                <li><a href="content/api/vi/rpc/postMessage.md" class="toc-link" data-path="content/api/vi/rpc/postMessage.md"><code>rpc.postMessage()</code></a></li>
+                <li><a href="content/api/vi/rpc/onMessage.md" class="toc-link" data-path="content/api/vi/rpc/onMessage.md"><code>rpc.onMessage()</code></a></li>
+              </ul>
+            </div>
+
+            <!-- Nhóm: CSS Iframe (css.*) -->
+            <div class="toc-group">
+              <div class="toc-group-title">
+                <span id="toc-group-config">🎨 CSS Iframe (<code>css.*</code>)</span>
+              </div>
+              <ul class="toc-list">
+                <li><a href="content/api/vi/css/set.md" class="toc-link" data-path="content/api/vi/css/set.md"><code>css.set()</code></a></li>
+                <li><a href="content/api/vi/css/get.md" class="toc-link" data-path="content/api/vi/css/get.md"><code>css.get()</code></a></li>
+                <li><a href="content/api/vi/css/remove.md" class="toc-link" data-path="content/api/vi/css/remove.md"><code>css.remove()</code></a></li>
               </ul>
             </div>
 
             <!-- Nhóm: Chẩn đoán & Debug -->
             <div class="toc-group">
               <div class="toc-group-title">
-                <span id="toc-group-debug">🛠️ Chẩn đoán & Debug</span>
+                <span id="toc-group-debug">🛠️ Chẩn đoán & Debug (<code>debug.*</code>)</span>
               </div>
               <ul class="toc-list">
                 <li>
-                  <a href="?path=content/api/vi/debug.md" class="toc-link" data-path="content/api/vi/debug.md">
+                  <a href="content/api/vi/debug.md" class="toc-link" data-path="content/api/vi/debug.md">
                     <span class="toc-label" data-vi="Bộ công cụ debug" data-en="Debug Test Suite">Bộ công cụ <code>debug</code></span>
                     <span class="toc-badge">Suite</span>
                   </a>

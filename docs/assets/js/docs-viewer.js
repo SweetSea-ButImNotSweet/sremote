@@ -5,20 +5,22 @@
 // i18n Dictionaries
 const i18nDocs = {
   vi: {
-    pageTitle: 'SRemote - Tài liệu Kỹ thuật & Tra cứu API',
+    pageTitle: 'SRemote - Hướng dẫn sử dụng & Tra cứu API',
     homeBtn: 'Trang chủ',
-    cookbookBtn: '⚡ Mẫu Embed & Adapter (Cookbook)',
+    cookbookBtn: '⚡ Hướng dẫn triển khai (Cookbook)',
     demoBtn: '▶ Mở Demo Live',
     searchPlaceholder: '🔍 Tìm nhanh API hoặc tài liệu...',
     langTitle: 'Ngôn ngữ:',
     copyLink: 'Sao chép Link',
     copied: '✓ Đã chép!',
-    groupGeneral: '📖 Giới thiệu chung',
-    groupConnect: '🔌 Kết nối & Chế độ phát',
-    groupPlayback: '🎮 Điều khiển & Âm thanh',
-    groupConfig: '🎨 CSS Iframe',
-    groupState: '📊 Trạng thái & Danh sách',
-    groupEvents: '📡 Sự kiện & Tích hợp',
+    groupGeneral: '🚀 Bắt đầu (Getting Started)',
+    groupPlayback: '🎮 Điều khiển phát nhanh',
+    groupInstances: '🗂️ Quản lý Instance (instances.*)',
+    groupReady2use: '📦 SRemote Ready2use',
+    groupAdapters: '🔌 Custom Adapters (adapters.*)',
+    groupRpc: '⚡ Giao tiếp & RPC (rpc.*)',
+    groupConfig: '🎨 CSS Iframe (css.*)',
+    groupEvents: '📡 Sự kiện & Vòng đời',
     groupDebug: '🛠️ Chẩn đoán & Debug',
     loading: 'Đang nạp và định dạng nội dung...',
     sourcePrefix: 'Nguồn file:',
@@ -27,23 +29,25 @@ const i18nDocs = {
     errorTitle: '⚠️ Không thể tải tài liệu',
     errorDesc: 'Chi tiết lỗi:',
     errorFallback: 'Vui lòng kiểm tra lại đường dẫn file hoặc quay lại',
-    fallbackLinkText: 'Hướng dẫn tích hợp',
+    fallbackLinkText: '01. Tạo thẻ Iframe đúng chuẩn',
   },
   en: {
-    pageTitle: 'SRemote - Technical Documentation & API Reference',
+    pageTitle: 'SRemote - Documentation & API Reference',
     homeBtn: 'Home',
-    cookbookBtn: '⚡ Embed & Adapter Cookbook',
+    cookbookBtn: '⚡ Integration Recipes',
     demoBtn: '▶ Open Live Demo',
     searchPlaceholder: '🔍 Quick search API or docs...',
     langTitle: 'Language:',
     copyLink: 'Copy Link',
     copied: '✓ Copied!',
-    groupGeneral: '📖 General & Overview',
-    groupConnect: '🔌 Connection & Mode',
-    groupPlayback: '🎮 Playback & Audio',
-    groupConfig: '🎨 Iframe CSS',
-    groupState: '📊 Status & Inspection',
-    groupEvents: '📡 Events & Integration',
+    groupGeneral: '🚀 Getting Started',
+    groupPlayback: '🎮 Quick Playback Controls',
+    groupInstances: '🗂️ Instance Management (instances.*)',
+    groupReady2use: '📦 SRemote Ready2use',
+    groupAdapters: '🔌 Custom Adapters (adapters.*)',
+    groupRpc: '⚡ RPC & Messaging (rpc.*)',
+    groupConfig: '🎨 Iframe CSS (css.*)',
+    groupEvents: '📡 Lifecycle & Events',
     groupDebug: '🛠️ Diagnostics & Debug',
     loading: 'Loading and rendering document...',
     sourcePrefix: 'File source:',
@@ -52,7 +56,7 @@ const i18nDocs = {
     errorTitle: '⚠️ Unable to load documentation',
     errorDesc: 'Error details:',
     errorFallback: 'Please verify the file path or return to',
-    fallbackLinkText: 'Integration Guide',
+    fallbackLinkText: '01. Iframe Setup Guide',
   },
 };
 
@@ -69,6 +73,25 @@ function slugify(text) {
     .replace(/\s+/g, '-') // Replace spaces with hyphen
     .replace(/-+/g, '-') // Collapse multiple hyphens
     .replace(/^-+|-+$/g, ''); // Trim leading/trailing hyphens
+}
+
+// Initialize Mermaid if available
+if (typeof mermaid !== 'undefined') {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'dark',
+    securityLevel: 'loose',
+    themeVariables: {
+      darkMode: true,
+      background: '#0f172a',
+      primaryColor: '#1e293b',
+      primaryTextColor: '#f8fafc',
+      primaryBorderColor: '#38bdf8',
+      lineColor: '#38bdf8',
+      secondaryColor: '#334155',
+      tertiaryColor: '#1e293b',
+    },
+  });
 }
 
 // Configure Marked.js with Custom Heading Renderer and Highlight.js
@@ -100,19 +123,33 @@ if (typeof marked !== 'undefined') {
     return `<h${depth}${id ? ` id="${id}"` : ''}>${renderedContent}</h${depth}>\n`;
   };
 
-  marked.use({
-    renderer,
-    gfm: true,
-    breaks: true,
-    mangle: false,
-    highlight: function (code, lang) {
-      if (typeof hljs !== 'undefined') {
-        const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-        return hljs.highlight(code, { language }).value;
-      }
-      return code;
-    },
-  });
+  // Custom code renderer to wrap mermaid diagrams in <pre class="mermaid">
+  renderer.code = function (tokenOrCode, info) {
+    let code = '';
+    let lang = '';
+
+    if (typeof tokenOrCode === 'object' && tokenOrCode !== null) {
+      code = tokenOrCode.text || '';
+      lang = tokenOrCode.lang || '';
+    } else {
+      code = tokenOrCode || '';
+      lang = info || '';
+    }
+
+    if (lang === 'mermaid') {
+      return `<pre class="mermaid">${code}</pre>`;
+    }
+
+    if (typeof hljs !== 'undefined') {
+      const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+      const highlighted = hljs.highlight(code, { language }).value;
+      return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`;
+    }
+
+    return `<pre><code>${code}</code></pre>`;
+  };
+
+  marked.use({ renderer, gfm: true, breaks: true, mangle: false });
 }
 
 // Helper: Parse GitHub Alerts (> [!NOTE], > [!TIP], etc.)
@@ -125,19 +162,16 @@ function renderGfmAlerts(html) {
     CAUTION: { title: 'Caution', icon: '🛑', class: 'gfm-alert-caution' },
   };
 
-  return html.replace(
-    /<blockquote>\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(?:<br>|\n)?([\s\S]*?)<\/p>\s*<\/blockquote>/gi,
-    (match, type, content) => {
-      const upperType = type.toUpperCase();
-      const alert = alertTypes[upperType] || alertTypes.NOTE;
-      return `
+  return html.replace(/<blockquote>\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(?:<br>|\n)?([\s\S]*?)<\/p>\s*<\/blockquote>/gi, (match, type, content) => {
+    const upperType = type.toUpperCase();
+    const alert = alertTypes[upperType] || alertTypes.NOTE;
+    return `
       <div class="gfm-alert ${alert.class}">
         <div class="gfm-alert-title">${alert.icon} ${alert.title}</div>
         <p>${content}</p>
       </div>
     `;
-    },
-  );
+  });
 }
 
 function scrollToHashElement(hash) {
@@ -154,41 +188,75 @@ function scrollToHashElement(hash) {
 }
 
 function getDefaultDocPath(lang) {
-  return lang === 'en' ? 'content/setup/en.md' : 'content/setup/vi.md';
+  return lang === 'en' ? 'content/guides/en/00-developer-overview.md' : 'content/guides/vi/00-developer-overview.md';
+}
+
+// Cleanly normalize shorthand paths, relative paths, and legacy query paths into an exact content/... path
+function normalizeDocPath(inputPath, currentDir = '', lang = currentLang) {
+  if (!inputPath) return getDefaultDocPath(lang);
+
+  let p = inputPath
+    .trim()
+    .replace(/^docs\//, '')
+    .replace(/^\/+/, '');
+
+  // Extract from ?path=... if present
+  if (p.startsWith('?path=')) {
+    p = p.substring(6).split('&')[0];
+  }
+
+  // Shorthands: /guides/... -> content/guides/{lang}/...
+  if (p.startsWith('guides/')) {
+    p = `content/guides/${lang}/` + p.substring(7);
+  } else if (p.startsWith('api/')) {
+    // Shorthands: /api/... -> content/api/{lang}/...
+    p = `content/api/${lang}/` + p.substring(4);
+  } else if (p.startsWith('setup/')) {
+    p = `content/guides/${lang}/01-iframe-setup.md`;
+  } else if (!p.startsWith('content/') && !p.startsWith('..') && currentDir) {
+    p = currentDir + p;
+  }
+
+  // Normalize relative ../ and ./
+  const parts = p.split('/');
+  const stack = [];
+  for (const seg of parts) {
+    if (seg === '.' || !seg) continue;
+    if (seg === '..') {
+      if (stack.length > 0) stack.pop();
+    } else {
+      stack.push(seg);
+    }
+  }
+
+  let resolved = stack.join('/');
+  return resolved;
 }
 
 function getDocPathForLang(docPath, targetLang) {
   if (!docPath) return getDefaultDocPath(targetLang);
   if (targetLang === 'en') {
     if (docPath === 'content/guides/vi.md' || docPath === 'docs/content/guides/vi.md' || docPath === 'content/guides/README_vi.md') return '../README.md';
-    if (docPath === 'content/setup/vi.md' || docPath === 'docs/content/setup/vi.md') return 'content/setup/en.md';
-    if (docPath === 'content/guides/vi/errors.md') return 'content/guides/en/errors.md';
+    if (docPath === 'content/setup/vi.md' || docPath === 'docs/content/setup/vi.md') return 'content/guides/en/01-iframe-setup.md';
     return docPath
       .replace(/^docs\//, '')
       .replace('content/api/vi/', 'content/api/en/')
-      .replace('content/setup/vi.md', 'content/setup/en.md');
+      .replace('content/guides/vi/', 'content/guides/en/')
+      .replace('content/setup/vi.md', 'content/guides/en/01-iframe-setup.md');
   } else {
     if (docPath === '../README.md' || docPath === 'README.md') return 'content/guides/README_vi.md';
-    if (docPath === 'content/setup/en.md' || docPath === 'docs/content/setup/en.md') return 'content/setup/vi.md';
-    if (docPath === 'content/guides/en/errors.md') return 'content/guides/vi/errors.md';
+    if (docPath === 'content/setup/en.md' || docPath === 'docs/content/setup/en.md') return 'content/guides/vi/01-iframe-setup.md';
     return docPath
       .replace(/^docs\//, '')
       .replace('content/api/en/', 'content/api/vi/')
-      .replace('content/setup/en.md', 'content/setup/vi.md');
+      .replace('content/guides/en/', 'content/guides/vi/')
+      .replace('content/setup/en.md', 'content/guides/vi/01-iframe-setup.md');
   }
 }
 
 // Router function: Fetch and render Markdown based on requested path
 async function renderDoc(docPath, pushToHistory = true, targetHash = null) {
-  if (!docPath) docPath = getDefaultDocPath(currentLang);
-
-  // Normalize legacy doc paths
-  if (docPath.startsWith('API/')) docPath = 'content/api/' + docPath.substring(4);
-  if (docPath.startsWith('SETUP/')) docPath = 'content/setup/' + docPath.substring(6);
-  if (docPath.startsWith('README/')) docPath = 'content/guides/' + docPath.substring(7);
-
-  // Clean leading slashes
-  docPath = docPath.replace(/^\/+/, '');
+  docPath = normalizeDocPath(docPath);
 
   const container = document.getElementById('markdown-container');
   const headingTitle = document.getElementById('doc-heading-title');
@@ -236,11 +304,20 @@ async function renderDoc(docPath, pushToHistory = true, targetHash = null) {
       container.innerHTML = `<pre>${markdownText}</pre>`;
     }
 
-    // Apply Highlight.js to all code blocks in container
+    // Apply Highlight.js to all code blocks in container (excluding mermaid)
     if (typeof hljs !== 'undefined') {
-      container.querySelectorAll('pre code').forEach(block => {
+      container.querySelectorAll('pre code:not(.language-mermaid)').forEach(block => {
         hljs.highlightElement(block);
       });
+    }
+
+    // Render Mermaid diagrams
+    if (typeof mermaid !== 'undefined') {
+      try {
+        await mermaid.run({ nodes: container.querySelectorAll('.mermaid') });
+      } catch (mErr) {
+        console.warn('[sremote:docs] Mermaid render error:', mErr);
+      }
     }
 
     // Intercept internal markdown links in rendered content
@@ -328,29 +405,83 @@ function interceptContentLinks(container, currentDocPath) {
       return;
     }
 
-    // Cross-doc link with hash (e.g. href="../../guides/errors.md#auth_failed")
-    if (href.endsWith('.md') || href.includes('.md#') || href.includes('.md?')) {
+    // Handle ?path=... query parameter links or .md file links
+    const isDocQuery = href.startsWith('?path=') || href.includes('?path=');
+    const isMdFile = href.endsWith('.md') || href.includes('.md#') || href.includes('.md?');
+
+    if (isDocQuery || isMdFile) {
       a.addEventListener('click', e => {
         e.preventDefault();
-        const currentDir = currentDocPath.includes('/') ? currentDocPath.substring(0, currentDocPath.lastIndexOf('/') + 1) : '';
-        const hashPart = href.includes('#') ? '#' + href.split('#')[1] : null;
-        let targetPath = href.split('#')[0].split('?')[0];
+        let targetPath = '';
+        let hashPart = null;
 
-        if (targetPath.startsWith('docs/')) {
-          targetPath = targetPath.replace('docs/', '');
-        } else if (!targetPath.startsWith('/') && !targetPath.startsWith('..') && !targetPath.startsWith('content/')) {
-          targetPath = currentDir + targetPath;
+        if (isDocQuery) {
+          try {
+            const parsedUrl = new URL(href, window.location.href);
+            targetPath = parsedUrl.searchParams.get('path') || '';
+            hashPart = parsedUrl.hash || null;
+          } catch {
+            targetPath = href.replace(/^\?path=/, '').split('#')[0];
+            hashPart = href.includes('#') ? '#' + href.split('#')[1] : null;
+          }
+        } else {
+          const currentDir = currentDocPath.includes('/') ? currentDocPath.substring(0, currentDocPath.lastIndexOf('/') + 1) : '';
+          hashPart = href.includes('#') ? '#' + href.split('#')[1] : null;
+          let rawPath = href.split('#')[0].split('?')[0];
+
+          if (rawPath.startsWith('docs/')) {
+            rawPath = rawPath.replace('docs/', '');
+          }
+
+          if (rawPath.startsWith('content/')) {
+            targetPath = rawPath;
+          } else {
+            // Resolve relative path against currentDir
+            const combined = (currentDir + rawPath).split('/');
+            const resolvedParts = [];
+            for (const part of combined) {
+              if (!part || part === '.') continue;
+              if (part === '..') {
+                resolvedParts.pop();
+              } else {
+                resolvedParts.push(part);
+              }
+            }
+            targetPath = resolvedParts.join('/');
+          }
         }
-        targetPath = targetPath.replace(/\/\.\//g, '/').replace(/^\.\//, '');
 
-        renderDoc(targetPath, true, hashPart);
+        if (targetPath) {
+          renderDoc(targetPath, true, hashPart);
+        }
       });
+      return;
+    }
+
+    // Relative HTML page link (e.g. href="../../recipes.html" or href="../recipes.html")
+    if (href.endsWith('.html') || href.includes('.html#') || href.includes('.html?')) {
+      const currentDir = currentDocPath.includes('/') ? currentDocPath.substring(0, currentDocPath.lastIndexOf('/') + 1) : '';
+      let rawPath = href;
+      if (rawPath.startsWith('docs/')) rawPath = rawPath.replace('docs/', '');
+      
+      const combined = (currentDir + rawPath).split('/');
+      const resolvedParts = [];
+      for (const part of combined) {
+        if (!part || part === '.') continue;
+        if (part === '..') {
+          resolvedParts.pop();
+        } else {
+          resolvedParts.push(part);
+        }
+      }
+      const finalHref = resolvedParts.join('/');
+      a.setAttribute('href', finalHref);
     }
   });
 }
 
 // Language switcher
-function setLanguage(lang) {
+function setLanguage(lang, renderOnSwitch = true) {
   if (!i18nDocs[lang]) return;
   currentLang = lang;
   localStorage.setItem('sremote_lang', lang);
@@ -378,12 +509,14 @@ function setLanguage(lang) {
   const copyBtnText = document.getElementById('copy-btn-text');
   if (copyBtnText) copyBtnText.textContent = dict.copyLink;
   document.getElementById('toc-group-general').textContent = dict.groupGeneral;
-  document.getElementById('toc-group-connect').textContent = dict.groupConnect;
-  document.getElementById('toc-group-playback').textContent = dict.groupPlayback;
-  document.getElementById('toc-group-config').textContent = dict.groupConfig;
-  document.getElementById('toc-group-state').textContent = dict.groupState;
-  document.getElementById('toc-group-events').textContent = dict.groupEvents;
-  document.getElementById('toc-group-debug').textContent = dict.groupDebug;
+  if (document.getElementById('toc-group-playback')) document.getElementById('toc-group-playback').textContent = dict.groupPlayback;
+  if (document.getElementById('toc-group-instances')) document.getElementById('toc-group-instances').innerHTML = dict.groupInstances;
+  if (document.getElementById('toc-group-ready2use')) document.getElementById('toc-group-ready2use').innerHTML = dict.groupReady2use;
+  if (document.getElementById('toc-group-adapters')) document.getElementById('toc-group-adapters').innerHTML = dict.groupAdapters;
+  if (document.getElementById('toc-group-rpc')) document.getElementById('toc-group-rpc').innerHTML = dict.groupRpc;
+  if (document.getElementById('toc-group-config')) document.getElementById('toc-group-config').innerHTML = dict.groupConfig;
+  if (document.getElementById('toc-group-events')) document.getElementById('toc-group-events').textContent = dict.groupEvents;
+  if (document.getElementById('toc-group-debug')) document.getElementById('toc-group-debug').innerHTML = dict.groupDebug;
   document.getElementById('footer-text').textContent = dict.footerText;
 
   // Update TOC link labels
@@ -392,11 +525,13 @@ function setLanguage(lang) {
     if (txt) el.textContent = txt;
   });
 
-  // Switch current viewed document to the appropriate language
-  const params = new URLSearchParams(window.location.search);
-  let currentPath = params.get('path');
-  const targetDocPath = getDocPathForLang(currentPath, lang);
-  renderDoc(targetDocPath, true);
+  if (renderOnSwitch) {
+    // Switch current viewed document to the appropriate language
+    const params = new URLSearchParams(window.location.search);
+    let currentPath = params.get('path');
+    const targetDocPath = getDocPathForLang(currentPath, lang);
+    renderDoc(targetDocPath, true);
+  }
 }
 
 // Handle TOC search filtering
@@ -439,6 +574,8 @@ if (tocContainer) {
           docPath = link.getAttribute('data-en-path');
         } else if (docPath && docPath.startsWith('content/api/vi/')) {
           docPath = docPath.replace('content/api/vi/', 'content/api/en/');
+        } else if (docPath && docPath.startsWith('content/guides/vi/')) {
+          docPath = docPath.replace('content/guides/vi/', 'content/guides/en/');
         }
       }
       if (docPath) {
@@ -481,41 +618,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);
   const requestedPath = params.get('path');
 
-  currentLang = savedLang;
-  document.documentElement.lang = savedLang;
-
-  const dict = i18nDocs[savedLang];
-  const btnEn = document.getElementById('btn-lang-en');
-  const btnVi = document.getElementById('btn-lang-vi');
-  if (btnEn) btnEn.classList.toggle('active', savedLang === 'en');
-  if (btnVi) btnVi.classList.toggle('active', savedLang === 'vi');
-
-  // Update UI Labels
-  const homeBtn = document.getElementById('label-home-btn');
-  if (homeBtn) homeBtn.textContent = dict.homeBtn;
-  const cookbookBtn = document.getElementById('label-cookbook-btn');
-  if (cookbookBtn) cookbookBtn.textContent = dict.cookbookBtn;
-  const demoBtn = document.getElementById('label-demo-btn');
-  if (demoBtn) demoBtn.textContent = dict.demoBtn;
-  const searchInputEl = document.getElementById('toc-search-input');
-  if (searchInputEl) searchInputEl.placeholder = dict.searchPlaceholder;
-  const langTitleEl = document.getElementById('label-lang-title');
-  if (langTitleEl) langTitleEl.textContent = dict.langTitle;
-  const copyBtnText = document.getElementById('copy-btn-text');
-  if (copyBtnText) copyBtnText.textContent = dict.copyLink;
-  document.getElementById('toc-group-general').textContent = dict.groupGeneral;
-  document.getElementById('toc-group-connect').textContent = dict.groupConnect;
-  document.getElementById('toc-group-playback').textContent = dict.groupPlayback;
-  document.getElementById('toc-group-config').textContent = dict.groupConfig;
-  document.getElementById('toc-group-state').textContent = dict.groupState;
-  document.getElementById('toc-group-events').textContent = dict.groupEvents;
-  document.getElementById('toc-group-debug').textContent = dict.groupDebug;
-  document.getElementById('footer-text').textContent = dict.footerText;
-
-  document.querySelectorAll('.toc-label').forEach(el => {
-    const txt = el.getAttribute(`data-${savedLang}`);
-    if (txt) el.textContent = txt;
-  });
+  // Initialize UI language state and TOC headers without triggering premature render
+  setLanguage(savedLang, false);
 
   const initialPath = requestedPath ? requestedPath : getDefaultDocPath(savedLang);
   renderDoc(initialPath, false);

@@ -164,3 +164,62 @@
     background-color: transparent;
   }
 }
+
+/* ==========================================================================
+   Matrix Tables (Compatibility & Service Matrix)
+   ========================================================================== */
+.matrix-table-wrapper {
+  overflow-x: auto;
+  margin: 16px 0 24px;
+}
+
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.matrix-table thead tr {
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+
+.matrix-table th, 
+.matrix-table td {
+  padding: 8px 10px;
+}
+
+.matrix-table th.left,
+.matrix-table td.left {
+  text-align: left;
+}
+
+.matrix-table tr.platform-start {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.matrix-table tr.platform-end {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.matrix-table td.platform-title {
+  vertical-align: top;
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.02);
+  text-align: left;
+}
+
+/* Status Icons & Styling via CSS Pseudo-elements */
+.matrix-table td.ok,
+.matrix-table td.warn,
+.matrix-table td.no,
+.matrix-table td.na {
+  text-align: center;
+}
+
+.matrix-table td.ok::before   { content: "✅"; }
+.matrix-table td.warn::before { content: "⚠️"; }
+.matrix-table td.no::before   { content: "❌"; }
+.matrix-table td.na::before   { content: "➖"; }
+

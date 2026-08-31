@@ -43,24 +43,27 @@
     </div>
   </footer>
 
-  <!-- Script: UI Logic & Live Markdown Loader -->
+  <!-- Script: UI Logic & Live Markdown Loader with Prefetch Cache -->
   <script>
     const i18nUI = {
-      vi: {
-        pageTitle: "SRemote - Universal Embedded Media Controller",
-        secDocTitle: "📖 Tài liệu Kỹ thuật",
-        footerText: "SRemote Frame Controller © 2026 sweetsea • Giấy phép LGPL-3.0 • Hỗ trợ mọi trình duyệt & Tampermonkey.",
-        mdSource: "README/vi.md"
-      },
       en: {
         pageTitle: "SRemote - Universal Embedded Media Controller",
         secDocTitle: "📖 Technical Documentation",
         footerText: "SRemote Frame Controller © 2026 sweetsea • Licensed under LGPL-3.0 • Supports all browsers & Tampermonkey.",
         mdSource: "README.md"
+      },
+      vi: {
+        pageTitle: "SRemote - Universal Embedded Media Controller",
+        secDocTitle: "📖 Tài liệu Kỹ thuật",
+        footerText: "SRemote Frame Controller © 2026 sweetsea • Giấy phép LGPL-3.0 • Hỗ trợ mọi trình duyệt & Tampermonkey.",
+        mdSource: "README/vi.md"
       }
+      // Thêm ngôn ngữ tương lai ở đây, prefetch sẽ tự động quét
     };
 
-    let currentLang = 'vi';
+    // Cache lưu trữ nội dung thô của các file markdown
+    const mdCache = new Map();
+    let currentLang = 'en'; // Mặc định hiển thị EN ban đầu
 
     // Configure Marked.js options
     if (typeof marked !== 'undefined') {
@@ -78,17 +81,46 @@
       });
     }
 
+    // Tải nội dung markdown và lưu vào cache
+    async function fetchMarkdownText(sourceFile) {
+      if (mdCache.has(sourceFile)) {
+        return mdCache.get(sourceFile);
+      }
+
+      const res = await fetch(sourceFile + '?t=' + Date.now());
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+
+      let markdownText = await res.text();
+      // Loại bỏ liên kết toggle ngôn ngữ ở đầu file markdown nếu có
+      markdownText = markdownText.replace(/^\[\s*(English|Tiếng Việt)[\s\S]*?\n\n/i, '');
+
+      mdCache.set(sourceFile, markdownText);
+      return markdownText;
+    }
+
+    // Prefetch toàn bộ file markdown có trong i18nUI chạy ngầm
+    function prefetchAllMarkdownDocs() {
+      Object.values(i18nUI).forEach(config => {
+        if (config.mdSource && !mdCache.has(config.mdSource)) {
+          fetchMarkdownText(config.mdSource).catch(err => {
+            console.warn(`[Prefetch] Không thể nạp trước file ${config.mdSource}:`, err);
+          });
+        }
+      });
+    }
+
+    // Render markdown ra giao diện
     async function loadLiveMarkdown(sourceFile) {
       const container = document.getElementById('markdown-container');
+      if (!container) return;
+
+      // Chỉ hiện spinner nếu file này chưa có trong bộ nhớ đệm
+      if (!mdCache.has(sourceFile)) {
+        container.innerHTML = '<div class="loading-spinner">Đang tải và xử lý nội dung Markdown...</div>';
+      }
 
       try {
-        const res = await fetch(sourceFile + '?t=' + Date.now());
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-
-        let markdownText = await res.text();
-
-        // Strip the top language toggle link from the raw markdown if present
-        markdownText = markdownText.replace(/^\[\s*(English|Tiếng Việt)[\s\S]*?\n\n/i, '');
+        const markdownText = await fetchMarkdownText(sourceFile);
 
         if (typeof marked !== 'undefined') {
           container.innerHTML = marked.parse(markdownText);
@@ -117,19 +149,25 @@
       localStorage.setItem('sremote_lang', lang);
       document.documentElement.lang = lang;
 
-      // Update UI texts
+      // Cập nhật text tiêu đề & footer
       document.title = i18nUI[lang].pageTitle;
       const secTitle = document.getElementById('sec-doc-title');
       if (secTitle) secTitle.textContent = i18nUI[lang].secDocTitle;
       const footer = document.getElementById('footer-text');
       if (footer) footer.textContent = i18nUI[lang].footerText;
 
-      // Fetch and live-render corresponding markdown file
+      // Render markdown tương ứng
       loadLiveMarkdown(i18nUI[lang].mdSource);
     }
 
+    // 1. Kích hoạt tải ngay README.md (EN) ngay khi script được phân tích cú pháp
+    fetchMarkdownText(i18nUI.en.mdSource);
+    // 2. Đồng thời kích hoạt prefetch tất cả các file ngôn ngữ khác chạy nền
+    prefetchAllMarkdownDocs();
+
     document.addEventListener('DOMContentLoaded', () => {
-      const savedLang = localStorage.getItem('sremote_lang') || 'vi';
+      // Khi DOM load xong, kiểm tra ngôn ngữ đã lưu (hoặc mặc định 'en') để render đúng ngôn ngữ
+      const savedLang = localStorage.getItem('sremote_lang') || 'en';
       setLanguage(savedLang);
     });
   </script>
