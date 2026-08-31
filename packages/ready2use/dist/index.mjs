@@ -24,11 +24,12 @@ function n(e, t = "100%", n = "100%", r = null) {
 var r = 0, i = null;
 async function a(e = {}) {
 	if (e.sremote && typeof e.sremote == "object" && e.sremote.adapters) return e.sremote;
-	if (typeof window < "u" && window.sremote && window.sremote.adapters) return window.sremote;
-	if (typeof globalThis < "u" && globalThis.sremote && globalThis.sremote.adapters) return globalThis.sremote;
+	if (typeof globalThis < "u" && globalThis[Symbol.for("__sremote_client__")]) return globalThis[Symbol.for("__sremote_client__")];
+	if (typeof window < "u" && window.sremote && !window.sremote.isDummy && window.sremote.adapters) return window.sremote;
+	if (typeof globalThis < "u" && globalThis.sremote && !globalThis.sremote.isDummy && globalThis.sremote.adapters) return globalThis.sremote;
 	if (i) return i;
 	try {
-		let e = await import("./dist-BgIuGIRh.js");
+		let e = await import("@sremote/wrapper");
 		return i = e?.sremote || e?.default?.sremote || e?.default || null, i;
 	} catch {
 		return null;

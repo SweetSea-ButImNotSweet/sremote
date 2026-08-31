@@ -5,13 +5,87 @@ export class DomDriver extends BaseDriver {
     super(options);
     this.adaptersMap = new Map();
     this.eventListeners = new Map();
+    this.multiMode = false;
+    this.exclusiveMode = 'auto'; // 'auto' | true | false
+    this.lastActiveInstanceId = null;
+  }
+
+  setMultiMode(mode) {
+    this.multiMode = Boolean(mode);
+  }
+
+  isMultiMode() {
+    return this.multiMode;
+  }
+
+  setExclusive(mode) {
+    this.exclusiveMode = mode;
+  }
+
+  list() {
+    const list = [];
+    for (const [id, ad] of this.adaptersMap.entries()) {
+      const state = typeof ad.getState === 'function' ? ad.getState() : {
+        paused: typeof ad.paused === 'function' ? ad.paused() : Boolean(ad.paused),
+        currentTime: typeof ad.getCurrentTime === 'function' ? ad.getCurrentTime() : 0,
+        duration: typeof ad.getDuration === 'function' ? ad.getDuration() : 0,
+        volume: typeof ad.getVolume === 'function' ? ad.getVolume() : 1,
+        muted: typeof ad.getMuted === 'function' ? ad.getMuted() : false,
+      };
+      list.push({
+        instanceId: id,
+        mediaType: 'adapter',
+        capabilities: this.getCapabilities(id),
+        status: 'ready',
+        state,
+      });
+    }
+    return list;
   }
 
   useAdapter(adapter, customInstanceId = null) {
     if (!adapter || typeof adapter !== 'object') return null;
     const instanceId = customInstanceId || `adapter-${Math.random().toString(36).slice(2, 9)}`;
+    
+    // Wire adapter emit to DomDriver emit so sremote.on() receives it
+    const handleEmit = (event, payload = {}) => {
+      const ev = String(event || '').toLowerCase();
+      const fullPayload = { source: 'adapter', instanceId, mediaType: 'adapter', ...(typeof payload === 'object' && payload !== null ? payload : { value: payload }) };
+      
+      if (ev === 'play' || ev === 'playing') {
+        this.lastActiveInstanceId = instanceId;
+        if (this.exclusiveMode === 'auto' || this.exclusiveMode === true) {
+          this.pauseOthersExcept(instanceId);
+        }
+      }
+      this.emit(ev, fullPayload);
+    };
+
+    if (!adapter.emit) {
+      adapter.emit = handleEmit;
+    } else {
+      const origEmit = adapter.emit;
+      adapter.emit = (event, payload = {}) => {
+        try {
+          origEmit(event, payload);
+        } catch {}
+        handleEmit(event, payload);
+      };
+    }
+
     this.adaptersMap.set(instanceId, adapter);
+    this.lastActiveInstanceId = instanceId;
     return instanceId;
+  }
+
+  pauseOthersExcept(activeInstanceId) {
+    for (const [id, ad] of this.adaptersMap.entries()) {
+      if (id !== activeInstanceId) {
+        try {
+          ad.pause?.();
+        } catch {}
+      }
+    }
   }
 
   removeAdapter(instanceId) {
@@ -26,15 +100,17 @@ export class DomDriver extends BaseDriver {
 
   resolveTarget(target) {
     if (typeof target === 'string' && this.adaptersMap.has(target)) {
-      return { type: 'adapter', instance: this.adaptersMap.get(target) };
+      return { type: 'adapter', instance: this.adaptersMap.get(target), instanceId: target };
     }
     if (!target && this.adaptersMap.size > 0) {
-      return { type: 'adapter', instance: this.adaptersMap.values().next().value };
+      const firstEntry = this.adaptersMap.entries().next().value;
+      return { type: 'adapter', instance: firstEntry[1], instanceId: firstEntry[0] };
     }
     const el = this.resolveMediaElement(target);
     if (el) return { type: 'element', instance: el };
     if (this.adaptersMap.size > 0) {
-      return { type: 'adapter', instance: this.adaptersMap.values().next().value };
+      const firstEntry = this.adaptersMap.entries().next().value;
+      return { type: 'adapter', instance: firstEntry[1], instanceId: firstEntry[0] };
     }
     return null;
   }

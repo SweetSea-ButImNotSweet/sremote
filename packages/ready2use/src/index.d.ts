@@ -1,4 +1,4 @@
-import type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities } from '../../wrapper/src/index.d.ts';
+import type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities } from '@sremote/wrapper';
 
 export type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities };
 

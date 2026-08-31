@@ -22,7 +22,7 @@ export class SRemoteClient {
           const api = this.userscriptDriver.getApi();
           return api?.instances?.list ? api.instances.list(key || this.options.passkey) : api?.list?.(key || this.options.passkey) || [];
         }
-        return [];
+        return this.domDriver.list();
       },
       get: (instanceId, key) => this.status(instanceId, key),
       capabilities: (instanceId, key) => this.capabilities(instanceId, key),
@@ -36,6 +36,7 @@ export class SRemoteClient {
       },
       assign: (iframeOrSelector, customId) => this.userscriptDriver.assignId(iframeOrSelector, customId),
       setMultiMode: (mode, key) => {
+        this.domDriver.setMultiMode(mode);
         if (this.userscriptDriver.isAvailable()) {
           const api = this.userscriptDriver.getApi();
           if (api?.instances?.setMultiMode) api.instances.setMultiMode(mode, key || this.options.passkey);
@@ -47,9 +48,10 @@ export class SRemoteClient {
           const api = this.userscriptDriver.getApi();
           return api?.instances?.isMultiMode ? api.instances.isMultiMode(key || this.options.passkey) : Boolean(api?.isMultiMode?.(key || this.options.passkey));
         }
-        return false;
+        return this.domDriver.isMultiMode();
       },
       setExclusive: (mode, key) => {
+        this.domDriver.setExclusive(mode);
         if (this.userscriptDriver.isAvailable()) {
           const api = this.userscriptDriver.getApi();
           if (api?.instances?.setExclusive) api.instances.setExclusive(mode, key || this.options.passkey);
@@ -61,7 +63,7 @@ export class SRemoteClient {
           const api = this.userscriptDriver.getApi();
           return api?.instances?.query ? api.instances.query(key || this.options.passkey) : api?.query?.(key || this.options.passkey) || [];
         }
-        return [];
+        return this.domDriver.list();
       },
       note: (dict, key) => {
         if (this.userscriptDriver.isAvailable()) {
@@ -74,13 +76,14 @@ export class SRemoteClient {
 
     this.adapters = {
       register: (adapter, instanceId, key) => {
+        const domId = this.domDriver.useAdapter(adapter, instanceId);
         if (this.userscriptDriver.isAvailable()) {
           const api = this.userscriptDriver.getApi();
           if (api?.adapters?.register) return api.adapters.register(adapter, instanceId, key || this.options.passkey);
           if (api?.adapters?.set) return api.adapters.set(adapter, instanceId, key || this.options.passkey);
           return this.userscriptDriver.useAdapter(adapter, instanceId, key);
         }
-        return this.domDriver.useAdapter(adapter, instanceId);
+        return domId;
       },
       set: (adapter, instanceId, key) => this.adapters.register(adapter, instanceId, key),
       unregister: (instanceId, key) => {
@@ -118,12 +121,28 @@ export class SRemoteClient {
     return this.userscriptDriver.isAvailable();
   }
 
+  syncAdaptersToUserscript() {
+    if (this.userscriptDriver.isAvailable()) {
+      const api = this.userscriptDriver.getApi();
+      for (const [id, adapter] of this.domDriver.adaptersMap.entries()) {
+        if (api?.adapters?.register) {
+          api.adapters.register(adapter, id, this.options.passkey);
+        } else if (api?.adapters?.set) {
+          api.adapters.set(adapter, id, this.options.passkey);
+        } else {
+          this.userscriptDriver.useAdapter(adapter, id, this.options.passkey);
+        }
+      }
+    }
+  }
+
   async ready() {
     if (this._readyPromise) return this._readyPromise;
 
     this._readyPromise = new Promise(resolve => {
       if (this.userscriptDriver.isAvailable()) {
         this.mode = 'userscript';
+        this.syncAdaptersToUserscript();
         resolve(this);
         return;
       }
@@ -134,6 +153,7 @@ export class SRemoteClient {
         if (resolved) return;
         resolved = true;
         this.mode = 'userscript';
+        this.syncAdaptersToUserscript();
         window.removeEventListener('sremote:ready', onReadyEvent);
         clearTimeout(timer);
         resolve(this);
@@ -152,6 +172,7 @@ export class SRemoteClient {
 
         if (this.userscriptDriver.isAvailable()) {
           this.mode = 'userscript';
+          this.syncAdaptersToUserscript();
         } else if (this.options.fallbackToDom) {
           this.mode = 'dom-direct';
         } else {
@@ -367,6 +388,14 @@ export const createSRemote = createSRemoteClient;
 
 // Default singleton client instance
 export const sremote = new SRemoteClient();
+
+// Expose singleton on global symbol for 100% resilient cross-bundle resolution
+if (typeof globalThis !== 'undefined') {
+  try {
+    globalThis[Symbol.for('__sremote_client__')] = sremote;
+  } catch {}
+}
+
 export default sremote;
 
 export { showInstallModal, showInstallModal as promptUserscript };

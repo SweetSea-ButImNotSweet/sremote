@@ -267,12 +267,64 @@ var o = class extends e {
 	}
 }, s = class extends e {
 	constructor(e = {}) {
-		super(e), this.adaptersMap = /* @__PURE__ */ new Map(), this.eventListeners = /* @__PURE__ */ new Map();
+		super(e), this.adaptersMap = /* @__PURE__ */ new Map(), this.eventListeners = /* @__PURE__ */ new Map(), this.multiMode = !1, this.exclusiveMode = "auto", this.lastActiveInstanceId = null;
+	}
+	setMultiMode(e) {
+		this.multiMode = !!e;
+	}
+	isMultiMode() {
+		return this.multiMode;
+	}
+	setExclusive(e) {
+		this.exclusiveMode = e;
+	}
+	list() {
+		let e = [];
+		for (let [t, n] of this.adaptersMap.entries()) {
+			let r = typeof n.getState == "function" ? n.getState() : {
+				paused: typeof n.paused == "function" ? n.paused() : !!n.paused,
+				currentTime: typeof n.getCurrentTime == "function" ? n.getCurrentTime() : 0,
+				duration: typeof n.getDuration == "function" ? n.getDuration() : 0,
+				volume: typeof n.getVolume == "function" ? n.getVolume() : 1,
+				muted: typeof n.getMuted == "function" && n.getMuted()
+			};
+			e.push({
+				instanceId: t,
+				mediaType: "adapter",
+				capabilities: this.getCapabilities(t),
+				status: "ready",
+				state: r
+			});
+		}
+		return e;
 	}
 	useAdapter(e, t = null) {
 		if (!e || typeof e != "object") return null;
-		let n = t || `adapter-${Math.random().toString(36).slice(2, 9)}`;
-		return this.adaptersMap.set(n, e), n;
+		let n = t || `adapter-${Math.random().toString(36).slice(2, 9)}`, r = (e, t = {}) => {
+			let r = String(e || "").toLowerCase(), i = {
+				source: "adapter",
+				instanceId: n,
+				mediaType: "adapter",
+				...typeof t == "object" && t ? t : { value: t }
+			};
+			(r === "play" || r === "playing") && (this.lastActiveInstanceId = n, (this.exclusiveMode === "auto" || this.exclusiveMode === !0) && this.pauseOthersExcept(n)), this.emit(r, i);
+		};
+		if (!e.emit) e.emit = r;
+		else {
+			let t = e.emit;
+			e.emit = (e, n = {}) => {
+				try {
+					t(e, n);
+				} catch {}
+				r(e, n);
+			};
+		}
+		return this.adaptersMap.set(n, e), this.lastActiveInstanceId = n, n;
+	}
+	pauseOthersExcept(e) {
+		for (let [t, n] of this.adaptersMap.entries()) if (t !== e) try {
+			n.pause?.();
+		} catch {}
 	}
 	removeAdapter(e) {
 		return e ? this.adaptersMap.delete(e) : !1;
@@ -283,20 +335,31 @@ var o = class extends e {
 	resolveTarget(e) {
 		if (typeof e == "string" && this.adaptersMap.has(e)) return {
 			type: "adapter",
-			instance: this.adaptersMap.get(e)
+			instance: this.adaptersMap.get(e),
+			instanceId: e
 		};
-		if (!e && this.adaptersMap.size > 0) return {
-			type: "adapter",
-			instance: this.adaptersMap.values().next().value
-		};
+		if (!e && this.adaptersMap.size > 0) {
+			let e = this.adaptersMap.entries().next().value;
+			return {
+				type: "adapter",
+				instance: e[1],
+				instanceId: e[0]
+			};
+		}
 		let t = this.resolveMediaElement(e);
-		return t ? {
+		if (t) return {
 			type: "element",
 			instance: t
-		} : this.adaptersMap.size > 0 ? {
-			type: "adapter",
-			instance: this.adaptersMap.values().next().value
-		} : null;
+		};
+		if (this.adaptersMap.size > 0) {
+			let e = this.adaptersMap.entries().next().value;
+			return {
+				type: "adapter",
+				instance: e[1],
+				instanceId: e[0]
+			};
+		}
+		return null;
 	}
 	resolveMediaElement(e) {
 		if (typeof document > "u") return null;
@@ -701,7 +764,7 @@ var p = class {
 					let t = this.userscriptDriver.getApi();
 					return t?.instances?.list ? t.instances.list(e || this.options.passkey) : t?.list?.(e || this.options.passkey) || [];
 				}
-				return [];
+				return this.domDriver.list();
 			},
 			get: (e, t) => this.status(e, t),
 			capabilities: (e, t) => this.capabilities(e, t),
@@ -715,7 +778,7 @@ var p = class {
 			},
 			assign: (e, t) => this.userscriptDriver.assignId(e, t),
 			setMultiMode: (e, t) => {
-				if (this.userscriptDriver.isAvailable()) {
+				if (this.domDriver.setMultiMode(e), this.userscriptDriver.isAvailable()) {
 					let n = this.userscriptDriver.getApi();
 					n?.instances?.setMultiMode ? n.instances.setMultiMode(e, t || this.options.passkey) : n?.setMultiMode && n.setMultiMode(e, t || this.options.passkey);
 				}
@@ -725,10 +788,10 @@ var p = class {
 					let t = this.userscriptDriver.getApi();
 					return t?.instances?.isMultiMode ? t.instances.isMultiMode(e || this.options.passkey) : !!t?.isMultiMode?.(e || this.options.passkey);
 				}
-				return !1;
+				return this.domDriver.isMultiMode();
 			},
 			setExclusive: (e, t) => {
-				if (this.userscriptDriver.isAvailable()) {
+				if (this.domDriver.setExclusive(e), this.userscriptDriver.isAvailable()) {
 					let n = this.userscriptDriver.getApi();
 					n?.instances?.setExclusive ? n.instances.setExclusive(e, t || this.options.passkey) : n?.setExclusive && n.setExclusive(e, t || this.options.passkey);
 				}
@@ -738,7 +801,7 @@ var p = class {
 					let t = this.userscriptDriver.getApi();
 					return t?.instances?.query ? t.instances.query(e || this.options.passkey) : t?.query?.(e || this.options.passkey) || [];
 				}
-				return [];
+				return this.domDriver.list();
 			},
 			note: (e, t) => {
 				if (this.userscriptDriver.isAvailable()) {
@@ -748,11 +811,12 @@ var p = class {
 			}
 		}, this.adapters = {
 			register: (e, t, n) => {
+				let r = this.domDriver.useAdapter(e, t);
 				if (this.userscriptDriver.isAvailable()) {
 					let r = this.userscriptDriver.getApi();
 					return r?.adapters?.register ? r.adapters.register(e, t, n || this.options.passkey) : r?.adapters?.set ? r.adapters.set(e, t, n || this.options.passkey) : this.userscriptDriver.useAdapter(e, t, n);
 				}
-				return this.domDriver.useAdapter(e, t);
+				return r;
 			},
 			set: (e, t, n) => this.adapters.register(e, t, n),
 			unregister: (e, t) => {
@@ -782,18 +846,24 @@ var p = class {
 	isUserscriptAvailable() {
 		return this.userscriptDriver.isAvailable();
 	}
+	syncAdaptersToUserscript() {
+		if (this.userscriptDriver.isAvailable()) {
+			let e = this.userscriptDriver.getApi();
+			for (let [t, n] of this.domDriver.adaptersMap.entries()) e?.adapters?.register ? e.adapters.register(n, t, this.options.passkey) : e?.adapters?.set ? e.adapters.set(n, t, this.options.passkey) : this.userscriptDriver.useAdapter(n, t, this.options.passkey);
+		}
+	}
 	async ready() {
 		return this._readyPromise ||= new Promise((e) => {
 			if (this.userscriptDriver.isAvailable()) {
-				this.mode = "userscript", e(this);
+				this.mode = "userscript", this.syncAdaptersToUserscript(), e(this);
 				return;
 			}
 			let t = !1, n = () => {
-				t || (t = !0, this.mode = "userscript", window.removeEventListener("sremote:ready", n), clearTimeout(r), e(this));
+				t || (t = !0, this.mode = "userscript", this.syncAdaptersToUserscript(), window.removeEventListener("sremote:ready", n), clearTimeout(r), e(this));
 			};
 			typeof window < "u" && window.addEventListener("sremote:ready", n, { once: !0 });
 			let r = setTimeout(() => {
-				t || (t = !0, typeof window < "u" && window.removeEventListener("sremote:ready", n), this.mode = this.userscriptDriver.isAvailable() ? "userscript" : this.options.fallbackToDom ? "dom-direct" : "unsupported", e(this));
+				t || (t = !0, typeof window < "u" && window.removeEventListener("sremote:ready", n), this.userscriptDriver.isAvailable() ? (this.mode = "userscript", this.syncAdaptersToUserscript()) : this.mode = this.options.fallbackToDom ? "dom-direct" : "unsupported", e(this));
 			}, this.options.timeout);
 		}), this._readyPromise;
 	}
@@ -923,6 +993,9 @@ function m(e) {
 	return new p(e);
 }
 var h = m, g = new p();
+if (typeof globalThis < "u") try {
+	globalThis[Symbol.for("__sremote_client__")] = g;
+} catch {}
 //#endregion
 //#region src/universal-adapter.js
 function _(e = {}) {
