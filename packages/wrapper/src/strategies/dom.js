@@ -1,14 +1,112 @@
 import { BaseDriver } from './base.js';
-import { extractMediaState, createEventPayload, evaluateCapabilities } from '@sremote/shared';
+import { extractMediaState, createEventPayload, evaluateCapabilities, bindMediaEvents } from '@sremote/shared';
 
 export class DomDriver extends BaseDriver {
   constructor(options = {}) {
     super(options);
     this.adaptersMap = new Map();
     this.eventListeners = new Map();
+    this.trackedMediaElements = new WeakSet();
+    this.adapterPollTimers = new Map(); // instanceId -> intervalTimer
+    this.almostEndFlags = new Map(); // instanceId -> boolean
     this.multiMode = false;
     this.exclusiveMode = 'auto'; // 'auto' | true | false
     this.lastActiveInstanceId = null;
+    this.treatAlmostEndAsEnd = Boolean(options.treatAlmostEndAsEnd);
+
+    // Auto-discover existing media in document
+    if (typeof document !== 'undefined') {
+      this.initDomAutoTracking();
+    }
+  }
+
+  initDomAutoTracking() {
+    try {
+      const mediaList = document.querySelectorAll('video, audio');
+      for (const el of mediaList) {
+        this.trackMediaElement(el);
+      }
+
+      // Observe DOM mutations to auto-bind dynamically added media
+      if (typeof MutationObserver !== 'undefined') {
+        const observer = new MutationObserver(mutations => {
+          for (const m of mutations) {
+            for (const node of m.addedNodes) {
+              if (node.nodeType === 1) {
+                if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
+                  this.trackMediaElement(node);
+                } else if (node.querySelectorAll) {
+                  const nested = node.querySelectorAll('video, audio');
+                  for (const n of nested) this.trackMediaElement(n);
+                }
+              }
+            }
+          }
+        });
+        observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
+      }
+    } catch {}
+  }
+
+  trackMediaElement(mediaEl) {
+    if (!mediaEl || this.trackedMediaElements.has(mediaEl)) return;
+    this.trackedMediaElements.add(mediaEl);
+
+    bindMediaEvents(
+      mediaEl,
+      (evtName, payload) => {
+        this.emit(evtName, payload);
+      },
+      { instanceId: mediaEl.id || mediaEl.getAttribute('data-sremote-id') || 'dom-media', source: 'dom', treatAlmostEndAsEnd: this.treatAlmostEndAsEnd },
+    );
+  }
+
+  startAdapterStatePolling(instanceId, adapter) {
+    this.stopAdapterStatePolling(instanceId);
+    if (!adapter) return;
+
+    let hasEmittedAlmostEnd = false;
+
+    const timer = setInterval(() => {
+      if (!this.adaptersMap.has(instanceId)) {
+        this.stopAdapterStatePolling(instanceId);
+        return;
+      }
+
+      const state = extractMediaState(adapter);
+      if (!state) return;
+
+      const dur = Number.isFinite(state.duration) ? state.duration : null;
+      const curTime = state.currentTime || 0;
+
+      // Smart almostend detection
+      if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
+        if (!hasEmittedAlmostEnd) {
+          hasEmittedAlmostEnd = true;
+          const endEvt = this.treatAlmostEndAsEnd ? 'ended' : 'almostend';
+          this.emit(endEvt, createEventPayload(endEvt, { source: 'adapter', instanceId, mediaType: 'adapter', state }));
+        }
+      } else if (dur && curTime < dur - 1.5) {
+        hasEmittedAlmostEnd = false;
+      }
+
+      // Periodic timeupdate emit
+      this.emit('timeupdate', createEventPayload('timeupdate', { source: 'adapter', instanceId, mediaType: 'adapter', state }));
+
+      // If finished, stop polling
+      if (state.ended || (dur && dur > 0 && curTime >= dur - 0.1)) {
+        this.stopAdapterStatePolling(instanceId);
+      }
+    }, 250);
+
+    this.adapterPollTimers.set(instanceId, timer);
+  }
+
+  stopAdapterStatePolling(instanceId) {
+    if (this.adapterPollTimers.has(instanceId)) {
+      clearInterval(this.adapterPollTimers.get(instanceId));
+      this.adapterPollTimers.delete(instanceId);
+    }
   }
 
   setMultiMode(mode) {
@@ -27,13 +125,7 @@ export class DomDriver extends BaseDriver {
     const list = [];
     for (const [id, ad] of this.adaptersMap.entries()) {
       const state = extractMediaState(ad);
-      list.push({
-        instanceId: id,
-        mediaType: 'adapter',
-        capabilities: this.getCapabilities(id),
-        status: 'ready',
-        state,
-      });
+      list.push({ instanceId: id, mediaType: 'adapter', capabilities: this.getCapabilities(id), status: 'ready', state });
     }
     return list;
   }
@@ -41,23 +133,29 @@ export class DomDriver extends BaseDriver {
   useAdapter(adapter, customInstanceId = null) {
     if (!adapter || typeof adapter !== 'object') return null;
     const instanceId = customInstanceId || `adapter-${Math.random().toString(36).slice(2, 9)}`;
-    
+
     // Wire adapter emit to DomDriver emit so sremote.on() receives it
     const handleEmit = (event, payload = {}) => {
       const ev = String(event || '').toLowerCase();
+      const state = extractMediaState(adapter);
       const fullPayload = createEventPayload(ev, {
         source: 'adapter',
         instanceId,
         mediaType: 'adapter',
+        ...(state ? { state } : {}),
         ...(typeof payload === 'object' && payload !== null ? payload : { value: payload }),
       });
-      
+
       if (ev === 'play' || ev === 'playing') {
         this.lastActiveInstanceId = instanceId;
         if (this.exclusiveMode === 'auto' || this.exclusiveMode === true) {
           this.pauseOthersExcept(instanceId);
         }
+        this.startAdapterStatePolling(instanceId, adapter);
+      } else if (ev === 'pause' || ev === 'ended' || ev === 'stop') {
+        this.stopAdapterStatePolling(instanceId);
       }
+
       this.emit(ev, fullPayload);
     };
 
@@ -84,12 +182,14 @@ export class DomDriver extends BaseDriver {
         try {
           ad.pause?.();
         } catch {}
+        this.stopAdapterStatePolling(id);
       }
     }
   }
 
   removeAdapter(instanceId) {
     if (!instanceId) return false;
+    this.stopAdapterStatePolling(instanceId);
     return this.adaptersMap.delete(instanceId);
   }
 
@@ -372,47 +472,57 @@ export class DomDriver extends BaseDriver {
   }
 
   on(event, handler) {
-    if (typeof document === 'undefined' || typeof handler !== 'function') return () => {};
+    if (typeof handler !== 'function') return () => {};
+    const fullEvent = event.startsWith('sremote:') ? event : `sremote:${event}`;
     const domEventName = event.replace(/^sremote:/, '');
-    const listener = e => {
-      const mediaEl = e.target;
-      if (!mediaEl) return;
-      const state = extractMediaState(mediaEl);
-      handler(createEventPayload(domEventName, {
-        instanceId: 'dom-media',
-        source: 'dom',
-        mediaType: mediaEl.tagName ? mediaEl.tagName.toLowerCase() : 'video',
-        state,
-      }));
+
+    // 1. Register onto DomDriver internal event bus (for adapter emits)
+    const registerBusListener = evKey => {
+      if (!this.eventListeners.has(evKey)) {
+        this.eventListeners.set(evKey, new Map());
+      }
+      this.eventListeners.get(evKey).set(handler, true);
     };
 
-    if (!this.eventListeners.has(event)) {
-      this.eventListeners.set(event, new Map());
-    }
-    this.eventListeners.get(event).set(handler, { domEventName, listener });
+    registerBusListener(fullEvent);
+    registerBusListener(domEventName);
 
-    document.addEventListener(domEventName, listener, true);
+    // 2. Register native DOM listener (for direct HTML5 media tags on the page)
+    let domListener = null;
+    if (typeof document !== 'undefined') {
+      domListener = e => {
+        const mediaEl = e.target;
+        if (!mediaEl || (mediaEl.tagName !== 'VIDEO' && mediaEl.tagName !== 'AUDIO')) return;
+        const state = extractMediaState(mediaEl);
+        handler(
+          createEventPayload(domEventName, {
+            instanceId: mediaEl.id || mediaEl.getAttribute('data-sremote-id') || 'dom-media',
+            source: 'dom',
+            mediaType: mediaEl.tagName ? mediaEl.tagName.toLowerCase() : 'video',
+            state,
+            originalEvent: e,
+          }),
+        );
+      };
+      document.addEventListener(domEventName, domListener, true);
+    }
+
     return () => this.off(event, handler);
   }
 
   off(event, handler) {
-    if (typeof document === 'undefined') return;
-    const handlersMap = this.eventListeners.get(event);
-    if (!handlersMap) return;
+    const fullEvent = event.startsWith('sremote:') ? event : `sremote:${event}`;
+    const domEventName = event.replace(/^sremote:/, '');
 
-    if (handler) {
-      const entry = handlersMap.get(handler);
-      if (entry) {
-        document.removeEventListener(entry.domEventName, entry.listener, true);
-        handlersMap.delete(handler);
+    const unregisterBus = evKey => {
+      const handlersMap = this.eventListeners.get(evKey);
+      if (handlersMap) {
+        if (handler) handlersMap.delete(handler);
+        else this.eventListeners.delete(evKey);
       }
-    } else {
-      // Remove all listeners for this event
-      for (const [, entry] of handlersMap) {
-        document.removeEventListener(entry.domEventName, entry.listener, true);
-      }
-      this.eventListeners.delete(event);
-    }
+    };
+
+    unregisterBus(fullEvent);
+    unregisterBus(domEventName);
   }
 }
-

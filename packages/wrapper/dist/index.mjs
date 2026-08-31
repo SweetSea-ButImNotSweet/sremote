@@ -356,11 +356,139 @@ function l(e) {
 		hasMediaSession: !1
 	};
 }
+var u = [
+	"play",
+	"pause",
+	"playing",
+	"ended",
+	"timeupdate",
+	"durationchange",
+	"volumechange",
+	"ratechange",
+	"seeking",
+	"seeked",
+	"progress",
+	"canplay",
+	"canplaythrough",
+	"waiting",
+	"stalled",
+	"emptied",
+	"abort",
+	"error",
+	"loadeddata",
+	"loadedmetadata",
+	"loadstart",
+	"suspend",
+	"encrypted",
+	"enterpictureinpicture",
+	"exitpictureinpicture"
+];
+function d(e, t, n = {}) {
+	if (!e || typeof e.addEventListener != "function" || typeof t != "function") return () => {};
+	let { instanceId: r = "dom-media", source: i = "dom", treatAlmostEndAsEnd: a = !1, events: o = u } = n, l = !1, d = [];
+	for (let n of o) {
+		let o = (o) => {
+			let u = s(e);
+			if (n === "timeupdate") {
+				let n = Number.isFinite(e.duration) ? e.duration : null, o = e.currentTime || 0;
+				n && n > 3 && o >= n - .8 && o <= n ? l || (l = !0, t(a ? "ended" : "almostend", c(a ? "ended" : "almostend", {
+					source: i,
+					instanceId: r,
+					mediaType: e.tagName ? e.tagName.toLowerCase() : "video",
+					state: u
+				}))) : n && o < n - 1.5 && (l = !1);
+			}
+			if (n === "ended") {
+				l = !1;
+				let t = Number.isFinite(e.duration) ? e.duration : null, n = e.currentTime || 0;
+				if (t && t > 0 && Math.abs(t - n) > 1.5) return;
+			}
+			t(n, c(n, {
+				source: i,
+				instanceId: r,
+				mediaType: e.tagName ? e.tagName.toLowerCase() : "video",
+				state: u,
+				originalEvent: o
+			}));
+		};
+		e.addEventListener(n, o, !0), d.push({
+			evtName: n,
+			listener: o
+		});
+	}
+	return () => {
+		for (let { evtName: t, listener: n } of d) try {
+			e.removeEventListener(t, n, !0);
+		} catch {}
+		d.length = 0;
+	};
+}
 //#endregion
 //#region src/strategies/dom.js
-var u = class extends e {
+var f = class extends e {
 	constructor(e = {}) {
-		super(e), this.adaptersMap = /* @__PURE__ */ new Map(), this.eventListeners = /* @__PURE__ */ new Map(), this.multiMode = !1, this.exclusiveMode = "auto", this.lastActiveInstanceId = null;
+		super(e), this.adaptersMap = /* @__PURE__ */ new Map(), this.eventListeners = /* @__PURE__ */ new Map(), this.trackedMediaElements = /* @__PURE__ */ new WeakSet(), this.adapterPollTimers = /* @__PURE__ */ new Map(), this.almostEndFlags = /* @__PURE__ */ new Map(), this.multiMode = !1, this.exclusiveMode = "auto", this.lastActiveInstanceId = null, this.treatAlmostEndAsEnd = !!e.treatAlmostEndAsEnd, typeof document < "u" && this.initDomAutoTracking();
+	}
+	initDomAutoTracking() {
+		try {
+			let e = document.querySelectorAll("video, audio");
+			for (let t of e) this.trackMediaElement(t);
+			typeof MutationObserver < "u" && new MutationObserver((e) => {
+				for (let t of e) for (let e of t.addedNodes) if (e.nodeType === 1) {
+					if (e.tagName === "VIDEO" || e.tagName === "AUDIO") this.trackMediaElement(e);
+					else if (e.querySelectorAll) {
+						let t = e.querySelectorAll("video, audio");
+						for (let e of t) this.trackMediaElement(e);
+					}
+				}
+			}).observe(document.documentElement || document.body, {
+				childList: !0,
+				subtree: !0
+			});
+		} catch {}
+	}
+	trackMediaElement(e) {
+		!e || this.trackedMediaElements.has(e) || (this.trackedMediaElements.add(e), d(e, (e, t) => {
+			this.emit(e, t);
+		}, {
+			instanceId: e.id || e.getAttribute("data-sremote-id") || "dom-media",
+			source: "dom",
+			treatAlmostEndAsEnd: this.treatAlmostEndAsEnd
+		}));
+	}
+	startAdapterStatePolling(e, t) {
+		if (this.stopAdapterStatePolling(e), !t) return;
+		let n = !1, r = setInterval(() => {
+			if (!this.adaptersMap.has(e)) {
+				this.stopAdapterStatePolling(e);
+				return;
+			}
+			let r = s(t);
+			if (!r) return;
+			let i = Number.isFinite(r.duration) ? r.duration : null, a = r.currentTime || 0;
+			if (i && i > 3 && a >= i - .8 && a <= i) {
+				if (!n) {
+					n = !0;
+					let t = this.treatAlmostEndAsEnd ? "ended" : "almostend";
+					this.emit(t, c(t, {
+						source: "adapter",
+						instanceId: e,
+						mediaType: "adapter",
+						state: r
+					}));
+				}
+			} else i && a < i - 1.5 && (n = !1);
+			this.emit("timeupdate", c("timeupdate", {
+				source: "adapter",
+				instanceId: e,
+				mediaType: "adapter",
+				state: r
+			})), (r.ended || i && i > 0 && a >= i - .1) && this.stopAdapterStatePolling(e);
+		}, 250);
+		this.adapterPollTimers.set(e, r);
+	}
+	stopAdapterStatePolling(e) {
+		this.adapterPollTimers.has(e) && (clearInterval(this.adapterPollTimers.get(e)), this.adapterPollTimers.delete(e));
 	}
 	setMultiMode(e) {
 		this.multiMode = !!e;
@@ -387,14 +515,15 @@ var u = class extends e {
 	}
 	useAdapter(e, t = null) {
 		if (!e || typeof e != "object") return null;
-		let n = t || `adapter-${Math.random().toString(36).slice(2, 9)}`, r = (e, t = {}) => {
-			let r = String(e || "").toLowerCase(), i = c(r, {
+		let n = t || `adapter-${Math.random().toString(36).slice(2, 9)}`, r = (t, r = {}) => {
+			let i = String(t || "").toLowerCase(), a = s(e), o = c(i, {
 				source: "adapter",
 				instanceId: n,
 				mediaType: "adapter",
-				...typeof t == "object" && t ? t : { value: t }
+				...a ? { state: a } : {},
+				...typeof r == "object" && r ? r : { value: r }
 			});
-			(r === "play" || r === "playing") && (this.lastActiveInstanceId = n, (this.exclusiveMode === "auto" || this.exclusiveMode === !0) && this.pauseOthersExcept(n)), this.emit(r, i);
+			i === "play" || i === "playing" ? (this.lastActiveInstanceId = n, (this.exclusiveMode === "auto" || this.exclusiveMode === !0) && this.pauseOthersExcept(n), this.startAdapterStatePolling(n, e)) : (i === "pause" || i === "ended" || i === "stop") && this.stopAdapterStatePolling(n), this.emit(i, o);
 		};
 		if (!e.emit) e.emit = r;
 		else {
@@ -409,12 +538,15 @@ var u = class extends e {
 		return this.adaptersMap.set(n, e), this.lastActiveInstanceId = n, n;
 	}
 	pauseOthersExcept(e) {
-		for (let [t, n] of this.adaptersMap.entries()) if (t !== e) try {
-			n.pause?.();
-		} catch {}
+		for (let [t, n] of this.adaptersMap.entries()) if (t !== e) {
+			try {
+				n.pause?.();
+			} catch {}
+			this.stopAdapterStatePolling(t);
+		}
 	}
 	removeAdapter(e) {
-		return e ? this.adaptersMap.delete(e) : !1;
+		return e ? (this.stopAdapterStatePolling(e), this.adaptersMap.delete(e)) : !1;
 	}
 	getCustomAdapter(e) {
 		return e ? this.adaptersMap.get(e) || null : this.adaptersMap.values().next().value || null;
@@ -626,43 +758,39 @@ var u = class extends e {
 		i(n), i(r), i("*");
 	}
 	on(e, t) {
-		if (typeof document > "u" || typeof t != "function") return () => {};
-		let n = e.replace(/^sremote:/, ""), r = (e) => {
-			let r = e.target;
-			if (!r) return;
-			let i = s(r);
-			t(c(n, {
-				instanceId: "dom-media",
-				source: "dom",
-				mediaType: r.tagName ? r.tagName.toLowerCase() : "video",
-				state: i
-			}));
+		if (typeof t != "function") return () => {};
+		let n = e.startsWith("sremote:") ? e : `sremote:${e}`, r = e.replace(/^sremote:/, ""), i = (e) => {
+			this.eventListeners.has(e) || this.eventListeners.set(e, /* @__PURE__ */ new Map()), this.eventListeners.get(e).set(t, !0);
 		};
-		return this.eventListeners.has(e) || this.eventListeners.set(e, /* @__PURE__ */ new Map()), this.eventListeners.get(e).set(t, {
-			domEventName: n,
-			listener: r
-		}), document.addEventListener(n, r, !0), () => this.off(e, t);
+		i(n), i(r);
+		let a = null;
+		return typeof document < "u" && (a = (e) => {
+			let n = e.target;
+			if (!n || n.tagName !== "VIDEO" && n.tagName !== "AUDIO") return;
+			let i = s(n);
+			t(c(r, {
+				instanceId: n.id || n.getAttribute("data-sremote-id") || "dom-media",
+				source: "dom",
+				mediaType: n.tagName ? n.tagName.toLowerCase() : "video",
+				state: i,
+				originalEvent: e
+			}));
+		}, document.addEventListener(r, a, !0)), () => this.off(e, t);
 	}
 	off(e, t) {
-		if (typeof document > "u") return;
-		let n = this.eventListeners.get(e);
-		if (n) {
-			if (t) {
-				let e = n.get(t);
-				e && (document.removeEventListener(e.domEventName, e.listener, !0), n.delete(t));
-			} else {
-				for (let [, e] of n) document.removeEventListener(e.domEventName, e.listener, !0);
-				this.eventListeners.delete(e);
-			}
-		}
+		let n = e.startsWith("sremote:") ? e : `sremote:${e}`, r = e.replace(/^sremote:/, ""), i = (e) => {
+			let n = this.eventListeners.get(e);
+			n && (t ? n.delete(t) : this.eventListeners.delete(e));
+		};
+		i(n), i(r);
 	}
-}, d = ":host {\r\n  all: initial;\r\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\r\n  color-scheme: light dark;\r\n}\r\n\r\n.sv-btn,\r\n.sv-action-btn {\r\n  font-family: inherit;\r\n  cursor: pointer;\r\n  line-height: 1.2;\r\n  border: 1px solid #aeb7c2;\r\n  border-radius: 4px;\r\n  background: linear-gradient(to bottom, #fff 0%, #e7ebef 100%);\r\n  color: #263238;\r\n  box-shadow:\r\n    inset 0 1px 0 rgba(255, 255, 255, 0.85),\r\n    0 1px 2px rgba(0, 0, 0, 0.12);\r\n  transition:\r\n    background 0.12s ease,\r\n    border-color 0.12s ease,\r\n    box-shadow 0.12s ease,\r\n    transform 0.08s ease;\r\n  user-select: none;\r\n  display: inline-flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  gap: 6px;\r\n  text-decoration: none;\r\n}\r\n\r\n.sv-btn:hover,\r\n.sv-action-btn:hover {\r\n  background: linear-gradient(to bottom, #fff 0%, #dce2e8 100%);\r\n  color: #111820;\r\n  border-color: #8e9aa6;\r\n}\r\n\r\n.sv-btn:active,\r\n.sv-action-btn:active {\r\n  background: #d7dde3;\r\n  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);\r\n  transform: translateY(1px);\r\n}\r\n\r\n.sv-btn {\r\n  padding: 7px 16px;\r\n  font-size: 13px;\r\n  font-weight: 600;\r\n}\r\n\r\n.sv-action-btn {\r\n  font-size: 11px;\r\n  padding: 4px 8px;\r\n}\r\n\r\n.sv-btn-deny {\r\n  color: #374151;\r\n}\r\n\r\n.sv-btn-allow,\r\n.sv-btn-primary {\r\n  background: linear-gradient(to bottom, #4da3d9 0%, #2479b3 100%);\r\n  color: #fff;\r\n  border-color: #1e6597;\r\n  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);\r\n}\r\n\r\n.sv-btn-allow:hover,\r\n.sv-btn-primary:hover {\r\n  background: linear-gradient(to bottom, #5eb0e3 0%, #2b84be 100%);\r\n  border-color: #195d8d;\r\n  color: #fff;\r\n}\r\n\r\n.sv-btn-allow:active,\r\n.sv-btn-primary:active {\r\n  background: #2479b3;\r\n  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);\r\n}\r\n\r\n.sv-link {\r\n  color: #1769aa;\r\n  text-decoration: underline;\r\n  word-break: break-all;\r\n}\r\n\r\n.sv-link:hover {\r\n  color: #0b4f82;\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  .sv-btn,\r\n  .sv-action-btn {\r\n    border-color: #59636e;\r\n    background: linear-gradient(to bottom, #3b4249 0%, #2d3339 100%);\r\n    color: #e4e8eb;\r\n    box-shadow:\r\n      inset 0 1px 0 rgba(255, 255, 255, 0.08),\r\n      0 1px 2px rgba(0, 0, 0, 0.35);\r\n  }\r\n\r\n  .sv-btn:hover,\r\n  .sv-action-btn:hover {\r\n    background: linear-gradient(to bottom, #464e56 0%, #353c43 100%);\r\n    color: #fff;\r\n    border-color: #707b86;\r\n  }\r\n\r\n  .sv-btn:active,\r\n  .sv-action-btn:active {\r\n    background: #292f35;\r\n  }\r\n\r\n  .sv-btn-deny {\r\n    color: #d5dbe0;\r\n  }\r\n\r\n  .sv-btn-allow,\r\n  .sv-btn-primary {\r\n    background: linear-gradient(to bottom, #3d96cb 0%, #246e9c 100%);\r\n    border-color: #1d5b83;\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-btn-allow:hover,\r\n  .sv-btn-primary:hover {\r\n    background: linear-gradient(to bottom, #4ba4d8 0%, #2b7bab 100%);\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-link {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-link:hover {\r\n    color: #82c9ed;\r\n  }\r\n}\r\n\ndialog {\r\n  position: fixed;\r\n  inset: 0;\r\n  margin: auto;\r\n  border: none;\r\n  background: transparent;\r\n  color: #263238;\r\n  font-size: 13.5px;\r\n  box-sizing: border-box;\r\n  z-index: 2147483647;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n}\r\n\r\ndialog:not([open]) {\r\n  display: none;\r\n}\r\n\r\ndialog::backdrop {\r\n  background: rgba(0, 0, 0, 0.52);\r\n  backdrop-filter: blur(1px);\r\n}\r\n\r\n.sv-box {\r\n  width: min(420px, calc(100vw - 32px));\r\n  padding: 18px 20px;\r\n  box-sizing: border-box;\r\n  background: #f7f8fa;\r\n  border: 1px solid #aeb7c2;\r\n  border-radius: 6px;\r\n  box-shadow:\r\n    0 8px 25px rgba(0, 0, 0, 0.35),\r\n    inset 0 1px 0 rgba(255, 255, 255, 0.9);\r\n  pointer-events: auto;\r\n}\r\n\r\n.sv-title {\r\n  font-weight: 700;\r\n  font-size: 15px;\r\n  margin-bottom: 8px;\r\n  color: #1769aa;\r\n}\r\n\r\n.sv-text {\r\n  margin-bottom: 14px;\r\n  color: #4b5563;\r\n  font-size: 13px;\r\n  line-height: 1.5;\r\n}\r\n\r\n.sv-remember {\r\n  display: inline-flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n  margin-bottom: 18px;\r\n  font-size: 12.5px;\r\n  cursor: pointer;\r\n  user-select: none;\r\n  color: #5b6570;\r\n  pointer-events: auto;\r\n}\r\n\r\n.sv-remember:hover {\r\n  color: #263238;\r\n}\r\n\r\n.sv-remember input {\r\n  cursor: pointer;\r\n  margin: 0;\r\n  accent-color: #2479b3;\r\n  pointer-events: auto;\r\n  appearance: checkbox;\r\n  -webkit-appearance: checkbox;\r\n  width: 15px;\r\n  height: 15px;\r\n  opacity: 1;\r\n  position: static;\r\n  z-index: auto;\r\n  vertical-align: middle;\r\n}\r\n\r\n.sv-remember span {\r\n  pointer-events: auto;\r\n  user-select: none;\r\n}\r\n\r\n.sv-buttons {\r\n  display: flex;\r\n  gap: 8px;\r\n  justify-content: flex-end;\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  dialog {\r\n    color: #e4e8eb;\r\n  }\r\n\r\n  .sv-box {\r\n    background: #292f35;\r\n    color: #e5e9ec;\r\n    border-color: #59636e;\r\n    box-shadow:\r\n      0 8px 28px rgba(0, 0, 0, 0.7),\r\n      inset 0 1px 0 rgba(255, 255, 255, 0.05);\r\n  }\r\n\r\n  .sv-title {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-text {\r\n    color: #b9c1c8;\r\n  }\r\n\r\n  .sv-remember {\r\n    color: #aeb7bf;\r\n  }\r\n\r\n  .sv-remember:hover {\r\n    color: #e5e9ec;\r\n  }\r\n\r\n  .sv-remember input {\r\n    accent-color: #5eb5e6;\r\n  }\r\n}\r\n\n.sv-install-box {\r\n  width: min(520px, calc(100vw - 32px));\r\n  padding: 24px 26px;\r\n}\r\n\r\n.sv-install-header {\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: space-between;\r\n  margin-bottom: 16px;\r\n  padding-bottom: 12px;\r\n  border-bottom: 1px solid #dce2e8;\r\n}\r\n\r\n.sv-install-title {\r\n  font-size: 16px;\r\n  font-weight: 700;\r\n  color: #1769aa;\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n}\r\n\r\n.sv-install-close-btn {\r\n  background: transparent;\r\n  border: none;\r\n  font-size: 18px;\r\n  line-height: 1;\r\n  color: #8e9aa6;\r\n  cursor: pointer;\r\n  padding: 4px 6px;\r\n  border-radius: 4px;\r\n  transition: all 0.12s ease;\r\n}\r\n\r\n.sv-install-close-btn:hover {\r\n  background: rgba(0, 0, 0, 0.06);\r\n  color: #263238;\r\n}\r\n\r\n.sv-steps {\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 16px;\r\n  margin-bottom: 20px;\r\n}\r\n\r\n.sv-step {\r\n  display: flex;\r\n  gap: 12px;\r\n  background: #ffffff;\r\n  padding: 12px 14px;\r\n  border: 1px solid #dce2e8;\r\n  border-radius: 6px;\r\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);\r\n}\r\n\r\n.sv-step-num {\r\n  width: 24px;\r\n  height: 24px;\r\n  background: #2479b3;\r\n  color: #fff;\r\n  border-radius: 50%;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  font-weight: 700;\r\n  font-size: 12px;\r\n  flex-shrink: 0;\r\n}\r\n\r\n.sv-step-content {\r\n  flex: 1;\r\n  font-size: 13px;\r\n  line-height: 1.45;\r\n  color: #374151;\r\n}\r\n\r\n.sv-step-title {\r\n  font-weight: 600;\r\n  margin-bottom: 4px;\r\n  color: #1e293b;\r\n}\r\n\r\n.sv-extensions-list {\r\n  display: flex;\r\n  flex-wrap: wrap;\r\n  gap: 6px;\r\n  margin-top: 8px;\r\n}\r\n\r\n.sv-ext-link {\r\n  font-size: 11.5px;\r\n  padding: 3px 8px;\r\n  border-radius: 4px;\r\n  background: #f1f5f9;\r\n  color: #2563eb;\r\n  border: 1px solid #cbd5e1;\r\n  text-decoration: none;\r\n  display: inline-flex;\r\n  align-items: center;\r\n  gap: 4px;\r\n  transition: all 0.12s ease;\r\n}\r\n\r\n.sv-ext-link:hover {\r\n  background: #e2e8f0;\r\n  border-color: #94a3b8;\r\n  color: #1d4ed8;\r\n}\r\n\r\n.sv-ext-recommended {\r\n  background: #eff6ff;\r\n  border-color: #93c5fd;\r\n  font-weight: 600;\r\n}\r\n\r\n.sv-install-action {\r\n  margin-top: 8px;\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 10px;\r\n}\r\n\r\n.sv-status-banner {\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n  padding: 10px 14px;\r\n  border-radius: 6px;\r\n  font-size: 12.5px;\r\n  font-weight: 500;\r\n  margin-bottom: 16px;\r\n}\r\n\r\n.sv-status-banner.waiting {\r\n  background: #fef3c7;\r\n  color: #92400e;\r\n  border: 1px solid #fde68a;\r\n}\r\n\r\n.sv-status-banner.success {\r\n  background: #dcfce7;\r\n  color: #166534;\r\n  border: 1px solid #bbf7d0;\r\n}\r\n\r\n.sv-status-spinner {\r\n  width: 14px;\r\n  height: 14px;\r\n  border: 2px solid #b45309;\r\n  border-top-color: transparent;\r\n  border-radius: 50%;\r\n  animation: sv-spin 0.8s linear infinite;\r\n}\r\n\r\n@keyframes sv-spin {\r\n  to {\r\n    transform: rotate(360deg);\r\n  }\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  .sv-install-header {\r\n    border-bottom-color: #434c56;\r\n  }\r\n\r\n  .sv-install-title {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-install-close-btn:hover {\r\n    background: rgba(255, 255, 255, 0.08);\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-step {\r\n    background: #23282e;\r\n    border-color: #434c56;\r\n    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);\r\n  }\r\n\r\n  .sv-step-num {\r\n    background: #3d96cb;\r\n  }\r\n\r\n  .sv-step-content {\r\n    color: #d1d7dc;\r\n  }\r\n\r\n  .sv-step-title {\r\n    color: #f1f5f9;\r\n  }\r\n\r\n  .sv-ext-link {\r\n    background: #2c333a;\r\n    border-color: #4b555f;\r\n    color: #60a5fa;\r\n  }\r\n\r\n  .sv-ext-link:hover {\r\n    background: #37404a;\r\n    border-color: #64748b;\r\n    color: #93c5fd;\r\n  }\r\n\r\n  .sv-ext-recommended {\r\n    background: #1e3a5f;\r\n    border-color: #3b82f6;\r\n  }\r\n\r\n  .sv-status-banner.waiting {\r\n    background: #3a2e15;\r\n    color: #fde047;\r\n    border-color: #715816;\r\n  }\r\n\r\n  .sv-status-banner.success {\r\n    background: #143522;\r\n    color: #86efac;\r\n    border-color: #1e5e38;\r\n  }\r\n\r\n  .sv-status-spinner {\r\n    border-color: #fde047;\r\n    border-top-color: transparent;\r\n  }\r\n}\r\n";
-function f() {
+}, p = ":host {\r\n  all: initial;\r\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\r\n  color-scheme: light dark;\r\n}\r\n\r\n.sv-btn,\r\n.sv-action-btn {\r\n  font-family: inherit;\r\n  cursor: pointer;\r\n  line-height: 1.2;\r\n  border: 1px solid #aeb7c2;\r\n  border-radius: 4px;\r\n  background: linear-gradient(to bottom, #fff 0%, #e7ebef 100%);\r\n  color: #263238;\r\n  box-shadow:\r\n    inset 0 1px 0 rgba(255, 255, 255, 0.85),\r\n    0 1px 2px rgba(0, 0, 0, 0.12);\r\n  transition:\r\n    background 0.12s ease,\r\n    border-color 0.12s ease,\r\n    box-shadow 0.12s ease,\r\n    transform 0.08s ease;\r\n  user-select: none;\r\n  display: inline-flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  gap: 6px;\r\n  text-decoration: none;\r\n}\r\n\r\n.sv-btn:hover,\r\n.sv-action-btn:hover {\r\n  background: linear-gradient(to bottom, #fff 0%, #dce2e8 100%);\r\n  color: #111820;\r\n  border-color: #8e9aa6;\r\n}\r\n\r\n.sv-btn:active,\r\n.sv-action-btn:active {\r\n  background: #d7dde3;\r\n  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);\r\n  transform: translateY(1px);\r\n}\r\n\r\n.sv-btn {\r\n  padding: 7px 16px;\r\n  font-size: 13px;\r\n  font-weight: 600;\r\n}\r\n\r\n.sv-action-btn {\r\n  font-size: 11px;\r\n  padding: 4px 8px;\r\n}\r\n\r\n.sv-btn-deny {\r\n  color: #374151;\r\n}\r\n\r\n.sv-btn-allow,\r\n.sv-btn-primary {\r\n  background: linear-gradient(to bottom, #4da3d9 0%, #2479b3 100%);\r\n  color: #fff;\r\n  border-color: #1e6597;\r\n  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);\r\n}\r\n\r\n.sv-btn-allow:hover,\r\n.sv-btn-primary:hover {\r\n  background: linear-gradient(to bottom, #5eb0e3 0%, #2b84be 100%);\r\n  border-color: #195d8d;\r\n  color: #fff;\r\n}\r\n\r\n.sv-btn-allow:active,\r\n.sv-btn-primary:active {\r\n  background: #2479b3;\r\n  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);\r\n}\r\n\r\n.sv-link {\r\n  color: #1769aa;\r\n  text-decoration: underline;\r\n  word-break: break-all;\r\n}\r\n\r\n.sv-link:hover {\r\n  color: #0b4f82;\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  .sv-btn,\r\n  .sv-action-btn {\r\n    border-color: #59636e;\r\n    background: linear-gradient(to bottom, #3b4249 0%, #2d3339 100%);\r\n    color: #e4e8eb;\r\n    box-shadow:\r\n      inset 0 1px 0 rgba(255, 255, 255, 0.08),\r\n      0 1px 2px rgba(0, 0, 0, 0.35);\r\n  }\r\n\r\n  .sv-btn:hover,\r\n  .sv-action-btn:hover {\r\n    background: linear-gradient(to bottom, #464e56 0%, #353c43 100%);\r\n    color: #fff;\r\n    border-color: #707b86;\r\n  }\r\n\r\n  .sv-btn:active,\r\n  .sv-action-btn:active {\r\n    background: #292f35;\r\n  }\r\n\r\n  .sv-btn-deny {\r\n    color: #d5dbe0;\r\n  }\r\n\r\n  .sv-btn-allow,\r\n  .sv-btn-primary {\r\n    background: linear-gradient(to bottom, #3d96cb 0%, #246e9c 100%);\r\n    border-color: #1d5b83;\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-btn-allow:hover,\r\n  .sv-btn-primary:hover {\r\n    background: linear-gradient(to bottom, #4ba4d8 0%, #2b7bab 100%);\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-link {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-link:hover {\r\n    color: #82c9ed;\r\n  }\r\n}\r\n\ndialog {\r\n  position: fixed;\r\n  inset: 0;\r\n  margin: auto;\r\n  border: none;\r\n  background: transparent;\r\n  color: #263238;\r\n  font-size: 13.5px;\r\n  box-sizing: border-box;\r\n  z-index: 2147483647;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n}\r\n\r\ndialog:not([open]) {\r\n  display: none;\r\n}\r\n\r\ndialog::backdrop {\r\n  background: rgba(0, 0, 0, 0.52);\r\n  backdrop-filter: blur(1px);\r\n}\r\n\r\n.sv-box {\r\n  width: min(420px, calc(100vw - 32px));\r\n  padding: 18px 20px;\r\n  box-sizing: border-box;\r\n  background: #f7f8fa;\r\n  border: 1px solid #aeb7c2;\r\n  border-radius: 6px;\r\n  box-shadow:\r\n    0 8px 25px rgba(0, 0, 0, 0.35),\r\n    inset 0 1px 0 rgba(255, 255, 255, 0.9);\r\n  pointer-events: auto;\r\n}\r\n\r\n.sv-title {\r\n  font-weight: 700;\r\n  font-size: 15px;\r\n  margin-bottom: 8px;\r\n  color: #1769aa;\r\n}\r\n\r\n.sv-text {\r\n  margin-bottom: 14px;\r\n  color: #4b5563;\r\n  font-size: 13px;\r\n  line-height: 1.5;\r\n}\r\n\r\n.sv-remember {\r\n  display: inline-flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n  margin-bottom: 18px;\r\n  font-size: 12.5px;\r\n  cursor: pointer;\r\n  user-select: none;\r\n  color: #5b6570;\r\n  pointer-events: auto;\r\n}\r\n\r\n.sv-remember:hover {\r\n  color: #263238;\r\n}\r\n\r\n.sv-remember input {\r\n  cursor: pointer;\r\n  margin: 0;\r\n  accent-color: #2479b3;\r\n  pointer-events: auto;\r\n  appearance: checkbox;\r\n  -webkit-appearance: checkbox;\r\n  width: 15px;\r\n  height: 15px;\r\n  opacity: 1;\r\n  position: static;\r\n  z-index: auto;\r\n  vertical-align: middle;\r\n}\r\n\r\n.sv-remember span {\r\n  pointer-events: auto;\r\n  user-select: none;\r\n}\r\n\r\n.sv-buttons {\r\n  display: flex;\r\n  gap: 8px;\r\n  justify-content: flex-end;\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  dialog {\r\n    color: #e4e8eb;\r\n  }\r\n\r\n  .sv-box {\r\n    background: #292f35;\r\n    color: #e5e9ec;\r\n    border-color: #59636e;\r\n    box-shadow:\r\n      0 8px 28px rgba(0, 0, 0, 0.7),\r\n      inset 0 1px 0 rgba(255, 255, 255, 0.05);\r\n  }\r\n\r\n  .sv-title {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-text {\r\n    color: #b9c1c8;\r\n  }\r\n\r\n  .sv-remember {\r\n    color: #aeb7bf;\r\n  }\r\n\r\n  .sv-remember:hover {\r\n    color: #e5e9ec;\r\n  }\r\n\r\n  .sv-remember input {\r\n    accent-color: #5eb5e6;\r\n  }\r\n}\r\n\n.sv-install-box {\r\n  width: min(520px, calc(100vw - 32px));\r\n  padding: 24px 26px;\r\n}\r\n\r\n.sv-install-header {\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: space-between;\r\n  margin-bottom: 16px;\r\n  padding-bottom: 12px;\r\n  border-bottom: 1px solid #dce2e8;\r\n}\r\n\r\n.sv-install-title {\r\n  font-size: 16px;\r\n  font-weight: 700;\r\n  color: #1769aa;\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n}\r\n\r\n.sv-install-close-btn {\r\n  background: transparent;\r\n  border: none;\r\n  font-size: 18px;\r\n  line-height: 1;\r\n  color: #8e9aa6;\r\n  cursor: pointer;\r\n  padding: 4px 6px;\r\n  border-radius: 4px;\r\n  transition: all 0.12s ease;\r\n}\r\n\r\n.sv-install-close-btn:hover {\r\n  background: rgba(0, 0, 0, 0.06);\r\n  color: #263238;\r\n}\r\n\r\n.sv-steps {\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 16px;\r\n  margin-bottom: 20px;\r\n}\r\n\r\n.sv-step {\r\n  display: flex;\r\n  gap: 12px;\r\n  background: #ffffff;\r\n  padding: 12px 14px;\r\n  border: 1px solid #dce2e8;\r\n  border-radius: 6px;\r\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);\r\n}\r\n\r\n.sv-step-num {\r\n  width: 24px;\r\n  height: 24px;\r\n  background: #2479b3;\r\n  color: #fff;\r\n  border-radius: 50%;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  font-weight: 700;\r\n  font-size: 12px;\r\n  flex-shrink: 0;\r\n}\r\n\r\n.sv-step-content {\r\n  flex: 1;\r\n  font-size: 13px;\r\n  line-height: 1.45;\r\n  color: #374151;\r\n}\r\n\r\n.sv-step-title {\r\n  font-weight: 600;\r\n  margin-bottom: 4px;\r\n  color: #1e293b;\r\n}\r\n\r\n.sv-extensions-list {\r\n  display: flex;\r\n  flex-wrap: wrap;\r\n  gap: 6px;\r\n  margin-top: 8px;\r\n}\r\n\r\n.sv-ext-link {\r\n  font-size: 11.5px;\r\n  padding: 3px 8px;\r\n  border-radius: 4px;\r\n  background: #f1f5f9;\r\n  color: #2563eb;\r\n  border: 1px solid #cbd5e1;\r\n  text-decoration: none;\r\n  display: inline-flex;\r\n  align-items: center;\r\n  gap: 4px;\r\n  transition: all 0.12s ease;\r\n}\r\n\r\n.sv-ext-link:hover {\r\n  background: #e2e8f0;\r\n  border-color: #94a3b8;\r\n  color: #1d4ed8;\r\n}\r\n\r\n.sv-ext-recommended {\r\n  background: #eff6ff;\r\n  border-color: #93c5fd;\r\n  font-weight: 600;\r\n}\r\n\r\n.sv-install-action {\r\n  margin-top: 8px;\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 10px;\r\n}\r\n\r\n.sv-status-banner {\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n  padding: 10px 14px;\r\n  border-radius: 6px;\r\n  font-size: 12.5px;\r\n  font-weight: 500;\r\n  margin-bottom: 16px;\r\n}\r\n\r\n.sv-status-banner.waiting {\r\n  background: #fef3c7;\r\n  color: #92400e;\r\n  border: 1px solid #fde68a;\r\n}\r\n\r\n.sv-status-banner.success {\r\n  background: #dcfce7;\r\n  color: #166534;\r\n  border: 1px solid #bbf7d0;\r\n}\r\n\r\n.sv-status-spinner {\r\n  width: 14px;\r\n  height: 14px;\r\n  border: 2px solid #b45309;\r\n  border-top-color: transparent;\r\n  border-radius: 50%;\r\n  animation: sv-spin 0.8s linear infinite;\r\n}\r\n\r\n@keyframes sv-spin {\r\n  to {\r\n    transform: rotate(360deg);\r\n  }\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  .sv-install-header {\r\n    border-bottom-color: #434c56;\r\n  }\r\n\r\n  .sv-install-title {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-install-close-btn:hover {\r\n    background: rgba(255, 255, 255, 0.08);\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-step {\r\n    background: #23282e;\r\n    border-color: #434c56;\r\n    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);\r\n  }\r\n\r\n  .sv-step-num {\r\n    background: #3d96cb;\r\n  }\r\n\r\n  .sv-step-content {\r\n    color: #d1d7dc;\r\n  }\r\n\r\n  .sv-step-title {\r\n    color: #f1f5f9;\r\n  }\r\n\r\n  .sv-ext-link {\r\n    background: #2c333a;\r\n    border-color: #4b555f;\r\n    color: #60a5fa;\r\n  }\r\n\r\n  .sv-ext-link:hover {\r\n    background: #37404a;\r\n    border-color: #64748b;\r\n    color: #93c5fd;\r\n  }\r\n\r\n  .sv-ext-recommended {\r\n    background: #1e3a5f;\r\n    border-color: #3b82f6;\r\n  }\r\n\r\n  .sv-status-banner.waiting {\r\n    background: #3a2e15;\r\n    color: #fde047;\r\n    border-color: #715816;\r\n  }\r\n\r\n  .sv-status-banner.success {\r\n    background: #143522;\r\n    color: #86efac;\r\n    border-color: #1e5e38;\r\n  }\r\n\r\n  .sv-status-spinner {\r\n    border-color: #fde047;\r\n    border-top-color: transparent;\r\n  }\r\n}\r\n";
+function m() {
 	if (typeof navigator > "u") return "chrome";
 	let e = navigator.userAgent.toLowerCase();
 	return e.includes("firefox") ? "firefox" : e.includes("edg/") ? "edge" : e.includes("opr/") || e.includes("opera/") ? "opera" : e.includes("safari") && !e.includes("chrome") ? "safari" : "chrome";
 }
-var p = {
+var h = {
 	chrome: {
 		tampermonkey: "https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkmingnoiobeogfiigjmhednnj",
 		violentmonkey: "https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag"
@@ -677,29 +805,29 @@ var p = {
 	},
 	opera: { tampermonkey: "https://addons.opera.com/extensions/details/tampermonkey-beta/" },
 	safari: { tampermonkey: "https://apps.apple.com/app/tampermonkey/id1482490089" }
-}, m = null;
-function h(e = {}) {
+}, g = null;
+function _(e = {}) {
 	if (typeof document > "u") return {
 		host: null,
 		close: () => {}
 	};
-	m && m.close();
-	let { userscriptUrl: t = "https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.user.js", title: n = "Yêu cầu SRemote Userscript", description: r = "Trang web cần SRemote Userscript để tương tác và điều khiển media trong iframe cross-origin.", autoDetect: i = !0, onClose: a = null, onSuccess: o = null } = e, s = f(), c = document.createElement("div");
+	g && g.close();
+	let { userscriptUrl: t = "https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.user.js", title: n = "Yêu cầu SRemote Userscript", description: r = "Trang web cần SRemote Userscript để tương tác và điều khiển media trong iframe cross-origin.", autoDetect: i = !0, onClose: a = null, onSuccess: o = null } = e, s = m(), c = document.createElement("div");
 	c.id = "sremote-install-modal-host";
 	let l = c.attachShadow({ mode: "closed" }), u = document.createElement("style");
-	u.textContent = d;
-	let h = document.createElement("dialog"), g = document.createElement("div");
-	g.className = "sv-box sv-install-box";
+	u.textContent = p;
+	let d = document.createElement("dialog"), f = document.createElement("div");
+	f.className = "sv-box sv-install-box";
 	let _ = !1, v = null, y = !1, b = () => {
 		if (!_) {
 			_ = !0, typeof window < "u" && window.removeEventListener("sremote:ready", F);
 			try {
-				h.close();
+				d.close();
 			} catch {}
-			c.remove(), m?.host === c && (m = null), a?.({ success: y });
+			c.remove(), g?.host === c && (g = null), a?.({ success: y });
 		}
 	};
-	m = {
+	g = {
 		host: c,
 		close: b
 	};
@@ -710,16 +838,16 @@ function h(e = {}) {
 	let C = document.createElement("button");
 	if (C.className = "sv-install-close-btn", C.innerHTML = "&times;", C.title = "Đóng", C.addEventListener("click", (e) => {
 		e.stopPropagation(), b();
-	}), x.append(S, C), g.append(x), r) {
+	}), x.append(S, C), f.append(x), r) {
 		let e = document.createElement("div");
-		e.className = "sv-text", e.textContent = r, g.append(e);
+		e.className = "sv-text", e.textContent = r, f.append(e);
 	}
-	v = document.createElement("div"), v.className = "sv-status-banner waiting", v.innerHTML = "\n    <div class=\"sv-status-spinner\"></div>\n    <span>Chờ nhận diện Userscript...</span>\n  ", g.append(v);
+	v = document.createElement("div"), v.className = "sv-status-banner waiting", v.innerHTML = "\n    <div class=\"sv-status-spinner\"></div>\n    <span>Chờ nhận diện Userscript...</span>\n  ", f.append(v);
 	let w = document.createElement("div");
 	w.className = "sv-steps";
 	let T = document.createElement("div");
 	T.className = "sv-step";
-	let E = p[s] || p.chrome, D = "";
+	let E = h[s] || h.chrome, D = "";
 	E.tampermonkey && (D += `<a class="sv-ext-link sv-ext-recommended" href="${E.tampermonkey}" target="_blank" rel="noopener noreferrer">Tampermonkey (${s})</a>`), E.violentmonkey && (D += `<a class="sv-ext-link" href="${E.violentmonkey}" target="_blank" rel="noopener noreferrer">Violentmonkey</a>`), T.innerHTML = `
     <div class="sv-step-num">1</div>
     <div class="sv-step-content">
@@ -744,7 +872,7 @@ function h(e = {}) {
     </div>
   `, w.append(O);
 	let k = document.createElement("div");
-	k.className = "sv-step", k.innerHTML = "\n    <div class=\"sv-step-num\">3</div>\n    <div class=\"sv-step-content\">\n      <div class=\"sv-step-title\">Xác nhận</div>\n      <div>Sau khi bấm Cài đặt trong extension, quay lại trang này hoặc tải lại trang.</div>\n    </div>\n  ", w.append(k), g.append(w);
+	k.className = "sv-step", k.innerHTML = "\n    <div class=\"sv-step-num\">3</div>\n    <div class=\"sv-step-content\">\n      <div class=\"sv-step-title\">Xác nhận</div>\n      <div>Sau khi bấm Cài đặt trong extension, quay lại trang này hoặc tải lại trang.</div>\n    </div>\n  ", w.append(k), f.append(w);
 	let A = document.createElement("div");
 	A.className = "sv-buttons";
 	let j = document.createElement("button");
@@ -754,7 +882,7 @@ function h(e = {}) {
 	let M = document.createElement("button");
 	M.className = "sv-btn sv-btn-primary", M.textContent = "Đóng", M.addEventListener("click", () => {
 		b();
-	}), A.append(j, M), g.append(A), h.append(g), l.append(u, h), h.addEventListener("cancel", (e) => {
+	}), A.append(j, M), f.append(A), d.append(f), l.append(u, d), d.addEventListener("cancel", (e) => {
 		e.preventDefault(), b();
 	});
 	let N = () => {
@@ -763,9 +891,9 @@ function h(e = {}) {
 	};
 	N(), document.readyState === "loading" && document.addEventListener("DOMContentLoaded", N, { once: !0 });
 	try {
-		h.showModal();
+		d.showModal();
 	} catch {
-		h.setAttribute("open", "");
+		d.setAttribute("open", "");
 	}
 	function P() {
 		y = !0, v && (v.className = "sv-status-banner success", v.innerHTML = "\n        <span>✓</span>\n        <span>Userscript đã được kích hoạt.</span>\n      "), o?.();
@@ -781,14 +909,14 @@ function h(e = {}) {
 //#endregion
 //#region src/client.js
 a();
-var g = class {
+var v = class {
 	constructor(e = {}) {
 		a(), this.options = {
 			fallbackToDom: !0,
 			timeout: 2e3,
 			passkey: null,
 			...e
-		}, this.userscriptDriver = new o(this.options), this.domDriver = new u(this.options), this.mode = "detecting", this._readyPromise = null, this.instances = {
+		}, this.userscriptDriver = new o(this.options), this.domDriver = new f(this.options), this.mode = "detecting", this._readyPromise = null, this.instances = {
 			list: (e) => {
 				if (this.userscriptDriver.isAvailable()) {
 					let t = this.userscriptDriver.getApi();
@@ -1013,22 +1141,22 @@ var g = class {
 		return this.userscriptDriver.isAvailable() ? this.userscriptDriver.off(e, t) : this.domDriver.off(e, t);
 	}
 	showInstallModal(e) {
-		return h(e);
+		return _(e);
 	}
 	promptUserscript(e) {
-		return h(e);
+		return _(e);
 	}
 };
-function _(e) {
-	return new g(e);
+function y(e) {
+	return new v(e);
 }
-var v = _, y = new g();
+var b = y, x = new v();
 if (typeof globalThis < "u") try {
-	globalThis[Symbol.for("__sremote_client__")] = y;
+	globalThis[Symbol.for("__sremote_client__")] = x;
 } catch {}
 //#endregion
 //#region src/universal-adapter.js
-function b(e = {}) {
+function S(e = {}) {
 	let { name: t = "universal-adapter", play: n, pause: r, toggle: i, stop: a, seek: o, seekTo: s, setCurrentTime: c, setVolume: l, setMuted: u, setPlaybackRate: d, setQuality: f, getQualities: p, setSubtitle: m, getSubtitles: h, setShuffle: g, setRepeat: _, next: v, previous: y, load: b, requestPip: x, getState: S } = e, C = {
 		paused: !0,
 		currentTime: 0,
@@ -1176,4 +1304,4 @@ function b(e = {}) {
 	return T;
 }
 //#endregion
-export { e as BaseDriver, u as DomDriver, g as SRemoteClient, o as UserscriptDriver, t as createDummyProxy, v as createSRemote, _ as createSRemoteClient, b as createUniversalAdapter, i as isNativeSRemoteInstance, a as lockGlobalSRemoteIfAbsent, h as promptUserscript, h as showInstallModal, y as sremote };
+export { e as BaseDriver, f as DomDriver, v as SRemoteClient, o as UserscriptDriver, t as createDummyProxy, b as createSRemote, y as createSRemoteClient, S as createUniversalAdapter, i as isNativeSRemoteInstance, a as lockGlobalSRemoteIfAbsent, _ as promptUserscript, _ as showInstallModal, x as sremote };
