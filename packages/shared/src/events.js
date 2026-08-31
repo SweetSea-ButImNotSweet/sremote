@@ -145,3 +145,108 @@ export function evaluateCapabilities(target) {
     hasMediaSession: false,
   };
 }
+
+/**
+ * Standard list of HTML5 Media Events supported by SRemote
+ */
+export const MEDIA_EVENTS = [
+  'play',
+  'pause',
+  'playing',
+  'ended',
+  'timeupdate',
+  'durationchange',
+  'volumechange',
+  'ratechange',
+  'seeking',
+  'seeked',
+  'progress',
+  'canplay',
+  'canplaythrough',
+  'waiting',
+  'stalled',
+  'emptied',
+  'abort',
+  'error',
+  'loadeddata',
+  'loadedmetadata',
+  'loadstart',
+  'suspend',
+  'encrypted',
+  'enterpictureinpicture',
+  'exitpictureinpicture',
+];
+
+/**
+ * Binds standardized event listeners to an HTMLMediaElement with smart end/almostend handling.
+ * @param {HTMLMediaElement} media
+ * @param {(event: string, payload: Object) => void} onEvent
+ * @param {Object} [options]
+ * @returns {() => void} Cleanup function to unbind all listeners
+ */
+export function bindMediaEvents(media, onEvent, options = {}) {
+  if (!media || typeof media.addEventListener !== 'function' || typeof onEvent !== 'function') {
+    return () => {};
+  }
+
+  const {
+    instanceId = 'dom-media',
+    source = 'dom',
+    treatAlmostEndAsEnd = false,
+    events = MEDIA_EVENTS,
+  } = options;
+
+  let hasEmittedAlmostEnd = false;
+  const boundListeners = [];
+
+  for (const evtName of events) {
+    const listener = (eventObj) => {
+      const state = extractMediaState(media);
+
+      if (evtName === 'timeupdate') {
+        const dur = Number.isFinite(media.duration) ? media.duration : null;
+        const curTime = media.currentTime || 0;
+        if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
+          if (!hasEmittedAlmostEnd) {
+            hasEmittedAlmostEnd = true;
+            onEvent(treatAlmostEndAsEnd ? 'ended' : 'almostend', createEventPayload(treatAlmostEndAsEnd ? 'ended' : 'almostend', {
+              source,
+              instanceId,
+              mediaType: media.tagName ? media.tagName.toLowerCase() : 'video',
+              state,
+            }));
+          }
+        } else if (dur && curTime < dur - 1.5) {
+          hasEmittedAlmostEnd = false;
+        }
+      }
+
+      if (evtName === 'ended') {
+        hasEmittedAlmostEnd = false;
+        const dur = Number.isFinite(media.duration) ? media.duration : null;
+        const curTime = media.currentTime || 0;
+        if (dur && dur > 0 && Math.abs(dur - curTime) > 1.5) return;
+      }
+
+      onEvent(evtName, createEventPayload(evtName, {
+        source,
+        instanceId,
+        mediaType: media.tagName ? media.tagName.toLowerCase() : 'video',
+        state,
+        originalEvent: eventObj,
+      }));
+    };
+
+    media.addEventListener(evtName, listener, true);
+    boundListeners.push({ evtName, listener });
+  }
+
+  return () => {
+    for (const { evtName, listener } of boundListeners) {
+      try {
+        media.removeEventListener(evtName, listener, true);
+      } catch {}
+    }
+    boundListeners.length = 0;
+  };
+}

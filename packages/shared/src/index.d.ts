@@ -69,8 +69,20 @@ export interface SRemoteEventPayload {
 
 export type SRemoteEventHandler = (data: any) => void;
 
+export declare const MEDIA_EVENTS: readonly string[];
+
 export declare function extractMediaState(media: any): SRemoteMediaState | null;
 export declare function createEventPayload(event: string, options?: any): SRemoteEventPayload;
 export declare function evaluateCapabilities(target: any): SRemoteCapabilities;
+export declare function bindMediaEvents(
+  media: any,
+  onEvent: (event: string, payload: any) => void,
+  options?: {
+    instanceId?: string;
+    source?: string;
+    treatAlmostEndAsEnd?: boolean;
+    events?: string[];
+  }
+): () => void;
 
 

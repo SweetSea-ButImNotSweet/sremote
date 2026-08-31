@@ -13,34 +13,7 @@ export const console_error = LOG_LEVEL >= 1 ? console.error.bind(console) : () =
 
 export const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
-// HTML5 Standard Media Events
-export const MEDIA_EVENTS = [
-  'play',
-  'pause',
-  'playing',
-  'ended',
-  'timeupdate',
-  'durationchange',
-  'volumechange',
-  'ratechange',
-  'seeking',
-  'seeked',
-  'progress',
-  'canplay',
-  'canplaythrough',
-  'waiting',
-  'stalled',
-  'emptied',
-  'abort',
-  'error',
-  'loadeddata',
-  'loadedmetadata',
-  'loadstart',
-  'suspend',
-  'encrypted',
-  'enterpictureinpicture',
-  'exitpictureinpicture',
-];
+export { MEDIA_EVENTS } from '@sremote/shared';
 
 // Native HTMLMediaElement property descriptors
 const mediaProto = HTMLMediaElement.prototype;
