@@ -1396,18 +1396,20 @@ var T = new class extends o {
 //#endregion
 //#region src/providers/bilibili.js
 function U(e = {}) {
-	let t = new window.URLSearchParams(), n = e.bvid || (typeof e.videoId == "string" && e.videoId.startsWith("BV") ? e.videoId : null), r = e.aid || e.avid || (typeof e.videoId == "number" || typeof e.videoId == "string" && !e.videoId.startsWith("BV") ? e.videoId : null);
-	if (n) t.set("bvid", n);
-	else if (r) {
-		let e = String(r).replace(/^av/i, "");
-		t.set("aid", e);
-	} else if (e.id) {
-		let n = String(e.id);
-		n.startsWith("BV") ? t.set("bvid", n) : t.set("aid", n.replace(/^av/i, ""));
-	} else t.set("bvid", "BV1xx411c7mD");
-	e.cid && t.set("cid", e.cid), e.page && t.set("page", e.page), (e.t || e.startTime) && t.set("t", e.t || e.startTime);
-	let i = e.autoplay ?? !0;
-	return t.set("autoplay", i ? "1" : "0"), e.danmaku !== void 0 && t.set("danmaku", e.danmaku ? "1" : "0"), (e.highQuality !== void 0 || e.high_quality !== void 0) && t.set("high_quality", e.highQuality ?? e.high_quality ? "1" : "0"), `https://player.bilibili.com/player.html?${t.toString()}`;
+	let t = new window.URLSearchParams(), n = typeof e == "string" ? { videoId: e } : e || {}, r = n.bvid || n.aid || n.avid || n.videoId || n.id;
+	r && typeof r == "object" && (r = r.bvid || r.aid || r.avid || r.videoId || r.id || null);
+	let i = n.url || n.videoUrl || (typeof r == "string" && r.includes("bilibili.com") ? r : null), a = null, o = null;
+	if (i) {
+		let e = String(i).match(/BV[a-zA-Z0-9]+/i), t = String(i).match(/av(\d+)/i);
+		e ? a = e[0] : t && (o = t[1]);
+	}
+	if (!a && !o && r) {
+		let e = String(r).trim();
+		e !== "[object Object]" && (/^BV/i.test(e) ? a = e : o = e.replace(/^av/i, ""));
+	}
+	a ? t.set("bvid", a) : o ? t.set("aid", String(o).replace(/^av/i, "")) : t.set("bvid", "BV1xx411c7mD"), e.cid && t.set("cid", e.cid), e.page && t.set("page", e.page), (e.t || e.startTime) && t.set("t", e.t || e.startTime);
+	let s = e.autoplay ?? !0;
+	return t.set("autoplay", s ? "1" : "0"), e.danmaku !== void 0 && t.set("danmaku", e.danmaku ? "1" : "0"), (e.highQuality !== void 0 || e.high_quality !== void 0) && t.set("high_quality", e.highQuality ?? e.high_quality ? "1" : "0"), `https://player.bilibili.com/player.html?${t.toString()}`;
 }
 var W = new class extends o {
 	constructor() {
@@ -1428,24 +1430,14 @@ var W = new class extends o {
 	createAdapter(e, t) {
 		let n = t?.iframe || e?.iframe;
 		return { load(e, t = 1) {
-			if (n) {
-				if (typeof e == "object" && e) n.src = U({
-					...e,
-					autoplay: !0
-				});
-				else {
-					let r = String(e);
-					r.startsWith("BV") ? n.src = U({
-						bvid: r,
-						page: t,
-						autoplay: !0
-					}) : n.src = U({
-						aid: r,
-						page: t,
-						autoplay: !0
-					});
-				}
-			}
+			n && (typeof e == "object" && e ? n.src = U({
+				...e,
+				autoplay: !0
+			}) : n.src = U({
+				videoId: String(e),
+				page: t,
+				autoplay: !0
+			}));
 		} };
 	}
 }(), G = {

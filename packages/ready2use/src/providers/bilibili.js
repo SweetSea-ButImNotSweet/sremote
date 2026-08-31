@@ -8,22 +8,47 @@ import { applyElementAttributes } from '../core/dom-utils.js';
 function buildBilibiliUrl(options = {}) {
   const params = new window.URLSearchParams();
 
-  const bvid = options.bvid || (typeof options.videoId === 'string' && options.videoId.startsWith('BV') ? options.videoId : null);
-  const aid =
-    options.aid || options.avid || (typeof options.videoId === 'number' || (typeof options.videoId === 'string' && !options.videoId.startsWith('BV')) ? options.videoId : null);
+  // If options is a string, treat as rawId
+  const opts = typeof options === 'string' ? { videoId: options } : options || {};
+
+  // Extract raw ID candidate
+  let rawId = opts.bvid || opts.aid || opts.avid || opts.videoId || opts.id;
+
+  // If rawId is an object (e.g. { bvid: "...", aid: "..." }), unwrap it
+  if (rawId && typeof rawId === 'object') {
+    rawId = rawId.bvid || rawId.aid || rawId.avid || rawId.videoId || rawId.id || null;
+  }
+
+  const rawUrl = opts.url || opts.videoUrl || (typeof rawId === 'string' && rawId.includes('bilibili.com') ? rawId : null);
+
+  let bvid = null;
+  let aid = null;
+
+  if (rawUrl) {
+    const bvMatch = String(rawUrl).match(/BV[a-zA-Z0-9]+/i);
+    const avMatch = String(rawUrl).match(/av(\d+)/i);
+    if (bvMatch) {
+      bvid = bvMatch[0];
+    } else if (avMatch) {
+      aid = avMatch[1];
+    }
+  }
+
+  if (!bvid && !aid && rawId) {
+    const idStr = String(rawId).trim();
+    if (idStr !== '[object Object]') {
+      if (/^BV/i.test(idStr)) {
+        bvid = idStr;
+      } else {
+        aid = idStr.replace(/^av/i, '');
+      }
+    }
+  }
 
   if (bvid) {
     params.set('bvid', bvid);
   } else if (aid) {
-    const cleanAid = String(aid).replace(/^av/i, '');
-    params.set('aid', cleanAid);
-  } else if (options.id) {
-    const idStr = String(options.id);
-    if (idStr.startsWith('BV')) {
-      params.set('bvid', idStr);
-    } else {
-      params.set('aid', idStr.replace(/^av/i, ''));
-    }
+    params.set('aid', String(aid).replace(/^av/i, ''));
   } else {
     params.set('bvid', 'BV1xx411c7mD');
   }
@@ -75,12 +100,7 @@ export class BilibiliProvider extends BaseProvider {
           if (typeof source === 'object' && source !== null) {
             iframe.src = buildBilibiliUrl({ ...source, autoplay: true });
           } else {
-            const srcStr = String(source);
-            if (srcStr.startsWith('BV')) {
-              iframe.src = buildBilibiliUrl({ bvid: srcStr, page, autoplay: true });
-            } else {
-              iframe.src = buildBilibiliUrl({ aid: srcStr, page, autoplay: true });
-            }
+            iframe.src = buildBilibiliUrl({ videoId: String(source), page, autoplay: true });
           }
         }
       },
