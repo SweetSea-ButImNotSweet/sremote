@@ -856,6 +856,110 @@
 			simulateStall: async (instanceId = null) => exportedApi.call("debug_simulateStall", {}, instanceId)
 		});
 	}
+	function extractMediaState(media) {
+		if (!media) return null;
+		if (typeof media.getState === "function") try {
+			return media.getState();
+		} catch {}
+		const curVol = media.volume !== void 0 ? media.volume : 1;
+		const curMuted = media.muted !== void 0 ? media.muted : false;
+		const curTime = media.currentTime !== void 0 ? media.currentTime : 0;
+		const rawDur = media.duration;
+		const curRate = media.playbackRate !== void 0 ? media.playbackRate : 1;
+		const isPaused = media.paused !== void 0 ? typeof media.paused === "function" ? media.paused() : Boolean(media.paused) : true;
+		const isEnded = media.ended !== void 0 ? Boolean(media.ended) : false;
+		const curReadyState = media.readyState !== void 0 ? media.readyState : 0;
+		const curSrc = media.currentSrc || media.src || "";
+		const dur = Number.isFinite(rawDur) ? rawDur : null;
+		let bufferedEnd = 0;
+		try {
+			const buf = media.buffered;
+			if (buf && buf.length > 0) bufferedEnd = buf.end(buf.length - 1);
+		} catch {}
+		const isLoop = media.loop !== void 0 ? Boolean(media.loop) : false;
+		const isFullscreen = typeof document !== "undefined" && Boolean(document.fullscreenElement && (document.fullscreenElement === media || document.fullscreenElement.contains(media)));
+		const isPip = typeof document !== "undefined" && document.pictureInPictureElement === media;
+		return {
+			paused: isPaused,
+			ended: Boolean(isEnded || dur && dur > 0 && curTime >= dur - .1),
+			currentTime: curTime,
+			duration: dur,
+			buffered: bufferedEnd,
+			volume: curVol,
+			muted: curMuted,
+			playbackRate: curRate,
+			readyState: curReadyState,
+			src: curSrc,
+			loop: isLoop,
+			repeat: isLoop ? "one" : "off",
+			fullscreen: isFullscreen,
+			pictureInPicture: isPip
+		};
+	}
+	function createEventPayload(event, options = {}) {
+		const ev = String(event || "").toLowerCase();
+		const { instanceId = "unknown", source = "adapter", mediaType = "adapter", state = null, isProgrammatic = false, ...extra } = typeof options === "object" && options !== null ? options : { value: options };
+		return {
+			source,
+			instanceId,
+			mediaType,
+			action: ev,
+			isProgrammatic,
+			...state ? { state } : {},
+			...extra
+		};
+	}
+	function evaluateCapabilities(target) {
+		if (!target) return {
+			play: false,
+			pause: false,
+			toggle: false,
+			stop: false,
+			seek: false,
+			volume: false,
+			muted: false,
+			speed: false,
+			playbackRate: false,
+			pip: false,
+			quality: false,
+			subtitles: false,
+			shuffle: false,
+			repeat: false,
+			next: false,
+			previous: false,
+			load: false,
+			hasAdapter: false,
+			hasNative: false,
+			hasMediaSession: false
+		};
+		if (target.capabilities && typeof target.capabilities === "object") return { ...target.capabilities };
+		const isVideo = Boolean(target.tagName === "VIDEO");
+		const isAudio = Boolean(target.tagName === "AUDIO");
+		const hasNative = isVideo || isAudio;
+		const hasFn = (fnName) => Boolean(typeof target[fnName] === "function");
+		return {
+			play: hasNative || hasFn("play"),
+			pause: hasNative || hasFn("pause"),
+			toggle: hasNative || hasFn("toggle") || hasFn("play") && hasFn("pause"),
+			stop: hasNative || hasFn("stop") || hasFn("pause"),
+			seek: hasNative || hasFn("seek") || hasFn("seekTo") || hasFn("setCurrentTime"),
+			volume: hasNative || hasFn("setVolume"),
+			muted: hasNative || hasFn("setMuted"),
+			speed: hasNative || hasFn("setPlaybackRate"),
+			playbackRate: hasNative || hasFn("setPlaybackRate"),
+			pip: isVideo && typeof document !== "undefined" && Boolean(document.pictureInPictureEnabled || target.requestPictureInPicture) || hasFn("requestPip") || hasFn("pip"),
+			quality: hasFn("setQuality"),
+			subtitles: Boolean(hasNative && target.textTracks && target.textTracks.length > 0) || hasFn("setSubtitle") || hasFn("getSubtitles"),
+			shuffle: hasFn("setShuffle"),
+			repeat: hasNative || hasFn("setRepeat"),
+			next: hasFn("next"),
+			previous: hasFn("previous"),
+			load: hasNative || hasFn("load"),
+			hasAdapter: !hasNative,
+			hasNative,
+			hasMediaSession: false
+		};
+	}
 	function createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM }) {
 		const { instances, parentAdaptersMap, assignedIframeIdMap, iframeToAssignedIdMap, globalEventListeners, isMultiModeActive, getLatestActiveInstanceId, pauseOthersExcept, handleUseAdapter, handleRemoveAdapter } = instanceManager;
 		const assignIframeId = (iframeOrSelector, customId) => {
@@ -890,49 +994,12 @@
 			const targetId = instanceId || activeId || (instances.size === 1 ? Array.from(instances.keys())[0] : null);
 			if (!targetId) return null;
 			if (instances.has(targetId)) return instances.get(targetId).state || null;
-			if (parentAdaptersMap.has(targetId)) {
-				const adapter = parentAdaptersMap.get(targetId);
-				return {
-					paused: typeof adapter.paused === "function" ? adapter.paused() : Boolean(adapter.paused),
-					currentTime: typeof adapter.getCurrentTime === "function" ? adapter.getCurrentTime() : 0,
-					duration: typeof adapter.getDuration === "function" ? adapter.getDuration() : 0,
-					volume: typeof adapter.getVolume === "function" ? adapter.getVolume() : 1,
-					muted: typeof adapter.getMuted === "function" ? adapter.getMuted() : false
-				};
-			}
+			if (parentAdaptersMap.has(targetId)) return extractMediaState(parentAdaptersMap.get(targetId));
 			return null;
 		};
 		const resolveAdapterCapabilities = (adapter) => {
 			if (!adapter) return null;
-			if (adapter.capabilities && typeof adapter.capabilities === "object") return {
-				...adapter.capabilities,
-				hasAdapter: true,
-				hasNative: false,
-				hasMediaSession: false
-			};
-			const hasFn = (fnName) => Boolean(typeof adapter[fnName] === "function");
-			return {
-				play: hasFn("play"),
-				pause: hasFn("pause"),
-				toggle: hasFn("toggle") || hasFn("play") && hasFn("pause"),
-				stop: hasFn("stop") || hasFn("pause"),
-				seek: hasFn("seek") || hasFn("seekTo") || hasFn("setCurrentTime"),
-				volume: hasFn("setVolume"),
-				muted: hasFn("setMuted"),
-				speed: hasFn("setPlaybackRate"),
-				playbackRate: hasFn("setPlaybackRate"),
-				pip: hasFn("requestPip") || hasFn("pip"),
-				quality: hasFn("setQuality"),
-				subtitles: hasFn("setSubtitle") || hasFn("getSubtitles"),
-				shuffle: hasFn("setShuffle"),
-				repeat: hasFn("setRepeat"),
-				next: hasFn("next"),
-				previous: hasFn("previous"),
-				load: hasFn("load"),
-				hasAdapter: true,
-				hasNative: false,
-				hasMediaSession: false
-			};
+			return evaluateCapabilities(adapter);
 		};
 		const getCapabilities = (instanceId, key) => {
 			if (!validateDomainAccess(key)) {
@@ -993,13 +1060,7 @@
 				mediaType: "adapter",
 				capabilities: resolveAdapterCapabilities(adapter),
 				status: "ready",
-				state: {
-					paused: typeof adapter.paused === "function" ? adapter.paused() : Boolean(adapter.paused),
-					currentTime: typeof adapter.getCurrentTime === "function" ? adapter.getCurrentTime() : 0,
-					duration: typeof adapter.getDuration === "function" ? adapter.getDuration() : 0,
-					volume: typeof adapter.getVolume === "function" ? adapter.getVolume() : 1,
-					muted: typeof adapter.getMuted === "function" ? adapter.getMuted() : false
-				}
+				state: extractMediaState(adapter)
 			});
 			return result;
 		};
@@ -1482,12 +1543,12 @@
 			}
 			adapterVal.emit = (event, payload = {}) => {
 				const ev = String(event || "").toLowerCase();
-				const fullPayload = {
+				const fullPayload = createEventPayload(ev, {
 					source: "adapter",
 					instanceId: targetId,
 					mediaType: "adapter",
 					...typeof payload === "object" && payload !== null ? payload : { value: payload }
-				};
+				});
 				if (ev === "play" || ev === "playing") {
 					if (exclusiveMode === "auto") pauseOthersExcept(targetId);
 				}

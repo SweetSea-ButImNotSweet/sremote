@@ -265,7 +265,100 @@ var o = class extends e {
 		let r = e.startsWith("sremote:") ? e : `sremote:${e}`;
 		window.removeEventListener(r, t);
 	}
-}, s = class extends e {
+};
+//#endregion
+//#region ../shared/src/events.js
+function s(e) {
+	if (!e) return null;
+	if (typeof e.getState == "function") try {
+		return e.getState();
+	} catch {}
+	let t = e.volume === void 0 ? 1 : e.volume, n = e.muted !== void 0 && e.muted, r = e.currentTime === void 0 ? 0 : e.currentTime, i = e.duration, a = e.playbackRate === void 0 ? 1 : e.playbackRate, o = e.paused === void 0 ? !0 : typeof e.paused == "function" ? e.paused() : !!e.paused, s = e.ended !== void 0 && !!e.ended, c = e.readyState === void 0 ? 0 : e.readyState, l = e.currentSrc || e.src || "", u = Number.isFinite(i) ? i : null, d = 0;
+	try {
+		let t = e.buffered;
+		t && t.length > 0 && (d = t.end(t.length - 1));
+	} catch {}
+	let f = e.loop !== void 0 && !!e.loop, p = typeof document < "u" && !!(document.fullscreenElement && (document.fullscreenElement === e || document.fullscreenElement.contains(e))), m = typeof document < "u" && document.pictureInPictureElement === e;
+	return {
+		paused: o,
+		ended: !!(s || u && u > 0 && r >= u - .1),
+		currentTime: r,
+		duration: u,
+		buffered: d,
+		volume: t,
+		muted: n,
+		playbackRate: a,
+		readyState: c,
+		src: l,
+		loop: f,
+		repeat: f ? "one" : "off",
+		fullscreen: p,
+		pictureInPicture: m
+	};
+}
+function c(e, t = {}) {
+	let n = String(e || "").toLowerCase(), { instanceId: r = "unknown", source: i = "adapter", mediaType: a = "adapter", state: o = null, isProgrammatic: s = !1, ...c } = typeof t == "object" && t ? t : { value: t };
+	return {
+		source: i,
+		instanceId: r,
+		mediaType: a,
+		action: n,
+		isProgrammatic: s,
+		...o ? { state: o } : {},
+		...c
+	};
+}
+function l(e) {
+	if (!e) return {
+		play: !1,
+		pause: !1,
+		toggle: !1,
+		stop: !1,
+		seek: !1,
+		volume: !1,
+		muted: !1,
+		speed: !1,
+		playbackRate: !1,
+		pip: !1,
+		quality: !1,
+		subtitles: !1,
+		shuffle: !1,
+		repeat: !1,
+		next: !1,
+		previous: !1,
+		load: !1,
+		hasAdapter: !1,
+		hasNative: !1,
+		hasMediaSession: !1
+	};
+	if (e.capabilities && typeof e.capabilities == "object") return { ...e.capabilities };
+	let t = e.tagName === "VIDEO", n = e.tagName === "AUDIO", r = t || n, i = (t) => typeof e[t] == "function";
+	return {
+		play: r || i("play"),
+		pause: r || i("pause"),
+		toggle: r || i("toggle") || i("play") && i("pause"),
+		stop: r || i("stop") || i("pause"),
+		seek: r || i("seek") || i("seekTo") || i("setCurrentTime"),
+		volume: r || i("setVolume"),
+		muted: r || i("setMuted"),
+		speed: r || i("setPlaybackRate"),
+		playbackRate: r || i("setPlaybackRate"),
+		pip: t && typeof document < "u" && !!(document.pictureInPictureEnabled || e.requestPictureInPicture) || i("requestPip") || i("pip"),
+		quality: i("setQuality"),
+		subtitles: !!(r && e.textTracks && e.textTracks.length > 0) || i("setSubtitle") || i("getSubtitles"),
+		shuffle: i("setShuffle"),
+		repeat: r || i("setRepeat"),
+		next: i("next"),
+		previous: i("previous"),
+		load: r || i("load"),
+		hasAdapter: !r,
+		hasNative: r,
+		hasMediaSession: !1
+	};
+}
+//#endregion
+//#region src/strategies/dom.js
+var u = class extends e {
 	constructor(e = {}) {
 		super(e), this.adaptersMap = /* @__PURE__ */ new Map(), this.eventListeners = /* @__PURE__ */ new Map(), this.multiMode = !1, this.exclusiveMode = "auto", this.lastActiveInstanceId = null;
 	}
@@ -281,13 +374,7 @@ var o = class extends e {
 	list() {
 		let e = [];
 		for (let [t, n] of this.adaptersMap.entries()) {
-			let r = typeof n.getState == "function" ? n.getState() : {
-				paused: typeof n.paused == "function" ? n.paused() : !!n.paused,
-				currentTime: typeof n.getCurrentTime == "function" ? n.getCurrentTime() : 0,
-				duration: typeof n.getDuration == "function" ? n.getDuration() : 0,
-				volume: typeof n.getVolume == "function" ? n.getVolume() : 1,
-				muted: typeof n.getMuted == "function" && n.getMuted()
-			};
+			let r = s(n);
 			e.push({
 				instanceId: t,
 				mediaType: "adapter",
@@ -301,12 +388,12 @@ var o = class extends e {
 	useAdapter(e, t = null) {
 		if (!e || typeof e != "object") return null;
 		let n = t || `adapter-${Math.random().toString(36).slice(2, 9)}`, r = (e, t = {}) => {
-			let r = String(e || "").toLowerCase(), i = {
+			let r = String(e || "").toLowerCase(), i = c(r, {
 				source: "adapter",
 				instanceId: n,
 				mediaType: "adapter",
 				...typeof t == "object" && t ? t : { value: t }
-			};
+			});
 			(r === "play" || r === "playing") && (this.lastActiveInstanceId = n, (this.exclusiveMode === "auto" || this.exclusiveMode === !0) && this.pauseOthersExcept(n)), this.emit(r, i);
 		};
 		if (!e.emit) e.emit = r;
@@ -527,62 +614,7 @@ var o = class extends e {
 	}
 	getCapabilities(e) {
 		let t = this.resolveTarget(e);
-		if (!t) return null;
-		if (t.type === "adapter") {
-			let e = t.instance;
-			if (e.capabilities && typeof e.capabilities == "object") return {
-				...e.capabilities,
-				hasAdapter: !0,
-				hasNative: !1,
-				hasMediaSession: !1
-			};
-			let n = (t) => typeof e[t] == "function";
-			return {
-				play: n("play"),
-				pause: n("pause"),
-				toggle: n("toggle") || n("play") && n("pause"),
-				stop: n("stop") || n("pause"),
-				seek: n("seek") || n("seekTo") || n("setCurrentTime"),
-				volume: n("setVolume"),
-				muted: n("setMuted"),
-				speed: n("setPlaybackRate"),
-				playbackRate: n("setPlaybackRate"),
-				pip: n("requestPip") || n("pip"),
-				quality: n("setQuality"),
-				subtitles: n("setSubtitle") || n("getSubtitles"),
-				shuffle: n("setShuffle"),
-				repeat: n("setRepeat"),
-				next: n("next"),
-				previous: n("previous"),
-				load: n("load"),
-				hasAdapter: !0,
-				hasNative: !1,
-				hasMediaSession: !1
-			};
-		}
-		let n = t.instance, r = !!(n && n.tagName === "VIDEO"), i = !!(n && n.tagName === "AUDIO"), a = r || i;
-		return {
-			play: a,
-			pause: a,
-			toggle: a,
-			stop: a,
-			seek: a,
-			volume: a,
-			muted: a,
-			speed: a,
-			playbackRate: a,
-			pip: r && typeof document < "u" && !!(document.pictureInPictureEnabled || n.requestPictureInPicture),
-			quality: !1,
-			subtitles: !!(a && n.textTracks && n.textTracks.length > 0),
-			shuffle: !1,
-			repeat: a,
-			next: !1,
-			previous: !1,
-			load: a,
-			hasAdapter: !1,
-			hasNative: a,
-			hasMediaSession: !1
-		};
+		return t ? l(t.instance) : null;
 	}
 	emit(e, t) {
 		let n = e.startsWith("sremote:") ? e : `sremote:${e}`, r = e.replace(/^sremote:/, ""), i = (e) => {
@@ -596,17 +628,15 @@ var o = class extends e {
 	on(e, t) {
 		if (typeof document > "u" || typeof t != "function") return () => {};
 		let n = e.replace(/^sremote:/, ""), r = (e) => {
-			let n = e.target;
-			n && t({
+			let r = e.target;
+			if (!r) return;
+			let i = s(r);
+			t(c(n, {
 				instanceId: "dom-media",
-				currentTime: n.currentTime,
-				duration: n.duration,
-				volume: n.volume,
-				muted: n.muted,
-				playbackRate: n.playbackRate,
-				speed: n.playbackRate,
-				state: n.paused ? "paused" : "playing"
-			});
+				source: "dom",
+				mediaType: r.tagName ? r.tagName.toLowerCase() : "video",
+				state: i
+			}));
 		};
 		return this.eventListeners.has(e) || this.eventListeners.set(e, /* @__PURE__ */ new Map()), this.eventListeners.get(e).set(t, {
 			domEventName: n,
@@ -626,13 +656,13 @@ var o = class extends e {
 			}
 		}
 	}
-}, c = ":host {\r\n  all: initial;\r\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\r\n  color-scheme: light dark;\r\n}\r\n\r\n.sv-btn,\r\n.sv-action-btn {\r\n  font-family: inherit;\r\n  cursor: pointer;\r\n  line-height: 1.2;\r\n  border: 1px solid #aeb7c2;\r\n  border-radius: 4px;\r\n  background: linear-gradient(to bottom, #fff 0%, #e7ebef 100%);\r\n  color: #263238;\r\n  box-shadow:\r\n    inset 0 1px 0 rgba(255, 255, 255, 0.85),\r\n    0 1px 2px rgba(0, 0, 0, 0.12);\r\n  transition:\r\n    background 0.12s ease,\r\n    border-color 0.12s ease,\r\n    box-shadow 0.12s ease,\r\n    transform 0.08s ease;\r\n  user-select: none;\r\n  display: inline-flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  gap: 6px;\r\n  text-decoration: none;\r\n}\r\n\r\n.sv-btn:hover,\r\n.sv-action-btn:hover {\r\n  background: linear-gradient(to bottom, #fff 0%, #dce2e8 100%);\r\n  color: #111820;\r\n  border-color: #8e9aa6;\r\n}\r\n\r\n.sv-btn:active,\r\n.sv-action-btn:active {\r\n  background: #d7dde3;\r\n  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);\r\n  transform: translateY(1px);\r\n}\r\n\r\n.sv-btn {\r\n  padding: 7px 16px;\r\n  font-size: 13px;\r\n  font-weight: 600;\r\n}\r\n\r\n.sv-action-btn {\r\n  font-size: 11px;\r\n  padding: 4px 8px;\r\n}\r\n\r\n.sv-btn-deny {\r\n  color: #374151;\r\n}\r\n\r\n.sv-btn-allow,\r\n.sv-btn-primary {\r\n  background: linear-gradient(to bottom, #4da3d9 0%, #2479b3 100%);\r\n  color: #fff;\r\n  border-color: #1e6597;\r\n  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);\r\n}\r\n\r\n.sv-btn-allow:hover,\r\n.sv-btn-primary:hover {\r\n  background: linear-gradient(to bottom, #5eb0e3 0%, #2b84be 100%);\r\n  border-color: #195d8d;\r\n  color: #fff;\r\n}\r\n\r\n.sv-btn-allow:active,\r\n.sv-btn-primary:active {\r\n  background: #2479b3;\r\n  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);\r\n}\r\n\r\n.sv-link {\r\n  color: #1769aa;\r\n  text-decoration: underline;\r\n  word-break: break-all;\r\n}\r\n\r\n.sv-link:hover {\r\n  color: #0b4f82;\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  .sv-btn,\r\n  .sv-action-btn {\r\n    border-color: #59636e;\r\n    background: linear-gradient(to bottom, #3b4249 0%, #2d3339 100%);\r\n    color: #e4e8eb;\r\n    box-shadow:\r\n      inset 0 1px 0 rgba(255, 255, 255, 0.08),\r\n      0 1px 2px rgba(0, 0, 0, 0.35);\r\n  }\r\n\r\n  .sv-btn:hover,\r\n  .sv-action-btn:hover {\r\n    background: linear-gradient(to bottom, #464e56 0%, #353c43 100%);\r\n    color: #fff;\r\n    border-color: #707b86;\r\n  }\r\n\r\n  .sv-btn:active,\r\n  .sv-action-btn:active {\r\n    background: #292f35;\r\n  }\r\n\r\n  .sv-btn-deny {\r\n    color: #d5dbe0;\r\n  }\r\n\r\n  .sv-btn-allow,\r\n  .sv-btn-primary {\r\n    background: linear-gradient(to bottom, #3d96cb 0%, #246e9c 100%);\r\n    border-color: #1d5b83;\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-btn-allow:hover,\r\n  .sv-btn-primary:hover {\r\n    background: linear-gradient(to bottom, #4ba4d8 0%, #2b7bab 100%);\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-link {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-link:hover {\r\n    color: #82c9ed;\r\n  }\r\n}\r\n\ndialog {\r\n  position: fixed;\r\n  inset: 0;\r\n  margin: auto;\r\n  border: none;\r\n  background: transparent;\r\n  color: #263238;\r\n  font-size: 13.5px;\r\n  box-sizing: border-box;\r\n  z-index: 2147483647;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n}\r\n\r\ndialog:not([open]) {\r\n  display: none;\r\n}\r\n\r\ndialog::backdrop {\r\n  background: rgba(0, 0, 0, 0.52);\r\n  backdrop-filter: blur(1px);\r\n}\r\n\r\n.sv-box {\r\n  width: min(420px, calc(100vw - 32px));\r\n  padding: 18px 20px;\r\n  box-sizing: border-box;\r\n  background: #f7f8fa;\r\n  border: 1px solid #aeb7c2;\r\n  border-radius: 6px;\r\n  box-shadow:\r\n    0 8px 25px rgba(0, 0, 0, 0.35),\r\n    inset 0 1px 0 rgba(255, 255, 255, 0.9);\r\n  pointer-events: auto;\r\n}\r\n\r\n.sv-title {\r\n  font-weight: 700;\r\n  font-size: 15px;\r\n  margin-bottom: 8px;\r\n  color: #1769aa;\r\n}\r\n\r\n.sv-text {\r\n  margin-bottom: 14px;\r\n  color: #4b5563;\r\n  font-size: 13px;\r\n  line-height: 1.5;\r\n}\r\n\r\n.sv-remember {\r\n  display: inline-flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n  margin-bottom: 18px;\r\n  font-size: 12.5px;\r\n  cursor: pointer;\r\n  user-select: none;\r\n  color: #5b6570;\r\n  pointer-events: auto;\r\n}\r\n\r\n.sv-remember:hover {\r\n  color: #263238;\r\n}\r\n\r\n.sv-remember input {\r\n  cursor: pointer;\r\n  margin: 0;\r\n  accent-color: #2479b3;\r\n  pointer-events: auto;\r\n  appearance: checkbox;\r\n  -webkit-appearance: checkbox;\r\n  width: 15px;\r\n  height: 15px;\r\n  opacity: 1;\r\n  position: static;\r\n  z-index: auto;\r\n  vertical-align: middle;\r\n}\r\n\r\n.sv-remember span {\r\n  pointer-events: auto;\r\n  user-select: none;\r\n}\r\n\r\n.sv-buttons {\r\n  display: flex;\r\n  gap: 8px;\r\n  justify-content: flex-end;\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  dialog {\r\n    color: #e4e8eb;\r\n  }\r\n\r\n  .sv-box {\r\n    background: #292f35;\r\n    color: #e5e9ec;\r\n    border-color: #59636e;\r\n    box-shadow:\r\n      0 8px 28px rgba(0, 0, 0, 0.7),\r\n      inset 0 1px 0 rgba(255, 255, 255, 0.05);\r\n  }\r\n\r\n  .sv-title {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-text {\r\n    color: #b9c1c8;\r\n  }\r\n\r\n  .sv-remember {\r\n    color: #aeb7bf;\r\n  }\r\n\r\n  .sv-remember:hover {\r\n    color: #e5e9ec;\r\n  }\r\n\r\n  .sv-remember input {\r\n    accent-color: #5eb5e6;\r\n  }\r\n}\r\n\n.sv-install-box {\r\n  width: min(520px, calc(100vw - 32px));\r\n  padding: 24px 26px;\r\n}\r\n\r\n.sv-install-header {\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: space-between;\r\n  margin-bottom: 16px;\r\n  padding-bottom: 12px;\r\n  border-bottom: 1px solid #dce2e8;\r\n}\r\n\r\n.sv-install-title {\r\n  font-size: 16px;\r\n  font-weight: 700;\r\n  color: #1769aa;\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n}\r\n\r\n.sv-install-close-btn {\r\n  background: transparent;\r\n  border: none;\r\n  font-size: 18px;\r\n  line-height: 1;\r\n  color: #8e9aa6;\r\n  cursor: pointer;\r\n  padding: 4px 6px;\r\n  border-radius: 4px;\r\n  transition: all 0.12s ease;\r\n}\r\n\r\n.sv-install-close-btn:hover {\r\n  background: rgba(0, 0, 0, 0.06);\r\n  color: #263238;\r\n}\r\n\r\n.sv-steps {\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 16px;\r\n  margin-bottom: 20px;\r\n}\r\n\r\n.sv-step {\r\n  display: flex;\r\n  gap: 12px;\r\n  background: #ffffff;\r\n  padding: 12px 14px;\r\n  border: 1px solid #dce2e8;\r\n  border-radius: 6px;\r\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);\r\n}\r\n\r\n.sv-step-num {\r\n  width: 24px;\r\n  height: 24px;\r\n  background: #2479b3;\r\n  color: #fff;\r\n  border-radius: 50%;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  font-weight: 700;\r\n  font-size: 12px;\r\n  flex-shrink: 0;\r\n}\r\n\r\n.sv-step-content {\r\n  flex: 1;\r\n  font-size: 13px;\r\n  line-height: 1.45;\r\n  color: #374151;\r\n}\r\n\r\n.sv-step-title {\r\n  font-weight: 600;\r\n  margin-bottom: 4px;\r\n  color: #1e293b;\r\n}\r\n\r\n.sv-extensions-list {\r\n  display: flex;\r\n  flex-wrap: wrap;\r\n  gap: 6px;\r\n  margin-top: 8px;\r\n}\r\n\r\n.sv-ext-link {\r\n  font-size: 11.5px;\r\n  padding: 3px 8px;\r\n  border-radius: 4px;\r\n  background: #f1f5f9;\r\n  color: #2563eb;\r\n  border: 1px solid #cbd5e1;\r\n  text-decoration: none;\r\n  display: inline-flex;\r\n  align-items: center;\r\n  gap: 4px;\r\n  transition: all 0.12s ease;\r\n}\r\n\r\n.sv-ext-link:hover {\r\n  background: #e2e8f0;\r\n  border-color: #94a3b8;\r\n  color: #1d4ed8;\r\n}\r\n\r\n.sv-ext-recommended {\r\n  background: #eff6ff;\r\n  border-color: #93c5fd;\r\n  font-weight: 600;\r\n}\r\n\r\n.sv-install-action {\r\n  margin-top: 8px;\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 10px;\r\n}\r\n\r\n.sv-status-banner {\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n  padding: 10px 14px;\r\n  border-radius: 6px;\r\n  font-size: 12.5px;\r\n  font-weight: 500;\r\n  margin-bottom: 16px;\r\n}\r\n\r\n.sv-status-banner.waiting {\r\n  background: #fef3c7;\r\n  color: #92400e;\r\n  border: 1px solid #fde68a;\r\n}\r\n\r\n.sv-status-banner.success {\r\n  background: #dcfce7;\r\n  color: #166534;\r\n  border: 1px solid #bbf7d0;\r\n}\r\n\r\n.sv-status-spinner {\r\n  width: 14px;\r\n  height: 14px;\r\n  border: 2px solid #b45309;\r\n  border-top-color: transparent;\r\n  border-radius: 50%;\r\n  animation: sv-spin 0.8s linear infinite;\r\n}\r\n\r\n@keyframes sv-spin {\r\n  to {\r\n    transform: rotate(360deg);\r\n  }\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  .sv-install-header {\r\n    border-bottom-color: #434c56;\r\n  }\r\n\r\n  .sv-install-title {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-install-close-btn:hover {\r\n    background: rgba(255, 255, 255, 0.08);\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-step {\r\n    background: #23282e;\r\n    border-color: #434c56;\r\n    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);\r\n  }\r\n\r\n  .sv-step-num {\r\n    background: #3d96cb;\r\n  }\r\n\r\n  .sv-step-content {\r\n    color: #d1d7dc;\r\n  }\r\n\r\n  .sv-step-title {\r\n    color: #f1f5f9;\r\n  }\r\n\r\n  .sv-ext-link {\r\n    background: #2c333a;\r\n    border-color: #4b555f;\r\n    color: #60a5fa;\r\n  }\r\n\r\n  .sv-ext-link:hover {\r\n    background: #37404a;\r\n    border-color: #64748b;\r\n    color: #93c5fd;\r\n  }\r\n\r\n  .sv-ext-recommended {\r\n    background: #1e3a5f;\r\n    border-color: #3b82f6;\r\n  }\r\n\r\n  .sv-status-banner.waiting {\r\n    background: #3a2e15;\r\n    color: #fde047;\r\n    border-color: #715816;\r\n  }\r\n\r\n  .sv-status-banner.success {\r\n    background: #143522;\r\n    color: #86efac;\r\n    border-color: #1e5e38;\r\n  }\r\n\r\n  .sv-status-spinner {\r\n    border-color: #fde047;\r\n    border-top-color: transparent;\r\n  }\r\n}\r\n";
-function l() {
+}, d = ":host {\r\n  all: initial;\r\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\r\n  color-scheme: light dark;\r\n}\r\n\r\n.sv-btn,\r\n.sv-action-btn {\r\n  font-family: inherit;\r\n  cursor: pointer;\r\n  line-height: 1.2;\r\n  border: 1px solid #aeb7c2;\r\n  border-radius: 4px;\r\n  background: linear-gradient(to bottom, #fff 0%, #e7ebef 100%);\r\n  color: #263238;\r\n  box-shadow:\r\n    inset 0 1px 0 rgba(255, 255, 255, 0.85),\r\n    0 1px 2px rgba(0, 0, 0, 0.12);\r\n  transition:\r\n    background 0.12s ease,\r\n    border-color 0.12s ease,\r\n    box-shadow 0.12s ease,\r\n    transform 0.08s ease;\r\n  user-select: none;\r\n  display: inline-flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  gap: 6px;\r\n  text-decoration: none;\r\n}\r\n\r\n.sv-btn:hover,\r\n.sv-action-btn:hover {\r\n  background: linear-gradient(to bottom, #fff 0%, #dce2e8 100%);\r\n  color: #111820;\r\n  border-color: #8e9aa6;\r\n}\r\n\r\n.sv-btn:active,\r\n.sv-action-btn:active {\r\n  background: #d7dde3;\r\n  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);\r\n  transform: translateY(1px);\r\n}\r\n\r\n.sv-btn {\r\n  padding: 7px 16px;\r\n  font-size: 13px;\r\n  font-weight: 600;\r\n}\r\n\r\n.sv-action-btn {\r\n  font-size: 11px;\r\n  padding: 4px 8px;\r\n}\r\n\r\n.sv-btn-deny {\r\n  color: #374151;\r\n}\r\n\r\n.sv-btn-allow,\r\n.sv-btn-primary {\r\n  background: linear-gradient(to bottom, #4da3d9 0%, #2479b3 100%);\r\n  color: #fff;\r\n  border-color: #1e6597;\r\n  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);\r\n}\r\n\r\n.sv-btn-allow:hover,\r\n.sv-btn-primary:hover {\r\n  background: linear-gradient(to bottom, #5eb0e3 0%, #2b84be 100%);\r\n  border-color: #195d8d;\r\n  color: #fff;\r\n}\r\n\r\n.sv-btn-allow:active,\r\n.sv-btn-primary:active {\r\n  background: #2479b3;\r\n  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);\r\n}\r\n\r\n.sv-link {\r\n  color: #1769aa;\r\n  text-decoration: underline;\r\n  word-break: break-all;\r\n}\r\n\r\n.sv-link:hover {\r\n  color: #0b4f82;\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  .sv-btn,\r\n  .sv-action-btn {\r\n    border-color: #59636e;\r\n    background: linear-gradient(to bottom, #3b4249 0%, #2d3339 100%);\r\n    color: #e4e8eb;\r\n    box-shadow:\r\n      inset 0 1px 0 rgba(255, 255, 255, 0.08),\r\n      0 1px 2px rgba(0, 0, 0, 0.35);\r\n  }\r\n\r\n  .sv-btn:hover,\r\n  .sv-action-btn:hover {\r\n    background: linear-gradient(to bottom, #464e56 0%, #353c43 100%);\r\n    color: #fff;\r\n    border-color: #707b86;\r\n  }\r\n\r\n  .sv-btn:active,\r\n  .sv-action-btn:active {\r\n    background: #292f35;\r\n  }\r\n\r\n  .sv-btn-deny {\r\n    color: #d5dbe0;\r\n  }\r\n\r\n  .sv-btn-allow,\r\n  .sv-btn-primary {\r\n    background: linear-gradient(to bottom, #3d96cb 0%, #246e9c 100%);\r\n    border-color: #1d5b83;\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-btn-allow:hover,\r\n  .sv-btn-primary:hover {\r\n    background: linear-gradient(to bottom, #4ba4d8 0%, #2b7bab 100%);\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-link {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-link:hover {\r\n    color: #82c9ed;\r\n  }\r\n}\r\n\ndialog {\r\n  position: fixed;\r\n  inset: 0;\r\n  margin: auto;\r\n  border: none;\r\n  background: transparent;\r\n  color: #263238;\r\n  font-size: 13.5px;\r\n  box-sizing: border-box;\r\n  z-index: 2147483647;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n}\r\n\r\ndialog:not([open]) {\r\n  display: none;\r\n}\r\n\r\ndialog::backdrop {\r\n  background: rgba(0, 0, 0, 0.52);\r\n  backdrop-filter: blur(1px);\r\n}\r\n\r\n.sv-box {\r\n  width: min(420px, calc(100vw - 32px));\r\n  padding: 18px 20px;\r\n  box-sizing: border-box;\r\n  background: #f7f8fa;\r\n  border: 1px solid #aeb7c2;\r\n  border-radius: 6px;\r\n  box-shadow:\r\n    0 8px 25px rgba(0, 0, 0, 0.35),\r\n    inset 0 1px 0 rgba(255, 255, 255, 0.9);\r\n  pointer-events: auto;\r\n}\r\n\r\n.sv-title {\r\n  font-weight: 700;\r\n  font-size: 15px;\r\n  margin-bottom: 8px;\r\n  color: #1769aa;\r\n}\r\n\r\n.sv-text {\r\n  margin-bottom: 14px;\r\n  color: #4b5563;\r\n  font-size: 13px;\r\n  line-height: 1.5;\r\n}\r\n\r\n.sv-remember {\r\n  display: inline-flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n  margin-bottom: 18px;\r\n  font-size: 12.5px;\r\n  cursor: pointer;\r\n  user-select: none;\r\n  color: #5b6570;\r\n  pointer-events: auto;\r\n}\r\n\r\n.sv-remember:hover {\r\n  color: #263238;\r\n}\r\n\r\n.sv-remember input {\r\n  cursor: pointer;\r\n  margin: 0;\r\n  accent-color: #2479b3;\r\n  pointer-events: auto;\r\n  appearance: checkbox;\r\n  -webkit-appearance: checkbox;\r\n  width: 15px;\r\n  height: 15px;\r\n  opacity: 1;\r\n  position: static;\r\n  z-index: auto;\r\n  vertical-align: middle;\r\n}\r\n\r\n.sv-remember span {\r\n  pointer-events: auto;\r\n  user-select: none;\r\n}\r\n\r\n.sv-buttons {\r\n  display: flex;\r\n  gap: 8px;\r\n  justify-content: flex-end;\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  dialog {\r\n    color: #e4e8eb;\r\n  }\r\n\r\n  .sv-box {\r\n    background: #292f35;\r\n    color: #e5e9ec;\r\n    border-color: #59636e;\r\n    box-shadow:\r\n      0 8px 28px rgba(0, 0, 0, 0.7),\r\n      inset 0 1px 0 rgba(255, 255, 255, 0.05);\r\n  }\r\n\r\n  .sv-title {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-text {\r\n    color: #b9c1c8;\r\n  }\r\n\r\n  .sv-remember {\r\n    color: #aeb7bf;\r\n  }\r\n\r\n  .sv-remember:hover {\r\n    color: #e5e9ec;\r\n  }\r\n\r\n  .sv-remember input {\r\n    accent-color: #5eb5e6;\r\n  }\r\n}\r\n\n.sv-install-box {\r\n  width: min(520px, calc(100vw - 32px));\r\n  padding: 24px 26px;\r\n}\r\n\r\n.sv-install-header {\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: space-between;\r\n  margin-bottom: 16px;\r\n  padding-bottom: 12px;\r\n  border-bottom: 1px solid #dce2e8;\r\n}\r\n\r\n.sv-install-title {\r\n  font-size: 16px;\r\n  font-weight: 700;\r\n  color: #1769aa;\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n}\r\n\r\n.sv-install-close-btn {\r\n  background: transparent;\r\n  border: none;\r\n  font-size: 18px;\r\n  line-height: 1;\r\n  color: #8e9aa6;\r\n  cursor: pointer;\r\n  padding: 4px 6px;\r\n  border-radius: 4px;\r\n  transition: all 0.12s ease;\r\n}\r\n\r\n.sv-install-close-btn:hover {\r\n  background: rgba(0, 0, 0, 0.06);\r\n  color: #263238;\r\n}\r\n\r\n.sv-steps {\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 16px;\r\n  margin-bottom: 20px;\r\n}\r\n\r\n.sv-step {\r\n  display: flex;\r\n  gap: 12px;\r\n  background: #ffffff;\r\n  padding: 12px 14px;\r\n  border: 1px solid #dce2e8;\r\n  border-radius: 6px;\r\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);\r\n}\r\n\r\n.sv-step-num {\r\n  width: 24px;\r\n  height: 24px;\r\n  background: #2479b3;\r\n  color: #fff;\r\n  border-radius: 50%;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  font-weight: 700;\r\n  font-size: 12px;\r\n  flex-shrink: 0;\r\n}\r\n\r\n.sv-step-content {\r\n  flex: 1;\r\n  font-size: 13px;\r\n  line-height: 1.45;\r\n  color: #374151;\r\n}\r\n\r\n.sv-step-title {\r\n  font-weight: 600;\r\n  margin-bottom: 4px;\r\n  color: #1e293b;\r\n}\r\n\r\n.sv-extensions-list {\r\n  display: flex;\r\n  flex-wrap: wrap;\r\n  gap: 6px;\r\n  margin-top: 8px;\r\n}\r\n\r\n.sv-ext-link {\r\n  font-size: 11.5px;\r\n  padding: 3px 8px;\r\n  border-radius: 4px;\r\n  background: #f1f5f9;\r\n  color: #2563eb;\r\n  border: 1px solid #cbd5e1;\r\n  text-decoration: none;\r\n  display: inline-flex;\r\n  align-items: center;\r\n  gap: 4px;\r\n  transition: all 0.12s ease;\r\n}\r\n\r\n.sv-ext-link:hover {\r\n  background: #e2e8f0;\r\n  border-color: #94a3b8;\r\n  color: #1d4ed8;\r\n}\r\n\r\n.sv-ext-recommended {\r\n  background: #eff6ff;\r\n  border-color: #93c5fd;\r\n  font-weight: 600;\r\n}\r\n\r\n.sv-install-action {\r\n  margin-top: 8px;\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 10px;\r\n}\r\n\r\n.sv-status-banner {\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n  padding: 10px 14px;\r\n  border-radius: 6px;\r\n  font-size: 12.5px;\r\n  font-weight: 500;\r\n  margin-bottom: 16px;\r\n}\r\n\r\n.sv-status-banner.waiting {\r\n  background: #fef3c7;\r\n  color: #92400e;\r\n  border: 1px solid #fde68a;\r\n}\r\n\r\n.sv-status-banner.success {\r\n  background: #dcfce7;\r\n  color: #166534;\r\n  border: 1px solid #bbf7d0;\r\n}\r\n\r\n.sv-status-spinner {\r\n  width: 14px;\r\n  height: 14px;\r\n  border: 2px solid #b45309;\r\n  border-top-color: transparent;\r\n  border-radius: 50%;\r\n  animation: sv-spin 0.8s linear infinite;\r\n}\r\n\r\n@keyframes sv-spin {\r\n  to {\r\n    transform: rotate(360deg);\r\n  }\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  .sv-install-header {\r\n    border-bottom-color: #434c56;\r\n  }\r\n\r\n  .sv-install-title {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-install-close-btn:hover {\r\n    background: rgba(255, 255, 255, 0.08);\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-step {\r\n    background: #23282e;\r\n    border-color: #434c56;\r\n    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);\r\n  }\r\n\r\n  .sv-step-num {\r\n    background: #3d96cb;\r\n  }\r\n\r\n  .sv-step-content {\r\n    color: #d1d7dc;\r\n  }\r\n\r\n  .sv-step-title {\r\n    color: #f1f5f9;\r\n  }\r\n\r\n  .sv-ext-link {\r\n    background: #2c333a;\r\n    border-color: #4b555f;\r\n    color: #60a5fa;\r\n  }\r\n\r\n  .sv-ext-link:hover {\r\n    background: #37404a;\r\n    border-color: #64748b;\r\n    color: #93c5fd;\r\n  }\r\n\r\n  .sv-ext-recommended {\r\n    background: #1e3a5f;\r\n    border-color: #3b82f6;\r\n  }\r\n\r\n  .sv-status-banner.waiting {\r\n    background: #3a2e15;\r\n    color: #fde047;\r\n    border-color: #715816;\r\n  }\r\n\r\n  .sv-status-banner.success {\r\n    background: #143522;\r\n    color: #86efac;\r\n    border-color: #1e5e38;\r\n  }\r\n\r\n  .sv-status-spinner {\r\n    border-color: #fde047;\r\n    border-top-color: transparent;\r\n  }\r\n}\r\n";
+function f() {
 	if (typeof navigator > "u") return "chrome";
 	let e = navigator.userAgent.toLowerCase();
 	return e.includes("firefox") ? "firefox" : e.includes("edg/") ? "edge" : e.includes("opr/") || e.includes("opera/") ? "opera" : e.includes("safari") && !e.includes("chrome") ? "safari" : "chrome";
 }
-var u = {
+var p = {
 	chrome: {
 		tampermonkey: "https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkmingnoiobeogfiigjmhednnj",
 		violentmonkey: "https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag"
@@ -647,17 +677,17 @@ var u = {
 	},
 	opera: { tampermonkey: "https://addons.opera.com/extensions/details/tampermonkey-beta/" },
 	safari: { tampermonkey: "https://apps.apple.com/app/tampermonkey/id1482490089" }
-}, d = null;
-function f(e = {}) {
+}, m = null;
+function h(e = {}) {
 	if (typeof document > "u") return {
 		host: null,
 		close: () => {}
 	};
-	d && d.close();
-	let { userscriptUrl: t = "https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.user.js", title: n = "Yêu cầu SRemote Userscript", description: r = "Trang web cần SRemote Userscript để tương tác và điều khiển media trong iframe cross-origin.", autoDetect: i = !0, onClose: a = null, onSuccess: o = null } = e, s = l(), f = document.createElement("div");
-	f.id = "sremote-install-modal-host";
-	let p = f.attachShadow({ mode: "closed" }), m = document.createElement("style");
-	m.textContent = c;
+	m && m.close();
+	let { userscriptUrl: t = "https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.user.js", title: n = "Yêu cầu SRemote Userscript", description: r = "Trang web cần SRemote Userscript để tương tác và điều khiển media trong iframe cross-origin.", autoDetect: i = !0, onClose: a = null, onSuccess: o = null } = e, s = f(), c = document.createElement("div");
+	c.id = "sremote-install-modal-host";
+	let l = c.attachShadow({ mode: "closed" }), u = document.createElement("style");
+	u.textContent = d;
 	let h = document.createElement("dialog"), g = document.createElement("div");
 	g.className = "sv-box sv-install-box";
 	let _ = !1, v = null, y = !1, b = () => {
@@ -666,11 +696,11 @@ function f(e = {}) {
 			try {
 				h.close();
 			} catch {}
-			f.remove(), d?.host === f && (d = null), a?.({ success: y });
+			c.remove(), m?.host === c && (m = null), a?.({ success: y });
 		}
 	};
-	d = {
-		host: f,
+	m = {
+		host: c,
 		close: b
 	};
 	let x = document.createElement("div");
@@ -689,7 +719,7 @@ function f(e = {}) {
 	w.className = "sv-steps";
 	let T = document.createElement("div");
 	T.className = "sv-step";
-	let E = u[s] || u.chrome, D = "";
+	let E = p[s] || p.chrome, D = "";
 	E.tampermonkey && (D += `<a class="sv-ext-link sv-ext-recommended" href="${E.tampermonkey}" target="_blank" rel="noopener noreferrer">Tampermonkey (${s})</a>`), E.violentmonkey && (D += `<a class="sv-ext-link" href="${E.violentmonkey}" target="_blank" rel="noopener noreferrer">Violentmonkey</a>`), T.innerHTML = `
     <div class="sv-step-num">1</div>
     <div class="sv-step-content">
@@ -724,12 +754,12 @@ function f(e = {}) {
 	let M = document.createElement("button");
 	M.className = "sv-btn sv-btn-primary", M.textContent = "Đóng", M.addEventListener("click", () => {
 		b();
-	}), A.append(j, M), g.append(A), h.append(g), p.append(m, h), h.addEventListener("cancel", (e) => {
+	}), A.append(j, M), g.append(A), h.append(g), l.append(u, h), h.addEventListener("cancel", (e) => {
 		e.preventDefault(), b();
 	});
 	let N = () => {
 		let e = document.body || document.documentElement;
-		e && !f.isConnected && e.appendChild(f);
+		e && !c.isConnected && e.appendChild(c);
 	};
 	N(), document.readyState === "loading" && document.addEventListener("DOMContentLoaded", N, { once: !0 });
 	try {
@@ -744,21 +774,21 @@ function f(e = {}) {
 		P();
 	}
 	return i && typeof window < "u" && (window.sremote && !window.sremote.isDummy ? P() : window.addEventListener("sremote:ready", F, { once: !0 })), {
-		host: f,
+		host: c,
 		close: b
 	};
 }
 //#endregion
 //#region src/client.js
 a();
-var p = class {
+var g = class {
 	constructor(e = {}) {
 		a(), this.options = {
 			fallbackToDom: !0,
 			timeout: 2e3,
 			passkey: null,
 			...e
-		}, this.userscriptDriver = new o(this.options), this.domDriver = new s(this.options), this.mode = "detecting", this._readyPromise = null, this.instances = {
+		}, this.userscriptDriver = new o(this.options), this.domDriver = new u(this.options), this.mode = "detecting", this._readyPromise = null, this.instances = {
 			list: (e) => {
 				if (this.userscriptDriver.isAvailable()) {
 					let t = this.userscriptDriver.getApi();
@@ -983,22 +1013,22 @@ var p = class {
 		return this.userscriptDriver.isAvailable() ? this.userscriptDriver.off(e, t) : this.domDriver.off(e, t);
 	}
 	showInstallModal(e) {
-		return f(e);
+		return h(e);
 	}
 	promptUserscript(e) {
-		return f(e);
+		return h(e);
 	}
 };
-function m(e) {
-	return new p(e);
+function _(e) {
+	return new g(e);
 }
-var h = m, g = new p();
+var v = _, y = new g();
 if (typeof globalThis < "u") try {
-	globalThis[Symbol.for("__sremote_client__")] = g;
+	globalThis[Symbol.for("__sremote_client__")] = y;
 } catch {}
 //#endregion
 //#region src/universal-adapter.js
-function _(e = {}) {
+function b(e = {}) {
 	let { name: t = "universal-adapter", play: n, pause: r, toggle: i, stop: a, seek: o, seekTo: s, setCurrentTime: c, setVolume: l, setMuted: u, setPlaybackRate: d, setQuality: f, getQualities: p, setSubtitle: m, getSubtitles: h, setShuffle: g, setRepeat: _, next: v, previous: y, load: b, requestPip: x, getState: S } = e, C = {
 		paused: !0,
 		currentTime: 0,
@@ -1146,4 +1176,4 @@ function _(e = {}) {
 	return T;
 }
 //#endregion
-export { e as BaseDriver, s as DomDriver, p as SRemoteClient, o as UserscriptDriver, t as createDummyProxy, h as createSRemote, m as createSRemoteClient, _ as createUniversalAdapter, i as isNativeSRemoteInstance, a as lockGlobalSRemoteIfAbsent, f as promptUserscript, f as showInstallModal, g as sremote };
+export { e as BaseDriver, u as DomDriver, g as SRemoteClient, o as UserscriptDriver, t as createDummyProxy, v as createSRemote, _ as createSRemoteClient, b as createUniversalAdapter, i as isNativeSRemoteInstance, a as lockGlobalSRemoteIfAbsent, h as promptUserscript, h as showInstallModal, y as sremote };

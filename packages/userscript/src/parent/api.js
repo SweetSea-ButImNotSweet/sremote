@@ -3,6 +3,7 @@ import { Storage, setHandshakeSecret } from '../core/storage.js';
 import { generateInstanceId } from '../core/utils.js';
 import { pendingRpcRequests } from './queue.js';
 import { createParentDebugApi } from '../debug/parent-debug.js';
+import { extractMediaState, evaluateCapabilities } from '@sremote/shared';
 
 export function createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM }) {
   const {
@@ -58,45 +59,14 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     if (instances.has(targetId)) return instances.get(targetId).state || null;
     if (parentAdaptersMap.has(targetId)) {
       const adapter = parentAdaptersMap.get(targetId);
-      return {
-        paused: typeof adapter.paused === 'function' ? adapter.paused() : Boolean(adapter.paused),
-        currentTime: typeof adapter.getCurrentTime === 'function' ? adapter.getCurrentTime() : 0,
-        duration: typeof adapter.getDuration === 'function' ? adapter.getDuration() : 0,
-        volume: typeof adapter.getVolume === 'function' ? adapter.getVolume() : 1,
-        muted: typeof adapter.getMuted === 'function' ? adapter.getMuted() : false,
-      };
+      return extractMediaState(adapter);
     }
     return null;
   };
 
   const resolveAdapterCapabilities = adapter => {
     if (!adapter) return null;
-    if (adapter.capabilities && typeof adapter.capabilities === 'object') {
-      return { ...adapter.capabilities, hasAdapter: true, hasNative: false, hasMediaSession: false };
-    }
-    const hasFn = fnName => Boolean(typeof adapter[fnName] === 'function');
-    return {
-      play: hasFn('play'),
-      pause: hasFn('pause'),
-      toggle: hasFn('toggle') || (hasFn('play') && hasFn('pause')),
-      stop: hasFn('stop') || hasFn('pause'),
-      seek: hasFn('seek') || hasFn('seekTo') || hasFn('setCurrentTime'),
-      volume: hasFn('setVolume'),
-      muted: hasFn('setMuted'),
-      speed: hasFn('setPlaybackRate'),
-      playbackRate: hasFn('setPlaybackRate'),
-      pip: hasFn('requestPip') || hasFn('pip'),
-      quality: hasFn('setQuality'),
-      subtitles: hasFn('setSubtitle') || hasFn('getSubtitles'),
-      shuffle: hasFn('setShuffle'),
-      repeat: hasFn('setRepeat'),
-      next: hasFn('next'),
-      previous: hasFn('previous'),
-      load: hasFn('load'),
-      hasAdapter: true,
-      hasNative: false,
-      hasMediaSession: false,
-    };
+    return evaluateCapabilities(adapter);
   };
 
   const getCapabilities = (instanceId, key) => {
@@ -167,13 +137,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
         mediaType: 'adapter',
         capabilities: resolveAdapterCapabilities(adapter),
         status: 'ready',
-        state: {
-          paused: typeof adapter.paused === 'function' ? adapter.paused() : Boolean(adapter.paused),
-          currentTime: typeof adapter.getCurrentTime === 'function' ? adapter.getCurrentTime() : 0,
-          duration: typeof adapter.getDuration === 'function' ? adapter.getDuration() : 0,
-          volume: typeof adapter.getVolume === 'function' ? adapter.getVolume() : 1,
-          muted: typeof adapter.getMuted === 'function' ? adapter.getMuted() : false,
-        },
+        state: extractMediaState(adapter),
       });
     }
     return result;

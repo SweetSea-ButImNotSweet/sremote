@@ -1,5 +1,6 @@
 import { NS, console_log, console_debug } from '../config.js';
 import { generateInstanceId } from '../core/utils.js';
+import { createEventPayload } from '@sremote/shared';
 
 export function createInstanceManager() {
   const instances = new Map(); // instanceId -> { port, location, origin, note, state, mediaType, lastSeen, status, iframeEl, authenticated }
@@ -137,7 +138,12 @@ export function createInstanceManager() {
 
     adapterVal.emit = (event, payload = {}) => {
       const ev = String(event || '').toLowerCase();
-      const fullPayload = { source: 'adapter', instanceId: targetId, mediaType: 'adapter', ...(typeof payload === 'object' && payload !== null ? payload : { value: payload }) };
+      const fullPayload = createEventPayload(ev, {
+        source: 'adapter',
+        instanceId: targetId,
+        mediaType: 'adapter',
+        ...(typeof payload === 'object' && payload !== null ? payload : { value: payload }),
+      });
 
       if (ev === 'play' || ev === 'playing') {
         if (exclusiveMode === 'auto') {

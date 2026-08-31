@@ -39,5 +39,38 @@ export interface SRemoteInstanceData {
   capabilities?: SRemoteCapabilities;
 }
 
+export interface SRemoteMediaState {
+  paused: boolean;
+  ended?: boolean;
+  currentTime: number;
+  duration: number | null;
+  buffered?: number;
+  volume: number;
+  muted: boolean;
+  playbackRate: number;
+  readyState?: number;
+  src?: string;
+  loop?: boolean;
+  repeat?: 'off' | 'one' | 'all';
+  fullscreen?: boolean;
+  pictureInPicture?: boolean;
+  [key: string]: any;
+}
+
+export interface SRemoteEventPayload {
+  source: string;
+  instanceId: string;
+  mediaType: string;
+  action: string;
+  isProgrammatic?: boolean;
+  state?: SRemoteMediaState | null;
+  [key: string]: any;
+}
+
 export type SRemoteEventHandler = (data: any) => void;
+
+export declare function extractMediaState(media: any): SRemoteMediaState | null;
+export declare function createEventPayload(event: string, options?: any): SRemoteEventPayload;
+export declare function evaluateCapabilities(target: any): SRemoteCapabilities;
+
 

@@ -1,4 +1,5 @@
 import { BaseDriver } from './base.js';
+import { extractMediaState, createEventPayload, evaluateCapabilities } from '@sremote/shared';
 
 export class DomDriver extends BaseDriver {
   constructor(options = {}) {
@@ -25,13 +26,7 @@ export class DomDriver extends BaseDriver {
   list() {
     const list = [];
     for (const [id, ad] of this.adaptersMap.entries()) {
-      const state = typeof ad.getState === 'function' ? ad.getState() : {
-        paused: typeof ad.paused === 'function' ? ad.paused() : Boolean(ad.paused),
-        currentTime: typeof ad.getCurrentTime === 'function' ? ad.getCurrentTime() : 0,
-        duration: typeof ad.getDuration === 'function' ? ad.getDuration() : 0,
-        volume: typeof ad.getVolume === 'function' ? ad.getVolume() : 1,
-        muted: typeof ad.getMuted === 'function' ? ad.getMuted() : false,
-      };
+      const state = extractMediaState(ad);
       list.push({
         instanceId: id,
         mediaType: 'adapter',
@@ -50,7 +45,12 @@ export class DomDriver extends BaseDriver {
     // Wire adapter emit to DomDriver emit so sremote.on() receives it
     const handleEmit = (event, payload = {}) => {
       const ev = String(event || '').toLowerCase();
-      const fullPayload = { source: 'adapter', instanceId, mediaType: 'adapter', ...(typeof payload === 'object' && payload !== null ? payload : { value: payload }) };
+      const fullPayload = createEventPayload(ev, {
+        source: 'adapter',
+        instanceId,
+        mediaType: 'adapter',
+        ...(typeof payload === 'object' && payload !== null ? payload : { value: payload }),
+      });
       
       if (ev === 'play' || ev === 'playing') {
         this.lastActiveInstanceId = instanceId;
@@ -348,64 +348,7 @@ export class DomDriver extends BaseDriver {
   getCapabilities(target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) return null;
-
-    if (resolved.type === 'adapter') {
-      const ad = resolved.instance;
-      if (ad.capabilities && typeof ad.capabilities === 'object') {
-        return { ...ad.capabilities, hasAdapter: true, hasNative: false, hasMediaSession: false };
-      }
-      const hasFn = fnName => Boolean(typeof ad[fnName] === 'function');
-      return {
-        play: hasFn('play'),
-        pause: hasFn('pause'),
-        toggle: hasFn('toggle') || (hasFn('play') && hasFn('pause')),
-        stop: hasFn('stop') || hasFn('pause'),
-        seek: hasFn('seek') || hasFn('seekTo') || hasFn('setCurrentTime'),
-        volume: hasFn('setVolume'),
-        muted: hasFn('setMuted'),
-        speed: hasFn('setPlaybackRate'),
-        playbackRate: hasFn('setPlaybackRate'),
-        pip: hasFn('requestPip') || hasFn('pip'),
-        quality: hasFn('setQuality'),
-        subtitles: hasFn('setSubtitle') || hasFn('getSubtitles'),
-        shuffle: hasFn('setShuffle'),
-        repeat: hasFn('setRepeat'),
-        next: hasFn('next'),
-        previous: hasFn('previous'),
-        load: hasFn('load'),
-        hasAdapter: true,
-        hasNative: false,
-        hasMediaSession: false,
-      };
-    }
-
-    const el = resolved.instance;
-    const isVideo = Boolean(el && el.tagName === 'VIDEO');
-    const isAudio = Boolean(el && el.tagName === 'AUDIO');
-    const hasNative = isVideo || isAudio;
-
-    return {
-      play: hasNative,
-      pause: hasNative,
-      toggle: hasNative,
-      stop: hasNative,
-      seek: hasNative,
-      volume: hasNative,
-      muted: hasNative,
-      speed: hasNative,
-      playbackRate: hasNative,
-      pip: isVideo && typeof document !== 'undefined' && Boolean(document.pictureInPictureEnabled || el.requestPictureInPicture),
-      quality: false,
-      subtitles: Boolean(hasNative && el.textTracks && el.textTracks.length > 0),
-      shuffle: false,
-      repeat: hasNative,
-      next: false,
-      previous: false,
-      load: hasNative,
-      hasAdapter: false,
-      hasNative,
-      hasMediaSession: false,
-    };
+    return evaluateCapabilities(resolved.instance);
   }
 
   emit(event, payload) {
@@ -434,16 +377,13 @@ export class DomDriver extends BaseDriver {
     const listener = e => {
       const mediaEl = e.target;
       if (!mediaEl) return;
-      handler({
+      const state = extractMediaState(mediaEl);
+      handler(createEventPayload(domEventName, {
         instanceId: 'dom-media',
-        currentTime: mediaEl.currentTime,
-        duration: mediaEl.duration,
-        volume: mediaEl.volume,
-        muted: mediaEl.muted,
-        playbackRate: mediaEl.playbackRate,
-        speed: mediaEl.playbackRate,
-        state: mediaEl.paused ? 'paused' : 'playing',
-      });
+        source: 'dom',
+        mediaType: mediaEl.tagName ? mediaEl.tagName.toLowerCase() : 'video',
+        state,
+      }));
     };
 
     if (!this.eventListeners.has(event)) {
