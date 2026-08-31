@@ -1,6 +1,5 @@
 import { t } from '../core/i18n.js';
 import { createModal } from './modal.js';
-import { GM } from '../core/storage.js';
 
 let activeKeyDialogHost = null;
 

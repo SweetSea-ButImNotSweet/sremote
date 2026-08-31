@@ -95,9 +95,20 @@ export function initParentController() {
         adapter.pause();
         return true;
       }
-      if (norm === 'toggle' && typeof adapter.toggle === 'function') {
-        adapter.toggle();
-        return true;
+      if (norm === 'toggle') {
+        if (typeof adapter.toggle === 'function') {
+          adapter.toggle();
+          return true;
+        }
+        if (typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
+          const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : (typeof adapter.paused === 'boolean' ? adapter.paused : true);
+          if (isPaused) {
+            adapter.play();
+          } else {
+            adapter.pause();
+          }
+          return true;
+        }
       }
       if (norm === 'seek' && typeof adapter.seek === 'function') {
         adapter.seek(Number(value));

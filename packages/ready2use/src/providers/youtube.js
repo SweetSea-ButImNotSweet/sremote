@@ -70,6 +70,7 @@ export class YouTubeProvider extends BaseProvider {
     const YT = typeof window !== 'undefined' ? window.YT : null;
 
     let lastKnownState = { paused: true, currentTime: 0, duration: 0, volume: 1, muted: false, playbackRate: 1 };
+    let timeupdateTimer = null;
 
     const updateStateSnapshot = () => {
       try {
@@ -87,7 +88,22 @@ export class YouTubeProvider extends BaseProvider {
       return lastKnownState;
     };
 
-    return {
+    const startTimeupdate = () => {
+      if (timeupdateTimer) return;
+      timeupdateTimer = setInterval(() => {
+        const state = updateStateSnapshot();
+        adapter.emit?.('timeupdate', { state });
+      }, 250);
+    };
+
+    const stopTimeupdate = () => {
+      if (timeupdateTimer) {
+        clearInterval(timeupdateTimer);
+        timeupdateTimer = null;
+      }
+    };
+
+    const adapter = {
       play() {
         if (player && typeof player.playVideo === 'function') {
           player.playVideo();
@@ -245,7 +261,31 @@ export class YouTubeProvider extends BaseProvider {
       getState() {
         return updateStateSnapshot();
       },
+      destroy() {
+        stopTimeupdate();
+      },
     };
+
+    if (player && typeof player.addEventListener === 'function') {
+      player.addEventListener('onStateChange', event => {
+        const state = updateStateSnapshot();
+        const stateVal = event.data;
+
+        // YT.PlayerState: PLAYING (1), PAUSED (2), ENDED (0), BUFFERING (3), CUED (5)
+        if (stateVal === 1) {
+          startTimeupdate();
+          adapter.emit?.('play', { state });
+        } else if (stateVal === 2) {
+          stopTimeupdate();
+          adapter.emit?.('pause', { state });
+        } else if (stateVal === 0) {
+          stopTimeupdate();
+          adapter.emit?.('ended', { state: { ...state, paused: true, ended: true } });
+        }
+      });
+    }
+
+    return adapter;
   }
 }
 

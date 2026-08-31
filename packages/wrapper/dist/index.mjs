@@ -363,7 +363,7 @@ var o = class extends e {
 	async seekTo(e, t) {
 		let n = this.resolveTarget(t);
 		if (!n) throw Error("[SRemote:DomDriver] Media target not found");
-		if (n.type === "adapter") return n.instance.setCurrentTime?.(e);
+		if (n.type === "adapter") return typeof n.instance.seekTo == "function" ? n.instance.seekTo(e) : n.instance.setCurrentTime?.(e);
 		let r = n.instance;
 		r.currentTime = Math.max(0, Math.min(r.duration || 0, e));
 	}

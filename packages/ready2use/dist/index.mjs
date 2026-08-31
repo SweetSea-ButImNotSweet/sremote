@@ -28,7 +28,7 @@ async function a(e = {}) {
 	if (typeof globalThis < "u" && globalThis.sremote && globalThis.sremote.adapters) return globalThis.sremote;
 	if (i) return i;
 	try {
-		let e = await import("@sremote/wrapper");
+		let e = await import("./dist-BgIuGIRh.js");
 		return i = e?.sremote || e?.default?.sremote || e?.default || null, i;
 	} catch {
 		return null;
@@ -84,7 +84,11 @@ var o = class {
 			instanceId: n,
 			element: s,
 			iframe: a || (s?.tagName === "IFRAME" ? s : null)
-		}), l = this.getCapabilities(c);
+		}) || {};
+		typeof c.toggle != "function" && typeof c.play == "function" && typeof c.pause == "function" && (c.toggle = function() {
+			(typeof c.paused == "function" ? c.paused() : typeof c.paused != "boolean" || c.paused) ? c.play() : c.pause();
+		});
+		let l = this.getCapabilities(c);
 		return c && !c.capabilities && (c.capabilities = l), {
 			element: s,
 			iframe: a || (s?.tagName === "IFRAME" ? s : null),
@@ -93,6 +97,9 @@ var o = class {
 			instanceId: n,
 			capabilities: l,
 			destroy: () => {
+				try {
+					typeof c?.destroy == "function" && c.destroy();
+				} catch {}
 				try {
 					typeof o == "function" ? o() : r && typeof r.destroy == "function" && r.destroy();
 				} catch {}
@@ -266,7 +273,7 @@ var T = new class extends o {
 			volume: 1,
 			muted: !1,
 			playbackRate: 1
-		}, r = () => {
+		}, r = null, i = () => {
 			try {
 				if (e && typeof e.getPlayerState == "function") {
 					let r = e.getPlayerState(), i = t ? r === t.PlayerState.PLAYING || r === t.PlayerState.BUFFERING : r === 1 || r === 3;
@@ -274,8 +281,14 @@ var T = new class extends o {
 				}
 			} catch {}
 			return n;
-		};
-		return {
+		}, a = () => {
+			r ||= setInterval(() => {
+				let e = i();
+				s.emit?.("timeupdate", { state: e });
+			}, 250);
+		}, o = () => {
+			r &&= (clearInterval(r), null);
+		}, s = {
 			play() {
 				e && typeof e.playVideo == "function" && e.playVideo();
 			},
@@ -381,9 +394,20 @@ var T = new class extends o {
 				e && (typeof t == "string" ? typeof e.loadVideoById == "function" && e.loadVideoById(t) : t && typeof t == "object" && typeof e.loadVideoById == "function" && e.loadVideoById(t));
 			},
 			getState() {
-				return r();
+				return i();
+			},
+			destroy() {
+				o();
 			}
 		};
+		return e && typeof e.addEventListener == "function" && e.addEventListener("onStateChange", (e) => {
+			let t = i(), n = e.data;
+			n === 1 ? (a(), s.emit?.("play", { state: t })) : n === 2 ? (o(), s.emit?.("pause", { state: t })) : n === 0 && (o(), s.emit?.("ended", { state: {
+				...t,
+				paused: !0,
+				ended: !0
+			} }));
+		}), s;
 	}
 }(), E = {
 	create: (e) => T.create(e),

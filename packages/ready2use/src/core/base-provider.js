@@ -147,7 +147,19 @@ export class BaseProvider {
       instanceId,
       element: targetElement,
       iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null),
-    });
+    }) || {};
+
+    // Ensure fallback toggle method is always present if play and pause exist
+    if (typeof adapter.toggle !== 'function' && typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
+      adapter.toggle = function () {
+        const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : (typeof adapter.paused === 'boolean' ? adapter.paused : true);
+        if (isPaused) {
+          adapter.play();
+        } else {
+          adapter.pause();
+        }
+      };
+    }
 
     const capabilities = this.getCapabilities(adapter);
     if (adapter && !adapter.capabilities) {
@@ -156,6 +168,12 @@ export class BaseProvider {
 
     // 4. Combined destroy handler
     const destroy = () => {
+      try {
+        if (typeof adapter?.destroy === 'function') {
+          adapter.destroy();
+        }
+      } catch {}
+
       try {
         if (typeof customDestroy === 'function') {
           customDestroy();

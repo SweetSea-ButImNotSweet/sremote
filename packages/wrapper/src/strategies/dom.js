@@ -126,7 +126,10 @@ export class DomDriver extends BaseDriver {
   async seekTo(time, target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') return resolved.instance.setCurrentTime?.(time);
+    if (resolved.type === 'adapter') {
+      if (typeof resolved.instance.seekTo === 'function') return resolved.instance.seekTo(time);
+      return resolved.instance.setCurrentTime?.(time);
+    }
     const el = resolved.instance;
     el.currentTime = Math.max(0, Math.min(el.duration || 0, time));
   }

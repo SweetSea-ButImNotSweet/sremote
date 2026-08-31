@@ -7,7 +7,7 @@
   "module": "./dist/index.mjs",
   "types": "./src/index.d.ts",
   "exports": { ".": { "types": "./src/index.d.ts", "import": "./dist/index.mjs", "require": "./dist/index.cjs" } },
-  "dependencies": {
+  "devDependencies": {
     "@sremote/shared": "^2.0.0"
   },
   "files": ["dist", "src/index.d.ts", "README.md"],
