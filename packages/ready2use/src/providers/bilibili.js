@@ -1,5 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
-import { applyElementAttributes } from '../core/dom-utils.js';
+import { applyElementAttributes, waitForIframeLoad } from '../core/dom-utils.js';
 
 /**
  * Provider for Bilibili Embed Player
@@ -87,6 +87,8 @@ export class BilibiliProvider extends BaseProvider {
     iframe.src = buildBilibiliUrl(options);
 
     applyElementAttributes(iframe, width, height, instanceId);
+
+    await waitForIframeLoad(iframe, options.timeout || 4000);
 
     return { player: { iframe, options }, element: iframe, iframe, destroy: () => {} };
   }

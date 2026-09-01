@@ -20,45 +20,52 @@ export class YouTubeProvider extends BaseProvider {
     const height = options.height || '100%';
     const videoId = options.videoId;
 
-    const { hiddenWrapper, tempNode, cleanup } = createTempNode(instanceId, width, height);
+    let targetNode = null;
+    let cleanupTemp = () => {};
+
+    if (options.container) {
+      targetNode = document.createElement('div');
+      targetNode.id = `sremote-youtube-${instanceId}`;
+      applyElementAttributes(targetNode, width, height, instanceId);
+      options.container.appendChild(targetNode);
+    } else {
+      const temp = createTempNode(instanceId, width, height);
+      targetNode = temp.tempNode;
+      cleanupTemp = temp.cleanup;
+    }
 
     return new Promise((resolve, reject) => {
       let player = null;
       let iframe = null;
 
-      player = new YT.Player(tempNode.id, {
+      player = new YT.Player(targetNode.id, {
         width,
         height,
         videoId,
         playerVars: { enablejsapi: 1, origin: typeof window !== 'undefined' ? window.location.origin : undefined, ...options.playerVars },
         events: {
           onReady: () => {
-            iframe = player.getIFrame ? player.getIFrame() : document.getElementById(tempNode.id);
-            if (iframe && iframe.parentNode === hiddenWrapper) {
-              hiddenWrapper.removeChild(iframe);
-            }
-            cleanup();
-
+            iframe = player.getIFrame ? player.getIFrame() : document.getElementById(targetNode.id);
             if (iframe) {
               applyElementAttributes(iframe, width, height, instanceId);
             }
 
             resolve({
               player,
-              element: iframe,
-              iframe,
+              element: iframe || targetNode,
+              iframe: iframe || (targetNode?.tagName === 'IFRAME' ? targetNode : null),
               destroy: () => {
                 try {
                   if (player && typeof player.destroy === 'function') {
                     player.destroy();
                   }
                 } catch {}
-                cleanup();
+                cleanupTemp();
               },
             });
           },
           onError: err => {
-            cleanup();
+            cleanupTemp();
             reject(err);
           },
         },

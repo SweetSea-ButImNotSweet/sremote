@@ -19,23 +19,37 @@ function t(e, t = "100%", n = "100%") {
 function n(e, t = "100%", n = "100%", r = null) {
 	e && (r && e.setAttribute("data-sremote-id", r), t !== void 0 && (e.style.width = typeof t == "number" ? `${t}px` : t), n !== void 0 && (e.style.height = typeof n == "number" ? `${n}px` : n));
 }
+function r(e, t = 5e3) {
+	return !e || typeof window > "u" ? Promise.resolve() : new Promise((n) => {
+		let r = !1, i = null, a = () => {
+			r || (r = !0, i && clearTimeout(i), e.removeEventListener("load", a), e.removeEventListener("error", a), n());
+		};
+		try {
+			if (e.contentDocument && e.contentDocument.readyState === "complete") {
+				n();
+				return;
+			}
+		} catch {}
+		e.addEventListener("load", a, { once: !0 }), e.addEventListener("error", a, { once: !0 }), t > 0 && (i = setTimeout(a, t));
+	});
+}
 //#endregion
 //#region src/core/base-provider.js
-var r = 0, i = null;
-async function a(e = {}) {
+var i = 0, a = null;
+async function o(e = {}) {
 	if (e.sremote && typeof e.sremote == "object" && e.sremote.adapters) return e.sremote;
 	if (typeof globalThis < "u" && globalThis[Symbol.for("__sremote_client__")]) return globalThis[Symbol.for("__sremote_client__")];
 	if (typeof window < "u" && window.sremote && !window.sremote.isDummy && window.sremote.adapters) return window.sremote;
 	if (typeof globalThis < "u" && globalThis.sremote && !globalThis.sremote.isDummy && globalThis.sremote.adapters) return globalThis.sremote;
-	if (i) return i;
+	if (a) return a;
 	try {
 		let e = await import("@sremote/wrapper");
-		return i = e?.sremote || e?.default?.sremote || e?.default || null, i;
+		return a = e?.sremote || e?.default?.sremote || e?.default || null, a;
 	} catch {
 		return null;
 	}
 }
-var o = class {
+var s = class {
 	constructor(e) {
 		this.name = e || "generic-provider";
 	}
@@ -43,7 +57,7 @@ var o = class {
 		return Promise.resolve();
 	}
 	generateInstanceId(e) {
-		return e && typeof e == "string" ? e.trim() : `${this.name}-player-${++r}-${Math.random().toString(36).slice(2, 7)}`;
+		return e && typeof e == "string" ? e.trim() : `${this.name}-player-${++i}-${Math.random().toString(36).slice(2, 7)}`;
 	}
 	async initPlayer(e, t) {
 		throw Error(`[${this.constructor.name}] initPlayer() must be implemented by subclass`);
@@ -113,23 +127,52 @@ var o = class {
 	async mount(t, n = {}) {
 		let r = e(t);
 		if (!r) throw Error(`[SRemote:${this.name}] Target container '${t}' not found in DOM`);
-		let i = await this.create(n);
-		r.appendChild(i.element);
-		let o = await a(typeof n == "string" ? {} : n);
-		return o?.adapters && o.adapters.register(i.adapter, i.instanceId), {
+		let i = typeof n == "string" ? { videoId: n } : { ...n }, a = this.generateInstanceId(i.instanceId);
+		await this.loadSdk();
+		let { player: s, element: c, iframe: l, destroy: u } = await this.initPlayer({
 			...i,
+			container: r
+		}, a), d = l || c;
+		d && d.parentNode !== r && r.appendChild(d);
+		let f = this.createAdapter(s, {
+			options: i,
+			instanceId: a,
+			element: d,
+			iframe: l || (d?.tagName === "IFRAME" ? d : null)
+		}) || {};
+		typeof f.toggle != "function" && typeof f.play == "function" && typeof f.pause == "function" && (f.toggle = function() {
+			(typeof f.paused == "function" ? f.paused() : typeof f.paused != "boolean" || f.paused) ? f.play() : f.pause();
+		});
+		let p = this.getCapabilities(f);
+		f && !f.capabilities && (f.capabilities = p);
+		let m = await o(i);
+		return m?.adapters && m.adapters.register(f, a), {
+			element: d,
+			iframe: l || (d?.tagName === "IFRAME" ? d : null),
+			adapter: f,
+			player: s,
+			instanceId: a,
+			capabilities: p,
 			destroy: () => {
 				try {
-					o?.adapters && o.adapters.unregister(i.instanceId);
+					m?.adapters && m.adapters.unregister(a);
 				} catch {}
-				i.destroy();
+				try {
+					typeof f?.destroy == "function" && f.destroy();
+				} catch {}
+				try {
+					typeof u == "function" ? u() : s && typeof s.destroy == "function" && s.destroy();
+				} catch {}
+				try {
+					d && d.parentNode && d.parentNode.removeChild(d);
+				} catch {}
 			}
 		};
 	}
-}, s = /* @__PURE__ */ new Map();
-function c(e) {
+}, c = /* @__PURE__ */ new Map();
+function l(e) {
 	if (typeof window > "u") return Promise.reject(/* @__PURE__ */ Error("Window is not available"));
-	if (s.has(e)) return s.get(e);
+	if (c.has(e)) return c.get(e);
 	let t = new Promise((t, n) => {
 		let r = document.querySelector(`script[src="${e}"]`);
 		if (r) {
@@ -144,99 +187,107 @@ function c(e) {
 		i.src = e, i.async = !0, i.onload = () => {
 			i.setAttribute("data-loaded", "true"), t();
 		}, i.onerror = (t) => {
-			s.delete(e), n(t);
+			c.delete(e), n(t);
 		}, document.head.appendChild(i);
 	});
-	return s.set(e, t), t;
+	return c.set(e, t), t;
 }
-var l = null;
-function u() {
-	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.YT && window.YT.Player ? Promise.resolve(window.YT) : l || (l = new Promise((e, t) => {
+var u = null;
+function d() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.YT && window.YT.Player ? Promise.resolve(window.YT) : u || (u = new Promise((e, t) => {
 		let n = window.onYouTubeIframeAPIReady;
 		window.onYouTubeIframeAPIReady = () => {
 			if (typeof n == "function") try {
 				n();
 			} catch {}
 			e(window.YT);
-		}, c("https://www.youtube.com/iframe_api").catch((e) => {
-			l = null, t(e);
+		}, l("https://www.youtube.com/iframe_api").catch((e) => {
+			u = null, t(e);
 		});
-	}), l);
+	}), u);
 }
-var d = null;
-function f() {
-	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.Vimeo && window.Vimeo.Player ? Promise.resolve(window.Vimeo) : d || (d = c("https://player.vimeo.com/api/player.js").then(() => window.Vimeo).catch((e) => {
-		throw d = null, e;
-	}), d);
+var f = null;
+function p() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.Vimeo && window.Vimeo.Player ? Promise.resolve(window.Vimeo) : f || (f = l("https://player.vimeo.com/api/player.js").then(() => window.Vimeo).catch((e) => {
+		throw f = null, e;
+	}), f);
 }
-var p = null;
-function m() {
-	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.SC && window.SC.Widget ? Promise.resolve(window.SC) : p || (p = c("https://w.soundcloud.com/player/api.js").then(() => window.SC).catch((e) => {
-		throw p = null, e;
-	}), p);
+var m = null;
+function h() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.SC && window.SC.Widget ? Promise.resolve(window.SC) : m || (m = l("https://w.soundcloud.com/player/api.js").then(() => window.SC).catch((e) => {
+		throw m = null, e;
+	}), m);
 }
-var h = null;
-function g() {
-	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.dailymotion && window.dailymotion.createPlayer ? Promise.resolve(window.dailymotion) : h || (h = c("https://player.dailymotion.com/api/player.js").then(() => window.dailymotion).catch((e) => {
-		throw h = null, e;
-	}), h);
+var g = null;
+function _() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.dailymotion && window.dailymotion.createPlayer ? Promise.resolve(window.dailymotion) : g || (g = l("https://player.dailymotion.com/api/player.js").then(() => window.dailymotion).catch((e) => {
+		throw g = null, e;
+	}), g);
 }
-var _ = null;
-function v() {
-	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.Twitch && window.Twitch.Player ? Promise.resolve(window.Twitch) : _ || (_ = c("https://player.twitch.tv/js/embed/v1.js").then(() => window.Twitch).catch((e) => {
-		throw _ = null, e;
-	}), _);
+var v = null;
+function y() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.Twitch && window.Twitch.Player ? Promise.resolve(window.Twitch) : v || (v = l("https://player.twitch.tv/js/embed/v1.js").then(() => window.Twitch).catch((e) => {
+		throw v = null, e;
+	}), v);
 }
-var y = null;
-function b() {
-	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.Mixcloud && window.Mixcloud.PlayerWidget ? Promise.resolve(window.Mixcloud) : y || (y = c("https://widget.mixcloud.com/media/js/widgetApi.js").then(() => window.Mixcloud).catch((e) => {
-		throw y = null, e;
-	}), y);
+var b = null;
+function x() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.Mixcloud && window.Mixcloud.PlayerWidget ? Promise.resolve(window.Mixcloud) : b || (b = l("https://widget.mixcloud.com/media/js/widgetApi.js").then(() => window.Mixcloud).catch((e) => {
+		throw b = null, e;
+	}), b);
 }
-var x = null;
-function S() {
-	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.SpotifyIframeApi ? Promise.resolve(window.SpotifyIframeApi) : x || (x = new Promise((e, t) => {
+var S = null;
+function C() {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.SpotifyIframeApi ? Promise.resolve(window.SpotifyIframeApi) : S || (S = new Promise((e, t) => {
 		let n = window.onSpotifyIframeApiReady;
 		window.onSpotifyIframeApiReady = (t) => {
 			if (window.SpotifyIframeApi = t, typeof n == "function") try {
 				n(t);
 			} catch {}
 			e(t);
-		}, c("https://open.spotify.com/embed/iframe-api/v1").catch((e) => {
-			x = null, t(e);
+		}, l("https://open.spotify.com/embed/iframe-api/v1").catch((e) => {
+			S = null, t(e);
 		});
-	}), x);
+	}), S);
 }
-var C = null;
-function w(e = null) {
-	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.FB ? Promise.resolve(window.FB) : C || (C = new Promise((t, n) => {
+var w = null;
+function T(e = "") {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.FB ? Promise.resolve(window.FB) : w || (w = new Promise((t, n) => {
 		let r = window.fbAsyncInit;
 		window.fbAsyncInit = () => {
-			if (window.FB && e && window.FB.init({
-				appId: e,
-				xfbml: !0,
-				version: "v18.0"
-			}), typeof r == "function") try {
+			if (window.FB) {
+				let t = {
+					xfbml: !0,
+					version: "v18.0"
+				};
+				e && (t.appId = e), window.FB.init(t);
+			}
+			if (typeof r == "function") try {
 				r();
 			} catch {}
 			t(window.FB);
-		}, c("https://connect.facebook.net/en_US/sdk.js").catch((e) => {
-			C = null, n(e);
+		}, l("https://connect.facebook.net/en_US/sdk.js").catch((e) => {
+			w = null, n(e);
 		});
-	}), C);
+	}), w);
 }
-var T = new class extends o {
+var E = new class extends s {
 	constructor() {
 		super("youtube");
 	}
 	async loadSdk() {
-		return u();
+		return d();
 	}
 	async initPlayer(e, r) {
-		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || "100%", s = e.videoId, { hiddenWrapper: c, tempNode: l, cleanup: u } = t(r, a, o);
-		return new Promise((t, d) => {
-			let f = null, p = null;
-			f = new i.Player(l.id, {
+		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || "100%", s = e.videoId, c = null, l = () => {};
+		if (e.container) c = document.createElement("div"), c.id = `sremote-youtube-${r}`, n(c, a, o, r), e.container.appendChild(c);
+		else {
+			let e = t(r, a, o);
+			c = e.tempNode, l = e.cleanup;
+		}
+		return new Promise((t, u) => {
+			let d = null, f = null;
+			d = new i.Player(c.id, {
 				width: a,
 				height: o,
 				videoId: s,
@@ -247,20 +298,20 @@ var T = new class extends o {
 				},
 				events: {
 					onReady: () => {
-						p = f.getIFrame ? f.getIFrame() : document.getElementById(l.id), p && p.parentNode === c && c.removeChild(p), u(), p && n(p, a, o, r), t({
-							player: f,
-							element: p,
-							iframe: p,
+						f = d.getIFrame ? d.getIFrame() : document.getElementById(c.id), f && n(f, a, o, r), t({
+							player: d,
+							element: f || c,
+							iframe: f || (c?.tagName === "IFRAME" ? c : null),
 							destroy: () => {
 								try {
-									f && typeof f.destroy == "function" && f.destroy();
+									d && typeof d.destroy == "function" && d.destroy();
 								} catch {}
-								u();
+								l();
 							}
 						});
 					},
 					onError: (e) => {
-						u(), d(e);
+						l(), u(e);
 					}
 				}
 			});
@@ -410,16 +461,16 @@ var T = new class extends o {
 			} }));
 		}), s;
 	}
-}(), E = {
-	create: (e) => T.create(e),
-	mount: (e, t) => T.mount(e, t),
-	provider: T
-}, D = new class extends o {
+}(), D = {
+	create: (e) => E.create(e),
+	mount: (e, t) => E.mount(e, t),
+	provider: E
+}, O = new class extends s {
 	constructor() {
 		super("vimeo");
 	}
 	async loadSdk() {
-		return f();
+		return p();
 	}
 	async initPlayer(e, r) {
 		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || "100%", s = e.videoId || e.id || e.url || "76979871", { hiddenWrapper: c, tempNode: l, cleanup: u } = t(r, a, o), d = {
@@ -588,16 +639,16 @@ var T = new class extends o {
 			} });
 		})), s;
 	}
-}(), O = {
-	create: (e) => D.create(e),
-	mount: (e, t) => D.mount(e, t),
-	provider: D
-}, k = new class extends o {
+}(), k = {
+	create: (e) => O.create(e),
+	mount: (e, t) => O.mount(e, t),
+	provider: O
+}, A = new class extends s {
 	constructor() {
 		super("soundcloud");
 	}
 	async loadSdk() {
-		return m();
+		return h();
 	}
 	async initPlayer(e, t) {
 		let r = await this.loadSdk(), i = e.width || "100%", a = e.height || (e.visual ? "300" : "166"), o = e.trackUrl || e.url || "https://api.soundcloud.com/tracks/293", s = e.autoplay ?? e.auto_play ?? !1, c = e.visual ?? !1, l = document.createElement("iframe");
@@ -722,16 +773,16 @@ var T = new class extends o {
 			} });
 		})), s;
 	}
-}(), A = {
-	create: (e) => k.create(e),
-	mount: (e, t) => k.mount(e, t),
-	provider: k
-}, j = new class extends o {
+}(), j = {
+	create: (e) => A.create(e),
+	mount: (e, t) => A.mount(e, t),
+	provider: A
+}, M = new class extends s {
 	constructor() {
 		super("dailymotion");
 	}
 	async loadSdk() {
-		return g();
+		return _();
 	}
 	async initPlayer(e, r) {
 		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || "100%", s = e.video || e.videoId || "x7tgad0", { hiddenWrapper: c, tempNode: l, cleanup: u } = t(r, a, o), d = {
@@ -879,16 +930,16 @@ var T = new class extends o {
 		}
 		return s;
 	}
-}(), M = {
-	create: (e) => j.create(e),
-	mount: (e, t) => j.mount(e, t),
-	provider: j
-}, N = new class extends o {
+}(), N = {
+	create: (e) => M.create(e),
+	mount: (e, t) => M.mount(e, t),
+	provider: M
+}, P = new class extends s {
 	constructor() {
 		super("twitch");
 	}
 	async loadSdk() {
-		return v();
+		return y();
 	}
 	async initPlayer(e, r) {
 		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || "100%", { hiddenWrapper: s, tempNode: c, cleanup: l } = t(r, a, o), u = typeof window < "u" && window.location.hostname || "localhost", d = Array.isArray(e.parent) ? e.parent : [e.parent || u], f = {
@@ -993,16 +1044,16 @@ var T = new class extends o {
 			} });
 		})), n;
 	}
-}(), P = {
-	create: (e) => N.create(e),
-	mount: (e, t) => N.mount(e, t),
-	provider: N
-}, F = new class extends o {
+}(), F = {
+	create: (e) => P.create(e),
+	mount: (e, t) => P.mount(e, t),
+	provider: P
+}, I = new class extends s {
 	constructor() {
 		super("mixcloud");
 	}
 	async loadSdk() {
-		return b();
+		return x();
 	}
 	async initPlayer(e, t) {
 		let r = await this.loadSdk(), i = e.width || "100%", a = e.height || (e.mini ? "60" : "120"), o = e.feed || e.url || "/spartacus/party-time/", s = e.autoplay ?? e.auto_play ?? !1, c = e.mini ?? !0, l = e.hideCover ?? !0, u = e.light ?? !0, d = document.createElement("iframe");
@@ -1086,16 +1137,16 @@ var T = new class extends o {
 			} });
 		})), i;
 	}
-}(), I = {
-	create: (e) => F.create(e),
-	mount: (e, t) => F.mount(e, t),
-	provider: F
-}, L = new class extends o {
+}(), L = {
+	create: (e) => I.create(e),
+	mount: (e, t) => I.mount(e, t),
+	provider: I
+}, R = new class extends s {
 	constructor() {
 		super("spotify");
 	}
 	async loadSdk() {
-		return S();
+		return C();
 	}
 	async initPlayer(e, r) {
 		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || (e.compact ? "152" : "352"), s = e.uri || e.url || "spotify:track:4cOdK2wGLETKBW3PvgPWqT", { hiddenWrapper: c, tempNode: l, cleanup: u } = t(r, a, o);
@@ -1187,20 +1238,27 @@ var T = new class extends o {
 			} });
 		})), i;
 	}
-}(), R = {
-	create: (e) => L.create(e),
-	mount: (e, t) => L.mount(e, t),
-	provider: L
-}, z = new class extends o {
+}(), z = {
+	create: (e) => R.create(e),
+	mount: (e, t) => R.mount(e, t),
+	provider: R
+}, B = new class extends s {
 	constructor() {
 		super("tiktok");
 	}
 	async initPlayer(e, t) {
-		let r = e.width || "100%", i = e.height || "600px", a = e.videoId || e.id || "6718335390845095173", o = document.createElement("iframe");
-		return o.id = `sremote-tiktok-${t}`, o.allow = "autoplay; fullscreen; encrypted-media", o.allowFullscreen = !0, o.src = `https://www.tiktok.com/player/v1/${a}?music_info=${e.musicInfo === !1 ? 0 : 1}&description=${e.description === !1 ? 0 : 1}&autoplay=${+!!e.autoplay}`, n(o, r, i, t), {
-			player: { iframe: o },
-			element: o,
-			iframe: o,
+		let i = e.width || "100%", a = e.height || "600px", o = e.videoId || e.id || "6718335390845095173", s = document.createElement("iframe");
+		return s.id = `sremote-tiktok-${t}`, s.allow = "autoplay; fullscreen; encrypted-media", s.allowFullscreen = !0, s.src = `https://www.tiktok.com/player/v1/${o}?music_info=${e.musicInfo === !1 ? 0 : 1}&description=${e.description === !1 ? 0 : 1}&autoplay=${+!!e.autoplay}`, n(s, i, a, t), await new Promise((t) => {
+			let n = !1, i = null, a = () => {
+				n || (n = !0, i && clearTimeout(i), typeof window < "u" && window.removeEventListener("message", o), t());
+			}, o = (e) => {
+				e.origin === "https://www.tiktok.com" && e.data?.["x-tiktok-player"] && a();
+			};
+			typeof window < "u" && window.addEventListener("message", o), r(s, e.timeout || 3500).then(a), i = setTimeout(a, e.timeout || 4e3);
+		}), {
+			player: { iframe: s },
+			element: s,
+			iframe: s,
 			destroy: () => {}
 		};
 	}
@@ -1289,23 +1347,30 @@ var T = new class extends o {
 			} })) : t === "onMute" && (i = !!n, c.emit?.("volumechange", { state: { muted: i } }));
 		}), c;
 	}
-}(), B = {
-	create: (e) => z.create(e),
-	mount: (e, t) => z.mount(e, t),
-	provider: z
-}, V = new class extends o {
+}(), V = {
+	create: (e) => B.create(e),
+	mount: (e, t) => B.mount(e, t),
+	provider: B
+}, H = new class extends s {
 	constructor() {
 		super("niconico");
 	}
 	async initPlayer(e, t) {
-		let r = e.width || "100%", i = e.height || "100%", a = e.watchId || e.videoId || e.id || "so46693656", o = `niconico-player-${t}`, s = document.createElement("iframe");
-		return s.id = o, s.allow = "autoplay; encrypted-media; fullscreen", s.allowFullscreen = !0, s.src = `https://embed.nicovideo.jp/watch/${a}?jsapi=1&playerId=${o}&autoplay=${+!!e.autoplay}`, n(s, r, i, t), {
+		let i = e.width || "100%", a = e.height || "100%", o = e.watchId || e.videoId || e.id || "so46693656", s = `niconico-player-${t}`, c = document.createElement("iframe");
+		return c.id = s, c.allow = "autoplay; encrypted-media; fullscreen", c.allowFullscreen = !0, c.src = `https://embed.nicovideo.jp/watch/${o}?jsapi=1&playerId=${s}&autoplay=${+!!e.autoplay}`, n(c, i, a, t), await new Promise((t) => {
+			let n = !1, i = null, a = () => {
+				n || (n = !0, i && clearTimeout(i), typeof window < "u" && window.removeEventListener("message", o), t());
+			}, o = (e) => {
+				e.origin === "https://embed.nicovideo.jp" && e.data?.playerId === s && (e.data?.eventName === "loadComplete" || e.data?.eventName === "playerMetadataChange") && a();
+			};
+			typeof window < "u" && window.addEventListener("message", o), r(c, e.timeout || 3500).then(a), i = setTimeout(a, e.timeout || 4e3);
+		}), {
 			player: {
-				iframe: s,
-				playerId: o
+				iframe: c,
+				playerId: s
 			},
-			element: s,
-			iframe: s,
+			element: c,
+			iframe: c,
 			destroy: () => {}
 		};
 	}
@@ -1388,14 +1453,14 @@ var T = new class extends o {
 			} })));
 		}), l;
 	}
-}(), H = {
-	create: (e) => V.create(e),
-	mount: (e, t) => V.mount(e, t),
-	provider: V
+}(), U = {
+	create: (e) => H.create(e),
+	mount: (e, t) => H.mount(e, t),
+	provider: H
 };
 //#endregion
 //#region src/providers/bilibili.js
-function U(e = {}) {
+function W(e = {}) {
 	let t = new window.URLSearchParams(), n = typeof e == "string" ? { videoId: e } : e || {}, r = n.bvid || n.aid || n.avid || n.videoId || n.id;
 	r && typeof r == "object" && (r = r.bvid || r.aid || r.avid || r.videoId || r.id || null);
 	let i = n.url || n.videoUrl || (typeof r == "string" && r.includes("bilibili.com") ? r : null), a = null, o = null;
@@ -1411,83 +1476,203 @@ function U(e = {}) {
 	let s = e.autoplay ?? !0;
 	return t.set("autoplay", s ? "1" : "0"), e.danmaku !== void 0 && t.set("danmaku", e.danmaku ? "1" : "0"), (e.highQuality !== void 0 || e.high_quality !== void 0) && t.set("high_quality", e.highQuality ?? e.high_quality ? "1" : "0"), `https://player.bilibili.com/player.html?${t.toString()}`;
 }
-var W = new class extends o {
+var G = new class extends s {
 	constructor() {
 		super("bilibili");
 	}
 	async initPlayer(e, t) {
-		let r = e.width || "100%", i = e.height || "100%", a = document.createElement("iframe");
-		return a.id = `sremote-bilibili-${t}`, a.allow = "autoplay; encrypted-media; fullscreen", a.allowFullscreen = !0, a.style.border = "none", a.src = U(e), n(a, r, i, t), {
+		let i = e.width || "100%", a = e.height || "100%", o = document.createElement("iframe");
+		return o.id = `sremote-bilibili-${t}`, o.allow = "autoplay; encrypted-media; fullscreen", o.allowFullscreen = !0, o.style.border = "none", o.src = W(e), n(o, i, a, t), await r(o, e.timeout || 4e3), {
 			player: {
-				iframe: a,
+				iframe: o,
 				options: e
 			},
-			element: a,
-			iframe: a,
+			element: o,
+			iframe: o,
 			destroy: () => {}
 		};
 	}
 	createAdapter(e, t) {
 		let n = t?.iframe || e?.iframe;
 		return { load(e, t = 1) {
-			n && (typeof e == "object" && e ? n.src = U({
+			n && (typeof e == "object" && e ? n.src = W({
 				...e,
 				autoplay: !0
-			}) : n.src = U({
+			}) : n.src = W({
 				videoId: String(e),
 				page: t,
 				autoplay: !0
 			}));
 		} };
 	}
-}(), G = {
-	create: (e) => W.create(e),
-	mount: (e, t) => W.mount(e, t),
-	provider: W
-}, K = new class extends o {
+}(), K = {
+	create: (e) => G.create(e),
+	mount: (e, t) => G.mount(e, t),
+	provider: G
+}, q = new class extends s {
 	constructor() {
 		super("facebook");
 	}
-	async loadSdk() {
-		return w();
+	async loadSdk(e = "") {
+		return T(e);
 	}
-	async initPlayer(e, t) {
-		let r = e.width || "500px", i = e.height || "auto", a = e.videoUrl || e.url || "https://www.facebook.com/facebook/videos/10153231379946729/", o = document.createElement("div");
-		o.id = `sremote-facebook-${t}`;
-		let s = document.createElement("div");
-		if (s.className = "fb-video", s.setAttribute("data-href", a), s.setAttribute("data-width", typeof r == "number" ? `${r}` : r), s.setAttribute("data-show-text", e.showText ? "true" : "false"), s.setAttribute("data-autoplay", e.autoplay ? "true" : "false"), s.setAttribute("data-allowfullscreen", "true"), o.appendChild(s), n(o, r, i, t), e.useSdk !== !1) try {
-			let t = await this.loadSdk(e.appId);
-			t && typeof t.XFBML?.parse == "function" && t.XFBML.parse(o);
-		} catch {}
-		return {
-			player: {
-				container: o,
-				videoUrl: a
+	async initPlayer(e, r) {
+		let i = e.width || "500px", a = e.height || "auto", o = e.videoUrl || e.url || "https://www.facebook.com/facebook/videos/10153231379946729/", s = `sremote-facebook-video-${r}`, { hiddenWrapper: c, tempNode: l, cleanup: u } = t(r, i, a), d = document.createElement("div");
+		d.id = s, d.className = "fb-video", d.setAttribute("data-href", o), d.setAttribute("data-width", typeof i == "number" ? `${i}` : i), d.setAttribute("data-show-text", e.showText ? "true" : "false"), d.setAttribute("data-autoplay", e.autoplay ? "true" : "false"), d.setAttribute("data-allowfullscreen", "true"), e.controls !== void 0 && d.setAttribute("data-controls", e.controls ? "true" : "false"), e.muted && d.setAttribute("data-muted", "true"), l.appendChild(d);
+		let f = await this.loadSdk(e.appId || "");
+		return new Promise((t) => {
+			let d = !1, p = null, m = null, h = (e = null) => {
+				if (d) return;
+				d = !0, m && clearTimeout(m);
+				let s = l.querySelector("iframe"), f = l;
+				f && f.parentNode === c && c.removeChild(f), u(), n(f, i, a, r), t({
+					player: e || p || {
+						container: f,
+						videoUrl: o
+					},
+					element: f,
+					iframe: s || (f?.tagName === "IFRAME" ? f : null),
+					destroy: () => {
+						u();
+					}
+				});
+			};
+			if (f && typeof f.Event?.subscribe == "function") {
+				let e = (t) => {
+					if (t && t.type === "video" && t.id === s) {
+						p = t.instance;
+						try {
+							f.Event?.unsubscribe?.("xfbml.ready", e);
+						} catch {}
+						h(p);
+					}
+				};
+				f.Event.subscribe("xfbml.ready", e);
+			}
+			if (f && typeof f.XFBML?.parse == "function") try {
+				f.XFBML.parse(l);
+			} catch {
+				h(null);
+			}
+			else h(null);
+			m = setTimeout(() => {
+				h(p);
+			}, e.timeout || 4e3);
+		});
+	}
+	createAdapter(e, t) {
+		let n = !1, r = 0, i = 0, a = 1, o = !1, s = null, c = () => {
+			try {
+				e && (typeof e.isPlaying == "function" && (n = !!e.isPlaying()), typeof e.getCurrentPosition == "function" && (i = Number(e.getCurrentPosition()) || 0), typeof e.getDuration == "function" && (r = Number(e.getDuration()) || 0), typeof e.getVolume == "function" && (a = Number(e.getVolume()) || 1), typeof e.isMuted == "function" && (o = !!e.isMuted()));
+			} catch {}
+			return {
+				paused: !n,
+				currentTime: i,
+				duration: r,
+				volume: a,
+				muted: o
+			};
+		}, l = () => {
+			s ||= setInterval(() => {
+				let e = c();
+				d.emit?.("timeupdate", { state: e });
+			}, 250);
+		}, u = () => {
+			s &&= (clearInterval(s), null);
+		}, d = {
+			play() {
+				e && typeof e.play == "function" && e.play();
 			},
-			element: o,
-			destroy: () => {}
+			pause() {
+				e && typeof e.pause == "function" && e.pause();
+			},
+			toggle() {
+				e && typeof e.isPlaying == "function" ? e.isPlaying() ? e.pause() : e.play() : n ? d.pause() : d.play();
+			},
+			stop() {
+				e && typeof e.pause == "function" && typeof e.seek == "function" && (e.pause(), e.seek(0));
+			},
+			seek(t) {
+				if (e && typeof e.seek == "function") {
+					let n = typeof e.getCurrentPosition == "function" ? e.getCurrentPosition() : i, r = Math.max(0, (n || 0) + Number(t));
+					e.seek(r);
+				}
+			},
+			seekTo(t) {
+				e && typeof e.seek == "function" && e.seek(Number(t));
+			},
+			getCurrentTime() {
+				return typeof e?.getCurrentPosition == "function" ? e.getCurrentPosition() : i;
+			},
+			getDuration() {
+				return typeof e?.getDuration == "function" ? e.getDuration() : r;
+			},
+			getVolume() {
+				return typeof e?.getVolume == "function" ? e.getVolume() : a;
+			},
+			setVolume(t) {
+				a = Number(t), e && typeof e.setVolume == "function" && e.setVolume(Math.min(1, Math.max(0, a)));
+			},
+			getMuted() {
+				return typeof e?.isMuted == "function" ? e.isMuted() : o;
+			},
+			setMuted(t) {
+				o = !!t, e && (o && typeof e.mute == "function" ? e.mute() : !o && typeof e.unmute == "function" && e.unmute());
+			},
+			paused() {
+				return e && typeof e.isPlaying == "function" ? !e.isPlaying() : !n;
+			},
+			getState() {
+				return c();
+			},
+			destroy() {
+				u();
+			}
 		};
+		if (e && typeof e.subscribe == "function") try {
+			e.subscribe("startedPlaying", () => {
+				n = !0, l();
+				let e = c();
+				d.emit?.("play", { state: e });
+			}), e.subscribe("paused", () => {
+				n = !1, u();
+				let e = c();
+				d.emit?.("pause", { state: e });
+			}), e.subscribe("finishedPlaying", () => {
+				n = !1, u();
+				let e = {
+					...c(),
+					paused: !0,
+					ended: !0
+				};
+				d.emit?.("ended", { state: e });
+			}), e.subscribe("bufferingStarted", () => {
+				d.emit?.("buffering", { state: c() });
+			}), e.subscribe("bufferingEnded", () => {
+				d.emit?.("buffered", { state: c() });
+			}), e.subscribe("error", (e) => {
+				d.emit?.("error", { error: e });
+			});
+		} catch {}
+		return d;
 	}
-	createAdapter() {
-		return {};
-	}
-}(), q = {
-	create: (e) => K.create(e),
-	mount: (e, t) => K.mount(e, t),
-	provider: K
-}, J = {
-	BaseProvider: o,
-	youtube: E,
-	vimeo: O,
-	soundcloud: A,
-	dailymotion: M,
-	twitch: P,
-	mixcloud: I,
-	spotify: R,
-	tiktok: B,
-	niconico: H,
-	bilibili: G,
-	facebook: q
+}(), J = {
+	create: (e) => q.create(e),
+	mount: (e, t) => q.mount(e, t),
+	provider: q
+}, Y = {
+	BaseProvider: s,
+	youtube: D,
+	vimeo: k,
+	soundcloud: j,
+	dailymotion: N,
+	twitch: F,
+	mixcloud: L,
+	spotify: z,
+	tiktok: V,
+	niconico: U,
+	bilibili: K,
+	facebook: J
 };
 //#endregion
-export { o as BaseProvider, G as bilibili, M as dailymotion, J as default, q as facebook, I as mixcloud, H as niconico, A as soundcloud, R as spotify, B as tiktok, P as twitch, O as vimeo, E as youtube };
+export { s as BaseProvider, K as bilibili, N as dailymotion, Y as default, J as facebook, L as mixcloud, U as niconico, j as soundcloud, z as spotify, V as tiktok, F as twitch, k as vimeo, D as youtube };

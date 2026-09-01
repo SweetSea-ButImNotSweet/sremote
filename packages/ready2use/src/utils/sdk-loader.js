@@ -225,9 +225,10 @@ export function loadSpotifySdk() {
 let facebookSdkPromise = null;
 /**
  * Loads the Facebook JavaScript SDK and resolves when window.FB is ready.
+ * @param {string|null} [appId=''] Optional Facebook App ID (can be empty string or null)
  * @returns {Promise<typeof window.FB>}
  */
-export function loadFacebookSdk(appId = null) {
+export function loadFacebookSdk(appId = '') {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
   if (window.FB) {
     return Promise.resolve(window.FB);
@@ -239,8 +240,12 @@ export function loadFacebookSdk(appId = null) {
     const prevFbAsyncInit = window.fbAsyncInit;
 
     window.fbAsyncInit = () => {
-      if (window.FB && appId) {
-        window.FB.init({ appId, xfbml: true, version: 'v18.0' });
+      if (window.FB) {
+        const initOptions = { xfbml: true, version: 'v18.0' };
+        if (appId) {
+          initOptions.appId = appId;
+        }
+        window.FB.init(initOptions);
       }
       if (typeof prevFbAsyncInit === 'function') {
         try {

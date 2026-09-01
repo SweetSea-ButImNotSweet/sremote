@@ -325,17 +325,20 @@ export declare const bilibili: {
 // --- Facebook Provider Definitions ---
 
 export interface FacebookPlayerOptions extends BaseProviderOptions {
-  /** Facebook Video URL */
+  /** Facebook Video URL (e.g. "https://www.facebook.com/facebook/videos/10153231379946729/") */
   videoUrl?: string;
   url?: string;
   showText?: boolean;
   autoplay?: boolean;
-  useSdk?: boolean;
+  controls?: boolean;
+  muted?: boolean;
   appId?: string;
+  timeout?: number;
 }
 
 export declare class FacebookProvider extends BaseProvider<FacebookPlayerOptions, any> {
   constructor();
+  loadSdk(appId?: string): Promise<any>;
 }
 
 export declare const facebook: {

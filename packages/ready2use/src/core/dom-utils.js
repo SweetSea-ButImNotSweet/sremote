@@ -70,3 +70,42 @@ export function applyElementAttributes(el, width = '100%', height = '100%', inst
     el.style.height = typeof height === 'number' ? `${height}px` : height;
   }
 }
+
+/**
+ * Waits for an iframe to trigger its load event or times out safely.
+ * @param {HTMLIFrameElement} iframe
+ * @param {number} [timeoutMs=5000]
+ * @returns {Promise<void>}
+ */
+export function waitForIframeLoad(iframe, timeoutMs = 5000) {
+  if (!iframe || typeof window === 'undefined') return Promise.resolve();
+
+  return new Promise(resolve => {
+    let done = false;
+    let timer = null;
+
+    const onFinish = () => {
+      if (done) return;
+      done = true;
+      if (timer) clearTimeout(timer);
+      iframe.removeEventListener('load', onFinish);
+      iframe.removeEventListener('error', onFinish);
+      resolve();
+    };
+
+    try {
+      // If the iframe already has readyState complete in some browsers
+      if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+        resolve();
+        return;
+      }
+    } catch {}
+
+    iframe.addEventListener('load', onFinish, { once: true });
+    iframe.addEventListener('error', onFinish, { once: true });
+
+    if (timeoutMs > 0) {
+      timer = setTimeout(onFinish, timeoutMs);
+    }
+  });
+}

@@ -1,5 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
-import { applyElementAttributes } from '../core/dom-utils.js';
+import { applyElementAttributes, waitForIframeLoad } from '../core/dom-utils.js';
 
 /**
  * Provider for NicoNico Player (postMessage protocol)
@@ -22,6 +22,34 @@ export class NicoNicoProvider extends BaseProvider {
     iframe.src = `https://embed.nicovideo.jp/watch/${watchId}?jsapi=1&playerId=${playerId}&autoplay=${options.autoplay ? 1 : 0}`;
 
     applyElementAttributes(iframe, width, height, instanceId);
+
+    await new Promise(resolve => {
+      let resolved = false;
+      let timer = null;
+
+      const onDone = () => {
+        if (resolved) return;
+        resolved = true;
+        if (timer) clearTimeout(timer);
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('message', onMsg);
+        }
+        resolve();
+      };
+
+      const onMsg = e => {
+        if (e.origin === 'https://embed.nicovideo.jp' && e.data?.playerId === playerId && (e.data?.eventName === 'loadComplete' || e.data?.eventName === 'playerMetadataChange')) {
+          onDone();
+        }
+      };
+
+      if (typeof window !== 'undefined') {
+        window.addEventListener('message', onMsg);
+      }
+
+      waitForIframeLoad(iframe, options.timeout || 3500).then(onDone);
+      timer = setTimeout(onDone, options.timeout || 4000);
+    });
 
     return { player: { iframe, playerId }, element: iframe, iframe, destroy: () => {} };
   }

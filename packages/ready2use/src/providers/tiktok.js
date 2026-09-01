@@ -1,5 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
-import { applyElementAttributes } from '../core/dom-utils.js';
+import { applyElementAttributes, waitForIframeLoad } from '../core/dom-utils.js';
 
 /**
  * Provider for TikTok Official Embed Player API (v1)
@@ -21,6 +21,35 @@ export class TikTokProvider extends BaseProvider {
     iframe.src = `https://www.tiktok.com/player/v1/${videoId}?music_info=${options.musicInfo !== false ? 1 : 0}&description=${options.description !== false ? 1 : 0}&autoplay=${options.autoplay ? 1 : 0}`;
 
     applyElementAttributes(iframe, width, height, instanceId);
+
+    // Wait for TikTok postMessage handshake or iframe load
+    await new Promise(resolve => {
+      let resolved = false;
+      let timer = null;
+
+      const onDone = () => {
+        if (resolved) return;
+        resolved = true;
+        if (timer) clearTimeout(timer);
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('message', onMsg);
+        }
+        resolve();
+      };
+
+      const onMsg = e => {
+        if (e.origin === 'https://www.tiktok.com' && e.data?.['x-tiktok-player']) {
+          onDone();
+        }
+      };
+
+      if (typeof window !== 'undefined') {
+        window.addEventListener('message', onMsg);
+      }
+
+      waitForIframeLoad(iframe, options.timeout || 3500).then(onDone);
+      timer = setTimeout(onDone, options.timeout || 4000);
+    });
 
     return { player: { iframe }, element: iframe, iframe, destroy: () => {} };
   }

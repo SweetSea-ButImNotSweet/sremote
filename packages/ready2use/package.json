@@ -1,6 +1,6 @@
 {
   "name": "@sremote/ready2use",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Ready-to-use out-of-the-box providers and adapters for SRemote",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -16,6 +16,6 @@
   "homepage": "https://github.com/SweetSea-ButImNotSweet/sremote#readme",
   "bugs": { "url": "https://github.com/SweetSea-ButImNotSweet/sremote/issues" },
   "license": "LGPL-3.0",
-  "peerDependencies": { "@sremote/wrapper": "^2.0.0" },
-  "devDependencies": { "@sremote/wrapper": "^2.0.0" }
+  "peerDependencies": { "@sremote/wrapper": "^2.1.0" },
+  "devDependencies": { "@sremote/wrapper": "^2.1.0" }
 }

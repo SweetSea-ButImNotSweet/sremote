@@ -208,26 +208,87 @@ export class BaseProvider {
       throw new Error(`[SRemote:${this.name}] Target container '${container}' not found in DOM`);
     }
 
-    const result = await this.create(options);
-    targetContainer.appendChild(result.element);
+    const opts = typeof options === 'string' ? { videoId: options } : { ...options };
+    const instanceId = this.generateInstanceId(opts.instanceId);
 
-    const opts = typeof options === 'string' ? {} : options;
-    const remote = await resolveSRemote(opts);
+    // 1. Ensure provider SDK is ready
+    await this.loadSdk();
 
-    if (remote?.adapters) {
-      remote.adapters.register(result.adapter, result.instanceId);
+    // 2. Initialize native player directly in container (passing targetContainer if supported)
+    const { player, element, iframe, destroy: customDestroy } = await this.initPlayer({ ...opts, container: targetContainer }, instanceId);
+
+    const targetElement = iframe || element;
+
+    // Ensure the element is mounted in container if not already attached
+    if (targetElement && targetElement.parentNode !== targetContainer) {
+      targetContainer.appendChild(targetElement);
     }
 
+    // 3. Build SRemote Custom Adapter
+    const adapter = this.createAdapter(player, {
+      options: opts,
+      instanceId,
+      element: targetElement,
+      iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null),
+    }) || {};
+
+    if (typeof adapter.toggle !== 'function' && typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
+      adapter.toggle = function () {
+        const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : (typeof adapter.paused === 'boolean' ? adapter.paused : true);
+        if (isPaused) {
+          adapter.play();
+        } else {
+          adapter.pause();
+        }
+      };
+    }
+
+    const capabilities = this.getCapabilities(adapter);
+    if (adapter && !adapter.capabilities) {
+      adapter.capabilities = capabilities;
+    }
+
+    const remote = await resolveSRemote(opts);
+    if (remote?.adapters) {
+      remote.adapters.register(adapter, instanceId);
+    }
+
+    const destroy = () => {
+      try {
+        if (remote?.adapters) {
+          remote.adapters.unregister(instanceId);
+        }
+      } catch {}
+
+      try {
+        if (typeof adapter?.destroy === 'function') {
+          adapter.destroy();
+        }
+      } catch {}
+
+      try {
+        if (typeof customDestroy === 'function') {
+          customDestroy();
+        } else if (player && typeof player.destroy === 'function') {
+          player.destroy();
+        }
+      } catch {}
+
+      try {
+        if (targetElement && targetElement.parentNode) {
+          targetElement.parentNode.removeChild(targetElement);
+        }
+      } catch {}
+    };
+
     return {
-      ...result,
-      destroy: () => {
-        try {
-          if (remote?.adapters) {
-            remote.adapters.unregister(result.instanceId);
-          }
-        } catch {}
-        result.destroy();
-      },
+      element: targetElement,
+      iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null),
+      adapter,
+      player,
+      instanceId,
+      capabilities,
+      destroy,
     };
   }
 }
