@@ -4,9 +4,32 @@ Before writing integration code for SRemote on your website, you should determin
 
 ---
 
-## 1. Fast Verification via Live Demo
+## 1. The Recommended Fast Path: Using `@sremote/ready2use`
 
-The fastest way to verify compatibility:
+If you are developing a modern application, the quickest approach is using the **`@sremote/ready2use`** package. When initializing via `create()` or `mount()`, you can directly check whether the target platform provides an adapter or relies on automatic HTML5 discovery:
+
+```javascript
+import { youtube, rumble } from '@sremote/ready2use';
+
+// 1. Platforms with dedicated Adapters (YouTube, Spotify, SoundCloud, Vimeo, FB SDK...)
+const yt = await youtube.create({ videoId: 'dQw4w9WgXcQ' });
+console.log(yt.adapter); // Object with methods { play, pause, seek... } -> Has dedicated Adapter!
+
+// 2. Platforms relying on automated HTML5 Discovery (Rumble, Kick, Streamable, Odysee, Bandcamp, Bilibili...)
+const rb = await rumble.create({ video: 'v397yeg' });
+console.log(rb.adapter); // null or empty -> Auto-discovered via Userscript!
+```
+
+> [!TIP]
+> **Quick Summary:**
+> - **If `adapter` exists (non-null / has methods)**: You can control the player directly via the Adapter interface or through SRemote client even without Userscript (via underlying official SDKs).
+> - **If `adapter` is `null` or empty**: The platform is handled via **HTML5 Discovery**. You will need the **SRemote Userscript** installed to hook and intercept the embedded `<video>` / `<audio>` element inside the cross-origin iframe.
+
+---
+
+## 2. Fast Verification via Live Demo
+
+The visual way to verify compatibility for any embed link:
 1. Open the SRemote **[Live Demo](../demo/index.html)**.
 2. Paste your target embed URL into the Iframe URL field.
 3. Click **Load Iframe** and check:
@@ -18,7 +41,7 @@ The fastest way to verify compatibility:
 
 ---
 
-## 2. Inspecting Unknown Services via DevTools
+## 3. Inspecting Unknown Services via DevTools
 
 For private players or unlisted services:
 1. Open DevTools (F12) → **Elements** tab.
@@ -31,7 +54,7 @@ For private players or unlisted services:
 
 ---
 
-## 3. TABLE 1: Command Execution Matrix
+## 4. TABLE 1: Command Execution Matrix
 
 > **Legend:**
 > - ✅ : Fully supported and stable.
@@ -407,7 +430,7 @@ For private players or unlisted services:
 
 ---
 
-## 4. TABLE 2: Playback Events Matrix
+## 5. TABLE 2: Playback Events Matrix
 
 <div class="matrix-table-wrapper">
 <table class="matrix-table">

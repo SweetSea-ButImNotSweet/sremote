@@ -4,9 +4,32 @@ Trước khi bắt tay vào viết mã tích hợp SRemote vào website, bạn c
 
 ---
 
-## 1. Thử nghiệm nhanh bằng trang Live Demo
+## 1. Cách nhanh & chuẩn nhất: Dùng `@sremote/ready2use`
 
-Cách đơn giản nhất để kiểm tra:
+Nếu bạn đang xây dựng ứng dụng hiện đại, cách nhanh nhất là dùng gói **`@sremote/ready2use`**. Khi khởi tạo qua hàm `create()` hoặc `mount()`, bạn có thể kiểm tra trực tiếp xem nền tảng đó có cần Adapter hay chỉ chạy HTML5 Discovery:
+
+```javascript
+import { youtube, rumble } from '@sremote/ready2use';
+
+// 1. Nền tảng có Adapter riêng (YouTube, Spotify, SoundCloud, Vimeo, FB SDK...)
+const yt = await youtube.create({ videoId: 'dQw4w9WgXcQ' });
+console.log(yt.adapter); // Object chứa các hàm { play, pause, seek... } -> Có Adapter!
+
+// 2. Nền tảng chạy tự động qua HTML5 Discovery (Rumble, Kick, Streamable, Odysee, Bandcamp, Bilibili...)
+const rb = await rumble.create({ video: 'v397yeg' });
+console.log(rb.adapter); // null hoặc rỗng -> Tự động nhận diện qua Userscript!
+```
+
+> [!TIP]
+> **Hướng dẫn nhận biết nhanh:**
+> - **Nếu `adapter` tồn tại (khác `null` / có methods)**: Bạn có thể điều khiển trực tiếp qua Adapter hoặc qua SRemote client ngay cả khi trình duyệt chưa cài Userscript (nhờ tích hợp SDK chính thức).
+> - **Nếu `adapter` là `null` hoặc rỗng**: Nền tảng hoạt động bằng cơ chế **HTML5 Discovery**. Người dùng cần cài **Userscript SRemote** để can thiệp trực tiếp vào thẻ `<video>` / `<audio>` trong Iframe.
+
+---
+
+## 2. Thử nghiệm trực quan bằng trang Live Demo
+
+Cách trực quan để kiểm tra xem một link embed bất kỳ có điều khiển được không:
 1. Mở trang **[Live Demo](../demo/index.html)** của SRemote.
 2. Dán link embed hoặc URL của dịch vụ bạn muốn nhúng vào ô nhập Iframe URL.
 3. Bấm **Nạp Iframe** và quan sát:
@@ -18,9 +41,9 @@ Cách đơn giản nhất để kiểm tra:
 
 ---
 
-## 2. Cách tự soi DevTools kiểm tra dịch vụ lạ
+## 3. Tự soi DevTools kiểm tra dịch vụ lạ
 
-Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
+Nếu bạn nhúng một dịch vụ nội bộ hoặc player web chưa có trong danh sách:
 1. Mở Chrome/Firefox DevTools (F12) → tab **Elements**.
 2. Chọn khung context của iframe đích.
 3. Chạy lệnh Console:
@@ -31,7 +54,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
 
 ---
 
-## 3. BẢNG 1: Ma trận Khả năng thực thi Lệnh (Commands Matrix)
+## 4. BẢNG 1: Ma trận Khả năng thực thi Lệnh (Commands Matrix)
 
 > **Ký hiệu:**
 > - ✅ : Hỗ trợ đầy đủ, hoạt động ổn định.
@@ -407,7 +430,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
 
 ---
 
-## 4. BẢNG 2: Ma trận Phản hồi Sự kiện Media (Playback Events Matrix)
+## 5. BẢNG 2: Ma trận Phản hồi Sự kiện Media (Playback Events Matrix)
 
 <div class="matrix-table-wrapper">
 <table class="matrix-table">

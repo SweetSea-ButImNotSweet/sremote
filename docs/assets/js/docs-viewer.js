@@ -162,13 +162,22 @@ function renderGfmAlerts(html) {
     CAUTION: { title: 'Caution', icon: '🛑', class: 'gfm-alert-caution' },
   };
 
-  return html.replace(/<blockquote>\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(?:<br>|\n)?([\s\S]*?)<\/p>\s*<\/blockquote>/gi, (match, type, content) => {
-    const upperType = type.toUpperCase();
-    const alert = alertTypes[upperType] || alertTypes.NOTE;
+  return html.replace(/<blockquote>([\s\S]*?)<\/blockquote>/gi, (match, inner) => {
+    const alertMatch = inner.match(/^\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\s*<br\s*\/?>|\s*\n)?([\s\S]*)$/i);
+    if (!alertMatch) return match;
+
+    const type = alertMatch[1].toUpperCase();
+    const restOfFirstP = alertMatch[2];
+    const alert = alertTypes[type] || alertTypes.NOTE;
+
+    let body = inner.replace(/^\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\s*<br\s*\/?>|\s*\n)?/i, '<p>');
+    // Clean up empty <p></p> if rest was empty
+    body = body.replace(/<p>\s*<\/p>/gi, '');
+
     return `
       <div class="gfm-alert ${alert.class}">
         <div class="gfm-alert-title">${alert.icon} ${alert.title}</div>
-        <p>${content}</p>
+        ${body}
       </div>
     `;
   });
