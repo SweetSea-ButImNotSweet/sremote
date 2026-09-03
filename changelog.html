@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRemote - Changelog & Release Notes</title>
+  <meta name="description" content="Nhật ký phiên bản và lịch sử cập nhật của SRemote Userscript & SDK.">
+
+  <!-- Marked.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- Highlight.js for Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <link rel="stylesheet" href="assets/css/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="assets/js/header.js" defer></script>
+</head>
+<body>
+  <!-- Shared Header Component -->
+  <sremote-header active="changelog"></sremote-header>
+
+  <!-- Main Single Column Clean Layout -->
+  <main class="single-doc-container">
+    <div class="doc-meta-bar">
+      <h1 id="sec-doc-title" style="font-size: 18px; margin: 0; font-weight: 700; color: var(--text-heading);">📋 Nhật ký thay đổi (Changelog)</h1>
+      <span id="doc-renderer-badge">Rendered by <strong>Marked.js</strong></span>
+    </div>
+
+    <!-- Dynamic Markdown Container (Frameless) -->
+    <article class="markdown-body" id="markdown-container">
+      <div class="loading-spinner">Đang tải và xử lý nội dung Markdown...</div>
+    </article>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div style="max-width: 1000px; margin: 0 auto; padding: 0 20px;">
+      <p id="footer-text">
+        SRemote Frame Controller &copy; 2026 sweetsea &bull; Giấy phép LGPL-3.0 &bull; Hỗ trợ mọi trình duyệt & Tampermonkey.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Script: UI Logic & Live Markdown Loader with Prefetch Cache -->
+  <script>
+    const i18nUI = {
+      en: {
+        pageTitle: "SRemote - Changelog & Release Notes",
+        secDocTitle: "📋 Changelog & Release Notes",
+        footerText: "SRemote Frame Controller © 2026 sweetsea • Licensed under LGPL-3.0 • Supports all browsers & Tampermonkey.",
+        mdSource: "CHANGELOG.md"
+      },
+      vi: {
+        pageTitle: "SRemote - Nhật ký thay đổi (Changelog)",
+        secDocTitle: "📋 Nhật ký thay đổi (Changelog)",
+        footerText: "SRemote Frame Controller © 2026 sweetsea • Giấy phép LGPL-3.0 • Hỗ trợ mọi trình duyệt & Tampermonkey.",
+        mdSource: "README/changelog.vi.md"
+      }
+    };
+
+    // Cache lưu trữ nội dung thô của các file markdown
+    const mdCache = new Map();
+    let currentLang = 'en';
+
+    // Configure Marked.js options
+    if (typeof marked !== 'undefined') {
+      marked.use({
+        gfm: true,
+        breaks: true,
+        mangle: false,
+        highlight: function(code, lang) {
+          if (typeof hljs !== 'undefined') {
+            const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+            return hljs.highlight(code, { language }).value;
+          }
+          return code;
+        }
+      });
+    }
+
+    // Tải nội dung markdown và lưu vào cache
+    async function fetchMarkdownText(sourceFile) {
+      if (mdCache.has(sourceFile)) {
+        return mdCache.get(sourceFile);
+      }
+
+      const res = await fetch(sourceFile + '?t=' + Date.now());
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+
+      let markdownText = await res.text();
+      markdownText = markdownText.replace(/^\[\s*(English|Tiếng Việt)[\s\S]*?\n\n/i, '');
+
+      mdCache.set(sourceFile, markdownText);
+      return markdownText;
+    }
+
+    // Prefetch toàn bộ file markdown có trong i18nUI chạy ngầm
+    function prefetchAllMarkdownDocs() {
+      Object.values(i18nUI).forEach(config => {
+        if (config.mdSource && !mdCache.has(config.mdSource)) {
+          fetchMarkdownText(config.mdSource).catch(err => {
+            console.warn(`[Prefetch] Không thể nạp trước file ${config.mdSource}:`, err);
+          });
+        }
+      });
+    }
+
+    // Render markdown ra giao diện
+    async function loadLiveMarkdown(sourceFile) {
+      const container = document.getElementById('markdown-container');
+      if (!container) return;
+
+      if (!mdCache.has(sourceFile)) {
+        container.innerHTML = '<div class="loading-spinner">Đang tải và xử lý nội dung Markdown...</div>';
+      }
+
+      try {
+        const markdownText = await fetchMarkdownText(sourceFile);
+
+        if (typeof marked !== 'undefined') {
+          container.innerHTML = marked.parse(markdownText);
+          if (typeof hljs !== 'undefined') {
+            container.querySelectorAll('pre code').forEach((block) => {
+              hljs.highlightElement(block);
+            });
+          }
+        } else {
+          container.innerHTML = `<pre>${markdownText}</pre>`;
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải file markdown:', err);
+        container.innerHTML = `
+          <div style="border-left: 4px solid #d9534f; background: #fdf7f7; color: #a94442; padding: 12px; border-radius: 3px;">
+            <h4 style="margin-bottom: 6px;">⚠️ Không thể tải file Changelog (${sourceFile})</h4>
+            <p>Chi tiết lỗi: ${err.message}. Vui lòng kiểm tra lại đường dẫn file hoặc web server.</p>
+          </div>
+        `;
+      }
+    }
+
+    function setLanguage(lang) {
+      if (!i18nUI[lang]) return;
+      currentLang = lang;
+      localStorage.setItem('sremote_lang', lang);
+      document.documentElement.lang = lang;
+
+      document.title = i18nUI[lang].pageTitle;
+      const secTitle = document.getElementById('sec-doc-title');
+      if (secTitle) secTitle.textContent = i18nUI[lang].secDocTitle;
+      const footer = document.getElementById('footer-text');
+      if (footer) footer.textContent = i18nUI[lang].footerText;
+
+      loadLiveMarkdown(i18nUI[lang].mdSource);
+    }
+
+    fetchMarkdownText(i18nUI.en.mdSource);
+    prefetchAllMarkdownDocs();
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedLang = localStorage.getItem('sremote_lang') || 'en';
+      setLanguage(savedLang);
+    });
+
+    window.addEventListener('sremote:lang-change', (e) => {
+      if (e.detail && e.detail.lang) {
+        setLanguage(e.detail.lang);
+      }
+    });
+  </script>
+</body>
+</html>

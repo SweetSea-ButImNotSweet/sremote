@@ -6,21 +6,28 @@ Automatically initializes third-party SDKs, mounts iframes/elements, and binds c
 
 ---
 
-## 🎯 Supported Providers
+## 🎯 Supported Providers (18 Platforms)
 
-| Provider | Method / Mechanism | Exported Helper |
-| :--- | :--- | :--- |
-| **YouTube** | YouTube IFrame Player API | `youtube` |
-| **Vimeo** | Vimeo Player SDK | `vimeo` |
-| **SoundCloud** | SoundCloud Widget API | `soundcloud` |
-| **Dailymotion** | Dailymotion Player SDK | `dailymotion` |
-| **Twitch** | Twitch Interactive Player SDK | `twitch` |
-| **Mixcloud** | Mixcloud Widget API | `mixcloud` |
-| **Spotify** | Spotify IFrame API (EmbedController) | `spotify` |
-| **TikTok** | TikTok Official Embed Player (v1) | `tiktok` |
-| **NicoNico** | NicoNico PostMessage Protocol | `niconico` |
-| **Bilibili** | Bilibili Player Embed + SRemote Discovery | `bilibili` |
-| **Facebook** | Facebook Video Player Embed | `facebook` |
+| Provider | Adapters for SRemote available? | Exported Name |
+| :--- | :---: | :--- |
+| **YouTube** | True | `youtube` |
+| **Vimeo** | True | `vimeo` |
+| **SoundCloud** | True | `soundcloud` |
+| **Dailymotion** | True | `dailymotion` |
+| **Twitch** | True | `twitch` |
+| **Mixcloud** | True | `mixcloud` |
+| **Spotify** | True | `spotify` |
+| **TikTok** | True | `tiktok` |
+| **NicoNico** | True | `niconico` |
+| **Facebook** | True | `facebook` |
+| **PeerTube** | True | `peertube` |
+| **Twitter / X** | True | `twitter` |
+| **Bilibili** | False *(HTML5 Discovery)* | `bilibili` |
+| **Rumble** | False *(HTML5 Discovery)* | `rumble` |
+| **Kick** | False *(HTML5 Discovery)* | `kick` |
+| **Streamable** | False *(HTML5 Discovery)* | `streamable` |
+| **Odysee / LBRY** | False *(HTML5 Discovery)* | `odysee` |
+| **Bandcamp** | False *(HTML5 Discovery)* | `bandcamp` |
 
 
 ---

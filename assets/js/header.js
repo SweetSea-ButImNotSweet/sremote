@@ -22,6 +22,7 @@
       docs: 'Hướng dẫn sử dụng',
       cookbook: 'Hướng dẫn triển khai',
       demo: 'Live Demo',
+      changelog: 'Changelog',
       install: 'Cài đặt Userscript',
       optUnmin: 'Bản tiêu chuẩn (Mặc định)',
       optMin: 'Bản nén (Minified)',
@@ -40,6 +41,7 @@
       docs: 'Documentation',
       cookbook: 'Integration Recipes',
       demo: 'Live Demo',
+      changelog: 'Changelog',
       install: 'Install Userscript',
       optUnmin: 'Standard Build (Default)',
       optMin: 'Minified Build',
@@ -116,6 +118,7 @@
       if (path.endsWith('/demo/') || path.endsWith('/demo/index.html')) return 'demo';
       if (path.endsWith('/docs/recipes.html') || path.includes('recipes.html')) return 'cookbook';
       if (path.includes('/docs/')) return 'docs';
+      if (path.includes('changelog.html')) return 'changelog';
       return 'home';
     }
 
@@ -128,13 +131,14 @@
       const docsHref = `${base}docs/index.html`;
       const cookbookHref = `${base}docs/recipes.html`;
       const demoHref = `${base}demo/index.html`;
+      const changelogHref = `${base}changelog.html`;
 
       this.innerHTML = `
         <header class="app-header">
           <div class="header-left">
             <a href="${homeHref}" class="header-brand" title="SRemote Home">
               <span class="header-title">${dict.brandTitle}</span>
-              <span class="header-version-badge">v2.0.0</span>
+              <span class="header-version-badge">v2.1.0</span>
             </a>
 
             <nav class="header-nav" aria-label="Main navigation">
@@ -166,6 +170,17 @@
                   <polygon points="5 3 19 12 5 21 5 3"></polygon>
                 </svg>
                 <span class="nav-text">${dict.demo}</span>
+              </a>
+
+              <a href="${changelogHref}" class="header-nav-link ${active === 'changelog' ? 'active' : ''}" data-nav="changelog">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <span class="nav-text">${dict.changelog}</span>
               </a>
             </nav>
           </div>

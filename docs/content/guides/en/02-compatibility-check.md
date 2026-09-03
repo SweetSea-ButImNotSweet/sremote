@@ -57,7 +57,7 @@ For private players or unlisted services:
   <tbody>
     <!-- Vanilla HTML5 Media -->
     <tr class="platform-start">
-      <td rowspan="3" class="platform-title">Vanilla HTML5 Media<br><small style="font-weight: normal; opacity: 0.7;">(VideoJS, Plyr, native)</small></td>
+      <td rowspan="2" class="platform-title">Vanilla HTML5 Media<br><small style="font-weight: normal; opacity: 0.7;">(VideoJS, Plyr, native)</small></td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -67,7 +67,7 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td>Direct access to native <code>HTMLMediaElement</code></td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>2. MediaSession</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -77,19 +77,9 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td>Browser MediaSession API lacks Volume / Rate / PiP handlers</td>
     </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Direct command dispatching via <code>postMessage</code></td>
-    </tr>
     <!-- Bilibili Embed -->
     <tr class="platform-start">
-      <td rowspan="3" class="platform-title">Bilibili Embed</td>
+      <td rowspan="2" class="platform-title">Bilibili Embed</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -99,7 +89,7 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td>Identifies <code>&lt;video&gt;</code> element in bpx-player</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>2. MediaSession</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -107,21 +97,11 @@ For private players or unlisted services:
       <td class="no"></td>
       <td class="no"></td>
       <td class="ok"></td>
-      <td>Compatible with system OS media controls</td>
-    </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Cross-origin command handling via SRemote client</td>
+      <td>Compatible with standard browser media keys</td>
     </tr>
     <!-- YouTube Embed -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">YouTube Embed</td>
+      <td rowspan="3" class="platform-title">YouTube Embed</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -129,7 +109,7 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
-      <td>Hooks <code>video.html5-main-video</code> element directly</td>
+      <td>Directly hooks <code>video.html5-main-video</code></td>
     </tr>
     <tr>
       <td><code>2. MediaSession</code></td>
@@ -139,9 +119,9 @@ For private players or unlisted services:
       <td class="no"></td>
       <td class="no"></td>
       <td class="ok"></td>
-      <td>Limited to play, pause, seek, stop commands</td>
+      <td>Controls play, pause, seek, stop</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -149,17 +129,7 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td class="warn"></td>
       <td class="ok"></td>
-      <td>Wrapped via <code>YT.Player</code> (PiP subject to iframe permissions)</td>
-    </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Emits compliant JSON protocol messages</td>
+      <td>Wrapped via <code>YT.Player</code> (PiP subject to iframe flags)</td>
     </tr>
     <!-- TikTok Embed -->
     <tr class="platform-start">
@@ -171,7 +141,7 @@ For private players or unlisted services:
       <td class="warn"></td>
       <td class="warn"></td>
       <td class="warn"></td>
-      <td>Controllable, but UI overlay has visual desync / bugs</td>
+      <td>Controllable but UI overlay desynchronization may occur</td>
     </tr>
     <tr>
       <td><code>2. MediaSession</code></td>
@@ -181,21 +151,21 @@ For private players or unlisted services:
       <td class="no"></td>
       <td class="no"></td>
       <td class="ok"></td>
-      <td>Responds to system media controls</td>
+      <td>Receives browser MediaSession action commands</td>
     </tr>
     <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
+      <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
+      <td class="no"></td>
+      <td class="na"></td>
       <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Receives commands via SRemote client messaging</td>
+      <td>Controlled via TikTok Embed Player API v1 (postMessage protocol)</td>
     </tr>
     <!-- Spotify Web Player -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">Spotify Web Player</td>
+      <td rowspan="3" class="platform-title">Spotify Web Player</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="no"></td>
       <td class="no"></td>
@@ -203,7 +173,7 @@ For private players or unlisted services:
       <td class="no"></td>
       <td class="na"></td>
       <td class="no"></td>
-      <td>Unsupported via vanilla HTML5 (DRM EME protected & blob streaming)</td>
+      <td>No raw HTML5 DOM access (DRM EME / encrypted blob stream)</td>
     </tr>
     <tr>
       <td><code>2. MediaSession</code></td>
@@ -213,9 +183,9 @@ For private players or unlisted services:
       <td class="no"></td>
       <td class="na"></td>
       <td class="ok"></td>
-      <td>Seeking subject to Spotify buffer state</td>
+      <td>Seeking depends on Spotify playback buffer state</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -223,21 +193,11 @@ For private players or unlisted services:
       <td class="no"></td>
       <td class="na"></td>
       <td class="ok"></td>
-      <td>Via Spotify Web Playback SDK / Iframe API</td>
-    </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="no"></td>
-      <td class="na"></td>
-      <td class="ok"></td>
-      <td>Playback speed adjustment is unsupported by Spotify</td>
+      <td>Via Spotify Web Playback SDK / Iframe API (Rate not supported)</td>
     </tr>
     <!-- SoundCloud Widget -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">SoundCloud Widget</td>
+      <td rowspan="3" class="platform-title">SoundCloud Widget</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -255,9 +215,9 @@ For private players or unlisted services:
       <td class="no"></td>
       <td class="na"></td>
       <td class="ok"></td>
-      <td>Responds well to next/prev/play/pause system triggers</td>
+      <td>Responds smoothly to next/prev/play/pause actions</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -267,19 +227,9 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td>Wrapped via SoundCloud Widget API (<code>SC.Widget</code>)</td>
     </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="na"></td>
-      <td class="ok"></td>
-      <td>Pure audio; Picture-in-Picture is not applicable</td>
-    </tr>
     <!-- Dailymotion Player -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">Dailymotion Player</td>
+      <td rowspan="3" class="platform-title">Dailymotion Player</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -299,7 +249,7 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td>Fully registers MediaSession actions (play, pause, seek, stop)</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -309,15 +259,147 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td>Wrapped via Dailymotion Player SDK</td>
     </tr>
+    <!-- Facebook Video Player -->
+    <tr class="platform-start">
+      <td rowspan="3" class="platform-title">Facebook Video</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="warn"></td>
+      <td class="warn"></td>
+      <td class="warn"></td>
+      <td class="no"></td>
+      <td class="warn"></td>
+      <td class="warn"></td>
+      <td>Video element enclosed in FB sandboxed shadow root</td>
+    </tr>
+    <tr>
+      <td><code>2. MediaSession</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="ok"></td>
+      <td>Standard MediaSession action handler dispatch</td>
+    </tr>
     <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
+      <td><code>3. Custom Adapter</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="na"></td>
+      <td class="ok"></td>
+      <td>Direct integration via Facebook JS SDK (<code>xfbml.ready</code>)</td>
+    </tr>
+    <!-- NicoNico Player -->
+    <tr class="platform-start">
+      <td rowspan="3" class="platform-title">NicoNico Player</td>
+      <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
-      <td>Full command stream forwarded via SRemote client</td>
+      <td>Auto-detects video element in NicoNico embed</td>
+    </tr>
+    <tr>
+      <td><code>2. MediaSession</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="ok"></td>
+      <td>Standard OS media key dispatching</td>
+    </tr>
+    <tr class="platform-end">
+      <td><code>4. Window Message (postMessage)</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Official NicoNico embed postMessage protocol (<code>playerMetadataChange</code>)</td>
+    </tr>
+    <!-- PeerTube Embed -->
+    <tr class="platform-start">
+      <td rowspan="3" class="platform-title">PeerTube Embed</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>100% compatible with native PeerTube instance video tag</td>
+    </tr>
+    <tr>
+      <td><code>2. MediaSession</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="ok"></td>
+      <td>Standard MediaSession synchronization</td>
+    </tr>
+    <tr class="platform-end">
+      <td><code>3. Custom Adapter</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Two-way control bridge via <code>@peertube/embed-api</code></td>
+    </tr>
+    <!-- Twitter / X Tweet Embed -->
+    <tr class="platform-start">
+      <td rowspan="2" class="platform-title">Twitter / X</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Auto-detects embedded tweet video in rendered DOM</td>
+    </tr>
+    <tr class="platform-end">
+      <td><code>3. Custom Adapter</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Mounted programmatically via Twitter Widgets JS SDK (<code>createTweet</code>)</td>
+    </tr>
+    <!-- HTML5 Discovery Platforms (Rumble, Kick, Streamable, Odysee) -->
+    <tr class="platform-start platform-end">
+      <td class="platform-title">Rumble / Kick / Streamable / Odysee</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Automatic HTML5 video discovery via SRemote Userscript (Zero-config)</td>
+    </tr>
+    <!-- Bandcamp Widget -->
+    <tr class="platform-start platform-end">
+      <td class="platform-title">Bandcamp Widget</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="na"></td>
+      <td class="ok"></td>
+      <td>Auto-detects embedded widget <code>&lt;audio&gt;</code> element</td>
     </tr>
   </tbody>
 </table>
@@ -345,7 +427,7 @@ For private players or unlisted services:
   <tbody>
     <!-- Vanilla HTML5 Media -->
     <tr class="platform-start">
-      <td rowspan="3" class="platform-title">Vanilla HTML5 Media</td>
+      <td rowspan="2" class="platform-title">Vanilla HTML5 Media</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -353,9 +435,9 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
-      <td>Real-time native DOM event listeners</td>
+      <td>Direct DOM event listening (Real-time)</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>2. MediaSession</code></td>
       <td class="ok"></td>
       <td class="no"></td>
@@ -363,21 +445,11 @@ For private players or unlisted services:
       <td class="warn"></td>
       <td class="no"></td>
       <td class="no"></td>
-      <td>MediaSession only responds to user action triggers</td>
-    </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Instant event forwarding via <code>postMessage</code></td>
+      <td>MediaSession only emits on user action handlers</td>
     </tr>
     <!-- Bilibili Embed -->
     <tr class="platform-start">
-      <td rowspan="3" class="platform-title">Bilibili Embed</td>
+      <td rowspan="2" class="platform-title">Bilibili Embed</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -385,9 +457,9 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
-      <td>Full event callbacks from Bilibili web player</td>
+      <td>Full event stream from Bilibili HTML5 player</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>2. MediaSession</code></td>
       <td class="ok"></td>
       <td class="no"></td>
@@ -397,19 +469,9 @@ For private players or unlisted services:
       <td class="no"></td>
       <td>Ended event might be delayed due to recommendations</td>
     </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Continuous event stream to SRemote client</td>
-    </tr>
     <!-- YouTube Embed -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">YouTube Embed</td>
+      <td rowspan="3" class="platform-title">YouTube Embed</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -429,7 +491,7 @@ For private players or unlisted services:
       <td class="no"></td>
       <td>Emits play/pause based on OS media state</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -438,16 +500,6 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td class="ok"></td>
       <td>Mapped to YouTube <code>onStateChange</code> events</td>
-    </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Relays all events to parent window through wrapper</td>
     </tr>
     <!-- TikTok Embed -->
     <tr class="platform-start">
@@ -459,7 +511,7 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
-      <td>Direct video element DOM event listeners fire cleanly</td>
+      <td>Direct video DOM event listener</td>
     </tr>
     <tr>
       <td><code>2. MediaSession</code></td>
@@ -469,41 +521,9 @@ For private players or unlisted services:
       <td class="warn"></td>
       <td class="no"></td>
       <td class="no"></td>
-      <td>Syncs playback state via MediaSession</td>
+      <td>Syncs playing state via MediaSession</td>
     </tr>
     <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Standard event stream forwarded to parent</td>
-    </tr>
-    <!-- Spotify Web Player -->
-    <tr class="platform-start">
-      <td rowspan="4" class="platform-title">Spotify Web Player</td>
-      <td><code>1. HTML5 Hook</code></td>
-      <td class="no"></td>
-      <td class="no"></td>
-      <td class="no"></td>
-      <td class="no"></td>
-      <td class="no"></td>
-      <td class="no"></td>
-      <td>Direct HTML5 DOM events are unsupported</td>
-    </tr>
-    <tr>
-      <td><code>2. MediaSession</code></td>
-      <td class="ok"></td>
-      <td class="no"></td>
-      <td class="no"></td>
-      <td class="warn"></td>
-      <td class="no"></td>
-      <td class="no"></td>
-      <td>Updates track title & artist metadata cleanly</td>
-    </tr>
-    <tr>
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -511,21 +531,43 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="no"></td>
-      <td>Listens to <code>player_state_changed</code> in Spotify SDK</td>
+      <td>Hooks <code>onStateChange</code> from TikTok Player v1</td>
+    </tr>
+    <!-- Spotify Web Player -->
+    <tr class="platform-start">
+      <td rowspan="3" class="platform-title">Spotify Web Player</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td>No raw HTML5 DOM access</td>
+    </tr>
+    <tr>
+      <td><code>2. MediaSession</code></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="warn"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td>Track metadata updates via MediaSession</td>
     </tr>
     <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
+      <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="no"></td>
-      <td>Synchronizes playback progress, duration and metadata</td>
+      <td>Listens to <code>playback_update</code> via Spotify Embed SDK</td>
     </tr>
     <!-- SoundCloud Widget -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">SoundCloud Widget</td>
+      <td rowspan="3" class="platform-title">SoundCloud Widget</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -533,7 +575,7 @@ For private players or unlisted services:
       <td class="ok"></td>
       <td class="na"></td>
       <td class="ok"></td>
-      <td>Underlying <code>&lt;audio&gt;</code> DOM events fire instantly</td>
+      <td>Native DOM <code>&lt;audio&gt;</code> events triggered immediately</td>
     </tr>
     <tr>
       <td><code>2. MediaSession</code></td>
@@ -545,7 +587,7 @@ For private players or unlisted services:
       <td class="no"></td>
       <td>Syncs playing state on mobile notification center</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -555,19 +597,9 @@ For private players or unlisted services:
       <td class="na"></td>
       <td>Hooks <code>SC.Widget.Events.PLAY</code>, <code>FINISH</code>, <code>PLAY_PROGRESS</code></td>
     </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="na"></td>
-      <td class="ok"></td>
-      <td>Transmits real-time progress events to parent window</td>
-    </tr>
     <!-- Dailymotion Player -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">Dailymotion Player</td>
+      <td rowspan="3" class="platform-title">Dailymotion Player</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -587,25 +619,115 @@ For private players or unlisted services:
       <td class="no"></td>
       <td>Fully registers and emits events via MediaSession</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
-      <td class="warn"></td>
+      <td class="ok"></td>
       <td class="ok"></td>
       <td>Wrapped via Dailymotion Player SDK</td>
     </tr>
+    <!-- Facebook Video Player -->
+    <tr class="platform-start">
+      <td rowspan="2" class="platform-title">Facebook Video</td>
+      <td><code>2. MediaSession</code></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="warn"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td>Playback state sync via MediaSession</td>
+    </tr>
     <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
+      <td><code>3. Custom Adapter</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td>Hooks <code>startedPlaying</code>, <code>paused</code>, <code>finishedPlaying</code> from FB SDK</td>
+    </tr>
+    <!-- NicoNico Player -->
+    <tr class="platform-start">
+      <td rowspan="3" class="platform-title">NicoNico Player</td>
+      <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
-      <td>Full command stream forwarded via SRemote client</td>
+      <td>Direct video DOM event listener</td>
+    </tr>
+    <tr>
+      <td><code>2. MediaSession</code></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="warn"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td>Syncs playing state via MediaSession</td>
+    </tr>
+    <tr class="platform-end">
+      <td><code>4. Window Message (postMessage)</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Listens to <code>loadComplete</code>, <code>playerMetadataChange</code>, <code>statusChange</code></td>
+    </tr>
+    <!-- PeerTube Embed -->
+    <tr class="platform-start">
+      <td rowspan="2" class="platform-title">PeerTube Embed</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Direct listener on native HTML5 DOM events</td>
+    </tr>
+    <tr class="platform-end">
+      <td><code>3. Custom Adapter</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Two-way synchronization via <code>@peertube/embed-api</code> events</td>
+    </tr>
+    <!-- HTML5 Discovery Platforms (Rumble, Kick, Streamable, Odysee) -->
+    <tr class="platform-start platform-end">
+      <td class="platform-title">Rumble / Kick / Streamable / Odysee</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Real-time DOM event listening via Userscript discovery</td>
+    </tr>
+    <!-- Bandcamp Widget -->
+    <tr class="platform-start platform-end">
+      <td class="platform-title">Bandcamp Widget</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="na"></td>
+      <td>Captures <code>play</code>, <code>pause</code>, <code>timeupdate</code> from widget audio element</td>
     </tr>
   </tbody>
 </table>

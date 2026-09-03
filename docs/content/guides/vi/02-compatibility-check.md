@@ -57,7 +57,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
   <tbody>
     <!-- HTML5 Media thuần -->
     <tr class="platform-start">
-      <td rowspan="3" class="platform-title">HTML5 Media thuần<br><small style="font-weight: normal; opacity: 0.7;">(VideoJS, Plyr, native)</small></td>
+      <td rowspan="2" class="platform-title">HTML5 Media thuần<br><small style="font-weight: normal; opacity: 0.7;">(VideoJS, Plyr, native)</small></td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -67,7 +67,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>Tự động can thiệp thuộc tính <code>HTMLMediaElement</code></td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>2. MediaSession</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -77,19 +77,9 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>MediaSession API không hỗ trợ chỉnh Volume / Tốc độ / PiP</td>
     </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Truyền lệnh trực tiếp qua <code>postMessage</code></td>
-    </tr>
     <!-- Bilibili Embed -->
     <tr class="platform-start">
-      <td rowspan="3" class="platform-title">Bilibili Embed</td>
+      <td rowspan="2" class="platform-title">Bilibili Embed</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -99,7 +89,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>Nhận diện thẻ <code>&lt;video&gt;</code> trong bpx-player</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>2. MediaSession</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -109,19 +99,9 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>Tương thích các phím media chuẩn của trình duyệt</td>
     </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Điều khiển cross-origin thông qua SRemote client</td>
-    </tr>
     <!-- YouTube Embed -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">YouTube Embed</td>
+      <td rowspan="3" class="platform-title">YouTube Embed</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -141,7 +121,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>Chỉ điều khiển play, pause, seek, stop</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -150,16 +130,6 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="warn"></td>
       <td class="ok"></td>
       <td>Bọc qua <code>YT.Player</code> (PiP phụ thuộc cờ iframe)</td>
-    </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Phát thông điệp JSON tương thích SRemote</td>
     </tr>
     <!-- TikTok Embed -->
     <tr class="platform-start">
@@ -184,18 +154,18 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td>Nhận lệnh qua MediaSession của trình duyệt</td>
     </tr>
     <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
+      <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
+      <td class="no"></td>
+      <td class="na"></td>
       <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Gửi nhận message qua SRemote client</td>
+      <td>Điều khiển qua TikTok Embed Player API v1 (postMessage)</td>
     </tr>
     <!-- Spotify Web Player -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">Spotify Web Player</td>
+      <td rowspan="3" class="platform-title">Spotify Web Player</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="no"></td>
       <td class="no"></td>
@@ -215,7 +185,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>Seek phụ thuộc vào trạng thái buffer của Spotify</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -223,21 +193,11 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="no"></td>
       <td class="na"></td>
       <td class="ok"></td>
-      <td>Dùng Spotify Web Playback SDK / Iframe API</td>
-    </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="no"></td>
-      <td class="na"></td>
-      <td class="ok"></td>
-      <td>Spotify không hỗ trợ đổi tốc độ phát (playbackRate)</td>
+      <td>Dùng Spotify Web Playback SDK / Iframe API (không hỗ trợ tốc độ phát)</td>
     </tr>
     <!-- SoundCloud Widget -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">SoundCloud Widget</td>
+      <td rowspan="3" class="platform-title">SoundCloud Widget</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -257,7 +217,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>Phản hồi tốt các thao tác next/prev/play/pause</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -267,19 +227,9 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>Bọc qua SoundCloud Widget API (<code>SC.Widget</code>)</td>
     </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="na"></td>
-      <td class="ok"></td>
-      <td>Âm thanh thuần nên không áp dụng Picture-in-Picture</td>
-    </tr>
     <!-- Dailymotion Player -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">Dailymotion Player</td>
+      <td rowspan="3" class="platform-title">Dailymotion Player</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -299,7 +249,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>Đăng ký đầy đủ MediaSession actions (play, pause, seek, stop)</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -309,15 +259,147 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>Bọc qua Dailymotion Player SDK</td>
     </tr>
+    <!-- Facebook Video Player -->
+    <tr class="platform-start">
+      <td rowspan="3" class="platform-title">Facebook Video</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="warn"></td>
+      <td class="warn"></td>
+      <td class="warn"></td>
+      <td class="no"></td>
+      <td class="warn"></td>
+      <td class="warn"></td>
+      <td>Thẻ video lồng trong shadow/sandbox của Facebook</td>
+    </tr>
+    <tr>
+      <td><code>2. MediaSession</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="ok"></td>
+      <td>Điều khiển play/pause/seek qua MediaSession</td>
+    </tr>
     <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
+      <td><code>3. Custom Adapter</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="na"></td>
+      <td class="ok"></td>
+      <td>Tích hợp sâu qua Facebook JS SDK (<code>xfbml.ready</code>)</td>
+    </tr>
+    <!-- NicoNico Player -->
+    <tr class="platform-start">
+      <td rowspan="3" class="platform-title">NicoNico Player</td>
+      <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
-      <td>Hỗ trợ đầy đủ các lệnh phát qua SRemote client</td>
+      <td>Tự động nhận diện thẻ video trong NicoNico embed</td>
+    </tr>
+    <tr>
+      <td><code>2. MediaSession</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="ok"></td>
+      <td>Hỗ trợ phím media chuẩn của hệ điều hành</td>
+    </tr>
+    <tr class="platform-end">
+      <td><code>4. Window Message (postMessage)</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Giao thức postMessage chính thức của NicoNico (<code>eventName</code> / <code>playerMetadataChange</code>)</td>
+    </tr>
+    <!-- PeerTube Embed -->
+    <tr class="platform-start">
+      <td rowspan="3" class="platform-title">PeerTube Embed</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Tương thích 100% với video HTML5 của PeerTube instance</td>
+    </tr>
+    <tr>
+      <td><code>2. MediaSession</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="ok"></td>
+      <td>Đồng bộ MediaSession chuẩn</td>
+    </tr>
+    <tr class="platform-end">
+      <td><code>3. Custom Adapter</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Điều khiển 2 chiều qua <code>@peertube/embed-api</code></td>
+    </tr>
+    <!-- Twitter / X Tweet Embed -->
+    <tr class="platform-start">
+      <td rowspan="2" class="platform-title">Twitter / X</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Tự động nhận diện video trong tweet rendered</td>
+    </tr>
+    <tr class="platform-end">
+      <td><code>3. Custom Adapter</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Khởi tạo qua Twitter Widgets JS SDK (<code>createTweet</code>)</td>
+    </tr>
+    <!-- HTML5 Discovery Platforms (Rumble, Kick, Streamable, Odysee) -->
+    <tr class="platform-start platform-end">
+      <td class="platform-title">Rumble / Kick / Streamable / Odysee</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Tự động nhận diện HTML5 Video qua Userscript Discovery (Zero-config)</td>
+    </tr>
+    <!-- Bandcamp Widget -->
+    <tr class="platform-start platform-end">
+      <td class="platform-title">Bandcamp Widget</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="na"></td>
+      <td class="ok"></td>
+      <td>Tự động nhận diện thẻ <code>&lt;audio&gt;</code> trong widget</td>
     </tr>
   </tbody>
 </table>
@@ -345,7 +427,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
   <tbody>
     <!-- HTML5 Media thuần -->
     <tr class="platform-start">
-      <td rowspan="3" class="platform-title">HTML5 Media thuần</td>
+      <td rowspan="2" class="platform-title">HTML5 Media thuần</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -355,7 +437,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>Lắng nghe trực tiếp sự kiện DOM gốc (Real-time)</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>2. MediaSession</code></td>
       <td class="ok"></td>
       <td class="no"></td>
@@ -365,19 +447,9 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="no"></td>
       <td>MediaSession chỉ phản hồi trigger qua action handler</td>
     </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Forward sự kiện tức thì qua <code>postMessage</code></td>
-    </tr>
     <!-- Bilibili Embed -->
     <tr class="platform-start">
-      <td rowspan="3" class="platform-title">Bilibili Embed</td>
+      <td rowspan="2" class="platform-title">Bilibili Embed</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -387,7 +459,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>Phản hồi đầy đủ từ trình phát web Bilibili</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>2. MediaSession</code></td>
       <td class="ok"></td>
       <td class="no"></td>
@@ -397,19 +469,9 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="no"></td>
       <td>Sự kiện kết thúc có thể bị trễ do quảng cáo/gợi ý</td>
     </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>SRemote Client nhận event stream liên tục</td>
-    </tr>
     <!-- YouTube Embed -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">YouTube Embed</td>
+      <td rowspan="3" class="platform-title">YouTube Embed</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -429,7 +491,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="no"></td>
       <td>Phản hồi play/pause theo trạng thái hệ điều hành</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -438,16 +500,6 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td class="ok"></td>
       <td>Map qua các hàm callback <code>onStateChange</code> của YouTube</td>
-    </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Bắn event đầy đủ sang trang cha qua SRemote wrapper</td>
     </tr>
     <!-- TikTok Embed -->
     <tr class="platform-start">
@@ -472,18 +524,18 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td>Đồng bộ trạng thái phát qua MediaSession</td>
     </tr>
     <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
+      <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
-      <td class="ok"></td>
-      <td>Chuyển tiếp luồng event chuẩn về SRemote</td>
+      <td class="no"></td>
+      <td>Lắng nghe sự kiện <code>onStateChange</code> của TikTok Player v1</td>
     </tr>
     <!-- Spotify Web Player -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">Spotify Web Player</td>
+      <td rowspan="3" class="platform-title">Spotify Web Player</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="no"></td>
       <td class="no"></td>
@@ -503,7 +555,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="no"></td>
       <td>Cập nhật Metadata tên bài hát / ca sĩ qua MediaSession</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -511,21 +563,11 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="no"></td>
-      <td>Lắng nghe <code>player_state_changed</code> trong Spotify SDK</td>
-    </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="no"></td>
-      <td>Đồng bộ trạng thái phát bài, duration và metadata</td>
+      <td>Lắng nghe <code>playback_update</code> trong Spotify Embed SDK</td>
     </tr>
     <!-- SoundCloud Widget -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">SoundCloud Widget</td>
+      <td rowspan="3" class="platform-title">SoundCloud Widget</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -545,7 +587,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="no"></td>
       <td>Đồng bộ trạng thái phát trên notification bar</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -555,19 +597,9 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="na"></td>
       <td>Bắt qua <code>SC.Widget.Events.PLAY</code>, <code>FINISH</code>, <code>PLAY_PROGRESS</code></td>
     </tr>
-    <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="ok"></td>
-      <td class="na"></td>
-      <td class="ok"></td>
-      <td>Chuyển tiếp trạng thái tiến độ thời gian thực về cha</td>
-    </tr>
     <!-- Dailymotion Player -->
     <tr class="platform-start">
-      <td rowspan="4" class="platform-title">Dailymotion Player</td>
+      <td rowspan="3" class="platform-title">Dailymotion Player</td>
       <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -587,7 +619,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="no"></td>
       <td>Đăng ký và phản hồi đầy đủ sự kiện qua MediaSession</td>
     </tr>
-    <tr>
+    <tr class="platform-end">
       <td><code>3. Custom Adapter</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
@@ -597,15 +629,105 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web lạ:
       <td class="ok"></td>
       <td>Bắt qua event listener của Dailymotion Player API</td>
     </tr>
+    <!-- Facebook Video Player -->
+    <tr class="platform-start">
+      <td rowspan="2" class="platform-title">Facebook Video</td>
+      <td><code>2. MediaSession</code></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="warn"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td>Đồng bộ trạng thái phát qua MediaSession</td>
+    </tr>
     <tr class="platform-end">
-      <td><code>4. Window Message</code></td>
+      <td><code>3. Custom Adapter</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td>Lắng nghe sự kiện <code>startedPlaying</code>, <code>paused</code>, <code>finishedPlaying</code> từ FB SDK</td>
+    </tr>
+    <!-- NicoNico Player -->
+    <tr class="platform-start">
+      <td rowspan="3" class="platform-title">NicoNico Player</td>
+      <td><code>1. HTML5 Hook</code></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
       <td class="ok"></td>
-      <td>Chuyển tiếp đầy đủ luồng sự kiện về cho SRemote</td>
+      <td>Bắt sự kiện trực tiếp từ thẻ video NicoNico</td>
+    </tr>
+    <tr>
+      <td><code>2. MediaSession</code></td>
+      <td class="ok"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td class="warn"></td>
+      <td class="no"></td>
+      <td class="no"></td>
+      <td>Đồng bộ trạng thái phát media session</td>
+    </tr>
+    <tr class="platform-end">
+      <td><code>4. Window Message (postMessage)</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Lắng nghe message <code>loadComplete</code>, <code>playerMetadataChange</code>, <code>statusChange</code></td>
+    </tr>
+    <!-- PeerTube Embed -->
+    <tr class="platform-start">
+      <td rowspan="2" class="platform-title">PeerTube Embed</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Lắng nghe trực tiếp mọi sự kiện DOM HTML5</td>
+    </tr>
+    <tr class="platform-end">
+      <td><code>3. Custom Adapter</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Đồng bộ 2 chiều qua <code>@peertube/embed-api</code> events</td>
+    </tr>
+    <!-- HTML5 Discovery Platforms (Rumble, Kick, Streamable, Odysee) -->
+    <tr class="platform-start platform-end">
+      <td class="platform-title">Rumble / Kick / Streamable / Odysee</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td>Tự động lắng nghe trực tiếp sự kiện DOM gốc (Real-time)</td>
+    </tr>
+    <!-- Bandcamp Widget -->
+    <tr class="platform-start platform-end">
+      <td class="platform-title">Bandcamp Widget</td>
+      <td><code>1. HTML5 Hook</code></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="ok"></td>
+      <td class="na"></td>
+      <td>Bắt trực tiếp sự kiện <code>play</code>, <code>pause</code>, <code>timeupdate</code> từ thẻ audio</td>
     </tr>
   </tbody>
 </table>
