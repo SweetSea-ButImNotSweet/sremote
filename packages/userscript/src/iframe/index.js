@@ -116,6 +116,7 @@ export function initIframeAgent() {
   }
 
   const resolver = createMediaResolver(createdMediaPool, bindVideoEvents);
+  mockMediaSessionInstance.setResolver(resolver);
 
   function trackMediaElement(el) {
     if (!el) return;

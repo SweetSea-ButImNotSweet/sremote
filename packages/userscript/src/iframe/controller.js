@@ -1,5 +1,5 @@
-import { safeGetProp, safeSetProp, getMeta } from '../core/utils.js';
-import { descriptors, console_warn, console_error } from '../config.js';
+import { safeGetProp, safeSetProp } from '../core/utils.js';
+import { descriptors, console_warn } from '../config.js';
 import { mockMediaSessionInstance } from './media-session.js';
 import { findAllMedia } from './media-hunter.js';
 
@@ -141,82 +141,7 @@ export function safePauseMedia(el) {
   }
 }
 
-export function bindMediaSessionDefaults({ activeMediaGetter, mediaTypeGetter, resolveActiveMedia }) {
-  resolveActiveMedia();
-
-  const ms = navigator.mediaSession || mockMediaSessionInstance;
-  const activeMedia = activeMediaGetter();
-
-  const title = getMeta(['meta[property="og:title"]', 'meta[name="twitter:title"]', 'meta[name="title"]']) || document.title || 'Unknown Title';
-  const artist = getMeta(['meta[property="og:site_name"]', 'meta[name="author"]', 'meta[name="twitter:site"]']) || window.location.hostname;
-  const artworkSrc = getMeta(['meta[property="og:image"]', 'meta[name="twitter:image"]', 'link[rel="image_src"]']) || (activeMedia?.tagName === 'VIDEO' ? activeMedia.poster : '');
-
-  if (!ms.metadata) {
-    const defaultArtwork = artworkSrc ? [{ src: artworkSrc }] : [];
-    const metaObj = { title, artist, album: '', artwork: defaultArtwork };
-    try {
-      if (typeof MediaMetadata !== 'undefined' && navigator.mediaSession) {
-        navigator.mediaSession.metadata = new MediaMetadata(metaObj);
-      }
-      mockMediaSessionInstance.metadata = metaObj;
-    } catch (e) {
-      console_warn('[sremote] Error setting fallback MediaMetadata:', e);
-    }
-  }
-
-  const registerIfMissing = (action, handler) => {
-    if (!mockMediaSessionInstance._handlers.has(action)) {
-      try {
-        ms.setActionHandler?.(action, handler);
-        mockMediaSessionInstance.setActionHandler(action, handler);
-      } catch {}
-    }
-  };
-
-  registerIfMissing('play', async () => {
-    const media = activeMediaGetter();
-    const type = mediaTypeGetter();
-    if (media && (type === 'video' || type === 'audio')) await safePlayMedia(media);
-  });
-  registerIfMissing('pause', () => {
-    const media = activeMediaGetter();
-    const type = mediaTypeGetter();
-    if (media && (type === 'video' || type === 'audio')) safePauseMedia(media);
-  });
-  registerIfMissing('stop', () => {
-    const media = activeMediaGetter();
-    const type = mediaTypeGetter();
-    if (media && (type === 'video' || type === 'audio')) {
-      safePauseMedia(media);
-      safeSetProp(media, descriptors.currentTime, 'currentTime', 0);
-    }
-  });
-  registerIfMissing('seekto', details => {
-    const media = activeMediaGetter();
-    if (media && typeof details.seekTime === 'number') {
-      safeSetProp(media, descriptors.currentTime, 'currentTime', details.seekTime);
-    }
-  });
-  registerIfMissing('seekforward', details => {
-    const media = activeMediaGetter();
-    if (media) {
-      const offset = details.seekOffset || 10;
-      const cur = safeGetProp(media, descriptors.currentTime, 'currentTime') || 0;
-      safeSetProp(media, descriptors.currentTime, 'currentTime', cur + offset);
-    }
-  });
-  registerIfMissing('seekbackward', details => {
-    const media = activeMediaGetter();
-    if (media) {
-      const offset = details.seekOffset || 10;
-      const cur = safeGetProp(media, descriptors.currentTime, 'currentTime') || 0;
-      safeSetProp(media, descriptors.currentTime, 'currentTime', Math.max(0, cur - offset));
-    }
-  });
-}
-
-export function handleBindMetadata({ metadata, instanceId, emitToParent, sendMediaSessionState, activeMediaGetter, mediaTypeGetter, resolveActiveMedia }) {
-  bindMediaSessionDefaults({ activeMediaGetter, mediaTypeGetter, resolveActiveMedia });
+export function handleBindMetadata({ metadata, instanceId, emitToParent, sendMediaSessionState }) {
   if (!metadata || typeof metadata !== 'object') return;
 
   const safeArtworks = [];
@@ -367,14 +292,11 @@ export function createMediaController({
           }
           break;
         case 'bindmediasession':
-          if (!navigator?.mediaSession) {
-            console_error('[sremote] bindmediasession: navigator.mediaSession is not defined');
-            return false;
-          }
-          bindMediaSessionDefaults({ activeMediaGetter, mediaTypeGetter, resolveActiveMedia });
+          // MockMediaSession automatically handles fallback and default bindings
+          sendMediaSessionState();
           break;
         case 'bindmetadata':
-          handleBindMetadata({ metadata: value, instanceId, emitToParent, sendMediaSessionState, activeMediaGetter, mediaTypeGetter, resolveActiveMedia });
+          handleBindMetadata({ metadata: value, instanceId, emitToParent, sendMediaSessionState });
           break;
         case 'nexttrack':
         case 'previoustrack':
