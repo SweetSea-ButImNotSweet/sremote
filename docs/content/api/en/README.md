@@ -31,7 +31,6 @@ Initiate handshake connection, manage event listeners, sync metadata, and enforc
 | **Listen to Events** | `on(event, handler, key?)` | Subscribes to events from frames/adapters (supports `'*'`) |
 | **Unsubscribe** | `off(event, handler)` | Removes an event listener |
 | **Session Lock** | `lock(passkey?)` | Locks SRemote execution on the current page |
-| **MediaSession** | `bindMediaSession(instanceId?, key?)` | Syncs iframe with browser MediaSession API |
 | **Metadata** | `bindMetadata(meta, instanceId?, key?)` | Sets track title, artist, album, and artwork |
 
 ---

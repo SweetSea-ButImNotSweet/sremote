@@ -362,8 +362,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     rpc: rpcNamespace,
     css: cssNamespace,
 
-    // MediaSession & Metadata
-    bindMediaSession: (instanceId, key) => dispatchCommand('bindMediaSession', undefined, instanceId, key),
+    // Metadata
     bindMetadata: (meta, instanceId, key) => dispatchCommand('bindMetadata', meta, instanceId, key),
 
     // Events & Lifecycle

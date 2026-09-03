@@ -38,15 +38,6 @@ export function generateInstanceId(prefix = 'sv') {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
 }
 
-export function getMeta(selectors) {
-  for (const s of selectors) {
-    const el = document.querySelector(s);
-    const val = el?.getAttribute('content') || el?.getAttribute('href');
-    if (val) return val.trim();
-  }
-  return '';
-}
-
 export function createButton({ className, text, title, onClick }) {
   const btn = document.createElement('button');
   if (className) btn.className = className;

@@ -290,11 +290,6 @@ export function createMediaController({
               } catch {}
             }
           }
-          break;
-        case 'bindmediasession':
-          // MockMediaSession automatically handles fallback and default bindings
-          sendMediaSessionState();
-          break;
         case 'bindmetadata':
           handleBindMetadata({ metadata: value, instanceId, emitToParent, sendMediaSessionState });
           break;

@@ -295,7 +295,6 @@ export declare class UserscriptDriver extends BaseDriver {
   status(instanceId?: string, key?: string): SRemoteMediaState | null;
   capabilities(instanceId?: string, key?: string): SRemoteCapabilities | null;
   assignId(iframeOrSelector: string | HTMLIFrameElement, customId: string): boolean;
-  bindMediaSession(instanceId?: string, key?: string): void;
   bindMetadata(meta: any, instanceId?: string, key?: string): void;
 }
 
@@ -384,7 +383,6 @@ export class SRemoteClient {
 
   // --- Global Lifecycle & Events ---
   hello(options?: SRemoteHelloOptions, key?: string): void;
-  bindMediaSession(instanceId?: string, key?: string): void;
   bindMetadata(meta: any, instanceId?: string, key?: string): void;
   emit(event: string, payload?: any): void;
   on(event: string, handler: (data: any) => void, key?: string): () => void;

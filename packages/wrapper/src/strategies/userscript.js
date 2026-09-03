@@ -178,10 +178,6 @@ export class UserscriptDriver extends BaseDriver {
     return null;
   }
 
-  bindMediaSession(instanceId, key) {
-    return this._callOptional('bindMediaSession', undefined, instanceId, this.getPasskey(key));
-  }
-
   bindMetadata(meta, instanceId, key) {
     return this._callOptional('bindMetadata', undefined, meta, instanceId, this.getPasskey(key));
   }

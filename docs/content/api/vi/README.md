@@ -31,7 +31,6 @@ Khởi tạo bắt tay kết nối, quản lý lắng nghe sự kiện, đồng 
 | **Lắng nghe sự kiện** | `on(event, handler, key?)` | Đăng ký lắng nghe sự kiện từ iframe/adapter (hỗ trợ `'*'`) |
 | **Hủy lắng nghe** | `off(event, handler)` | Hủy đăng ký listener |
 | **Khóa Session** | `lock(passkey?)` | Khóa bảo vệ phiên điều khiển của trang |
-| **MediaSession** | `bindMediaSession(instanceId?, key?)` | Đồng bộ với MediaSession API của trình duyệt |
 | **Metadata** | `bindMetadata(meta, instanceId?, key?)` | Cập nhật thông tin bài hát / video (Title, Artist, Artwork...) |
 
 ---

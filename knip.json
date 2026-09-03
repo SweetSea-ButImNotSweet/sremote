@@ -20,5 +20,6 @@
     "packages/ready2use": { "entry": ["src/index.js"], "project": ["src/**/*.{js,cjs,mjs}"] }
   },
   "ignoreExportsUsedInFile": true,
-  "ignoreUnresolved": ["$"]
+  "ignoreUnresolved": ["$"],
+  "rules": { "duplicates": "off" }
 }

@@ -84,14 +84,6 @@ export function consumeHandshakeSecret(handshakeId) {
   Storage.remove(`sremote:hs_${handshakeId}`);
 }
 
-export function verifyHandshakeSecret(handshakeId, token, maxAgeMs = 30000) {
-  const isValid = checkHandshakeSecret(handshakeId, token, maxAgeMs);
-  if (isValid) {
-    consumeHandshakeSecret(handshakeId);
-  }
-  return isValid;
-}
-
 // Auto-Purge expired handshake secrets from memory and GM Storage
 export function purgeExpiredHandshakeSecrets(maxAgeMs = 60000) {
   const now = Date.now();

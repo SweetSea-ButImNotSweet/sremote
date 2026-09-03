@@ -17,5 +17,5 @@
   "bugs": { "url": "https://github.com/SweetSea-ButImNotSweet/sremote/issues" },
   "license": "LGPL-3.0",
   "peerDependencies": { "@sremote/wrapper": "^2.1.0" },
-  "devDependencies": { "@sremote/wrapper": "^2.1.0" }
+  "devDependencies": { "@sremote/shared": "^2.1.0", "@sremote/wrapper": "^2.1.0" }
 }

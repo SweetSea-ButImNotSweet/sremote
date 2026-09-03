@@ -307,10 +307,6 @@ export class SRemoteClient {
     }
   }
 
-  bindMediaSession(instanceId, key) {
-    return this.userscriptDriver.bindMediaSession(instanceId, key);
-  }
-
   bindMetadata(meta, instanceId, key) {
     return this.userscriptDriver.bindMetadata(meta, instanceId, key);
   }
