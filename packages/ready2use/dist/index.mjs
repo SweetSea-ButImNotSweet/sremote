@@ -1077,9 +1077,9 @@ var C = new class extends s {
 	}
 	async initPlayer(e, t) {
 		let r = await this.loadSdk(), i = e.width || "100%", a = e.height || (e.mini ? "60" : "120"), o = e.feed || e.url || "/spartacus/party-time/", s = e.autoplay ?? e.auto_play ?? !1, c = e.mini ?? !0, l = e.hideCover ?? !0, u = e.light ?? !0, d = document.createElement("iframe");
-		d.id = `sremote-mixcloud-${t}`, d.allow = "autoplay", d.src = `https://player-widget.mixcloud.com/widget/iframe/?feed=${encodeURIComponent(o)}&hide_cover=${+!!l}&mini=${+!!c}&light=${+!!u}&autoplay=${+!!s}`, n(d, i, a, t);
+		d.id = `sremote-mixcloud-${t}`, d.allow = "autoplay", d.src = `https://player-widget.mixcloud.com/widget/iframe/?feed=${encodeURIComponent(o)}&hide_cover=${+!!l}&mini=${+!!c}&light=${+!!u}&autoplay=${+!!s}`, n(d, i, a, t), e.container && e.container.appendChild(d);
 		let f = r.PlayerWidget(d);
-		return f.ready && await Promise.race([f.ready, new Promise((e) => setTimeout(e, 2500))]), {
+		return f?.ready && await Promise.race([f.ready.catch?.(() => {}) || f.ready, new Promise((t) => setTimeout(t, e.timeout || 3e3))]), {
 			player: f,
 			element: d,
 			iframe: d,

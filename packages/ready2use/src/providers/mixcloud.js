@@ -31,10 +31,15 @@ export class MixcloudProvider extends BaseProvider {
 
     applyElementAttributes(iframe, width, height, instanceId);
 
+    // Mixcloud PlayerWidget requires the iframe to be in the active DOM tree to receive postMessage
+    if (options.container) {
+      options.container.appendChild(iframe);
+    }
+
     const widget = Mixcloud.PlayerWidget(iframe);
 
-    if (widget.ready) {
-      await Promise.race([widget.ready, new Promise(resolve => setTimeout(resolve, 2500))]);
+    if (widget?.ready) {
+      await Promise.race([widget.ready.catch?.(() => {}) || widget.ready, new Promise(resolve => setTimeout(resolve, options.timeout || 3000))]);
     }
 
     return { player: widget, element: iframe, iframe, destroy: () => {} };
