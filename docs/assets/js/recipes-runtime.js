@@ -40,6 +40,13 @@ const providerPresets = {
   niconico: { watchId: 'so46693656', autoplay: true },
   bilibili: { bvid: 'BV1xx411c7mD', autoplay: true },
   facebook: { videoUrl: 'https://www.facebook.com/facebook/videos/10153231379946729/', showText: false },
+  twitter: { tweetId: '20', theme: 'dark' },
+  peertube: { videoUrl: 'https://peertube.tv/videos/watch/78e0e6aa-d575-4752-9ef8-e047c870233d' },
+  rumble: { video: 'v397yeg' },
+  kick: { channel: 'xqc' },
+  streamable: { shortcode: 'moo' },
+  odysee: { video: '@lbry:3f/lbry-in-a-nutshell:1' },
+  bandcamp: { albumId: '2747195448' },
 };
 
 /**

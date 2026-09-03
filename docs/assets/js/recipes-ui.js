@@ -329,6 +329,13 @@ function generateReady2UseSnippet(platformId, lang = 'vi') {
     niconico: { mod: 'niconico', opts: "watchId: 'so46693656'" },
     bilibili: { mod: 'bilibili', opts: "bvid: 'BV1xx411c7mD'" },
     facebook: { mod: 'facebook', opts: "videoUrl: 'https://www.facebook.com/facebook/videos/10153231379946729/'" },
+    twitter: { mod: 'twitter', opts: "tweetId: '20', theme: 'dark'" },
+    peertube: { mod: 'peertube', opts: "videoUrl: 'https://peertube.tv/videos/watch/78e0e6aa-d575-4752-9ef8-e047c870233d'" },
+    rumble: { mod: 'rumble', opts: "video: 'v397yeg'" },
+    kick: { mod: 'kick', opts: "channel: 'xqc'" },
+    streamable: { mod: 'streamable', opts: "shortcode: 'moo'" },
+    odysee: { mod: 'odysee', opts: "video: '@lbry:3f/lbry-in-a-nutshell:1'" },
+    bandcamp: { mod: 'bandcamp', opts: "albumId: '2747195448'" },
   };
 
   const info = providerNames[platformId] || { mod: platformId, opts: "id: '123'" };

@@ -45,5 +45,15 @@
   "cmt_html5_handshake_send": { "vi": "// Gửi gói tin bắt tay (handshake) tới iframe", "en": "// Send handshake to iframe" },
   "cmt_html5_handshake_listen": { "vi": "// Lắng nghe khi bắt tay thành công", "en": "// Listen for successful handshake" },
   "cmt_html5_track_progress": { "vi": "// Theo dõi tiến độ phát video thời gian thực", "en": "// Track real-time playback progress" },
-  "cmt_facebook_test": { "vi": "// Facebook Embedded Video (Chế độ Native Test / Không cần Adapter)", "en": "// Facebook Embedded Video (No Adapter / Native Test)" }
+  "cmt_facebook_test": { "vi": "// Facebook Embedded Video (Chế độ Native Test / Không cần Adapter)", "en": "// Facebook Embedded Video (No Adapter / Native Test)" },
+  "cmt_facebook_adapter": { "vi": "// Tạo SRemote Adapter kết nối Facebook Video JavaScript SDK", "en": "// Create SRemote Adapter connecting Facebook Video JavaScript SDK" },
+  "cmt_facebook_sync": { "vi": "// Đồng bộ sự kiện phát và tiến độ của Facebook sang SRemote", "en": "// Sync Facebook playback and progress events with SRemote" },
+  "cmt_twitter_adapter": { "vi": "// Tạo SRemote Adapter cho Twitter / X Embedded Tweet Video", "en": "// Create SRemote Adapter for Twitter / X Embedded Tweet Video" },
+  "cmt_peertube_adapter": { "vi": "// Tạo SRemote Adapter kết nối PeerTube Embed API SDK", "en": "// Create SRemote Adapter connecting PeerTube Embed API SDK" },
+  "cmt_peertube_sync": { "vi": "// Đồng bộ sự kiện phát PeerTube sang SRemote", "en": "// Sync PeerTube playback events with SRemote" },
+  "cmt_rumble_no_adapter": { "vi": "// Rumble Video nhúng qua iframe tự động kết nối với SRemote", "en": "// Rumble Video in iframe works natively out-of-the-box with SRemote" },
+  "cmt_kick_no_adapter": { "vi": "// Kick Livestream tự động kết nối trực tiếp với SRemote", "en": "// Kick Livestream works natively out-of-the-box with SRemote" },
+  "cmt_streamable_no_adapter": { "vi": "// Streamable Video tự động kết nối trực tiếp với SRemote", "en": "// Streamable Video works natively out-of-the-box with SRemote" },
+  "cmt_odysee_no_adapter": { "vi": "// Odysee Video nhúng tự động kết nối trực tiếp với SRemote", "en": "// Odysee Video in iframe works natively out-of-the-box with SRemote" },
+  "cmt_bandcamp_adapter": { "vi": "// Bandcamp Embedded Player Widget", "en": "// Bandcamp Embedded Player Widget" }
 }

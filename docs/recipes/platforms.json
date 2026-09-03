@@ -70,6 +70,30 @@
       "noteEn": "<strong>TikTok Official Embed Player:</strong> Uses the official player endpoint (<code>www.tiktok.com/player/v1/{id}</code>) communicating via 2-way <code>Window.postMessage</code> with <code>{'x-tiktok-player': true, type: '...'}</code> schema."
     },
     {
+      "id": "facebook",
+      "category": "official_api",
+      "name": "Facebook",
+      "mode": "Adapter Mode",
+      "noteVi": "<strong>Facebook Video Embed:</strong> Sử dụng Facebook JavaScript SDK (<code>connect.facebook.net/en_US/sdk.js</code>) và lắng nghe sự kiện <code>xfbml.ready</code> để lấy đối tượng Facebook Player Controller tích hợp vào SRemote Adapter.",
+      "noteEn": "<strong>Facebook Video Embed:</strong> Uses Facebook JavaScript SDK (<code>connect.facebook.net/en_US/sdk.js</code>) and subscribes to <code>xfbml.ready</code> to bind native Facebook Player instance to SRemote Adapter."
+    },
+    {
+      "id": "twitter",
+      "category": "official_api",
+      "name": "Twitter / X",
+      "mode": "Official Widget API",
+      "noteVi": "<strong>Twitter / X Video:</strong> Nhúng Twitter Widgets JS SDK (<code>platform.twitter.com/widgets.js</code>) để kết xuất player tweet dạng nhúng chính thức.",
+      "noteEn": "<strong>Twitter / X Video:</strong> Loads Twitter Widgets JS SDK (<code>platform.twitter.com/widgets.js</code>) to render the official embedded tweet video player."
+    },
+    {
+      "id": "peertube",
+      "category": "official_api",
+      "name": "PeerTube",
+      "mode": "Official Embed API",
+      "noteVi": "<strong>PeerTube Embed Player:</strong> Sử dụng thư viện <code>@peertube/embed-api</code> để điều khiển 2 chiều với video trên các máy chủ PeerTube phân tán.",
+      "noteEn": "<strong>PeerTube Embed Player:</strong> Uses <code>@peertube/embed-api</code> library for bidirectional control of video hosted on decentralized PeerTube instances."
+    },
+    {
       "id": "niconico",
       "category": "unofficial_api",
       "name": "NicoNico",
@@ -94,12 +118,44 @@
       "noteEn": "<strong>Standard HTML5:</strong> <code>&lt;video autoplay muted&gt;</code> elements embedded via iframes work out-of-the-box natively with zero configuration."
     },
     {
-      "id": "facebook",
+      "id": "rumble",
       "category": "native_no_api",
-      "name": "Facebook",
-      "mode": "Raw Embed Test",
-      "noteVi": "<strong>Facebook Video Embed:</strong> Mẫu nhúng Facebook JavaScript SDK XFBML để kiểm thử.",
-      "noteEn": "<strong>Facebook Video Embed:</strong> Facebook JavaScript SDK XFBML raw embed for testing."
+      "name": "Rumble",
+      "mode": "Zero-Config Native",
+      "noteVi": "<strong>Rumble Video:</strong> Rumble nhúng qua iframe dạng <code>rumble.com/embed/{id}/</code> chứa thẻ HTML5 video, được SRemote tự động phát hiện và kết nối trực tiếp.",
+      "noteEn": "<strong>Rumble Video:</strong> Rumble embeds via <code>rumble.com/embed/{id}/</code> containing native HTML5 video, automatically discovered and controlled by SRemote."
+    },
+    {
+      "id": "kick",
+      "category": "native_no_api",
+      "name": "Kick",
+      "mode": "Zero-Config Native",
+      "noteVi": "<strong>Kick Livestream:</strong> Player nhúng của Kick (<code>player.kick.com/{channel}</code>) sử dụng video HTML5 tiêu chuẩn, tự động kết nối qua SRemote.",
+      "noteEn": "<strong>Kick Livestream:</strong> Kick embedded livestream player (<code>player.kick.com/{channel}</code>) runs standard HTML5 video, automatically discovered by SRemote."
+    },
+    {
+      "id": "streamable",
+      "category": "native_no_api",
+      "name": "Streamable",
+      "mode": "Zero-Config Native",
+      "noteVi": "<strong>Streamable Video:</strong> Video nhúng qua <code>streamable.com/e/{code}</code> hoạt động tự động với SRemote mà không cần cấu hình thêm.",
+      "noteEn": "<strong>Streamable Video:</strong> Streamable embeds via <code>streamable.com/e/{code}</code> and works seamlessly with SRemote out-of-the-box."
+    },
+    {
+      "id": "odysee",
+      "category": "native_no_api",
+      "name": "Odysee",
+      "mode": "Zero-Config Native",
+      "noteVi": "<strong>Odysee / LBRY:</strong> Video nhúng qua <code>odysee.com/$/embed/{claim}</code> sử dụng trình phát HTML5, SRemote tự động bắt tay điều khiển.",
+      "noteEn": "<strong>Odysee / LBRY:</strong> Odysee embeds via <code>odysee.com/$/embed/{claim}</code> utilizing HTML5 video with auto-handshake support in SRemote."
+    },
+    {
+      "id": "bandcamp",
+      "category": "native_no_api",
+      "name": "Bandcamp",
+      "mode": "Widget Embed",
+      "noteVi": "<strong>Bandcamp Music Player:</strong> Widget nhúng qua <code>bandcamp.com/EmbeddedPlayer/...</code> hỗ trợ tải album hoặc track qua SRemote Ready2Use.",
+      "noteEn": "<strong>Bandcamp Music Player:</strong> Bandcamp embedded player widget (<code>bandcamp.com/EmbeddedPlayer/...</code>) with ready2use load album/track support."
     }
   ],
   "dict": {
