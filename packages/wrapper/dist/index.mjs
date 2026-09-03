@@ -278,7 +278,7 @@ function s(e) {
 		let t = e.buffered;
 		t && t.length > 0 && (d = t.end(t.length - 1));
 	} catch {}
-	let f = e.loop !== void 0 && !!e.loop, p = typeof document < "u" && !!(document.fullscreenElement && (document.fullscreenElement === e || document.fullscreenElement.contains(e))), m = typeof document < "u" && document.pictureInPictureElement === e;
+	let f = e.loop !== void 0 && !!e.loop, p = typeof document < "u" && !(!document.fullscreenElement || document.fullscreenElement !== e && !document.fullscreenElement.contains(e)), m = typeof document < "u" && document.pictureInPictureElement === e;
 	return {
 		paused: o,
 		ended: !!(s || u && u > 0 && r >= u - .1),
@@ -448,7 +448,7 @@ var f = class extends e {
 		} catch {}
 	}
 	trackMediaElement(e) {
-		!e || this.trackedMediaElements.has(e) || (this.trackedMediaElements.add(e), d(e, (e, t) => {
+		e && !this.trackedMediaElements.has(e) && (this.trackedMediaElements.add(e), d(e, (e, t) => {
 			this.emit(e, t);
 		}, {
 			instanceId: e.id || e.getAttribute("data-sremote-id") || "dom-media",

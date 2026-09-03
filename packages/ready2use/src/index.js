@@ -10,7 +10,54 @@ import { tiktok } from './providers/tiktok.js';
 import { niconico } from './providers/niconico.js';
 import { bilibili } from './providers/bilibili.js';
 import { facebook } from './providers/facebook.js';
+import { twitter } from './providers/twitter.js';
+import { peertube } from './providers/peertube.js';
+import { rumble } from './providers/rumble.js';
+import { kick } from './providers/kick.js';
+import { streamable } from './providers/streamable.js';
+import { odysee } from './providers/odysee.js';
+import { bandcamp } from './providers/bandcamp.js';
 
-export { BaseProvider, youtube, vimeo, soundcloud, dailymotion, twitch, mixcloud, spotify, tiktok, niconico, bilibili, facebook };
+export {
+  BaseProvider,
+  youtube,
+  vimeo,
+  soundcloud,
+  dailymotion,
+  twitch,
+  mixcloud,
+  spotify,
+  tiktok,
+  niconico,
+  bilibili,
+  facebook,
+  twitter,
+  peertube,
+  rumble,
+  kick,
+  streamable,
+  odysee,
+  bandcamp,
+};
 
-export default { BaseProvider, youtube, vimeo, soundcloud, dailymotion, twitch, mixcloud, spotify, tiktok, niconico, bilibili, facebook };
+export default {
+  BaseProvider,
+  youtube,
+  vimeo,
+  soundcloud,
+  dailymotion,
+  twitch,
+  mixcloud,
+  spotify,
+  tiktok,
+  niconico,
+  bilibili,
+  facebook,
+  twitter,
+  peertube,
+  rumble,
+  kick,
+  streamable,
+  odysee,
+  bandcamp,
+};

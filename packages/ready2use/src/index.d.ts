@@ -347,6 +347,154 @@ export declare const facebook: {
   provider: FacebookProvider;
 };
 
+// --- Twitter / X Provider Definitions ---
+
+export interface TwitterPlayerOptions extends BaseProviderOptions {
+  /** Tweet ID (e.g. "1234567890") or Tweet URL */
+  tweetId?: string | number;
+  id?: string | number;
+  url?: string;
+  videoId?: string;
+  theme?: 'dark' | 'light';
+  align?: 'left' | 'right' | 'center';
+  conversation?: 'none' | 'all';
+  cards?: 'visible' | 'hidden';
+  tweetOptions?: Record<string, any>;
+  timeout?: number;
+}
+
+export declare class TwitterProvider extends BaseProvider<TwitterPlayerOptions, any> {
+  constructor();
+}
+
+export declare const twitter: {
+  create: (options?: TwitterPlayerOptions | string | number) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: TwitterPlayerOptions | string | number) => Promise<ProviderMountResult<any>>;
+  provider: TwitterProvider;
+};
+
+// --- PeerTube Provider Definitions ---
+
+export interface PeerTubePlayerOptions extends BaseProviderOptions {
+  /** PeerTube Video URL or Embed URL */
+  videoUrl?: string;
+  url?: string;
+  videoId?: string;
+  timeout?: number;
+}
+
+export declare class PeerTubeProvider extends BaseProvider<PeerTubePlayerOptions, any> {
+  constructor();
+}
+
+export declare const peertube: {
+  create: (options?: PeerTubePlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: PeerTubePlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: PeerTubeProvider;
+};
+
+// --- Rumble Provider Definitions ---
+
+export interface RumblePlayerOptions extends BaseProviderOptions {
+  video?: string;
+  videoId?: string;
+  url?: string;
+  timeout?: number;
+}
+
+export declare class RumbleProvider extends BaseProvider<RumblePlayerOptions, any> {
+  constructor();
+}
+
+export declare const rumble: {
+  create: (options?: RumblePlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: RumblePlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: RumbleProvider;
+};
+
+// --- Kick Provider Definitions ---
+
+export interface KickPlayerOptions extends BaseProviderOptions {
+  channel?: string;
+  user?: string;
+  username?: string;
+  url?: string;
+  timeout?: number;
+}
+
+export declare class KickProvider extends BaseProvider<KickPlayerOptions, any> {
+  constructor();
+}
+
+export declare const kick: {
+  create: (options?: KickPlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: KickPlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: KickProvider;
+};
+
+// --- Streamable Provider Definitions ---
+
+export interface StreamablePlayerOptions extends BaseProviderOptions {
+  shortcode?: string;
+  code?: string;
+  url?: string;
+  videoId?: string;
+  timeout?: number;
+}
+
+export declare class StreamableProvider extends BaseProvider<StreamablePlayerOptions, any> {
+  constructor();
+}
+
+export declare const streamable: {
+  create: (options?: StreamablePlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: StreamablePlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: StreamableProvider;
+};
+
+// --- Odysee Provider Definitions ---
+
+export interface OdyseePlayerOptions extends BaseProviderOptions {
+  video?: string;
+  url?: string;
+  claim?: string;
+  timeout?: number;
+}
+
+export declare class OdyseeProvider extends BaseProvider<OdyseePlayerOptions, any> {
+  constructor();
+}
+
+export declare const odysee: {
+  create: (options?: OdyseePlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: OdyseePlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: OdyseeProvider;
+};
+
+// --- Bandcamp Provider Definitions ---
+
+export interface BandcampPlayerOptions extends BaseProviderOptions {
+  albumId?: string | number;
+  album?: string | number;
+  trackId?: string | number;
+  track?: string | number;
+  size?: 'small' | 'large';
+  bgcol?: string;
+  linkcol?: string;
+  artwork?: 'small' | 'large' | 'none';
+  timeout?: number;
+}
+
+export declare class BandcampProvider extends BaseProvider<BandcampPlayerOptions, any> {
+  constructor();
+}
+
+export declare const bandcamp: {
+  create: (options?: BandcampPlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: BandcampPlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: BandcampProvider;
+};
+
 declare const _default: {
   BaseProvider: typeof BaseProvider;
   youtube: typeof youtube;
@@ -360,6 +508,13 @@ declare const _default: {
   niconico: typeof niconico;
   bilibili: typeof bilibili;
   facebook: typeof facebook;
+  twitter: typeof twitter;
+  peertube: typeof peertube;
+  rumble: typeof rumble;
+  kick: typeof kick;
+  streamable: typeof streamable;
+  odysee: typeof odysee;
+  bandcamp: typeof bandcamp;
 };
 
 export default _default;

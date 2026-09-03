@@ -263,3 +263,56 @@ export function loadFacebookSdk(appId = '') {
 
   return facebookSdkPromise;
 }
+
+let twitterSdkPromise = null;
+/**
+ * Loads the Twitter / X widgets.js SDK and resolves when window.twttr is ready.
+ * @returns {Promise<any>}
+ */
+export function loadTwitterSdk() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
+  if (window.twttr && window.twttr.widgets) {
+    return Promise.resolve(window.twttr);
+  }
+
+  if (twitterSdkPromise) return twitterSdkPromise;
+
+  twitterSdkPromise = loadScript('https://platform.twitter.com/widgets.js')
+    .then(() => {
+      if (window.twttr && typeof window.twttr.ready === 'function') {
+        return new Promise(resolve => {
+          window.twttr.ready(() => resolve(window.twttr));
+        });
+      }
+      return window.twttr;
+    })
+    .catch(err => {
+      twitterSdkPromise = null;
+      throw err;
+    });
+
+  return twitterSdkPromise;
+}
+
+let peerTubeSdkPromise = null;
+/**
+ * Loads the PeerTube Embed API SDK and resolves when window.PeerTubePlayer is ready.
+ * @returns {Promise<any>}
+ */
+export function loadPeerTubeSdk() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
+  if (window.PeerTubePlayer) {
+    return Promise.resolve(window.PeerTubePlayer);
+  }
+
+  if (peerTubeSdkPromise) return peerTubeSdkPromise;
+
+  peerTubeSdkPromise = loadScript('https://unpkg.com/@peertube/embed-api/build/player.min.js')
+    .then(() => window.PeerTubePlayer)
+    .catch(err => {
+      peerTubeSdkPromise = null;
+      throw err;
+    });
+
+  return peerTubeSdkPromise;
+}
