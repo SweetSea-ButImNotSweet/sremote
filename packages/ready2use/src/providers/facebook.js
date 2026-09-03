@@ -122,13 +122,7 @@ export class FacebookProvider extends BaseProvider {
           if (typeof player.isMuted === 'function') isMuted = Boolean(player.isMuted());
         }
       } catch {}
-      return {
-        paused: !isPlaying,
-        currentTime,
-        duration,
-        volume,
-        muted: isMuted,
-      };
+      return { paused: !isPlaying, currentTime, duration, volume, muted: isMuted };
     };
 
     const startTimeupdate = () => {

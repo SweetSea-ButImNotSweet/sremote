@@ -85,11 +85,7 @@ export class YouTubeProvider extends BaseProvider {
         width,
         height,
         videoId,
-        playerVars: {
-          enablejsapi: 1,
-          origin: typeof window !== 'undefined' ? window.location.origin : undefined,
-          ...options.playerVars,
-        },
+        playerVars: { enablejsapi: 1, origin: typeof window !== 'undefined' ? window.location.origin : undefined, ...options.playerVars },
         events: {
           onReady: () => {
             const iframe = player.getIFrame ? player.getIFrame() : document.getElementById(targetNode.id);
@@ -123,14 +119,7 @@ export class YouTubeProvider extends BaseProvider {
   createAdapter(player) {
     const YT = typeof window !== 'undefined' ? window.YT : null;
 
-    let lastKnownState = {
-      paused: true,
-      currentTime: 0,
-      duration: 0,
-      volume: 1,
-      muted: false,
-      playbackRate: 1,
-    };
+    let lastKnownState = { paused: true, currentTime: 0, duration: 0, volume: 1, muted: false, playbackRate: 1 };
     let timeupdateTimer = null;
 
     const isPlaying = () => {
@@ -315,8 +304,4 @@ export class YouTubeProvider extends BaseProvider {
 
 export const youtubeProvider = new YouTubeProvider();
 
-export const youtube = {
-  create: options => youtubeProvider.create(options),
-  mount: (container, options) => youtubeProvider.mount(container, options),
-  provider: youtubeProvider,
-};
+export const youtube = { create: options => youtubeProvider.create(options), mount: (container, options) => youtubeProvider.mount(container, options), provider: youtubeProvider };

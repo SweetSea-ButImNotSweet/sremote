@@ -164,8 +164,4 @@ export class TwitchProvider extends BaseProvider {
 
 export const twitchProvider = new TwitchProvider();
 
-export const twitch = {
-  create: options => twitchProvider.create(options),
-  mount: (container, options) => twitchProvider.mount(container, options),
-  provider: twitchProvider,
-};
+export const twitch = { create: options => twitchProvider.create(options), mount: (container, options) => twitchProvider.mount(container, options), provider: twitchProvider };

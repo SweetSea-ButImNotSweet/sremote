@@ -31,7 +31,8 @@ export function extractMediaState(media) {
   } catch {}
 
   const isLoop = media.loop !== undefined ? Boolean(media.loop) : false;
-  const isFullscreen = typeof document !== 'undefined' && Boolean(document.fullscreenElement && (document.fullscreenElement === media || document.fullscreenElement.contains(media)));
+  const isFullscreen =
+    typeof document !== 'undefined' && Boolean(document.fullscreenElement && (document.fullscreenElement === media || document.fullscreenElement.contains(media)));
   const isPip = typeof document !== 'undefined' && document.pictureInPictureElement === media;
 
   return {
@@ -69,15 +70,7 @@ export function createEventPayload(event, options = {}) {
     ...extra
   } = typeof options === 'object' && options !== null ? options : { value: options };
 
-  return {
-    source,
-    instanceId,
-    mediaType,
-    action: ev,
-    isProgrammatic,
-    ...(state ? { state } : {}),
-    ...extra,
-  };
+  return { source, instanceId, mediaType, action: ev, isProgrammatic, ...(state ? { state } : {}), ...extra };
 }
 
 /**
@@ -189,18 +182,13 @@ export function bindMediaEvents(media, onEvent, options = {}) {
     return () => {};
   }
 
-  const {
-    instanceId = 'dom-media',
-    source = 'dom',
-    treatAlmostEndAsEnd = false,
-    events = MEDIA_EVENTS,
-  } = options;
+  const { instanceId = 'dom-media', source = 'dom', treatAlmostEndAsEnd = false, events = MEDIA_EVENTS } = options;
 
   let hasEmittedAlmostEnd = false;
   const boundListeners = [];
 
   for (const evtName of events) {
-    const listener = (eventObj) => {
+    const listener = eventObj => {
       const state = extractMediaState(media);
 
       if (evtName === 'timeupdate') {
@@ -209,12 +197,10 @@ export function bindMediaEvents(media, onEvent, options = {}) {
         if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
           if (!hasEmittedAlmostEnd) {
             hasEmittedAlmostEnd = true;
-            onEvent(treatAlmostEndAsEnd ? 'ended' : 'almostend', createEventPayload(treatAlmostEndAsEnd ? 'ended' : 'almostend', {
-              source,
-              instanceId,
-              mediaType: media.tagName ? media.tagName.toLowerCase() : 'video',
-              state,
-            }));
+            onEvent(
+              treatAlmostEndAsEnd ? 'ended' : 'almostend',
+              createEventPayload(treatAlmostEndAsEnd ? 'ended' : 'almostend', { source, instanceId, mediaType: media.tagName ? media.tagName.toLowerCase() : 'video', state }),
+            );
           }
         } else if (dur && curTime < dur - 1.5) {
           hasEmittedAlmostEnd = false;
@@ -228,13 +214,7 @@ export function bindMediaEvents(media, onEvent, options = {}) {
         if (dur && dur > 0 && Math.abs(dur - curTime) > 1.5) return;
       }
 
-      onEvent(evtName, createEventPayload(evtName, {
-        source,
-        instanceId,
-        mediaType: media.tagName ? media.tagName.toLowerCase() : 'video',
-        state,
-        originalEvent: eventObj,
-      }));
+      onEvent(evtName, createEventPayload(evtName, { source, instanceId, mediaType: media.tagName ? media.tagName.toLowerCase() : 'video', state, originalEvent: eventObj }));
     };
 
     media.addEventListener(evtName, listener, true);

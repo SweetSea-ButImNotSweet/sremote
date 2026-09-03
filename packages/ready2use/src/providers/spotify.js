@@ -134,8 +134,4 @@ export class SpotifyProvider extends BaseProvider {
 
 export const spotifyProvider = new SpotifyProvider();
 
-export const spotify = {
-  create: options => spotifyProvider.create(options),
-  mount: (container, options) => spotifyProvider.mount(container, options),
-  provider: spotifyProvider,
-};
+export const spotify = { create: options => spotifyProvider.create(options), mount: (container, options) => spotifyProvider.mount(container, options), provider: spotifyProvider };

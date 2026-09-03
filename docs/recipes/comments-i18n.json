@@ -1,112 +1,34 @@
 {
-  "cmt_install_ready2use": {
-    "vi": "// 🚀 Cài đặt: npm install @sremote/ready2use @sremote/wrapper",
-    "en": "// 🚀 Installation: npm install @sremote/ready2use @sremote/wrapper"
-  },
-  "cmt_install_wrapper": {
-    "vi": "// 1. Cài đặt SDK: npm install @sremote/wrapper",
-    "en": "// 1. Install SDK: npm install @sremote/wrapper"
-  },
-  "cmt_mount_auto": {
-    "vi": "// Khởi tạo và gắn player tự động trong 1 dòng lệnh",
-    "en": "// Auto-initialize and mount player in a single line of code"
-  },
-  "cmt_control_via_client": {
-    "vi": "// Điều khiển qua SRemote Client",
-    "en": "// Control media playback via SRemote Client"
-  },
-  "cmt_listen_realtime": {
-    "vi": "// Lắng nghe sự kiện phát thời gian thực",
-    "en": "// Listen for real-time playback events"
-  },
-  "cmt_progress_log": {
-    "vi": "Tiến độ:",
-    "en": "Progress:"
-  },
-  "cmt_register_adapter": {
-    "vi": "// Đăng ký Custom Adapter vào SRemote Client",
-    "en": "// Register Custom Adapter into SRemote Client"
-  },
-  "cmt_register_adapter_wrapper": {
-    "vi": "// Đăng ký Custom Adapter vào SRemote Wrapper",
-    "en": "// Register Custom Adapter into SRemote Wrapper"
-  },
-  "cmt_sync_events": {
-    "vi": "// Đồng bộ sự kiện phát từ player sang SRemote",
-    "en": "// Synchronize player playback events into SRemote"
-  },
-  "cmt_init_yt_adapter": {
-    "vi": "// Khởi tạo YouTube IFrame API và kết nối Adapter vào SRemote",
-    "en": "// Initialize YouTube IFrame API and bind Adapter into SRemote"
-  },
-  "cmt_vimeo_adapter": {
-    "vi": "// Tạo SRemote Adapter kết nối Vimeo Player SDK",
-    "en": "// Create SRemote Adapter connecting Vimeo Player SDK"
-  },
-  "cmt_vimeo_sync": {
-    "vi": "// Đồng bộ sự kiện phát và tiến độ của Vimeo sang SRemote",
-    "en": "// Sync Vimeo playback and progress events with SRemote"
-  },
-  "cmt_dailymotion_adapter": {
-    "vi": "// Tạo SRemote Adapter kết nối Dailymotion Player SDK",
-    "en": "// Create SRemote Adapter connecting Dailymotion Player SDK"
-  },
-  "cmt_dailymotion_sync": {
-    "vi": "// Đồng bộ sự kiện phát và tiến độ Dailymotion với SRemote",
-    "en": "// Sync Dailymotion playback and progress events with SRemote"
-  },
-  "cmt_twitch_adapter": {
-    "vi": "// Tạo SRemote Adapter kết nối Twitch Interactive Player SDK",
-    "en": "// Create SRemote Adapter connecting Twitch Interactive Player SDK"
-  },
-  "cmt_soundcloud_adapter": {
-    "vi": "// Tạo SRemote Adapter kết nối SoundCloud Widget API",
-    "en": "// Create SRemote Adapter connecting SoundCloud Widget API"
-  },
-  "cmt_soundcloud_sync": {
-    "vi": "// Đồng bộ sự kiện SoundCloud với SRemote",
-    "en": "// Sync SoundCloud events with SRemote"
-  },
-  "cmt_spotify_adapter": {
-    "vi": "// Tạo SRemote Adapter kết nối Spotify Embed Controller",
-    "en": "// Create SRemote Adapter connecting Spotify Embed Controller"
-  },
-  "cmt_spotify_sync": {
-    "vi": "// Lắng nghe sự kiện phát của Spotify và chuyển tiếp sang SRemote",
-    "en": "// Listen to Spotify playback events and forward to SRemote"
-  },
-  "cmt_mixcloud_adapter": {
-    "vi": "// Tạo SRemote Adapter kết nối Mixcloud PlayerWidget",
-    "en": "// Create SRemote Adapter connecting Mixcloud PlayerWidget"
-  },
-  "cmt_tiktok_adapter": {
-    "vi": "// Tạo SRemote Adapter kết nối TikTok Player qua postMessage",
-    "en": "// Create SRemote Adapter connecting TikTok Player via postMessage"
-  },
-  "cmt_tiktok_postmessage": {
-    "vi": "// Gửi lệnh postMessage tới TikTok Embed Player",
-    "en": "// Send postMessage command to TikTok Embed Player"
-  },
-  "cmt_tiktok_listen": {
-    "vi": "// Lắng nghe sự kiện chính thức từ TikTok player",
-    "en": "// Listen for official TikTok player events"
-  },
-  "cmt_tiktok_state_desc": {
-    "vi": "// Trạng thái: 0: kết thúc, 1: đang phát, 2: tạm dừng, 3: đang tải",
-    "en": "// Status: 0: ended, 1: playing, 2: paused, 3: buffering"
-  },
+  "cmt_install_ready2use": { "vi": "// 🚀 Cài đặt: npm install @sremote/ready2use @sremote/wrapper", "en": "// 🚀 Installation: npm install @sremote/ready2use @sremote/wrapper" },
+  "cmt_install_wrapper": { "vi": "// 1. Cài đặt SDK: npm install @sremote/wrapper", "en": "// 1. Install SDK: npm install @sremote/wrapper" },
+  "cmt_mount_auto": { "vi": "// Khởi tạo và gắn player tự động trong 1 dòng lệnh", "en": "// Auto-initialize and mount player in a single line of code" },
+  "cmt_control_via_client": { "vi": "// Điều khiển qua SRemote Client", "en": "// Control media playback via SRemote Client" },
+  "cmt_listen_realtime": { "vi": "// Lắng nghe sự kiện phát thời gian thực", "en": "// Listen for real-time playback events" },
+  "cmt_progress_log": { "vi": "Tiến độ:", "en": "Progress:" },
+  "cmt_register_adapter": { "vi": "// Đăng ký Custom Adapter vào SRemote Client", "en": "// Register Custom Adapter into SRemote Client" },
+  "cmt_register_adapter_wrapper": { "vi": "// Đăng ký Custom Adapter vào SRemote Wrapper", "en": "// Register Custom Adapter into SRemote Wrapper" },
+  "cmt_sync_events": { "vi": "// Đồng bộ sự kiện phát từ player sang SRemote", "en": "// Synchronize player playback events into SRemote" },
+  "cmt_init_yt_adapter": { "vi": "// Khởi tạo YouTube IFrame API và kết nối Adapter vào SRemote", "en": "// Initialize YouTube IFrame API and bind Adapter into SRemote" },
+  "cmt_vimeo_adapter": { "vi": "// Tạo SRemote Adapter kết nối Vimeo Player SDK", "en": "// Create SRemote Adapter connecting Vimeo Player SDK" },
+  "cmt_vimeo_sync": { "vi": "// Đồng bộ sự kiện phát và tiến độ của Vimeo sang SRemote", "en": "// Sync Vimeo playback and progress events with SRemote" },
+  "cmt_dailymotion_adapter": { "vi": "// Tạo SRemote Adapter kết nối Dailymotion Player SDK", "en": "// Create SRemote Adapter connecting Dailymotion Player SDK" },
+  "cmt_dailymotion_sync": { "vi": "// Đồng bộ sự kiện phát và tiến độ Dailymotion với SRemote", "en": "// Sync Dailymotion playback and progress events with SRemote" },
+  "cmt_twitch_adapter": { "vi": "// Tạo SRemote Adapter kết nối Twitch Interactive Player SDK", "en": "// Create SRemote Adapter connecting Twitch Interactive Player SDK" },
+  "cmt_soundcloud_adapter": { "vi": "// Tạo SRemote Adapter kết nối SoundCloud Widget API", "en": "// Create SRemote Adapter connecting SoundCloud Widget API" },
+  "cmt_soundcloud_sync": { "vi": "// Đồng bộ sự kiện SoundCloud với SRemote", "en": "// Sync SoundCloud events with SRemote" },
+  "cmt_spotify_adapter": { "vi": "// Tạo SRemote Adapter kết nối Spotify Embed Controller", "en": "// Create SRemote Adapter connecting Spotify Embed Controller" },
+  "cmt_spotify_sync": { "vi": "// Lắng nghe sự kiện phát của Spotify và chuyển tiếp sang SRemote", "en": "// Listen to Spotify playback events and forward to SRemote" },
+  "cmt_mixcloud_adapter": { "vi": "// Tạo SRemote Adapter kết nối Mixcloud PlayerWidget", "en": "// Create SRemote Adapter connecting Mixcloud PlayerWidget" },
+  "cmt_tiktok_adapter": { "vi": "// Tạo SRemote Adapter kết nối TikTok Player qua postMessage", "en": "// Create SRemote Adapter connecting TikTok Player via postMessage" },
+  "cmt_tiktok_postmessage": { "vi": "// Gửi lệnh postMessage tới TikTok Embed Player", "en": "// Send postMessage command to TikTok Embed Player" },
+  "cmt_tiktok_listen": { "vi": "// Lắng nghe sự kiện chính thức từ TikTok player", "en": "// Listen for official TikTok player events" },
+  "cmt_tiktok_state_desc": { "vi": "// Trạng thái: 0: kết thúc, 1: đang phát, 2: tạm dừng, 3: đang tải", "en": "// Status: 0: ended, 1: playing, 2: paused, 3: buffering" },
   "cmt_nico_adapter": {
     "vi": "// Tạo SRemote Adapter kết nối NicoNico qua giao thức postMessage 2 chiều",
     "en": "// Create SRemote Adapter connecting NicoNico via 2-way postMessage"
   },
-  "cmt_nico_postmessage": {
-    "vi": "// Hàm gửi postMessage tới NicoNico iframe",
-    "en": "// Helper to send postMessage to NicoNico iframe"
-  },
-  "cmt_nico_listen": {
-    "vi": "// Lắng nghe message từ NicoNico Embed Player",
-    "en": "// Listen for messages from NicoNico Embed Player"
-  },
+  "cmt_nico_postmessage": { "vi": "// Hàm gửi postMessage tới NicoNico iframe", "en": "// Helper to send postMessage to NicoNico iframe" },
+  "cmt_nico_listen": { "vi": "// Lắng nghe message từ NicoNico Embed Player", "en": "// Listen for messages from NicoNico Embed Player" },
   "cmt_native_no_adapter": {
     "vi": "// HTML5 video nhúng qua iframe hoạt động trực tiếp 100% không cần code adapter!",
     "en": "// HTML5 video in iframe works natively 100% with zero adapter code needed!"
@@ -119,24 +41,9 @@
     "vi": "// Bắt đầu khám phá và bắt tay (handshake) với player bên trong iframe Bilibili",
     "en": "// Start discovery & handshake with media inside Bilibili iframe"
   },
-  "cmt_html5_connect": {
-    "vi": "// Tự động kết nối Native HTML5 Media (Không cần Adapter)",
-    "en": "// Automatically connect Native HTML5 Media (Zero-Adapter)"
-  },
-  "cmt_html5_handshake_send": {
-    "vi": "// Gửi gói tin bắt tay (handshake) tới iframe",
-    "en": "// Send handshake to iframe"
-  },
-  "cmt_html5_handshake_listen": {
-    "vi": "// Lắng nghe khi bắt tay thành công",
-    "en": "// Listen for successful handshake"
-  },
-  "cmt_html5_track_progress": {
-    "vi": "// Theo dõi tiến độ phát video thời gian thực",
-    "en": "// Track real-time playback progress"
-  },
-  "cmt_facebook_test": {
-    "vi": "// Facebook Embedded Video (Chế độ Native Test / Không cần Adapter)",
-    "en": "// Facebook Embedded Video (No Adapter / Native Test)"
-  }
+  "cmt_html5_connect": { "vi": "// Tự động kết nối Native HTML5 Media (Không cần Adapter)", "en": "// Automatically connect Native HTML5 Media (Zero-Adapter)" },
+  "cmt_html5_handshake_send": { "vi": "// Gửi gói tin bắt tay (handshake) tới iframe", "en": "// Send handshake to iframe" },
+  "cmt_html5_handshake_listen": { "vi": "// Lắng nghe khi bắt tay thành công", "en": "// Listen for successful handshake" },
+  "cmt_html5_track_progress": { "vi": "// Theo dõi tiến độ phát video thời gian thực", "en": "// Track real-time playback progress" },
+  "cmt_facebook_test": { "vi": "// Facebook Embedded Video (Chế độ Native Test / Không cần Adapter)", "en": "// Facebook Embedded Video (No Adapter / Native Test)" }
 }

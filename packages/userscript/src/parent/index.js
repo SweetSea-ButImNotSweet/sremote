@@ -101,7 +101,7 @@ export function initParentController() {
           return true;
         }
         if (typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
-          const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : (typeof adapter.paused === 'boolean' ? adapter.paused : true);
+          const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : typeof adapter.paused === 'boolean' ? adapter.paused : true;
           if (isPaused) {
             adapter.play();
           } else {

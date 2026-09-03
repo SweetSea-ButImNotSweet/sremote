@@ -4,9 +4,7 @@
   "description": "SRemote - Allow a parent page to control media inside an iframe with permission",
   "type": "module",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": ["packages/*"],
   "scripts": {
     "dev": "vite",
     "dev:wrapper": "npm run dev --workspace=packages/wrapper",
@@ -26,12 +24,7 @@
     "format": "biome format --write .",
     "knip": "knip"
   },
-  "keywords": [
-    "userscript",
-    "iframe",
-    "media-controller",
-    "sremote"
-  ],
+  "keywords": ["userscript", "iframe", "media-controller", "sremote"],
   "author": "sweetsea",
   "license": "LGPL-3.0",
   "devDependencies": {
@@ -43,7 +36,5 @@
     "vite": "^8.2.2",
     "vite-plugin-monkey": "^8.1.0"
   },
-  "allowScripts": {
-    "core-js@2.6.12": true
-  }
+  "allowScripts": { "core-js@2.6.12": true }
 }

@@ -77,12 +77,5 @@ export declare function evaluateCapabilities(target: any): SRemoteCapabilities;
 export declare function bindMediaEvents(
   media: any,
   onEvent: (event: string, payload: any) => void,
-  options?: {
-    instanceId?: string;
-    source?: string;
-    treatAlmostEndAsEnd?: boolean;
-    events?: string[];
-  }
+  options?: { instanceId?: string; source?: string; treatAlmostEndAsEnd?: boolean; events?: string[] },
 ): () => void;
-
-

@@ -438,7 +438,9 @@ function setLang(lang) {
     if (el('label-sidebar-title')) el('label-sidebar-title').textContent = d.sidebarTitle;
     if (el('label-live-preview')) el('label-live-preview').textContent = d.livePreview;
     if (el('label-html-block')) el('label-html-block').textContent = d.htmlBlockTitle;
-    if (el('label-js-block')) el('label-js-block').textContent = currentJsTab === 'ready2use' ? d.ready2useBlockTitle || '✨ Cài đặt & Sử dụng (JavaScript)' : d.jsBlockTitle || '⚡ 2. Cài đặt JS (JavaScript Setup)';
+    if (el('label-js-block'))
+      el('label-js-block').textContent =
+        currentJsTab === 'ready2use' ? d.ready2useBlockTitle || '✨ Cài đặt & Sử dụng (JavaScript)' : d.jsBlockTitle || '⚡ 2. Cài đặt JS (JavaScript Setup)';
     if (el('copy-html-label')) el('copy-html-label').textContent = d.copyHtmlBtn;
     if (el('copy-js-label')) el('copy-js-label').textContent = d.copyJsBtn;
     if (el('footer-text')) el('footer-text').textContent = d.footer;

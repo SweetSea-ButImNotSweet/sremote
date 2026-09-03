@@ -136,7 +136,6 @@ export interface UniversalAdapterOptions extends SRemoteCustomAdapter {}
  */
 export function createUniversalAdapter(options?: UniversalAdapterOptions): SRemoteCustomAdapter;
 
-
 /**
  * Options for `sremote.hello()` discovery broadcast.
  */

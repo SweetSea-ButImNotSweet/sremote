@@ -46,14 +46,7 @@ export class SoundCloudProvider extends BaseProvider {
       destroy: () => {
         try {
           if (widget && typeof widget.unbind === 'function' && SC?.Widget?.Events) {
-            const events = [
-              SC.Widget.Events.READY,
-              SC.Widget.Events.PLAY,
-              SC.Widget.Events.PAUSE,
-              SC.Widget.Events.PLAY_PROGRESS,
-              SC.Widget.Events.SEEK,
-              SC.Widget.Events.FINISH,
-            ];
+            const events = [SC.Widget.Events.READY, SC.Widget.Events.PLAY, SC.Widget.Events.PAUSE, SC.Widget.Events.PLAY_PROGRESS, SC.Widget.Events.SEEK, SC.Widget.Events.FINISH];
             events.forEach(ev => widget.unbind(ev));
           }
         } catch {}

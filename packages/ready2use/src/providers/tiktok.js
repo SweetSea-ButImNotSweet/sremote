@@ -168,8 +168,4 @@ export class TikTokProvider extends BaseProvider {
 
 export const tiktokProvider = new TikTokProvider();
 
-export const tiktok = {
-  create: options => tiktokProvider.create(options),
-  mount: (container, options) => tiktokProvider.mount(container, options),
-  provider: tiktokProvider,
-};
+export const tiktok = { create: options => tiktokProvider.create(options), mount: (container, options) => tiktokProvider.mount(container, options), provider: tiktokProvider };

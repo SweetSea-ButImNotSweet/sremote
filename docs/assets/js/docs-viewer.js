@@ -463,7 +463,7 @@ function interceptContentLinks(container, currentDocPath) {
       const currentDir = currentDocPath.includes('/') ? currentDocPath.substring(0, currentDocPath.lastIndexOf('/') + 1) : '';
       let rawPath = href;
       if (rawPath.startsWith('docs/')) rawPath = rawPath.replace('docs/', '');
-      
+
       const combined = (currentDir + rawPath).split('/');
       const resolvedParts = [];
       for (const part of combined) {

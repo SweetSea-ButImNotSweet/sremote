@@ -232,8 +232,4 @@ export class VimeoProvider extends BaseProvider {
 
 export const vimeoProvider = new VimeoProvider();
 
-export const vimeo = {
-  create: options => vimeoProvider.create(options),
-  mount: (container, options) => vimeoProvider.mount(container, options),
-  provider: vimeoProvider,
-};
+export const vimeo = { create: options => vimeoProvider.create(options), mount: (container, options) => vimeoProvider.mount(container, options), provider: vimeoProvider };

@@ -22,15 +22,7 @@ export class DailymotionProvider extends BaseProvider {
 
     const { hiddenWrapper, tempNode, cleanup } = createTempNode(instanceId, width, height);
 
-    const playerOptions = {
-      video,
-      params: {
-        autoplay: options.autoplay ?? false,
-        mute: options.mute ?? options.muted ?? false,
-        ...options.params,
-      },
-      ...options.playerOptions,
-    };
+    const playerOptions = { video, params: { autoplay: options.autoplay ?? false, mute: options.mute ?? options.muted ?? false, ...options.params }, ...options.playerOptions };
 
     const player = await dailymotion.createPlayer(tempNode, playerOptions);
 

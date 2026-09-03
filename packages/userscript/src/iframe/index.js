@@ -287,7 +287,15 @@ export function initIframeAgent() {
         const state = getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia);
         const capabilities = getIframeCapabilities(null, resolver.getActiveMedia(), resolver.resolveActiveMedia);
         try {
-          port.postMessage({ type: `${NS}pong`, source: 'iframe', instanceId, mediaType: resolver.getMediaType(), hasMedia: Boolean(resolver.getActiveMedia()), capabilities, state });
+          port.postMessage({
+            type: `${NS}pong`,
+            source: 'iframe',
+            instanceId,
+            mediaType: resolver.getMediaType(),
+            hasMedia: Boolean(resolver.getActiveMedia()),
+            capabilities,
+            state,
+          });
         } catch {}
         return;
       }
@@ -327,10 +335,7 @@ export function initIframeAgent() {
       currentHandshakeId = id;
       currentHandshakeToken = token;
     },
-    currentHandshakeGetter: () => ({
-      handshakeId: currentHandshakeId,
-      handshakeToken: currentHandshakeToken,
-    }),
+    currentHandshakeGetter: () => ({ handshakeId: currentHandshakeId, handshakeToken: currentHandshakeToken }),
   });
 
   function onMediaAvailable() {

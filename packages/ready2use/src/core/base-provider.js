@@ -143,7 +143,7 @@ export class BaseProvider {
 
     if (typeof safeAdapter.toggle !== 'function' && typeof safeAdapter.play === 'function' && typeof safeAdapter.pause === 'function') {
       safeAdapter.toggle = function () {
-        const isPaused = typeof safeAdapter.paused === 'function' ? safeAdapter.paused() : (typeof safeAdapter.paused === 'boolean' ? safeAdapter.paused : true);
+        const isPaused = typeof safeAdapter.paused === 'function' ? safeAdapter.paused() : typeof safeAdapter.paused === 'boolean' ? safeAdapter.paused : true;
         if (isPaused) {
           safeAdapter.play();
         } else {
@@ -225,15 +225,7 @@ export class BaseProvider {
     const adapter = this._setupAdapter(rawAdapter);
     const capabilities = adapter.capabilities;
 
-    return {
-      player,
-      element: targetElement,
-      iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null),
-      adapter,
-      instanceId,
-      capabilities,
-      customDestroy,
-    };
+    return { player, element: targetElement, iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null), adapter, instanceId, capabilities, customDestroy };
   }
 
   /**
@@ -246,12 +238,7 @@ export class BaseProvider {
     const opts = this._normalizeOptions(options);
     const result = await this._instantiate(opts);
 
-    const destroy = this._buildDestroyHandler({
-      adapter: result.adapter,
-      customDestroy: result.customDestroy,
-      player: result.player,
-      targetElement: result.element,
-    });
+    const destroy = this._buildDestroyHandler({ adapter: result.adapter, customDestroy: result.customDestroy, player: result.player, targetElement: result.element });
 
     return {
       element: result.element,
@@ -305,4 +292,3 @@ export class BaseProvider {
     };
   }
 }
-

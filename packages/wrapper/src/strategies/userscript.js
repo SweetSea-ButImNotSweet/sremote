@@ -10,7 +10,6 @@ export class UserscriptDriver extends BaseDriver {
     return isNativeSRemoteInstance(api);
   }
 
-
   getApi(required = false) {
     if (typeof window === 'undefined') {
       if (required) throw new Error('[SRemote:Wrapper] SRemote Userscript not detected');
@@ -24,7 +23,6 @@ export class UserscriptDriver extends BaseDriver {
     }
     return nativeApi;
   }
-
 
   /**
    * Helper to invoke a required API method with passkey

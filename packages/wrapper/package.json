@@ -7,9 +7,7 @@
   "module": "./dist/index.mjs",
   "types": "./src/index.d.ts",
   "exports": { ".": { "types": "./src/index.d.ts", "import": "./dist/index.mjs", "require": "./dist/index.cjs" } },
-  "devDependencies": {
-    "@sremote/shared": "^2.1.0"
-  },
+  "devDependencies": { "@sremote/shared": "^2.1.0" },
   "files": ["dist", "src/index.d.ts", "README.md"],
   "publishConfig": { "access": "public" },
   "scripts": { "build": "vite build", "dev": "vite build --watch" },

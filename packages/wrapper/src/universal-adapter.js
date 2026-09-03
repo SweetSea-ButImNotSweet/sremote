@@ -37,18 +37,7 @@ export function createUniversalAdapter(options = {}) {
     getState,
   } = options;
 
-  const localState = {
-    paused: true,
-    currentTime: 0,
-    duration: null,
-    volume: 1,
-    muted: false,
-    playbackRate: 1,
-    quality: 'auto',
-    subtitle: null,
-    shuffle: false,
-    repeat: 'off',
-  };
+  const localState = { paused: true, currentTime: 0, duration: null, volume: 1, muted: false, playbackRate: 1, quality: 'auto', subtitle: null, shuffle: false, repeat: 'off' };
 
   const hasFn = fn => typeof fn === 'function';
   const calculatedCapabilities = {

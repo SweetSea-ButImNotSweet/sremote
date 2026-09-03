@@ -14,21 +14,10 @@
       "project": ["assets/**/*.{js,cjs,mjs}", "demo/**/*.{js,cjs,mjs}", "docs/**/*.{js,cjs,mjs}"],
       "ignore": ["docs/recipes/**"]
     },
-    "packages/userscript": {
-      "entry": ["src/main.js"],
-      "project": ["src/**/*.{js,cjs,mjs}"]
-    },
-    "packages/shared": {
-      "project": ["src/**/*.{js,cjs,mjs}"]
-    },
-    "packages/wrapper": {
-      "entry": ["src/index.js"],
-      "project": ["src/**/*.{js,cjs,mjs}"]
-    },
-    "packages/ready2use": {
-      "entry": ["src/index.js"],
-      "project": ["src/**/*.{js,cjs,mjs}"]
-    }
+    "packages/userscript": { "entry": ["src/main.js"], "project": ["src/**/*.{js,cjs,mjs}"] },
+    "packages/shared": { "project": ["src/**/*.{js,cjs,mjs}"] },
+    "packages/wrapper": { "entry": ["src/index.js"], "project": ["src/**/*.{js,cjs,mjs}"] },
+    "packages/ready2use": { "entry": ["src/index.js"], "project": ["src/**/*.{js,cjs,mjs}"] }
   },
   "ignoreExportsUsedInFile": true,
   "ignoreUnresolved": ["$"]
