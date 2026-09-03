@@ -490,27 +490,24 @@ var C = new class extends s {
 	async loadSdk() {
 		return p();
 	}
-	async initPlayer(e, r) {
-		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || "100%", s = e.videoId || e.id || e.url || "76979871", { hiddenWrapper: c, tempNode: l, cleanup: u } = t(r, a, o), d = {
-			id: typeof s == "number" ? s : void 0,
-			url: typeof s == "string" ? s.startsWith("http") ? s : `https://player.vimeo.com/video/${s}` : void 0,
-			width: typeof a == "number" ? a : void 0,
-			height: typeof o == "number" ? o : void 0,
-			autoplay: e.autoplay ?? !1,
-			muted: e.muted ?? !1,
-			...e.playerOptions
-		}, f = new i.Player(l, d);
-		await f.ready();
-		let p = l.querySelector("iframe") || l;
-		return p && p.parentNode === c && c.removeChild(p), u(), p && n(p, a, o, r), {
+	async initPlayer(e, t) {
+		let r = await this.loadSdk(), i = e.width || "100%", a = e.height || "100%", o = e.videoId || e.id || e.url || "76979871", s = "76979871";
+		if (typeof o == "number") s = String(o);
+		else if (typeof o == "string") {
+			let e = o.match(/video\/(\d+)/) || o.match(/vimeo\.com\/(\d+)/) || o.match(/^(\d+)$/);
+			s = e ? e[1] : o.replace(/^https?:\/\/[^/]+\//, "").replace(/[/?#].*$/, "") || "76979871";
+		}
+		let c = +!!e.autoplay, l = e.muted ?? e.mute ? 1 : 0, u = e.loop ?? e.repeat ? 1 : 0, d = document.createElement("iframe");
+		d.id = `sremote-vimeo-${t}`, d.src = `https://player.vimeo.com/video/${s}?autoplay=${c}&muted=${l}&loop=${u}&api=1`, d.allow = "autoplay; fullscreen; picture-in-picture; encrypted-media", d.allowFullscreen = !0, d.style.border = "none", n(d, i, a, t);
+		let f = new r.Player(d);
+		return await Promise.race([f.ready().catch(() => {}), new Promise((t) => setTimeout(t, e.timeout || 3e3))]), {
 			player: f,
-			element: p,
-			iframe: p?.tagName === "IFRAME" ? p : null,
+			element: d,
+			iframe: d,
 			destroy: () => {
 				try {
 					f && typeof f.destroy == "function" && f.destroy();
 				} catch {}
-				u();
 			}
 		};
 	}

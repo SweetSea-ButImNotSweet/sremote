@@ -3282,7 +3282,7 @@
 			}
 		};
 	}
-	function createIframeHandshake({ instanceIdGetter, setInstanceId, resolver, bindPort, notifyState, getMediaPort, closeMediaPort, treatAlmostEndAsEndSetter, currentHandshakeSetter, currentHandshakeGetter }) {
+	function createIframeHandshake({ instanceIdGetter, setInstanceId, resolver, bindPort, notifyState, closeMediaPort, treatAlmostEndAsEndSetter, currentHandshakeSetter, currentHandshakeGetter }) {
 		let primaryAuthorizedOrigin = null;
 		let permissionPopup = null;
 		const authorizedOrigins = new Set();
@@ -3718,7 +3718,6 @@
 			resolver,
 			bindPort,
 			notifyState,
-			getMediaPort: () => mediaPort,
 			closeMediaPort,
 			treatAlmostEndAsEndSetter: (val) => {
 				treatAlmostEndAsEnd = val;

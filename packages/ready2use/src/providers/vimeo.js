@@ -1,5 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
-import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
+import { applyElementAttributes } from '../core/dom-utils.js';
 import { loadVimeoSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -18,45 +18,48 @@ export class VimeoProvider extends BaseProvider {
     const Vimeo = await this.loadSdk();
     const width = options.width || '100%';
     const height = options.height || '100%';
-    const videoId = options.videoId || options.id || options.url || '76979871';
+    const rawId = options.videoId || options.id || options.url || '76979871';
 
-    const { hiddenWrapper, tempNode, cleanup } = createTempNode(instanceId, width, height);
-
-    const playerOptions = {
-      id: typeof videoId === 'number' ? videoId : undefined,
-      url: typeof videoId === 'string' ? (videoId.startsWith('http') ? videoId : `https://player.vimeo.com/video/${videoId}`) : undefined,
-      width: typeof width === 'number' ? width : undefined,
-      height: typeof height === 'number' ? height : undefined,
-      autoplay: options.autoplay ?? false,
-      muted: options.muted ?? false,
-      ...options.playerOptions,
-    };
-
-    const player = new Vimeo.Player(tempNode, playerOptions);
-
-    await player.ready();
-
-    const iframe = tempNode.querySelector('iframe') || tempNode;
-    if (iframe && iframe.parentNode === hiddenWrapper) {
-      hiddenWrapper.removeChild(iframe);
+    let videoId = '76979871';
+    if (typeof rawId === 'number') {
+      videoId = String(rawId);
+    } else if (typeof rawId === 'string') {
+      const match = rawId.match(/video\/(\d+)/) || rawId.match(/vimeo\.com\/(\d+)/) || rawId.match(/^(\d+)$/);
+      if (match) {
+        videoId = match[1];
+      } else {
+        videoId = rawId.replace(/^https?:\/\/[^/]+\//, '').replace(/[/?#].*$/, '') || '76979871';
+      }
     }
-    cleanup();
 
-    if (iframe) {
-      applyElementAttributes(iframe, width, height, instanceId);
-    }
+    const autoplay = options.autoplay ? 1 : 0;
+    const muted = (options.muted ?? options.mute) ? 1 : 0;
+    const loop = (options.loop ?? options.repeat) ? 1 : 0;
+
+    // Create iframe directly to bypass oEmbed restrictions and speed up mounting
+    const iframe = document.createElement('iframe');
+    iframe.id = `sremote-vimeo-${instanceId}`;
+    iframe.src = `https://player.vimeo.com/video/${videoId}?autoplay=${autoplay}&muted=${muted}&loop=${loop}&api=1`;
+    iframe.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media';
+    iframe.allowFullscreen = true;
+    iframe.style.border = 'none';
+
+    applyElementAttributes(iframe, width, height, instanceId);
+
+    const player = new Vimeo.Player(iframe);
+
+    await Promise.race([player.ready().catch(() => {}), new Promise(resolve => setTimeout(resolve, options.timeout || 3000))]);
 
     return {
       player,
       element: iframe,
-      iframe: iframe?.tagName === 'IFRAME' ? iframe : null,
+      iframe,
       destroy: () => {
         try {
           if (player && typeof player.destroy === 'function') {
             player.destroy();
           }
         } catch {}
-        cleanup();
       },
     };
   }

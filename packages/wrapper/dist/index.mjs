@@ -926,7 +926,6 @@ var v = class {
 			},
 			get: (e, t) => this.status(e, t),
 			capabilities: (e, t) => this.capabilities(e, t),
-			getCapabilities: (e, t) => this.capabilities(e, t),
 			getIframe: (e, t) => {
 				if (this.userscriptDriver.isAvailable()) {
 					let n = this.userscriptDriver.getApi();
@@ -972,11 +971,10 @@ var v = class {
 				let r = this.domDriver.useAdapter(e, t);
 				if (this.userscriptDriver.isAvailable()) {
 					let r = this.userscriptDriver.getApi();
-					return r?.adapters?.register ? r.adapters.register(e, t, n || this.options.passkey) : r?.adapters?.set ? r.adapters.set(e, t, n || this.options.passkey) : this.userscriptDriver.useAdapter(e, t, n);
+					return r?.adapters?.register ? r.adapters.register(e, t, n || this.options.passkey) : this.userscriptDriver.useAdapter(e, t, n);
 				}
 				return r;
 			},
-			set: (e, t, n) => this.adapters.register(e, t, n),
 			unregister: (e, t) => {
 				if (this.userscriptDriver.isAvailable()) {
 					let n = this.userscriptDriver.getApi();
@@ -1007,7 +1005,7 @@ var v = class {
 	syncAdaptersToUserscript() {
 		if (this.userscriptDriver.isAvailable()) {
 			let e = this.userscriptDriver.getApi();
-			for (let [t, n] of this.domDriver.adaptersMap.entries()) e?.adapters?.register ? e.adapters.register(n, t, this.options.passkey) : e?.adapters?.set ? e.adapters.set(n, t, this.options.passkey) : this.userscriptDriver.useAdapter(n, t, this.options.passkey);
+			for (let [t, n] of this.domDriver.adaptersMap.entries()) e?.adapters?.register ? e.adapters.register(n, t, this.options.passkey) : this.userscriptDriver.useAdapter(n, t, this.options.passkey);
 		}
 	}
 	async ready() {
@@ -1058,13 +1056,7 @@ var v = class {
 	async mute(e, t, n) {
 		return this._exec("mute", e, t, n);
 	}
-	async rate(e, t, n) {
-		return this._exec("speed", e, t, n);
-	}
 	async speed(e, t, n) {
-		return this._exec("speed", e, t, n);
-	}
-	async playbackRate(e, t, n) {
 		return this._exec("speed", e, t, n);
 	}
 	async pip(e, t, n) {
@@ -1103,18 +1095,6 @@ var v = class {
 	capabilities(e, t) {
 		return this.userscriptDriver.isAvailable() ? this.userscriptDriver.capabilities(e, t) : this.domDriver ? this.domDriver.getCapabilities(e) : null;
 	}
-	getCapabilities(e, t) {
-		return this.capabilities(e, t);
-	}
-	useAdapter(e, t, n) {
-		return this.adapters.register(e, t, n);
-	}
-	removeAdapter(e, t) {
-		return this.adapters.unregister(e, t);
-	}
-	getCustomAdapter(e, t) {
-		return this.adapters.get(e, t);
-	}
 	hello(e, t) {
 		if (this.userscriptDriver.isAvailable()) {
 			let n = this.userscriptDriver.getApi();
@@ -1143,20 +1123,17 @@ var v = class {
 	showInstallModal(e) {
 		return _(e);
 	}
-	promptUserscript(e) {
-		return _(e);
-	}
 };
 function y(e) {
 	return new v(e);
 }
-var b = y, x = new v();
+var b = new v();
 if (typeof globalThis < "u") try {
-	globalThis[Symbol.for("__sremote_client__")] = x;
+	globalThis[Symbol.for("__sremote_client__")] = b;
 } catch {}
 //#endregion
 //#region src/universal-adapter.js
-function S(e = {}) {
+function x(e = {}) {
 	let { name: t = "universal-adapter", play: n, pause: r, toggle: i, stop: a, seek: o, seekTo: s, setCurrentTime: c, setVolume: l, setMuted: u, setPlaybackRate: d, setQuality: f, getQualities: p, setSubtitle: m, getSubtitles: h, setShuffle: g, setRepeat: _, next: v, previous: y, load: b, requestPip: x, getState: S } = e, C = {
 		paused: !0,
 		currentTime: 0,
@@ -1304,4 +1281,4 @@ function S(e = {}) {
 	return T;
 }
 //#endregion
-export { e as BaseDriver, f as DomDriver, v as SRemoteClient, o as UserscriptDriver, t as createDummyProxy, b as createSRemote, y as createSRemoteClient, S as createUniversalAdapter, i as isNativeSRemoteInstance, a as lockGlobalSRemoteIfAbsent, _ as promptUserscript, _ as showInstallModal, x as sremote };
+export { e as BaseDriver, f as DomDriver, v as SRemoteClient, o as UserscriptDriver, y as createSRemote, x as createUniversalAdapter, _ as showInstallModal, b as sremote };
