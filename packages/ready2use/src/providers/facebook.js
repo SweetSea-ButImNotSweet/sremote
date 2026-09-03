@@ -42,7 +42,7 @@ export class FacebookProvider extends BaseProvider {
 
     const FB = await this.loadSdk(options.appId || '');
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       let resolved = false;
       let playerInstance = null;
       let timer = null;
@@ -104,7 +104,7 @@ export class FacebookProvider extends BaseProvider {
     });
   }
 
-  createAdapter(player, context) {
+  createAdapter(player) {
     let isPlaying = false;
     let duration = 0;
     let currentTime = 0;
@@ -148,18 +148,14 @@ export class FacebookProvider extends BaseProvider {
 
     const adapter = {
       play() {
-        if (player && typeof player.play === 'function') {
-          player.play();
-        }
+        player?.play?.();
       },
       pause() {
-        if (player && typeof player.pause === 'function') {
-          player.pause();
-        }
+        player?.pause?.();
       },
       toggle() {
         if (player && typeof player.isPlaying === 'function') {
-          player.isPlaying() ? player.pause() : player.play();
+          player.isPlaying() ? player.pause?.() : player.play?.();
         } else {
           isPlaying ? adapter.pause() : adapter.play();
         }
@@ -178,9 +174,7 @@ export class FacebookProvider extends BaseProvider {
         }
       },
       seekTo(seconds) {
-        if (player && typeof player.seek === 'function') {
-          player.seek(Number(seconds));
-        }
+        player?.seek?.(Number(seconds));
       },
       getCurrentTime() {
         return typeof player?.getCurrentPosition === 'function' ? player.getCurrentPosition() : currentTime;
@@ -193,9 +187,7 @@ export class FacebookProvider extends BaseProvider {
       },
       setVolume(vol) {
         volume = Number(vol);
-        if (player && typeof player.setVolume === 'function') {
-          player.setVolume(Math.min(1, Math.max(0, volume)));
-        }
+        player?.setVolume?.(Math.min(1, Math.max(0, volume)));
       },
       getMuted() {
         return typeof player?.isMuted === 'function' ? player.isMuted() : isMuted;
@@ -203,10 +195,10 @@ export class FacebookProvider extends BaseProvider {
       setMuted(muted) {
         isMuted = Boolean(muted);
         if (player) {
-          if (isMuted && typeof player.mute === 'function') {
-            player.mute();
-          } else if (!isMuted && typeof player.unmute === 'function') {
-            player.unmute();
+          if (isMuted) {
+            player.mute?.();
+          } else {
+            player.unmute?.();
           }
         }
       },
@@ -267,7 +259,9 @@ export class FacebookProvider extends BaseProvider {
 }
 
 export const facebookProvider = new FacebookProvider();
-export const createFacebookPlayer = options => facebookProvider.create(options);
-export const mountFacebookPlayer = (container, options) => facebookProvider.mount(container, options);
 
-export const facebook = { create: createFacebookPlayer, mount: mountFacebookPlayer, provider: facebookProvider };
+export const facebook = {
+  create: options => facebookProvider.create(options),
+  mount: (container, options) => facebookProvider.mount(container, options),
+  provider: facebookProvider,
+};

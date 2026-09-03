@@ -7,14 +7,10 @@ import { applyElementAttributes, waitForIframeLoad } from '../core/dom-utils.js'
  */
 function buildBilibiliUrl(options = {}) {
   const params = new window.URLSearchParams();
-
-  // If options is a string, treat as rawId
   const opts = typeof options === 'string' ? { videoId: options } : options || {};
 
   // Extract raw ID candidate
   let rawId = opts.bvid || opts.aid || opts.avid || opts.videoId || opts.id;
-
-  // If rawId is an object (e.g. { bvid: "...", aid: "..." }), unwrap it
   if (rawId && typeof rawId === 'object') {
     rawId = rawId.bvid || rawId.aid || rawId.avid || rawId.videoId || rawId.id || null;
   }
@@ -111,7 +107,9 @@ export class BilibiliProvider extends BaseProvider {
 }
 
 export const bilibiliProvider = new BilibiliProvider();
-export const createBilibiliPlayer = options => bilibiliProvider.create(options);
-export const mountBilibiliPlayer = (container, options) => bilibiliProvider.mount(container, options);
 
-export const bilibili = { create: createBilibiliPlayer, mount: mountBilibiliPlayer, provider: bilibiliProvider };
+export const bilibili = {
+  create: options => bilibiliProvider.create(options),
+  mount: (container, options) => bilibiliProvider.mount(container, options),
+  provider: bilibiliProvider,
+};

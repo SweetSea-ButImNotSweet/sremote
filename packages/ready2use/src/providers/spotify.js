@@ -63,20 +63,20 @@ export class SpotifyProvider extends BaseProvider {
 
     const adapter = {
       play() {
-        if (EmbedController && typeof EmbedController.resume === 'function') {
+        if (typeof EmbedController?.resume === 'function') {
           EmbedController.resume();
-        } else if (EmbedController && typeof EmbedController.play === 'function') {
-          EmbedController.play();
+        } else {
+          EmbedController?.play?.();
         }
       },
       pause() {
-        if (EmbedController && typeof EmbedController.pause === 'function') {
-          EmbedController.pause();
-        }
+        EmbedController?.pause?.();
       },
       toggle() {
-        if (EmbedController && typeof EmbedController.togglePlay === 'function') {
+        if (typeof EmbedController?.togglePlay === 'function') {
           EmbedController.togglePlay();
+        } else {
+          isPaused ? adapter.play() : adapter.pause();
         }
       },
       stop() {
@@ -86,14 +86,10 @@ export class SpotifyProvider extends BaseProvider {
         }
       },
       seek(offset) {
-        if (EmbedController && typeof EmbedController.seek === 'function') {
-          EmbedController.seek(Math.max(0, position + Number(offset)));
-        }
+        EmbedController?.seek?.(Math.max(0, position + Number(offset)));
       },
       seekTo(seconds) {
-        if (EmbedController && typeof EmbedController.seek === 'function') {
-          EmbedController.seek(Number(seconds));
-        }
+        EmbedController?.seek?.(Number(seconds));
       },
       getCurrentTime() {
         return position;
@@ -105,9 +101,7 @@ export class SpotifyProvider extends BaseProvider {
         return isPaused;
       },
       load(uri) {
-        if (EmbedController && typeof EmbedController.loadUri === 'function') {
-          EmbedController.loadUri(uri);
-        }
+        EmbedController?.loadUri?.(uri);
       },
       getState() {
         return { paused: isPaused, currentTime: position, duration };
@@ -127,7 +121,7 @@ export class SpotifyProvider extends BaseProvider {
         isPaused = Boolean(e?.data?.isPaused);
         position = (e?.data?.position || 0) / 1000;
         duration = (e?.data?.duration || 0) / 1000;
-        adapter.emit?.('timeupdate', { state: { paused: isPaused, currentTime, duration } });
+        adapter.emit?.('timeupdate', { state: { paused: isPaused, currentTime: position, duration } });
         if (isPaused) {
           adapter.emit?.('pause', { state: { paused: true, currentTime: position, duration } });
         }
@@ -139,7 +133,9 @@ export class SpotifyProvider extends BaseProvider {
 }
 
 export const spotifyProvider = new SpotifyProvider();
-export const createSpotifyPlayer = options => spotifyProvider.create(options);
-export const mountSpotifyPlayer = (container, options) => spotifyProvider.mount(container, options);
 
-export const spotify = { create: createSpotifyPlayer, mount: mountSpotifyPlayer, provider: spotifyProvider };
+export const spotify = {
+  create: options => spotifyProvider.create(options),
+  mount: (container, options) => spotifyProvider.mount(container, options),
+  provider: spotifyProvider,
+};

@@ -98,17 +98,16 @@ export class TikTokProvider extends BaseProvider {
       setVolume(vol) {
         if (Number(vol) <= 0) {
           adapter.setMuted(true);
-        } else {
-          if (isMuted) adapter.setMuted(false);
+        } else if (isMuted) {
+          adapter.setMuted(false);
         }
       },
       getMuted() {
         return isMuted;
       },
       setMuted(m) {
-        const shouldMute = m !== undefined ? Boolean(m) : !isMuted;
-        isMuted = shouldMute;
-        sendToTikTok(shouldMute ? 'mute' : 'unMute');
+        isMuted = m !== undefined ? Boolean(m) : !isMuted;
+        sendToTikTok(isMuted ? 'mute' : 'unMute');
       },
       getCurrentTime() {
         return currentTime;
@@ -121,6 +120,11 @@ export class TikTokProvider extends BaseProvider {
       },
       getState() {
         return { paused: !isPlaying, currentTime, duration, muted: isMuted };
+      },
+      destroy() {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('message', messageHandler);
+        }
       },
     };
 
@@ -163,7 +167,9 @@ export class TikTokProvider extends BaseProvider {
 }
 
 export const tiktokProvider = new TikTokProvider();
-export const createTikTokPlayer = options => tiktokProvider.create(options);
-export const mountTikTokPlayer = (container, options) => tiktokProvider.mount(container, options);
 
-export const tiktok = { create: createTikTokPlayer, mount: mountTikTokPlayer, provider: tiktokProvider };
+export const tiktok = {
+  create: options => tiktokProvider.create(options),
+  mount: (container, options) => tiktokProvider.mount(container, options),
+  provider: tiktokProvider,
+};

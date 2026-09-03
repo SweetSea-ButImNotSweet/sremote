@@ -81,26 +81,18 @@ export class VimeoProvider extends BaseProvider {
 
     const adapter = {
       play() {
-        if (player && typeof player.play === 'function') {
-          player.play().catch(() => {});
-        }
+        player?.play?.().catch(() => {});
       },
       pause() {
-        if (player && typeof player.pause === 'function') {
-          player.pause().catch(() => {});
-        }
+        player?.pause?.().catch(() => {});
       },
       toggle() {
         if (!player) return;
         if (typeof player.getPaused === 'function') {
           player
             .getPaused()
-            .then(paused => {
-              paused ? player.play().catch(() => {}) : player.pause().catch(() => {});
-            })
-            .catch(() => {
-              isPaused ? player.play().catch(() => {}) : player.pause().catch(() => {});
-            });
+            .then(paused => (paused ? player.play().catch(() => {}) : player.pause().catch(() => {})))
+            .catch(() => (isPaused ? player.play().catch(() => {}) : player.pause().catch(() => {})));
         } else {
           isPaused ? player.play().catch(() => {}) : player.pause().catch(() => {});
         }
@@ -117,16 +109,12 @@ export class VimeoProvider extends BaseProvider {
         if (player && typeof player.getCurrentTime === 'function' && typeof player.setCurrentTime === 'function') {
           player
             .getCurrentTime()
-            .then(t => {
-              player.setCurrentTime(Math.max(0, t + Number(offset))).catch(() => {});
-            })
+            .then(t => player.setCurrentTime(Math.max(0, t + Number(offset))).catch(() => {}))
             .catch(() => {});
         }
       },
       seekTo(seconds) {
-        if (player && typeof player.setCurrentTime === 'function') {
-          player.setCurrentTime(Number(seconds)).catch(() => {});
-        }
+        player?.setCurrentTime?.(Number(seconds)).catch(() => {});
       },
       getCurrentTime() {
         return currentTime;
@@ -139,41 +127,31 @@ export class VimeoProvider extends BaseProvider {
       },
       setVolume(vol) {
         volume = Number(vol);
-        if (player && typeof player.setVolume === 'function') {
-          player.setVolume(Math.min(1, Math.max(0, volume))).catch(() => {});
-        }
+        player?.setVolume?.(Math.min(1, Math.max(0, volume))).catch(() => {});
       },
       getMuted() {
         return isMuted;
       },
       setMuted(muted) {
         isMuted = Boolean(muted);
-        if (player && typeof player.setMuted === 'function') {
-          player.setMuted(isMuted).catch(() => {});
-        }
+        player?.setMuted?.(isMuted).catch(() => {});
       },
       getPlaybackRate() {
         return playbackRate;
       },
       setPlaybackRate(rate) {
         playbackRate = Number(rate);
-        if (player && typeof player.setPlaybackRate === 'function') {
-          player.setPlaybackRate(playbackRate).catch(() => {});
-        }
+        player?.setPlaybackRate?.(playbackRate).catch(() => {});
       },
       paused() {
         return isPaused;
       },
       setRepeat(mode) {
-        if (player && typeof player.setLoop === 'function') {
-          const loop = mode === 'one' || mode === 'all' || mode === true;
-          player.setLoop(loop).catch(() => {});
-        }
+        const loop = mode === 'one' || mode === 'all' || mode === true;
+        player?.setLoop?.(loop).catch(() => {});
       },
       setQuality(level) {
-        if (player && typeof player.setQuality === 'function') {
-          player.setQuality(String(level)).catch(() => {});
-        }
+        player?.setQuality?.(String(level)).catch(() => {});
       },
       async getQualities() {
         if (player && typeof player.getQualities === 'function') {
@@ -187,12 +165,11 @@ export class VimeoProvider extends BaseProvider {
         return [];
       },
       setSubtitle(track) {
-        if (player && typeof player.enableTextTrack === 'function') {
-          if (!track || track === 'off') {
-            player.disableTextTrack?.().catch(() => {});
-          } else {
-            player.enableTextTrack(String(track)).catch(() => {});
-          }
+        if (!player) return;
+        if (!track || track === 'off') {
+          player.disableTextTrack?.().catch(() => {});
+        } else {
+          player.enableTextTrack?.(String(track)).catch(() => {});
         }
       },
       async getSubtitles() {
@@ -207,9 +184,7 @@ export class VimeoProvider extends BaseProvider {
         return [];
       },
       load(videoId) {
-        if (player && typeof player.loadVideo === 'function') {
-          player.loadVideo(videoId).catch(() => {});
-        }
+        player?.loadVideo?.(videoId).catch(() => {});
       },
       getState() {
         return { paused: isPaused, currentTime, duration, volume, muted: isMuted, playbackRate };
@@ -256,7 +231,9 @@ export class VimeoProvider extends BaseProvider {
 }
 
 export const vimeoProvider = new VimeoProvider();
-export const createVimeoPlayer = options => vimeoProvider.create(options);
-export const mountVimeoPlayer = (container, options) => vimeoProvider.mount(container, options);
 
-export const vimeo = { create: createVimeoPlayer, mount: mountVimeoPlayer, provider: vimeoProvider };
+export const vimeo = {
+  create: options => vimeoProvider.create(options),
+  mount: (container, options) => vimeoProvider.mount(container, options),
+  provider: vimeoProvider,
+};

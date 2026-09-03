@@ -127,135 +127,46 @@ export class BaseProvider {
   }
 
   /**
-   * Creates the player, element/iframe, and standard custom adapter without mounting to DOM.
-   *
-   * @param {Object|string} options
-   * @returns {Promise<{ element: HTMLElement, iframe?: HTMLIFrameElement, adapter: Object, player: any, instanceId: string, capabilities: import('@sremote/shared').SRemoteCapabilities, destroy: () => void }>}
+   * Internal helper to normalize options parameter.
+   * @private
    */
-  async create(options = {}) {
-    const opts = typeof options === 'string' ? { videoId: options } : { ...options };
-    const instanceId = this.generateInstanceId(opts.instanceId);
-
-    // 1. Ensure provider SDK is ready
-    await this.loadSdk();
-
-    // 2. Initialize native player
-    const { player, element, iframe, destroy: customDestroy } = await this.initPlayer(opts, instanceId);
-
-    const targetElement = iframe || element;
-
-    // 3. Build SRemote Custom Adapter
-    const adapter = this.createAdapter(player, {
-      options: opts,
-      instanceId,
-      element: targetElement,
-      iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null),
-    }) || {};
-
-    // Ensure fallback toggle method is always present if play and pause exist
-    if (typeof adapter.toggle !== 'function' && typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
-      adapter.toggle = function () {
-        const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : (typeof adapter.paused === 'boolean' ? adapter.paused : true);
-        if (isPaused) {
-          adapter.play();
-        } else {
-          adapter.pause();
-        }
-      };
-    }
-
-    const capabilities = this.getCapabilities(adapter);
-    if (adapter && !adapter.capabilities) {
-      adapter.capabilities = capabilities;
-    }
-
-    // 4. Combined destroy handler
-    const destroy = () => {
-      try {
-        if (typeof adapter?.destroy === 'function') {
-          adapter.destroy();
-        }
-      } catch {}
-
-      try {
-        if (typeof customDestroy === 'function') {
-          customDestroy();
-        } else if (player && typeof player.destroy === 'function') {
-          player.destroy();
-        }
-      } catch {}
-
-      try {
-        if (targetElement && targetElement.parentNode) {
-          targetElement.parentNode.removeChild(targetElement);
-        }
-      } catch {}
-    };
-
-    return { element: targetElement, iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null), adapter, player, instanceId, capabilities, destroy };
+  _normalizeOptions(options) {
+    return typeof options === 'string' ? { videoId: options } : { ...options };
   }
 
   /**
-   * Mounts the player directly into a DOM container and registers the adapter into SRemote.
-   *
-   * @param {string|HTMLElement} container - Target DOM element or CSS selector
-   * @param {Object|string} options - Provider configuration options
-   * @returns {Promise<{ element: HTMLElement, iframe?: HTMLIFrameElement, adapter: Object, player: any, instanceId: string, capabilities: import('@sremote/shared').SRemoteCapabilities, destroy: () => void }>}
+   * Internal helper to enhance adapter with fallback toggle and capabilities.
+   * @private
    */
-  async mount(container, options = {}) {
-    const targetContainer = resolveElement(container);
-    if (!targetContainer) {
-      throw new Error(`[SRemote:${this.name}] Target container '${container}' not found in DOM`);
-    }
+  _setupAdapter(adapter) {
+    const safeAdapter = adapter || {};
 
-    const opts = typeof options === 'string' ? { videoId: options } : { ...options };
-    const instanceId = this.generateInstanceId(opts.instanceId);
-
-    // 1. Ensure provider SDK is ready
-    await this.loadSdk();
-
-    // 2. Initialize native player directly in container (passing targetContainer if supported)
-    const { player, element, iframe, destroy: customDestroy } = await this.initPlayer({ ...opts, container: targetContainer }, instanceId);
-
-    const targetElement = iframe || element;
-
-    // Ensure the element is mounted in container if not already attached
-    if (targetElement && targetElement.parentNode !== targetContainer) {
-      targetContainer.appendChild(targetElement);
-    }
-
-    // 3. Build SRemote Custom Adapter
-    const adapter = this.createAdapter(player, {
-      options: opts,
-      instanceId,
-      element: targetElement,
-      iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null),
-    }) || {};
-
-    if (typeof adapter.toggle !== 'function' && typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
-      adapter.toggle = function () {
-        const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : (typeof adapter.paused === 'boolean' ? adapter.paused : true);
+    if (typeof safeAdapter.toggle !== 'function' && typeof safeAdapter.play === 'function' && typeof safeAdapter.pause === 'function') {
+      safeAdapter.toggle = function () {
+        const isPaused = typeof safeAdapter.paused === 'function' ? safeAdapter.paused() : (typeof safeAdapter.paused === 'boolean' ? safeAdapter.paused : true);
         if (isPaused) {
-          adapter.play();
+          safeAdapter.play();
         } else {
-          adapter.pause();
+          safeAdapter.pause();
         }
       };
     }
 
-    const capabilities = this.getCapabilities(adapter);
-    if (adapter && !adapter.capabilities) {
-      adapter.capabilities = capabilities;
+    if (!safeAdapter.capabilities) {
+      safeAdapter.capabilities = this.getCapabilities(safeAdapter);
     }
 
-    const remote = await resolveSRemote(opts);
-    if (remote?.adapters) {
-      remote.adapters.register(adapter, instanceId);
-    }
+    return safeAdapter;
+  }
 
-    const destroy = () => {
+  /**
+   * Internal helper to build a safe teardown/destroy function.
+   * @private
+   */
+  _buildDestroyHandler({ adapter, customDestroy, player, targetElement, remote, instanceId }) {
+    return () => {
       try {
-        if (remote?.adapters) {
+        if (remote?.adapters && instanceId) {
           remote.adapters.unregister(instanceId);
         }
       } catch {}
@@ -280,14 +191,116 @@ export class BaseProvider {
         }
       } catch {}
     };
+  }
+
+  /**
+   * Shared pipeline to initialize player, resolve target element, and construct adapter.
+   * @private
+   */
+  async _instantiate(opts, container = null) {
+    const instanceId = this.generateInstanceId(opts.instanceId);
+
+    // 1. Ensure provider SDK is ready
+    await this.loadSdk();
+
+    // 2. Initialize native player
+    const initOptions = container ? { ...opts, container } : opts;
+    const { player, element, iframe, destroy: customDestroy } = await this.initPlayer(initOptions, instanceId);
+
+    const targetElement = iframe || element;
+
+    // Ensure mounted into container if container was provided
+    if (container && targetElement && targetElement.parentNode !== container) {
+      container.appendChild(targetElement);
+    }
+
+    // 3. Build SRemote Custom Adapter
+    const rawAdapter = this.createAdapter(player, {
+      options: opts,
+      instanceId,
+      element: targetElement,
+      iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null),
+    });
+
+    const adapter = this._setupAdapter(rawAdapter);
+    const capabilities = adapter.capabilities;
 
     return {
+      player,
       element: targetElement,
       iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null),
       adapter,
-      player,
       instanceId,
       capabilities,
+      customDestroy,
+    };
+  }
+
+  /**
+   * Creates the player, element/iframe, and standard custom adapter without mounting to DOM.
+   *
+   * @param {Object|string} options
+   * @returns {Promise<{ element: HTMLElement, iframe?: HTMLIFrameElement, adapter: Object, player: any, instanceId: string, capabilities: import('@sremote/shared').SRemoteCapabilities, destroy: () => void }>}
+   */
+  async create(options = {}) {
+    const opts = this._normalizeOptions(options);
+    const result = await this._instantiate(opts);
+
+    const destroy = this._buildDestroyHandler({
+      adapter: result.adapter,
+      customDestroy: result.customDestroy,
+      player: result.player,
+      targetElement: result.element,
+    });
+
+    return {
+      element: result.element,
+      iframe: result.iframe,
+      adapter: result.adapter,
+      player: result.player,
+      instanceId: result.instanceId,
+      capabilities: result.capabilities,
+      destroy,
+    };
+  }
+
+  /**
+   * Mounts the player directly into a DOM container and registers the adapter into SRemote.
+   *
+   * @param {string|HTMLElement} container - Target DOM element or CSS selector
+   * @param {Object|string} options - Provider configuration options
+   * @returns {Promise<{ element: HTMLElement, iframe?: HTMLIFrameElement, adapter: Object, player: any, instanceId: string, capabilities: import('@sremote/shared').SRemoteCapabilities, destroy: () => void }>}
+   */
+  async mount(container, options = {}) {
+    const targetContainer = resolveElement(container);
+    if (!targetContainer) {
+      throw new Error(`[SRemote:${this.name}] Target container '${container}' not found in DOM`);
+    }
+
+    const opts = this._normalizeOptions(options);
+    const result = await this._instantiate(opts, targetContainer);
+
+    const remote = await resolveSRemote(opts);
+    if (remote?.adapters) {
+      remote.adapters.register(result.adapter, result.instanceId);
+    }
+
+    const destroy = this._buildDestroyHandler({
+      adapter: result.adapter,
+      customDestroy: result.customDestroy,
+      player: result.player,
+      targetElement: result.element,
+      remote,
+      instanceId: result.instanceId,
+    });
+
+    return {
+      element: result.element,
+      iframe: result.iframe,
+      adapter: result.adapter,
+      player: result.player,
+      instanceId: result.instanceId,
+      capabilities: result.capabilities,
       destroy,
     };
   }

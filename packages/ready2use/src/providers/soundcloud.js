@@ -34,9 +34,7 @@ export class SoundCloudProvider extends BaseProvider {
     const widget = SC.Widget(iframe);
 
     await new Promise(resolve => {
-      widget.bind(SC.Widget.Events.READY, () => {
-        resolve();
-      });
+      widget.bind(SC.Widget.Events.READY, () => resolve());
       // Safety timeout in case READY takes too long or fails
       setTimeout(resolve, 2000);
     });
@@ -47,13 +45,16 @@ export class SoundCloudProvider extends BaseProvider {
       iframe,
       destroy: () => {
         try {
-          if (widget && typeof widget.unbind === 'function') {
-            widget.unbind(SC.Widget.Events.READY);
-            widget.unbind(SC.Widget.Events.PLAY);
-            widget.unbind(SC.Widget.Events.PAUSE);
-            widget.unbind(SC.Widget.Events.PLAY_PROGRESS);
-            widget.unbind(SC.Widget.Events.SEEK);
-            widget.unbind(SC.Widget.Events.FINISH);
+          if (widget && typeof widget.unbind === 'function' && SC?.Widget?.Events) {
+            const events = [
+              SC.Widget.Events.READY,
+              SC.Widget.Events.PLAY,
+              SC.Widget.Events.PAUSE,
+              SC.Widget.Events.PLAY_PROGRESS,
+              SC.Widget.Events.SEEK,
+              SC.Widget.Events.FINISH,
+            ];
+            events.forEach(ev => widget.unbind(ev));
           }
         } catch {}
       },
@@ -194,7 +195,9 @@ export class SoundCloudProvider extends BaseProvider {
 }
 
 export const soundcloudProvider = new SoundCloudProvider();
-export const createSoundCloudPlayer = options => soundcloudProvider.create(options);
-export const mountSoundCloudPlayer = (container, options) => soundcloudProvider.mount(container, options);
 
-export const soundcloud = { create: createSoundCloudPlayer, mount: mountSoundCloudPlayer, provider: soundcloudProvider };
+export const soundcloud = {
+  create: options => soundcloudProvider.create(options),
+  mount: (container, options) => soundcloudProvider.mount(container, options),
+  provider: soundcloudProvider,
+};

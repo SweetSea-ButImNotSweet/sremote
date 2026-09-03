@@ -71,6 +71,8 @@ export class MixcloudProvider extends BaseProvider {
         if (widget && typeof widget.togglePlay === 'function') {
           widget.togglePlay();
           isPlaying = !isPlaying;
+        } else {
+          isPlaying ? adapter.pause() : adapter.play();
         }
       },
       stop() {
@@ -137,7 +139,9 @@ export class MixcloudProvider extends BaseProvider {
 }
 
 export const mixcloudProvider = new MixcloudProvider();
-export const createMixcloudPlayer = options => mixcloudProvider.create(options);
-export const mountMixcloudPlayer = (container, options) => mixcloudProvider.mount(container, options);
 
-export const mixcloud = { create: createMixcloudPlayer, mount: mountMixcloudPlayer, provider: mixcloudProvider };
+export const mixcloud = {
+  create: options => mixcloudProvider.create(options),
+  mount: (container, options) => mixcloudProvider.mount(container, options),
+  provider: mixcloudProvider,
+};

@@ -73,18 +73,14 @@ export class TwitchProvider extends BaseProvider {
 
     const adapter = {
       play() {
-        if (player && typeof player.play === 'function') {
-          player.play();
-        }
+        player?.play?.();
       },
       pause() {
-        if (player && typeof player.pause === 'function') {
-          player.pause();
-        }
+        player?.pause?.();
       },
       toggle() {
         if (!player || typeof player.isPaused !== 'function') return;
-        player.isPaused() ? player.play() : player.pause();
+        player.isPaused() ? player.play?.() : player.pause?.();
       },
       stop() {
         if (player && typeof player.pause === 'function' && typeof player.seek === 'function') {
@@ -98,43 +94,37 @@ export class TwitchProvider extends BaseProvider {
         }
       },
       seekTo(seconds) {
-        if (player && typeof player.seek === 'function') {
-          player.seek(Number(seconds));
-        }
+        player?.seek?.(Number(seconds));
       },
       getCurrentTime() {
-        return player && typeof player.getCurrentTime === 'function' ? player.getCurrentTime() : 0;
+        return player?.getCurrentTime ? player.getCurrentTime() : 0;
       },
       getDuration() {
-        return player && typeof player.getDuration === 'function' ? player.getDuration() : 0;
+        return player?.getDuration ? player.getDuration() : 0;
       },
       getVolume() {
-        return player && typeof player.getVolume === 'function' ? player.getVolume() : 1;
+        return player?.getVolume ? player.getVolume() : 1;
       },
       setVolume(vol) {
-        if (player && typeof player.setVolume === 'function') {
-          player.setVolume(Math.min(1, Math.max(0, Number(vol))));
-        }
+        player?.setVolume?.(Math.min(1, Math.max(0, Number(vol))));
       },
       getMuted() {
-        return player && typeof player.getMuted === 'function' ? player.getMuted() : false;
+        return player?.getMuted ? player.getMuted() : false;
       },
       setMuted(muted) {
-        if (player && typeof player.setMuted === 'function') {
-          player.setMuted(Boolean(muted));
-        }
+        player?.setMuted?.(Boolean(muted));
       },
       paused() {
-        return player && typeof player.isPaused === 'function' ? player.isPaused() : true;
+        return player?.isPaused ? player.isPaused() : true;
       },
       load(source) {
         if (!player) return;
         if (typeof source === 'string') {
-          if (typeof player.setChannel === 'function') player.setChannel(source);
-        } else if (source?.video && typeof player.setVideo === 'function') {
-          player.setVideo(source.video);
-        } else if (source?.channel && typeof player.setChannel === 'function') {
-          player.setChannel(source.channel);
+          player.setChannel?.(source);
+        } else if (source?.video) {
+          player.setVideo?.(source.video);
+        } else if (source?.channel) {
+          player.setChannel?.(source.channel);
         }
       },
       getState() {
@@ -173,7 +163,9 @@ export class TwitchProvider extends BaseProvider {
 }
 
 export const twitchProvider = new TwitchProvider();
-export const createTwitchPlayer = options => twitchProvider.create(options);
-export const mountTwitchPlayer = (container, options) => twitchProvider.mount(container, options);
 
-export const twitch = { create: createTwitchPlayer, mount: mountTwitchPlayer, provider: twitchProvider };
+export const twitch = {
+  create: options => twitchProvider.create(options),
+  mount: (container, options) => twitchProvider.mount(container, options),
+  provider: twitchProvider,
+};

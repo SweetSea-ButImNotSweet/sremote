@@ -22,7 +22,15 @@ export class DailymotionProvider extends BaseProvider {
 
     const { hiddenWrapper, tempNode, cleanup } = createTempNode(instanceId, width, height);
 
-    const playerOptions = { video, params: { autoplay: options.autoplay ?? false, mute: options.mute ?? options.muted ?? false, ...options.params }, ...options.playerOptions };
+    const playerOptions = {
+      video,
+      params: {
+        autoplay: options.autoplay ?? false,
+        mute: options.mute ?? options.muted ?? false,
+        ...options.params,
+      },
+      ...options.playerOptions,
+    };
 
     const player = await dailymotion.createPlayer(tempNode, playerOptions);
 
@@ -61,14 +69,10 @@ export class DailymotionProvider extends BaseProvider {
 
     const adapter = {
       play() {
-        if (player && typeof player.play === 'function') {
-          player.play();
-        }
+        player?.play?.();
       },
       pause() {
-        if (player && typeof player.pause === 'function') {
-          player.pause();
-        }
+        player?.pause?.();
       },
       toggle() {
         if (!player) return;
@@ -81,14 +85,10 @@ export class DailymotionProvider extends BaseProvider {
         }
       },
       seek(offset) {
-        if (player && typeof player.seek === 'function') {
-          player.seek(Math.max(0, currentTime + Number(offset)));
-        }
+        player?.seek?.(Math.max(0, currentTime + Number(offset)));
       },
       seekTo(seconds) {
-        if (player && typeof player.seek === 'function') {
-          player.seek(Number(seconds));
-        }
+        player?.seek?.(Number(seconds));
       },
       getCurrentTime() {
         return currentTime;
@@ -101,26 +101,20 @@ export class DailymotionProvider extends BaseProvider {
       },
       setVolume(vol) {
         volume = Number(vol);
-        if (player && typeof player.setVolume === 'function') {
-          player.setVolume(Math.min(1, Math.max(0, volume)));
-        }
+        player?.setVolume?.(Math.min(1, Math.max(0, volume)));
       },
       getMuted() {
         return isMuted;
       },
       setMuted(muted) {
         isMuted = Boolean(muted);
-        if (player && typeof player.setMuted === 'function') {
-          player.setMuted(isMuted);
-        }
+        player?.setMuted?.(isMuted);
       },
       paused() {
         return isPaused;
       },
       setQuality(level) {
-        if (player && typeof player.setQuality === 'function') {
-          player.setQuality(String(level));
-        }
+        player?.setQuality?.(String(level));
       },
       async getQualities() {
         if (player && typeof player.getQualities === 'function') {
@@ -134,9 +128,7 @@ export class DailymotionProvider extends BaseProvider {
         return [];
       },
       setSubtitle(track) {
-        if (player && typeof player.setSubtitle === 'function') {
-          player.setSubtitle(track ? String(track) : 'off');
-        }
+        player?.setSubtitle?.(track ? String(track) : 'off');
       },
       async getSubtitles() {
         if (player && typeof player.getSubtitles === 'function') {
@@ -150,9 +142,7 @@ export class DailymotionProvider extends BaseProvider {
         return [];
       },
       load(video) {
-        if (player && typeof player.load === 'function') {
-          player.load(video);
-        }
+        player?.load?.(video);
       },
       getState() {
         return { paused: isPaused, currentTime, duration, volume, muted: isMuted };
@@ -213,7 +203,9 @@ export class DailymotionProvider extends BaseProvider {
 }
 
 export const dailymotionProvider = new DailymotionProvider();
-export const createDailymotionPlayer = options => dailymotionProvider.create(options);
-export const mountDailymotionPlayer = (container, options) => dailymotionProvider.mount(container, options);
 
-export const dailymotion = { create: createDailymotionPlayer, mount: mountDailymotionPlayer, provider: dailymotionProvider };
+export const dailymotion = {
+  create: options => dailymotionProvider.create(options),
+  mount: (container, options) => dailymotionProvider.mount(container, options),
+  provider: dailymotionProvider,
+};

@@ -94,7 +94,7 @@ export class NicoNicoProvider extends BaseProvider {
       },
       setVolume(vol) {
         volume = Number(vol);
-        sendToNico('volumeChange', { volume: volume });
+        sendToNico('volumeChange', { volume });
       },
       setMuted(muted) {
         sendToNico('mute', { mute: Boolean(muted) });
@@ -111,11 +111,15 @@ export class NicoNicoProvider extends BaseProvider {
       getState() {
         return { paused: !isPlaying, currentTime, duration, volume };
       },
+      destroy() {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('message', messageHandler);
+        }
+      },
     };
 
     const messageHandler = e => {
-      if (e.origin !== 'https://embed.nicovideo.jp') return;
-      if (e.data?.playerId !== playerId) return;
+      if (e.origin !== 'https://embed.nicovideo.jp' || e.data?.playerId !== playerId) return;
 
       const { eventName, data } = e.data;
 
@@ -155,7 +159,9 @@ export class NicoNicoProvider extends BaseProvider {
 }
 
 export const niconicoProvider = new NicoNicoProvider();
-export const createNicoNicoPlayer = options => niconicoProvider.create(options);
-export const mountNicoNicoPlayer = (container, options) => niconicoProvider.mount(container, options);
 
-export const niconico = { create: createNicoNicoPlayer, mount: mountNicoNicoPlayer, provider: niconicoProvider };
+export const niconico = {
+  create: options => niconicoProvider.create(options),
+  mount: (container, options) => niconicoProvider.mount(container, options),
+  provider: niconicoProvider,
+};

@@ -3,6 +3,50 @@ import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
 import { loadYouTubeIframeApi } from '../utils/sdk-loader.js';
 
 /**
+ * Checks if the YouTube player state corresponds to playing or buffering.
+ * @param {number} state
+ * @param {any} [YT]
+ * @returns {boolean}
+ */
+function isStatePlaying(state, YT) {
+  return YT ? state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING : state === 1 || state === 3;
+}
+
+/**
+ * Helper to safely configure YouTube captions / subtitles track.
+ * @param {any} player
+ * @param {string|null} track
+ */
+function setCaptions(player, track) {
+  if (!player) return;
+
+  const isOff = !track || track === 'off';
+
+  try {
+    if (isOff) {
+      if (typeof player.setOption === 'function') {
+        player.setOption('captions', 'track', {});
+        player.setOption('cc', 'track', {});
+        player.setOption('captions', 'reload', true);
+      }
+      if (typeof player.unloadModule === 'function') {
+        player.unloadModule('captions');
+      }
+    } else {
+      if (typeof player.loadModule === 'function') {
+        player.loadModule('captions');
+      }
+      if (typeof player.setOption === 'function') {
+        const trackObj = { languageCode: String(track) };
+        player.setOption('captions', 'track', trackObj);
+        player.setOption('cc', 'track', trackObj);
+        player.setOption('captions', 'reload', true);
+      }
+    }
+  } catch {}
+}
+
+/**
  * Provider for YouTube IFrame API
  */
 export class YouTubeProvider extends BaseProvider {
@@ -36,16 +80,19 @@ export class YouTubeProvider extends BaseProvider {
 
     return new Promise((resolve, reject) => {
       let player = null;
-      let iframe = null;
 
       player = new YT.Player(targetNode.id, {
         width,
         height,
         videoId,
-        playerVars: { enablejsapi: 1, origin: typeof window !== 'undefined' ? window.location.origin : undefined, ...options.playerVars },
+        playerVars: {
+          enablejsapi: 1,
+          origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+          ...options.playerVars,
+        },
         events: {
           onReady: () => {
-            iframe = player.getIFrame ? player.getIFrame() : document.getElementById(targetNode.id);
+            const iframe = player.getIFrame ? player.getIFrame() : document.getElementById(targetNode.id);
             if (iframe) {
               applyElementAttributes(iframe, width, height, instanceId);
             }
@@ -76,15 +123,25 @@ export class YouTubeProvider extends BaseProvider {
   createAdapter(player) {
     const YT = typeof window !== 'undefined' ? window.YT : null;
 
-    let lastKnownState = { paused: true, currentTime: 0, duration: 0, volume: 1, muted: false, playbackRate: 1 };
+    let lastKnownState = {
+      paused: true,
+      currentTime: 0,
+      duration: 0,
+      volume: 1,
+      muted: false,
+      playbackRate: 1,
+    };
     let timeupdateTimer = null;
+
+    const isPlaying = () => {
+      if (!player || typeof player.getPlayerState !== 'function') return false;
+      return isStatePlaying(player.getPlayerState(), YT);
+    };
 
     const updateStateSnapshot = () => {
       try {
         if (player && typeof player.getPlayerState === 'function') {
-          const state = player.getPlayerState();
-          const isPlayingOrBuffering = YT ? state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING : state === 1 || state === 3;
-          lastKnownState.paused = !isPlayingOrBuffering;
+          lastKnownState.paused = !isPlaying();
           lastKnownState.currentTime = player.getCurrentTime ? player.getCurrentTime() : 0;
           lastKnownState.duration = player.getDuration ? player.getDuration() : 0;
           lastKnownState.volume = player.getVolume ? player.getVolume() / 100 : 1;
@@ -123,12 +180,10 @@ export class YouTubeProvider extends BaseProvider {
       },
       toggle() {
         if (!player) return;
-        const state = typeof player.getPlayerState === 'function' ? player.getPlayerState() : -1;
-        const isPlayingOrBuffering = YT ? state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING : state === 1 || state === 3;
-        if (isPlayingOrBuffering) {
-          player.pauseVideo();
+        if (isPlaying()) {
+          player.pauseVideo?.();
         } else {
-          player.playVideo();
+          player.playVideo?.();
         }
       },
       stop() {
@@ -169,9 +224,9 @@ export class YouTubeProvider extends BaseProvider {
       setMuted(muted) {
         if (!player) return;
         if (muted) {
-          if (typeof player.mute === 'function') player.mute();
+          player.mute?.();
         } else {
-          if (typeof player.unMute === 'function') player.unMute();
+          player.unMute?.();
         }
       },
       getPlaybackRate() {
@@ -183,10 +238,7 @@ export class YouTubeProvider extends BaseProvider {
         }
       },
       paused() {
-        if (!player || typeof player.getPlayerState !== 'function') return true;
-        const state = player.getPlayerState();
-        const isPlayingOrBuffering = YT ? state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING : state === 1 || state === 3;
-        return !isPlayingOrBuffering;
+        return !isPlaying();
       },
       next() {
         if (player && typeof player.nextVideo === 'function') {
@@ -210,35 +262,7 @@ export class YouTubeProvider extends BaseProvider {
         }
       },
       setSubtitle(track) {
-        if (!player) return;
-        if (!track || track === 'off') {
-          if (typeof player.setOption === 'function') {
-            try {
-              player.setOption('captions', 'track', {});
-              player.setOption('cc', 'track', {});
-              player.setOption('captions', 'reload', true);
-            } catch {}
-          }
-          if (typeof player.unloadModule === 'function') {
-            try {
-              player.unloadModule('captions');
-            } catch {}
-          }
-        } else {
-          const lang = String(track);
-          if (typeof player.loadModule === 'function') {
-            try {
-              player.loadModule('captions');
-            } catch {}
-          }
-          if (typeof player.setOption === 'function') {
-            try {
-              player.setOption('captions', 'track', { languageCode: lang });
-              player.setOption('cc', 'track', { languageCode: lang });
-              player.setOption('captions', 'reload', true);
-            } catch {}
-          }
-        }
+        setCaptions(player, track);
       },
       getSubtitles() {
         if (player && typeof player.getOption === 'function') {
@@ -254,15 +278,8 @@ export class YouTubeProvider extends BaseProvider {
         return [];
       },
       load(source) {
-        if (!player) return;
-        if (typeof source === 'string') {
-          if (typeof player.loadVideoById === 'function') {
-            player.loadVideoById(source);
-          }
-        } else if (source && typeof source === 'object') {
-          if (typeof player.loadVideoById === 'function') {
-            player.loadVideoById(source);
-          }
+        if (player && typeof player.loadVideoById === 'function' && source) {
+          player.loadVideoById(source);
         }
       },
       getState() {
@@ -298,7 +315,8 @@ export class YouTubeProvider extends BaseProvider {
 
 export const youtubeProvider = new YouTubeProvider();
 
-export const createYouTubePlayer = options => youtubeProvider.create(options);
-export const mountYouTubePlayer = (container, options) => youtubeProvider.mount(container, options);
-
-export const youtube = { create: createYouTubePlayer, mount: mountYouTubePlayer, provider: youtubeProvider };
+export const youtube = {
+  create: options => youtubeProvider.create(options),
+  mount: (container, options) => youtubeProvider.mount(container, options),
+  provider: youtubeProvider,
+};
