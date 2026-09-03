@@ -344,7 +344,11 @@ export function initIframeAgent() {
       bindVideoEvents(activeMedia);
     }
     notifyState();
-    if (handshake.primaryAuthorizedOrigin) showConnectedIndicator(handshake.primaryAuthorizedOrigin, handshake.primaryAuthorizedOrigin);
+    if (!handshake.primaryAuthorizedOrigin) {
+      handshake.checkPendingHelloFromGM();
+    } else {
+      showConnectedIndicator(handshake.primaryAuthorizedOrigin, handshake.primaryAuthorizedOrigin);
+    }
     const waiters = mediaWaiters.splice(0, mediaWaiters.length);
     for (const w of waiters) w(true);
   }

@@ -20,33 +20,50 @@ export class DailymotionProvider extends BaseProvider {
     const height = options.height || '100%';
     const video = options.video || options.videoId || 'x7tgad0';
 
-    const { hiddenWrapper, tempNode, cleanup } = createTempNode(instanceId, width, height);
+    let targetNode = null;
+    let cleanupTemp = () => {};
+
+    if (options.container) {
+      targetNode = document.createElement('div');
+      targetNode.id = `sremote-dailymotion-${instanceId}`;
+      applyElementAttributes(targetNode, width, height, instanceId);
+      options.container.appendChild(targetNode);
+    } else {
+      const temp = createTempNode(instanceId, width, height);
+      targetNode = temp.tempNode;
+      cleanupTemp = temp.cleanup;
+    }
 
     const playerOptions = { video, params: { autoplay: options.autoplay ?? false, mute: options.mute ?? options.muted ?? false, ...options.params }, ...options.playerOptions };
 
-    const player = await dailymotion.createPlayer(tempNode, playerOptions);
+    // Dailymotion createPlayer expects container ID string (e.g. "sremote-dailymotion-xxx") or target selector
+    const targetId = targetNode.id || `sremote-dailymotion-${instanceId}`;
+    targetNode.id = targetId;
 
-    const iframe = tempNode.querySelector('iframe') || tempNode;
-    if (iframe && iframe.parentNode === hiddenWrapper) {
-      hiddenWrapper.removeChild(iframe);
-    }
-    cleanup();
+    const player = await dailymotion.createPlayer(targetId, playerOptions);
+
+    const iframe = (targetNode && typeof targetNode.querySelector === 'function' ? targetNode.querySelector('iframe') : null) || document.querySelector(`#${targetId} iframe`);
+
+    const finalElement = options.container ? iframe || targetNode : iframe || targetNode;
 
     if (iframe) {
       applyElementAttributes(iframe, width, height, instanceId);
     }
+    if (targetNode) {
+      applyElementAttributes(targetNode, width, height, instanceId);
+    }
 
     return {
       player,
-      element: iframe,
-      iframe: iframe?.tagName === 'IFRAME' ? iframe : null,
+      element: targetNode || finalElement,
+      iframe: iframe || (targetNode?.tagName === 'IFRAME' ? targetNode : null),
       destroy: () => {
         try {
           if (player && typeof player.destroy === 'function') {
             player.destroy();
           }
         } catch {}
-        cleanup();
+        cleanupTemp();
       },
     };
   }

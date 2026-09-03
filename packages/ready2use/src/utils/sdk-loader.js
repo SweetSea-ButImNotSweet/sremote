@@ -131,7 +131,7 @@ export function loadDailymotionSdk() {
 
   if (dailymotionSdkPromise) return dailymotionSdkPromise;
 
-  dailymotionSdkPromise = loadScript('https://player.dailymotion.com/api/player.js')
+  dailymotionSdkPromise = loadScript('https://geo.dailymotion.com/libs/player.js')
     .then(() => window.dailymotion)
     .catch(err => {
       dailymotionSdkPromise = null;

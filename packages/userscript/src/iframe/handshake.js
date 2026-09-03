@@ -23,6 +23,11 @@ export function createIframeHandshake({
   const sessionDeniedOrigins = new Set();
 
   function grantAccess(origin) {
+    // Only grant access and handshake if media is present or mediaSession is active
+    if (!resolver.resolveActiveMedia()) {
+      return;
+    }
+
     primaryAuthorizedOrigin = origin;
     if (origin) authorizedOrigins.add(origin);
 

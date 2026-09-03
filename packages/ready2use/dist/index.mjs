@@ -231,7 +231,7 @@ function h() {
 }
 var g = null;
 function ee() {
-	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.dailymotion && window.dailymotion.createPlayer ? Promise.resolve(window.dailymotion) : g || (g = l("https://player.dailymotion.com/api/player.js").then(() => window.dailymotion).catch((e) => {
+	return typeof window > "u" ? Promise.reject(/* @__PURE__ */ Error("Window is not available")) : window.dailymotion && window.dailymotion.createPlayer ? Promise.resolve(window.dailymotion) : g || (g = l("https://geo.dailymotion.com/libs/player.js").then(() => window.dailymotion).catch((e) => {
 		throw g = null, e;
 	}), g);
 }
@@ -797,7 +797,13 @@ var C = new class extends s {
 		return ee();
 	}
 	async initPlayer(e, r) {
-		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || "100%", s = e.video || e.videoId || "x7tgad0", { hiddenWrapper: c, tempNode: l, cleanup: u } = t(r, a, o), d = {
+		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || "100%", s = e.video || e.videoId || "x7tgad0", c = null, l = () => {};
+		if (e.container) c = document.createElement("div"), c.id = `sremote-dailymotion-${r}`, n(c, a, o, r), e.container.appendChild(c);
+		else {
+			let e = t(r, a, o);
+			c = e.tempNode, l = e.cleanup;
+		}
+		let u = {
 			video: s,
 			params: {
 				autoplay: e.autoplay ?? !1,
@@ -805,16 +811,18 @@ var C = new class extends s {
 				...e.params
 			},
 			...e.playerOptions
-		}, f = await i.createPlayer(l, d), p = l.querySelector("iframe") || l;
-		return p && p.parentNode === c && c.removeChild(p), u(), p && n(p, a, o, r), {
+		}, d = c.id || `sremote-dailymotion-${r}`;
+		c.id = d;
+		let f = await i.createPlayer(d, u), p = (c && typeof c.querySelector == "function" ? c.querySelector("iframe") : null) || document.querySelector(`#${d} iframe`), m = (e.container, p || c);
+		return p && n(p, a, o, r), c && n(c, a, o, r), {
 			player: f,
-			element: p,
-			iframe: p?.tagName === "IFRAME" ? p : null,
+			element: c || m,
+			iframe: p || (c?.tagName === "IFRAME" ? c : null),
 			destroy: () => {
 				try {
 					f && typeof f.destroy == "function" && f.destroy();
 				} catch {}
-				u();
+				l();
 			}
 		};
 	}

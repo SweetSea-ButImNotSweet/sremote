@@ -3288,6 +3288,7 @@
 		const authorizedOrigins = new Set();
 		const sessionDeniedOrigins = new Set();
 		function grantAccess(origin) {
+			if (!resolver.resolveActiveMedia()) return;
 			primaryAuthorizedOrigin = origin;
 			if (origin) authorizedOrigins.add(origin);
 			closeMediaPort();
@@ -3736,7 +3737,8 @@
 			const mediaType = resolver.getMediaType();
 			if ((mediaType === "video" || mediaType === "audio") && activeMedia) bindVideoEvents(activeMedia);
 			notifyState();
-			if (handshake.primaryAuthorizedOrigin) showConnectedIndicator(handshake.primaryAuthorizedOrigin, handshake.primaryAuthorizedOrigin);
+			if (!handshake.primaryAuthorizedOrigin) handshake.checkPendingHelloFromGM();
+			else showConnectedIndicator(handshake.primaryAuthorizedOrigin, handshake.primaryAuthorizedOrigin);
 			const waiters = mediaWaiters.splice(0, mediaWaiters.length);
 			for (const w of waiters) w(true);
 		}
