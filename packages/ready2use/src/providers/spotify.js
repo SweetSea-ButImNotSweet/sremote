@@ -20,37 +20,64 @@ export class SpotifyProvider extends BaseProvider {
     const height = options.height || (options.compact ? '152' : '352');
     const uri = options.uri || options.url || 'spotify:track:4cOdK2wGLETKBW3PvgPWqT';
 
-    const { hiddenWrapper, tempNode, cleanup } = createTempNode(instanceId, width, height);
+    let targetNode = null;
+    let cleanupTemp = () => {};
+
+    if (options.container) {
+      targetNode = document.createElement('div');
+      targetNode.id = `sremote-spotify-${instanceId}`;
+      applyElementAttributes(targetNode, width, height, instanceId);
+      options.container.appendChild(targetNode);
+    } else {
+      const temp = createTempNode(instanceId, width, height);
+      targetNode = temp.tempNode;
+      cleanupTemp = temp.cleanup;
+    }
 
     return new Promise((resolve, reject) => {
-      try {
-        IFrameAPI.createController(tempNode, { uri, width, height, ...options.controllerOptions }, EmbedController => {
-          const iframe = tempNode.querySelector('iframe') || tempNode;
-          if (iframe && iframe.parentNode === hiddenWrapper) {
-            hiddenWrapper.removeChild(iframe);
-          }
-          cleanup();
+      let isResolved = false;
 
-          if (iframe) {
-            applyElementAttributes(iframe, width, height, instanceId);
-          }
+      const finish = EmbedController => {
+        if (isResolved) return;
+        isResolved = true;
 
-          resolve({
-            player: EmbedController,
-            element: iframe,
-            iframe: iframe?.tagName === 'IFRAME' ? iframe : null,
-            destroy: () => {
-              try {
-                if (EmbedController && typeof EmbedController.destroy === 'function') {
-                  EmbedController.destroy();
-                }
-              } catch {}
-              cleanup();
-            },
-          });
+        const iframe =
+          (targetNode && typeof targetNode.querySelector === 'function' ? targetNode.querySelector('iframe') : null) ||
+          document.querySelector(`#sremote-spotify-${instanceId} iframe`) ||
+          targetNode;
+
+        if (iframe) {
+          applyElementAttributes(iframe, width, height, instanceId);
+        }
+
+        resolve({
+          player: EmbedController,
+          element: targetNode || iframe,
+          iframe: iframe?.tagName === 'IFRAME' ? iframe : null,
+          destroy: () => {
+            try {
+              if (EmbedController && typeof EmbedController.destroy === 'function') {
+                EmbedController.destroy();
+              }
+            } catch {}
+            cleanupTemp();
+          },
         });
+      };
+
+      try {
+        IFrameAPI.createController(targetNode, { uri, width, height, ...options.controllerOptions }, EmbedController => {
+          finish(EmbedController);
+        });
+
+        // Safety fallback in case Spotify controller callback is delayed
+        setTimeout(() => {
+          if (!isResolved) {
+            finish(null);
+          }
+        }, options.timeout || 3500);
       } catch (err) {
-        cleanup();
+        cleanupTemp();
         reject(err);
       }
     });

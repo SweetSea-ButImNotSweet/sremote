@@ -1169,30 +1169,42 @@ var C = new class extends s {
 		return re();
 	}
 	async initPlayer(e, r) {
-		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || (e.compact ? "152" : "352"), s = e.uri || e.url || "spotify:track:4cOdK2wGLETKBW3PvgPWqT", { hiddenWrapper: c, tempNode: l, cleanup: u } = t(r, a, o);
-		return new Promise((t, d) => {
+		let i = await this.loadSdk(), a = e.width || "100%", o = e.height || (e.compact ? "152" : "352"), s = e.uri || e.url || "spotify:track:4cOdK2wGLETKBW3PvgPWqT", c = null, l = () => {};
+		if (e.container) c = document.createElement("div"), c.id = `sremote-spotify-${r}`, n(c, a, o, r), e.container.appendChild(c);
+		else {
+			let e = t(r, a, o);
+			c = e.tempNode, l = e.cleanup;
+		}
+		return new Promise((t, u) => {
+			let d = !1, f = (e) => {
+				if (d) return;
+				d = !0;
+				let i = (c && typeof c.querySelector == "function" ? c.querySelector("iframe") : null) || document.querySelector(`#sremote-spotify-${r} iframe`) || c;
+				i && n(i, a, o, r), t({
+					player: e,
+					element: c || i,
+					iframe: i?.tagName === "IFRAME" ? i : null,
+					destroy: () => {
+						try {
+							e && typeof e.destroy == "function" && e.destroy();
+						} catch {}
+						l();
+					}
+				});
+			};
 			try {
-				i.createController(l, {
+				i.createController(c, {
 					uri: s,
 					width: a,
 					height: o,
 					...e.controllerOptions
 				}, (e) => {
-					let i = l.querySelector("iframe") || l;
-					i && i.parentNode === c && c.removeChild(i), u(), i && n(i, a, o, r), t({
-						player: e,
-						element: i,
-						iframe: i?.tagName === "IFRAME" ? i : null,
-						destroy: () => {
-							try {
-								e && typeof e.destroy == "function" && e.destroy();
-							} catch {}
-							u();
-						}
-					});
-				});
+					f(e);
+				}), setTimeout(() => {
+					d || f(null);
+				}, e.timeout || 3500);
 			} catch (e) {
-				u(), d(e);
+				l(), u(e);
 			}
 		});
 	}

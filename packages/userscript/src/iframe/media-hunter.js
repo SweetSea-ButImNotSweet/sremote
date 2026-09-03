@@ -37,10 +37,16 @@ export function createMediaResolver(createdMediaPool, bindVideoEvents) {
   let mediaType = null;
 
   function resolveActiveMedia() {
-    if (activeMedia && (activeMedia.isConnected || createdMediaPool.has(activeMedia))) {
+    if (activeMedia && (mediaType === 'adapter' || activeMedia.isConnected || createdMediaPool.has(activeMedia))) {
       return true;
     }
 
+    // 1. Custom Adapter (Highest Priority)
+    if (mediaType === 'adapter' && activeMedia) {
+      return true;
+    }
+
+    // 2. Real HTML5 Media with valid duration, src, or active playback
     const all = findAllMedia();
     if (all.length > 0) {
       const valid =
@@ -55,8 +61,13 @@ export function createMediaResolver(createdMediaPool, bindVideoEvents) {
       return true;
     }
 
+    // 3. MediaSession with actual handlers, metadata, or active playback state
     const ms = pageWindow.navigator?.mediaSession || navigator?.mediaSession;
-    if (mockMediaSessionInstance._handlers.size > 0 || (ms && (ms.metadata || ms.playbackState !== 'none'))) {
+    const hasHandlers = mockMediaSessionInstance._handlers.size > 0;
+    const hasMetadata = Boolean(ms?.metadata && (ms.metadata.title || ms.metadata.artist));
+    const isPlayingState = ms?.playbackState === 'playing' || ms?.playbackState === 'paused';
+
+    if (hasHandlers || hasMetadata || isPlayingState) {
       activeMedia = activeMediaSession;
       mediaType = 'mediasession';
       return true;
