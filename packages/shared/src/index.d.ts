@@ -26,10 +26,10 @@ export interface SRemoteInstanceData {
   origin?: string;
   location?: string;
   note?: string;
-  state?: 'playing' | 'paused' | 'stopped' | 'buffering' | 'idle';
+  state?: 'playing' | 'paused' | 'stopped' | 'buffering' | 'idle' | string;
   mediaType?: 'video' | 'audio' | 'adapter' | 'mediasession' | string;
   currentTime?: number;
-  duration?: number;
+  duration?: number | null;
   volume?: number;
   muted?: boolean;
   playbackRate?: number;
@@ -51,9 +51,12 @@ export interface SRemoteMediaState {
   readyState?: number;
   src?: string;
   loop?: boolean;
-  repeat?: 'off' | 'one' | 'all';
+  repeat?: 'off' | 'one' | 'all' | boolean;
   fullscreen?: boolean;
   pictureInPicture?: boolean;
+  quality?: string | number;
+  subtitle?: string | null;
+  shuffle?: boolean;
   [key: string]: any;
 }
 
@@ -69,6 +72,47 @@ export interface SRemoteEventPayload {
 
 export type SRemoteEventHandler = (data: any) => void;
 
+export declare const SREMOTE_EVENTS: {
+  readonly READY: 'sremote:ready';
+  readonly STATE_CHANGE: 'sremote:state-change';
+  readonly DISCONNECT: 'sremote:disconnect';
+  readonly PERMISSION_DECISION: 'sremote:permission_decision';
+};
+
+export type SRemoteEventName = (typeof SREMOTE_EVENTS)[keyof typeof SREMOTE_EVENTS];
+
+export declare const SREMOTE_ACTIONS: {
+  readonly PLAY: 'play';
+  readonly PAUSE: 'pause';
+  readonly TOGGLE: 'toggle';
+  readonly STOP: 'stop';
+  readonly SEEK: 'seek';
+  readonly SEEK_TO: 'currentTime';
+  readonly VOLUME: 'volume';
+  readonly MUTE: 'muted';
+  readonly SPEED: 'playbackRate';
+  readonly PLAYBACK_RATE: 'playbackRate';
+  readonly PIP: 'pip';
+  readonly ENTER_PIP: 'enterpip';
+  readonly EXIT_PIP: 'exitpip';
+  readonly QUALITY: 'quality';
+  readonly GET_QUALITIES: 'getQualities';
+  readonly SUBTITLE: 'subtitle';
+  readonly GET_SUBTITLES: 'getSubtitles';
+  readonly SHUFFLE: 'shuffle';
+  readonly REPEAT: 'repeat';
+  readonly NEXT: 'nexttrack';
+  readonly PREVIOUS: 'previoustrack';
+};
+
+export type SRemoteActionName = (typeof SREMOTE_ACTIONS)[keyof typeof SREMOTE_ACTIONS];
+
+export declare const SREMOTE_STORAGE_KEYS: {
+  readonly HELLO_SEQ: 'sremote:hello_seq';
+  readonly PARENT_ORIGIN: 'sremote:parent_origin';
+  readonly HANDSHAKE_SECRET: 'sremote:handshake_secret';
+};
+
 export declare const MEDIA_EVENTS: readonly string[];
 
 export declare function extractMediaState(media: any): SRemoteMediaState | null;
@@ -77,5 +121,5 @@ export declare function evaluateCapabilities(target: any): SRemoteCapabilities;
 export declare function bindMediaEvents(
   media: any,
   onEvent: (event: string, payload: any) => void,
-  options?: { instanceId?: string; source?: string; treatAlmostEndAsEnd?: boolean; events?: string[] },
+  options?: { instanceId?: string; source?: string; treatAlmostEndAsEnd?: boolean; events?: readonly string[] | string[] },
 ): () => void;

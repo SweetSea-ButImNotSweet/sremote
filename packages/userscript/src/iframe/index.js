@@ -326,7 +326,6 @@ export function initIframeAgent() {
     resolver,
     bindPort,
     notifyState,
-    getMediaPort: () => mediaPort,
     closeMediaPort,
     treatAlmostEndAsEndSetter: val => {
       treatAlmostEndAsEnd = val;

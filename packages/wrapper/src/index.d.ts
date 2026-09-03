@@ -1,3 +1,9 @@
+import type { SRemoteCapabilities, SRemoteMediaState, SRemoteInstanceData, SRemoteEventPayload, SRemoteEventHandler, SRemoteActionName, SRemoteEventName } from '@sremote/shared';
+
+export type { SRemoteCapabilities, SRemoteMediaState, SRemoteInstanceData, SRemoteEventPayload, SRemoteEventHandler, SRemoteActionName, SRemoteEventName };
+
+export { SREMOTE_EVENTS, SREMOTE_ACTIONS, SREMOTE_STORAGE_KEYS, MEDIA_EVENTS } from '@sremote/shared';
+
 /**
  * Configuration options for initializing the SRemote client SDK.
  */
@@ -5,7 +11,7 @@ export interface SRemoteClientOptions {
   /**
    * Whether to fallback to direct DOM query execution when the userscript is not available
    * (works only for same-origin iframes or media elements on the parent page).
-   * @default false
+   * @default true
    */
   fallbackToDom?: boolean;
 
@@ -20,6 +26,14 @@ export interface SRemoteClientOptions {
    * @default null
    */
   passkey?: string | null;
+
+  /**
+   * Whether to treat the last ~0.8s before the end of media playback as the ended event.
+   * @default false
+   */
+  treatAlmostEndAsEnd?: boolean;
+
+  [key: string]: any;
 }
 
 /**
@@ -30,48 +44,6 @@ export interface SRemoteClientOptions {
  * - `'unsupported'`: Userscript is missing and DOM fallback is unavailable.
  */
 export type SRemoteClientMode = 'detecting' | 'userscript' | 'dom-direct' | 'unsupported';
-
-/**
- * Snapshot representation of current media state.
- */
-export interface SRemoteMediaState {
-  paused: boolean;
-  ended?: boolean;
-  currentTime: number;
-  duration: number | null;
-  buffered?: number;
-  volume: number;
-  muted: boolean;
-  playbackRate: number;
-  readyState?: number;
-  src?: string;
-  fullscreen?: boolean;
-  pictureInPicture?: boolean;
-  [key: string]: any;
-}
-
-export interface SRemoteCapabilities {
-  play: boolean;
-  pause: boolean;
-  toggle: boolean;
-  stop: boolean;
-  seek: boolean;
-  volume: boolean;
-  muted: boolean;
-  speed: boolean;
-  playbackRate?: boolean;
-  pip: boolean;
-  quality: boolean;
-  subtitles: boolean;
-  shuffle: boolean;
-  repeat: boolean;
-  next: boolean;
-  previous: boolean;
-  load: boolean;
-  hasAdapter?: boolean;
-  hasNative?: boolean;
-  hasMediaSession?: boolean;
-}
 
 /**
  * Connected media instance information item.
@@ -100,14 +72,14 @@ export interface SRemoteCustomAdapter {
   stop?: () => void | Promise<void>;
   seek?: (offset: number) => void | Promise<void>;
   seekTo?: (time: number) => void | Promise<void>;
-  getCurrentTime?: () => number;
+  getCurrentTime?: () => number | Promise<number>;
   setCurrentTime?: (time: number) => void | Promise<void>;
-  getDuration?: () => number;
-  getVolume?: () => number;
+  getDuration?: () => number | Promise<number>;
+  getVolume?: () => number | Promise<number>;
   setVolume?: (vol: number) => void | Promise<void>;
-  getMuted?: () => boolean;
+  getMuted?: () => boolean | Promise<boolean>;
   setMuted?: (muted: boolean) => void | Promise<void>;
-  getPlaybackRate?: () => number;
+  getPlaybackRate?: () => number | Promise<number>;
   setPlaybackRate?: (rate: number) => void | Promise<void>;
   paused?: boolean | (() => boolean);
   pip?: (enable?: boolean) => void | Promise<void>;
@@ -134,7 +106,7 @@ export interface UniversalAdapterOptions extends SRemoteCustomAdapter {}
 /**
  * Factory to create an SRemote-compatible Universal Adapter.
  */
-export function createUniversalAdapter(options?: UniversalAdapterOptions): SRemoteCustomAdapter;
+export declare function createUniversalAdapter(options?: UniversalAdapterOptions): SRemoteCustomAdapter;
 
 /**
  * Options for `sremote.hello()` discovery broadcast.
@@ -191,11 +163,6 @@ export interface SRemoteInstancesNamespace {
    * Get the evaluated capabilities of an instance.
    */
   capabilities(instanceId?: string, key?: string): SRemoteCapabilities | null;
-
-  /**
-   * Alias for capabilities().
-   */
-  getCapabilities(instanceId?: string, key?: string): SRemoteCapabilities | null;
 
   /**
    * Get a list of all currently connected media instances and adapters.
@@ -289,6 +256,73 @@ export interface SRemoteCssNamespace {
 }
 
 /**
+ * Base abstract strategy driver for SRemote client operations.
+ */
+export declare abstract class BaseDriver {
+  options: Record<string, any>;
+  constructor(options?: Record<string, any>);
+  getPasskey(key?: string | null): string | null;
+
+  play(target?: string | HTMLElement, key?: string): Promise<any>;
+  pause(target?: string | HTMLElement, key?: string): Promise<any>;
+  toggle(target?: string | HTMLElement, key?: string): Promise<any>;
+  stop(target?: string | HTMLElement, key?: string): Promise<any>;
+  seek(offset: number, target?: string | HTMLElement, key?: string): Promise<any>;
+  seekTo(time: number, target?: string | HTMLElement, key?: string): Promise<any>;
+  volume(vol: number, target?: string | HTMLElement, key?: string): Promise<any>;
+  mute(muted?: boolean, target?: string | HTMLElement, key?: string): Promise<any>;
+  speed(rate: number, target?: string | HTMLElement, key?: string): Promise<any>;
+  pip(enable?: boolean, target?: string | HTMLElement, key?: string): Promise<any>;
+  load(source: any, target?: string | HTMLElement, key?: string): Promise<any>;
+
+  useAdapter(adapter: SRemoteCustomAdapter, instanceId?: string, key?: string): string | null;
+  removeAdapter(instanceId: string, key?: string): boolean;
+  getCustomAdapter(instanceId?: string, key?: string): SRemoteCustomAdapter | null;
+
+  on(event: string, handler: (data: any) => void, key?: string): () => void;
+  off(event: string, handler: (data: any) => void): void;
+}
+
+/**
+ * Driver interfacing with the cross-domain userscript environment.
+ */
+export declare class UserscriptDriver extends BaseDriver {
+  constructor(options?: SRemoteClientOptions);
+  isAvailable(): boolean;
+  getApi(required?: boolean): any;
+  call(action: string, params?: any, instanceId?: string, key?: string): Promise<any>;
+  postWindowMessage(message: any, targetOrigin?: string, instanceId?: string, from?: string, key?: string): boolean;
+  status(instanceId?: string, key?: string): SRemoteMediaState | null;
+  capabilities(instanceId?: string, key?: string): SRemoteCapabilities | null;
+  assignId(iframeOrSelector: string | HTMLIFrameElement, customId: string): boolean;
+  bindMediaSession(instanceId?: string, key?: string): void;
+  bindMetadata(meta: any, instanceId?: string, key?: string): void;
+}
+
+/**
+ * Driver operating via direct DOM access and local media tracking (same-origin fallback).
+ */
+export declare class DomDriver extends BaseDriver {
+  adaptersMap: Map<string, SRemoteCustomAdapter>;
+  eventListeners: Map<string, Set<(data: any) => void>>;
+  trackedMediaElements: WeakSet<Element>;
+  multiMode: boolean;
+  exclusiveMode: 'auto' | boolean | string;
+
+  constructor(options?: SRemoteClientOptions);
+  initDomAutoTracking(): void;
+  trackMediaElement(mediaEl: HTMLMediaElement): void;
+  startAdapterStatePolling(instanceId: string, adapter: SRemoteCustomAdapter): void;
+  stopAdapterStatePolling(instanceId: string): void;
+  list(): SRemoteInstanceInfo[];
+  setMultiMode(mode: boolean | null): void;
+  isMultiMode(): boolean;
+  setExclusive(mode: 'auto' | boolean | string | null): void;
+  getCapabilities(targetOrId?: string | HTMLElement): SRemoteCapabilities | null;
+  emit(event: string, payload?: any): void;
+}
+
+/**
  * SRemote Client SDK - Unified cross-domain iframe media controller and abstraction layer.
  */
 export class SRemoteClient {
@@ -300,6 +334,11 @@ export class SRemoteClient {
   mode: SRemoteClientMode;
 
   /**
+   * Active driver instance (UserscriptDriver or DomDriver).
+   */
+  readonly activeDriver: BaseDriver | null;
+
+  /**
    * Check if the cross-domain SRemote userscript is active and connected on the page.
    */
   isUserscriptAvailable(): boolean;
@@ -308,6 +347,11 @@ export class SRemoteClient {
    * Asynchronously wait until SRemote completes initial handshake and detection.
    */
   ready(): Promise<this>;
+
+  /**
+   * Synchronize registered parent adapters into the userscript environment.
+   */
+  syncAdaptersToUserscript(): void;
 
   // --- Sub-Namespaces ---
   instances: SRemoteInstancesNamespace;
@@ -324,9 +368,7 @@ export class SRemoteClient {
   seekTo(time: number, targetOrId?: string | HTMLElement, key?: string): Promise<any>;
   volume(vol: number, targetOrId?: string | HTMLElement, key?: string): Promise<any>;
   mute(muted?: boolean, targetOrId?: string | HTMLElement, key?: string): Promise<any>;
-  rate(rate: number, targetOrId?: string | HTMLElement, key?: string): Promise<any>;
   speed(rate: number, targetOrId?: string | HTMLElement, key?: string): Promise<any>;
-  playbackRate(rate: number, targetOrId?: string | HTMLElement, key?: string): Promise<any>;
   pip(enable?: boolean, targetOrId?: string | HTMLElement, key?: string | null): Promise<any>;
   quality(level: string | number, targetOrId?: string | HTMLElement, key?: string | null): Promise<any>;
   getQualities(targetOrId?: string | HTMLElement, key?: string | null): Promise<string[]>;
@@ -339,26 +381,21 @@ export class SRemoteClient {
   load(source: any, targetOrId?: string | HTMLElement, key?: string | null): Promise<any>;
   status(instanceId?: string, key?: string | null): SRemoteMediaState | null;
   capabilities(targetOrId?: string | HTMLElement, key?: string | null): SRemoteCapabilities | null;
-  getCapabilities(targetOrId?: string | HTMLElement, key?: string | null): SRemoteCapabilities | null;
 
   // --- Global Lifecycle & Events ---
   hello(options?: SRemoteHelloOptions, key?: string): void;
   bindMediaSession(instanceId?: string, key?: string): void;
   bindMetadata(meta: any, instanceId?: string, key?: string): void;
+  emit(event: string, payload?: any): void;
   on(event: string, handler: (data: any) => void, key?: string): () => void;
   off(event: string, handler: (data: any) => void): void;
 
   showInstallModal(options?: SRemoteInstallModalOptions): SRemoteInstallModalHandle;
-  promptUserscript(options?: SRemoteInstallModalOptions): SRemoteInstallModalHandle;
 }
 
-export function showInstallModal(options?: SRemoteInstallModalOptions): SRemoteInstallModalHandle;
-export declare const promptUserscript: (options?: SRemoteInstallModalOptions) => SRemoteInstallModalHandle;
+export declare function showInstallModal(options?: SRemoteInstallModalOptions): SRemoteInstallModalHandle;
 
-export function createSRemoteClient(options?: SRemoteClientOptions): SRemoteClient;
-export declare const createSRemote: (options?: SRemoteClientOptions) => SRemoteClient;
+export declare function createSRemote(options?: SRemoteClientOptions): SRemoteClient;
 
 export declare const sremote: SRemoteClient;
 export default sremote;
-
-export { lockGlobalSRemoteIfAbsent } from './guard.js';

@@ -26,7 +26,6 @@ export class SRemoteClient {
       },
       get: (instanceId, key) => this.status(instanceId, key),
       capabilities: (instanceId, key) => this.capabilities(instanceId, key),
-      getCapabilities: (instanceId, key) => this.capabilities(instanceId, key),
       getIframe: (instanceId, key) => {
         if (this.userscriptDriver.isAvailable()) {
           const api = this.userscriptDriver.getApi();
@@ -80,12 +79,10 @@ export class SRemoteClient {
         if (this.userscriptDriver.isAvailable()) {
           const api = this.userscriptDriver.getApi();
           if (api?.adapters?.register) return api.adapters.register(adapter, instanceId, key || this.options.passkey);
-          if (api?.adapters?.set) return api.adapters.set(adapter, instanceId, key || this.options.passkey);
           return this.userscriptDriver.useAdapter(adapter, instanceId, key);
         }
         return domId;
       },
-      set: (adapter, instanceId, key) => this.adapters.register(adapter, instanceId, key),
       unregister: (instanceId, key) => {
         if (this.userscriptDriver.isAvailable()) {
           const api = this.userscriptDriver.getApi();
@@ -127,8 +124,6 @@ export class SRemoteClient {
       for (const [id, adapter] of this.domDriver.adaptersMap.entries()) {
         if (api?.adapters?.register) {
           api.adapters.register(adapter, id, this.options.passkey);
-        } else if (api?.adapters?.set) {
-          api.adapters.set(adapter, id, this.options.passkey);
         } else {
           this.userscriptDriver.useAdapter(adapter, id, this.options.passkey);
         }
@@ -241,15 +236,7 @@ export class SRemoteClient {
     return this._exec('mute', muted, targetOrId, key);
   }
 
-  async rate(rate, targetOrId, key) {
-    return this._exec('speed', rate, targetOrId, key);
-  }
-
   async speed(rate, targetOrId, key) {
-    return this._exec('speed', rate, targetOrId, key);
-  }
-
-  async playbackRate(rate, targetOrId, key) {
     return this._exec('speed', rate, targetOrId, key);
   }
 
@@ -310,22 +297,6 @@ export class SRemoteClient {
     return null;
   }
 
-  getCapabilities(targetOrId, key) {
-    return this.capabilities(targetOrId, key);
-  }
-
-  useAdapter(adapter, instanceId, key) {
-    return this.adapters.register(adapter, instanceId, key);
-  }
-
-  removeAdapter(instanceId, key) {
-    return this.adapters.unregister(instanceId, key);
-  }
-
-  getCustomAdapter(instanceId, key) {
-    return this.adapters.get(instanceId, key);
-  }
-
   // --- Global Lifecycle & Events ---
   hello(options, key) {
     if (this.userscriptDriver.isAvailable()) {
@@ -373,18 +344,11 @@ export class SRemoteClient {
   showInstallModal(options) {
     return showInstallModal(options);
   }
-
-  promptUserscript(options) {
-    return showInstallModal(options);
-  }
 }
 
-export function createSRemoteClient(options) {
+export function createSRemote(options) {
   return new SRemoteClient(options);
 }
-
-// Convenient short alias
-export const createSRemote = createSRemoteClient;
 
 // Default singleton client instance
 export const sremote = new SRemoteClient();
@@ -398,5 +362,4 @@ if (typeof globalThis !== 'undefined') {
 
 export default sremote;
 
-export { showInstallModal, showInstallModal as promptUserscript };
-export { lockGlobalSRemoteIfAbsent } from './guard.js';
+export { showInstallModal };

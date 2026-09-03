@@ -1,6 +1,20 @@
 export default [
   // Global ignore patterns
-  { ignores: ['dist/**', 'node_modules/**', 'scripts/**', 'docs/**', 'playwright-report/**', 'tests-results/**', 'songscript/**', '**/*.json', '**/*.md'] },
+  {
+    ignores: [
+      'dist/**',
+      '**/dist/**',
+      'tarballs/**',
+      'node_modules/**',
+      'scripts/**',
+      'docs/**',
+      'playwright-report/**',
+      'tests-results/**',
+      'songscript/**',
+      '**/*.json',
+      '**/*.md',
+    ],
+  },
   // JS Config (ESLint 9+ Flat Config)
   {
     files: ['**/*.js', '**/*.mjs', '**/*.cjs'],

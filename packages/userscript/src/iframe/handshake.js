@@ -12,7 +12,6 @@ export function createIframeHandshake({
   resolver,
   bindPort,
   notifyState,
-  getMediaPort,
   closeMediaPort,
   treatAlmostEndAsEndSetter,
   currentHandshakeSetter,
