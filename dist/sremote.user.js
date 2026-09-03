@@ -311,14 +311,6 @@
 	function generateInstanceId(prefix = "sv") {
 		return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
 	}
-	function getMeta(selectors) {
-		for (const s of selectors) {
-			const el = document.querySelector(s);
-			const val = el?.getAttribute("content") || el?.getAttribute("href");
-			if (val) return val.trim();
-		}
-		return "";
-	}
 	function createButton({ className, text, title, onClick }) {
 		const btn = document.createElement("button");
 		if (className) btn.className = className;
@@ -330,6 +322,99 @@
 			onClick(e);
 		});
 		return btn;
+	}
+	async function executeAdapterAction(adapter, action, value = void 0, isPureGet = false) {
+		if (!adapter || typeof adapter !== "object") return false;
+		const norm = String(action || "").toLowerCase();
+		try {
+			switch (norm) {
+				case "play":
+					if (!isPureGet && typeof adapter.play === "function") await adapter.play();
+					return true;
+				case "pause":
+					if (!isPureGet && typeof adapter.pause === "function") await adapter.pause();
+					return true;
+				case "toggle":
+					if (!isPureGet) {
+						if (typeof adapter.toggle === "function") await adapter.toggle();
+						else if (typeof adapter.play === "function" && typeof adapter.pause === "function") {
+							if (typeof adapter.paused === "function" ? adapter.paused() : typeof adapter.paused === "boolean" ? adapter.paused : true) await adapter.play();
+							else await adapter.pause();
+						}
+					}
+					return true;
+				case "stop":
+					if (!isPureGet) {
+						if (typeof adapter.stop === "function") await adapter.stop();
+						else {
+							if (typeof adapter.pause === "function") await adapter.pause();
+							if (typeof adapter.seekTo === "function") await adapter.seekTo(0);
+						}
+					}
+					return true;
+				case "seek":
+					if (!isPureGet) {
+						if (typeof adapter.seek === "function") await adapter.seek(Number(value));
+						else if (typeof adapter.seekTo === "function" && typeof adapter.getCurrentTime === "function") {
+							const cur = Number(await adapter.getCurrentTime() || 0);
+							await adapter.seekTo(Math.max(0, cur + Number(value)));
+						}
+					}
+					return true;
+				case "currenttime":
+				case "seekto":
+					if (!isPureGet && typeof adapter.seekTo === "function") await adapter.seekTo(Number(value));
+					return true;
+				case "volume":
+					if (!isPureGet && typeof adapter.setVolume === "function") await adapter.setVolume(Number(value));
+					return true;
+				case "muted":
+				case "mute":
+					if (!isPureGet && typeof adapter.setMuted === "function") await adapter.setMuted(Boolean(value));
+					return true;
+				case "speed":
+				case "rate":
+				case "playbackrate":
+					if (!isPureGet && typeof adapter.setPlaybackRate === "function") await adapter.setPlaybackRate(Number(value) || 1);
+					return true;
+				case "quality":
+					if (!isPureGet && typeof adapter.setQuality === "function") await adapter.setQuality(value);
+					return true;
+				case "subtitle":
+					if (!isPureGet && typeof adapter.setSubtitle === "function") await adapter.setSubtitle(value);
+					return true;
+				case "shuffle":
+					if (!isPureGet && typeof adapter.setShuffle === "function") await adapter.setShuffle(value);
+					return true;
+				case "repeat":
+					if (!isPureGet && typeof adapter.setRepeat === "function") await adapter.setRepeat(value);
+					return true;
+				case "next":
+					if (!isPureGet && typeof adapter.next === "function") await adapter.next();
+					return true;
+				case "previous":
+					if (!isPureGet && typeof adapter.previous === "function") await adapter.previous();
+					return true;
+				case "pip":
+				case "enterpip":
+				case "exitpip":
+					if (!isPureGet) {
+						if (typeof adapter.pip === "function") await adapter.pip(value);
+						else if (typeof adapter.requestPip === "function") await adapter.requestPip(value);
+					}
+					return true;
+				case "load":
+					if (!isPureGet) {
+						if (typeof adapter.load === "function") await adapter.load(value);
+						else console_warn("[SRemote] load() is not implemented on this custom adapter.");
+					}
+					return true;
+				default: return false;
+			}
+		} catch (err) {
+			console_warn(`[sremote] Error executing adapter action '${action}':`, err);
+			return true;
+		}
 	}
 	var I18N = {
 		vi: {
@@ -1279,7 +1364,6 @@
 				get: getIframeCSS,
 				remove: removeIframeCSS
 			}),
-			bindMediaSession: (instanceId, key) => dispatchCommand("bindMediaSession", void 0, instanceId, key),
 			bindMetadata: (meta, instanceId, key) => dispatchCommand("bindMetadata", meta, instanceId, key),
 			on: (event, handler, key) => {
 				if (!validateDomainAccess(key)) {
@@ -1437,7 +1521,11 @@
 			return instances.size > 1;
 		}
 		function getLatestActiveInstanceId() {
-			if (currentActiveInstanceId && instances.has(currentActiveInstanceId)) return currentActiveInstanceId;
+			if (currentActiveInstanceId && (instances.has(currentActiveInstanceId) || parentAdaptersMap.has(currentActiveInstanceId))) return currentActiveInstanceId;
+			if (parentAdaptersMap.size > 0) {
+				currentActiveInstanceId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
+				return currentActiveInstanceId;
+			}
 			let latestId = null;
 			let latestTime = -1;
 			for (const [id, item] of instances.entries()) {
@@ -2082,108 +2170,7 @@
 				else if (parentAdaptersMap.has(instanceManager.currentActiveInstanceId)) targetId = instanceManager.currentActiveInstanceId;
 			}
 			if (!targetId || !parentAdaptersMap.has(targetId)) return false;
-			const adapter = parentAdaptersMap.get(targetId);
-			const norm = action.toLowerCase();
-			try {
-				if (norm === "play" && typeof adapter.play === "function") {
-					adapter.play();
-					return true;
-				}
-				if (norm === "pause" && typeof adapter.pause === "function") {
-					adapter.pause();
-					return true;
-				}
-				if (norm === "toggle") {
-					if (typeof adapter.toggle === "function") {
-						adapter.toggle();
-						return true;
-					}
-					if (typeof adapter.play === "function" && typeof adapter.pause === "function") {
-						if (typeof adapter.paused === "function" ? adapter.paused() : typeof adapter.paused === "boolean" ? adapter.paused : true) adapter.play();
-						else adapter.pause();
-						return true;
-					}
-				}
-				if (norm === "seek" && typeof adapter.seek === "function") {
-					adapter.seek(Number(value));
-					return true;
-				}
-				if (norm === "seek" && typeof adapter.seekTo === "function" && typeof adapter.getCurrentTime === "function") {
-					const cur = Number(adapter.getCurrentTime() || 0);
-					adapter.seekTo(Math.max(0, cur + Number(value)));
-					return true;
-				}
-				if ((norm === "currenttime" || norm === "seekto") && typeof adapter.seekTo === "function") {
-					adapter.seekTo(Number(value));
-					return true;
-				}
-				if (norm === "volume" && typeof adapter.setVolume === "function") {
-					adapter.setVolume(Number(value));
-					return true;
-				}
-				if ((norm === "muted" || norm === "mute") && typeof adapter.setMuted === "function") {
-					adapter.setMuted(Boolean(value));
-					return true;
-				}
-				if ((norm === "speed" || norm === "rate" || norm === "playbackrate") && typeof adapter.setPlaybackRate === "function") {
-					adapter.setPlaybackRate(Number(value) || 1);
-					return true;
-				}
-				if (norm === "quality" && typeof adapter.setQuality === "function") {
-					adapter.setQuality(value);
-					return true;
-				}
-				if (norm === "subtitle" && typeof adapter.setSubtitle === "function") {
-					adapter.setSubtitle(value);
-					return true;
-				}
-				if (norm === "shuffle" && typeof adapter.setShuffle === "function") {
-					adapter.setShuffle(value);
-					return true;
-				}
-				if (norm === "repeat" && typeof adapter.setRepeat === "function") {
-					adapter.setRepeat(value);
-					return true;
-				}
-				if (norm === "next" && typeof adapter.next === "function") {
-					adapter.next();
-					return true;
-				}
-				if (norm === "previous" && typeof adapter.previous === "function") {
-					adapter.previous();
-					return true;
-				}
-				if (norm === "pip" || norm === "enterpip" || norm === "exitpip") {
-					if (typeof adapter.pip === "function") {
-						adapter.pip(value);
-						return true;
-					}
-					if (typeof adapter.requestPip === "function") {
-						adapter.requestPip(value);
-						return true;
-					}
-				}
-				if (norm === "load") {
-					if (typeof adapter.load === "function") {
-						adapter.load(value);
-						return true;
-					}
-					console_warn("[SRemote] load() is primarily designed for custom adapters and is not implemented by default. Implement it via sremote.useAdapter().");
-					return true;
-				}
-				if (norm === "stop") {
-					if (typeof adapter.stop === "function") adapter.stop();
-					else {
-						if (typeof adapter.pause === "function") adapter.pause();
-						if (typeof adapter.seekTo === "function") adapter.seekTo(0);
-					}
-					return true;
-				}
-			} catch (e) {
-				console_warn(`[sremote] Error invoking parent adapter action for '${targetId}':`, e);
-				return true;
-			}
-			return false;
+			return executeAdapterAction(parentAdaptersMap.get(targetId), action, value);
 		}
 		function dispatchCommand(action, value, targetInstanceId = null, key = null) {
 			if (!validateDomainAccess(key)) {
@@ -2420,6 +2407,10 @@
 			this.metadata = null;
 			this.playbackState = "none";
 			this._handlers = new Map();
+			this._resolver = null;
+		}
+		setResolver(resolver) {
+			this._resolver = resolver;
 		}
 		setActionHandler(action, handler) {
 			if (typeof handler === "function") this._handlers.set(action, handler);
@@ -2427,6 +2418,21 @@
 		}
 		setPositionState(state) {
 			this.positionState = state;
+		}
+		hasHandler(action) {
+			if (this._handlers.has(action)) return true;
+			const media = this._resolver?.getActiveMedia?.();
+			if (media && (media.tagName === "VIDEO" || media.tagName === "AUDIO")) return [
+				"play",
+				"pause",
+				"stop",
+				"seekto",
+				"seekforward",
+				"seekbackward",
+				"previoustrack",
+				"nexttrack"
+			].includes(action);
+			return false;
 		}
 		async invoke(action, details = {}) {
 			const handler = this._handlers.get(action);
@@ -2438,6 +2444,39 @@
 				return true;
 			} catch (e) {
 				console_warn(`[sremote] MockMediaSession handler for ${action} error:`, e);
+			}
+			const media = this._resolver?.getActiveMedia?.();
+			if (media && (media.tagName === "VIDEO" || media.tagName === "AUDIO")) try {
+				switch (action) {
+					case "play":
+						if (typeof media.play === "function") await media.play();
+						return true;
+					case "pause":
+						if (typeof media.pause === "function") media.pause();
+						return true;
+					case "stop":
+						if (typeof media.pause === "function") media.pause();
+						media.currentTime = 0;
+						return true;
+					case "seekto":
+						if (typeof details.seekTime === "number") {
+							media.currentTime = details.seekTime;
+							return true;
+						}
+						break;
+					case "seekforward": {
+						const offset = details.seekOffset || 10;
+						media.currentTime = (media.currentTime || 0) + offset;
+						return true;
+					}
+					case "seekbackward": {
+						const offset = details.seekOffset || 10;
+						media.currentTime = Math.max(0, (media.currentTime || 0) - offset);
+						return true;
+					}
+				}
+			} catch (err) {
+				console_warn(`[sremote] MockMediaSession fallback ${action} error:`, err);
 			}
 			return false;
 		}
@@ -2490,7 +2529,8 @@
 		let activeMedia = null;
 		let mediaType = null;
 		function resolveActiveMedia() {
-			if (activeMedia && (activeMedia.isConnected || createdMediaPool.has(activeMedia))) return true;
+			if (activeMedia && (mediaType === "adapter" || activeMedia.isConnected || createdMediaPool.has(activeMedia))) return true;
+			if (mediaType === "adapter" && activeMedia) return true;
 			const all = findAllMedia();
 			if (all.length > 0) {
 				const valid = all.find((el) => !el.paused && !el.ended && el.currentTime > 0) || all.find((el) => !el.paused) || all.find((el) => el.duration && el.duration > 0 || el.currentSrc || el.src) || all[0];
@@ -2500,7 +2540,10 @@
 				return true;
 			}
 			const ms = pageWindow.navigator?.mediaSession || navigator?.mediaSession;
-			if (mockMediaSessionInstance._handlers.size > 0 || ms && (ms.metadata || ms.playbackState !== "none")) {
+			const hasHandlers = mockMediaSessionInstance._handlers.size > 0;
+			const hasMetadata = Boolean(ms?.metadata && (ms.metadata.title || ms.metadata.artist));
+			const isPlayingState = ms?.playbackState === "playing" || ms?.playbackState === "paused";
+			if (hasHandlers || hasMetadata || isPlayingState) {
 				activeMedia = activeMediaSession;
 				mediaType = "mediasession";
 				return true;
@@ -2697,90 +2740,7 @@
 			el.pause();
 		} catch {}
 	}
-	function bindMediaSessionDefaults({ activeMediaGetter, mediaTypeGetter, resolveActiveMedia }) {
-		resolveActiveMedia();
-		const ms = navigator.mediaSession || mockMediaSessionInstance;
-		const activeMedia = activeMediaGetter();
-		const title = getMeta([
-			"meta[property=\"og:title\"]",
-			"meta[name=\"twitter:title\"]",
-			"meta[name=\"title\"]"
-		]) || document.title || "Unknown Title";
-		const artist = getMeta([
-			"meta[property=\"og:site_name\"]",
-			"meta[name=\"author\"]",
-			"meta[name=\"twitter:site\"]"
-		]) || window.location.hostname;
-		const artworkSrc = getMeta([
-			"meta[property=\"og:image\"]",
-			"meta[name=\"twitter:image\"]",
-			"link[rel=\"image_src\"]"
-		]) || (activeMedia?.tagName === "VIDEO" ? activeMedia.poster : "");
-		if (!ms.metadata) {
-			const metaObj = {
-				title,
-				artist,
-				album: "",
-				artwork: artworkSrc ? [{ src: artworkSrc }] : []
-			};
-			try {
-				if (typeof MediaMetadata !== "undefined" && navigator.mediaSession) navigator.mediaSession.metadata = new MediaMetadata(metaObj);
-				mockMediaSessionInstance.metadata = metaObj;
-			} catch (e) {
-				console_warn("[sremote] Error setting fallback MediaMetadata:", e);
-			}
-		}
-		const registerIfMissing = (action, handler) => {
-			if (!mockMediaSessionInstance._handlers.has(action)) try {
-				ms.setActionHandler?.(action, handler);
-				mockMediaSessionInstance.setActionHandler(action, handler);
-			} catch {}
-		};
-		registerIfMissing("play", async () => {
-			const media = activeMediaGetter();
-			const type = mediaTypeGetter();
-			if (media && (type === "video" || type === "audio")) await safePlayMedia(media);
-		});
-		registerIfMissing("pause", () => {
-			const media = activeMediaGetter();
-			const type = mediaTypeGetter();
-			if (media && (type === "video" || type === "audio")) safePauseMedia(media);
-		});
-		registerIfMissing("stop", () => {
-			const media = activeMediaGetter();
-			const type = mediaTypeGetter();
-			if (media && (type === "video" || type === "audio")) {
-				safePauseMedia(media);
-				safeSetProp(media, descriptors.currentTime, "currentTime", 0);
-			}
-		});
-		registerIfMissing("seekto", (details) => {
-			const media = activeMediaGetter();
-			if (media && typeof details.seekTime === "number") safeSetProp(media, descriptors.currentTime, "currentTime", details.seekTime);
-		});
-		registerIfMissing("seekforward", (details) => {
-			const media = activeMediaGetter();
-			if (media) {
-				const offset = details.seekOffset || 10;
-				const cur = safeGetProp(media, descriptors.currentTime, "currentTime") || 0;
-				safeSetProp(media, descriptors.currentTime, "currentTime", cur + offset);
-			}
-		});
-		registerIfMissing("seekbackward", (details) => {
-			const media = activeMediaGetter();
-			if (media) {
-				const offset = details.seekOffset || 10;
-				const cur = safeGetProp(media, descriptors.currentTime, "currentTime") || 0;
-				safeSetProp(media, descriptors.currentTime, "currentTime", Math.max(0, cur - offset));
-			}
-		});
-	}
-	function handleBindMetadata({ metadata, instanceId, emitToParent, sendMediaSessionState, activeMediaGetter, mediaTypeGetter, resolveActiveMedia }) {
-		bindMediaSessionDefaults({
-			activeMediaGetter,
-			mediaTypeGetter,
-			resolveActiveMedia
-		});
+	function handleBindMetadata({ metadata, instanceId, emitToParent, sendMediaSessionState }) {
 		if (!metadata || typeof metadata !== "object") return;
 		const safeArtworks = [];
 		if (Array.isArray(metadata.artwork)) for (const art of metadata.artwork) {
@@ -2811,6 +2771,15 @@
 			resolveActiveMedia();
 			const activeMedia = activeMediaGetter();
 			const mediaType = mediaTypeGetter();
+			if (mediaType === "adapter" && activeMedia && typeof activeMedia === "object") {
+				if (!await executeAdapterAction(activeMedia, norm, value, isPureGet)) return false;
+				let resVal;
+				if (typeof activeMedia.getState === "function") try {
+					resVal = await activeMedia.getState();
+				} catch {}
+				if (isPureGet) notifyState(action, resVal);
+				return true;
+			}
 			if ((mediaType === "video" || mediaType === "audio") && activeMedia) {
 				let resVal;
 				const getPaused = () => Boolean(safeGetProp(activeMedia, descriptors.paused, "paused") ?? activeMedia.paused);
@@ -2884,36 +2853,20 @@
 							await document.exitPictureInPicture();
 						} catch {}
 						break;
-					case "pip":
-						if (!isPureGet) {
-							if (document.pictureInPictureElement) try {
-								await document.exitPictureInPicture();
-							} catch {}
-							else if (activeMedia.requestPictureInPicture) try {
-								await activeMedia.requestPictureInPicture();
-							} catch {}
-						}
-						break;
-					case "bindmediasession":
-						if (!navigator?.mediaSession) {
-							console_error("[sremote] bindmediasession: navigator.mediaSession is not defined");
-							return false;
-						}
-						bindMediaSessionDefaults({
-							activeMediaGetter,
-							mediaTypeGetter,
-							resolveActiveMedia
-						});
-						break;
+					case "pip": if (!isPureGet) {
+						if (document.pictureInPictureElement) try {
+							await document.exitPictureInPicture();
+						} catch {}
+						else if (activeMedia.requestPictureInPicture) try {
+							await activeMedia.requestPictureInPicture();
+						} catch {}
+					}
 					case "bindmetadata":
 						handleBindMetadata({
 							metadata: value,
 							instanceId,
 							emitToParent,
-							sendMediaSessionState,
-							activeMediaGetter,
-							mediaTypeGetter,
-							resolveActiveMedia
+							sendMediaSessionState
 						});
 						break;
 					case "nexttrack":
@@ -3520,6 +3473,7 @@
 			});
 		}
 		const resolver = createMediaResolver(createdMediaPool, bindVideoEvents);
+		mockMediaSessionInstance.setResolver(resolver);
 		function trackMediaElement(el) {
 			if (!el) return;
 			createdMediaPool.add(el);

@@ -1,4 +1,5 @@
 import { safeGetProp, safeSetProp } from '../core/utils.js';
+import { executeAdapterAction } from '../core/adapter-runner.js';
 import { descriptors, console_warn } from '../config.js';
 import { mockMediaSessionInstance } from './media-session.js';
 import { findAllMedia } from './media-hunter.js';
@@ -191,7 +192,21 @@ export function createMediaController({
     const activeMedia = activeMediaGetter();
     const mediaType = mediaTypeGetter();
 
-    // HTML5 Video/Audio Execution
+    // 1. Custom Adapter Execution
+    if (mediaType === 'adapter' && activeMedia && typeof activeMedia === 'object') {
+      const handled = await executeAdapterAction(activeMedia, norm, value, isPureGet);
+      if (!handled) return false;
+      let resVal;
+      if (typeof activeMedia.getState === 'function') {
+        try {
+          resVal = await activeMedia.getState();
+        } catch {}
+      }
+      if (isPureGet) notifyState(action, resVal);
+      return true;
+    }
+
+    // 2. HTML5 Video/Audio Execution
     if ((mediaType === 'video' || mediaType === 'audio') && activeMedia) {
       let resVal;
       const getPaused = () => Boolean(safeGetProp(activeMedia, descriptors.paused, 'paused') ?? activeMedia.paused);

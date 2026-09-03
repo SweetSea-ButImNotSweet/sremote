@@ -26,7 +26,11 @@ export function createInstanceManager() {
   }
 
   function getLatestActiveInstanceId() {
-    if (currentActiveInstanceId && instances.has(currentActiveInstanceId)) {
+    if (currentActiveInstanceId && (instances.has(currentActiveInstanceId) || parentAdaptersMap.has(currentActiveInstanceId))) {
+      return currentActiveInstanceId;
+    }
+    if (parentAdaptersMap.size > 0) {
+      currentActiveInstanceId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
       return currentActiveInstanceId;
     }
     let latestId = null;

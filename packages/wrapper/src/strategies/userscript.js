@@ -25,16 +25,34 @@ export class UserscriptDriver extends BaseDriver {
   }
 
   /**
+   * Helper to resolve a method by dot-path (e.g. 'adapters.register' or 'play')
+   * @private
+   */
+  _resolveMethod(api, methodPath) {
+    if (!api || !methodPath) return null;
+    const parts = methodPath.split('.');
+    let cur = api;
+    let parent = null;
+    for (const part of parts) {
+      if (!cur || (typeof cur !== 'object' && typeof cur !== 'function')) return null;
+      parent = cur;
+      cur = cur[part];
+    }
+    if (typeof cur !== 'function') return null;
+    return { fn: cur, context: parent };
+  }
+
+  /**
    * Helper to invoke a required API method with passkey
    * @private
    */
   _callRequired(method, ...args) {
     const api = this.getApi(true);
-    const fn = api[method];
-    if (typeof fn !== 'function') {
+    const resolved = this._resolveMethod(api, method);
+    if (!resolved) {
       throw new Error(`[SRemote:Wrapper] Method '${method}' not supported by userscript`);
     }
-    return fn.call(api, ...args);
+    return resolved.fn.call(resolved.context, ...args);
   }
 
   /**
@@ -43,8 +61,9 @@ export class UserscriptDriver extends BaseDriver {
    */
   _callOptional(method, defaultVal, ...args) {
     const api = this.getApi();
-    if (!api || typeof api[method] !== 'function') return defaultVal;
-    return api[method](...args);
+    const resolved = this._resolveMethod(api, method);
+    if (!resolved) return defaultVal;
+    return resolved.fn.call(resolved.context, ...args);
   }
 
   async play(instanceId, key) {
@@ -80,12 +99,7 @@ export class UserscriptDriver extends BaseDriver {
   }
 
   async speed(rate, instanceId, key) {
-    const api = this.getApi(true);
-    const passkey = this.getPasskey(key);
-    if (typeof api.speed === 'function') {
-      return api.speed(rate, instanceId, passkey);
-    }
-    return api.playbackRate(rate, instanceId, passkey);
+    return this._callRequired('rate', rate, instanceId, this.getPasskey(key));
   }
 
   async pip(enable, instanceId, key) {
@@ -121,42 +135,36 @@ export class UserscriptDriver extends BaseDriver {
   }
 
   async next(instanceId, key) {
-    const api = this.getApi();
-    const passkey = this.getPasskey(key);
-    if (api && typeof api.next === 'function') return api.next(instanceId, passkey);
-    return this._callOptional('nexttrack', undefined, instanceId, passkey);
+    return this._callOptional('next', undefined, instanceId, this.getPasskey(key));
   }
 
   async previous(instanceId, key) {
-    const api = this.getApi();
-    const passkey = this.getPasskey(key);
-    if (api && typeof api.previous === 'function') return api.previous(instanceId, passkey);
-    return this._callOptional('previoustrack', undefined, instanceId, passkey);
+    return this._callOptional('previous', undefined, instanceId, this.getPasskey(key));
   }
 
   assignId(iframeOrSelector, customId) {
-    return this._callOptional('assignId', false, iframeOrSelector, customId);
+    return this._callOptional('instances.assign', false, iframeOrSelector, customId);
   }
 
   getIframe(instanceId, key) {
-    return this._callOptional('getIframe', null, instanceId, this.getPasskey(key));
+    return this._callOptional('instances.getIframe', null, instanceId, this.getPasskey(key));
   }
 
   // --- Custom Adapter Management ---
   useAdapter(adapter, instanceId, key) {
-    return this._callOptional('useAdapter', null, adapter, instanceId, this.getPasskey(key));
+    return this._callOptional('adapters.register', null, adapter, instanceId, this.getPasskey(key));
   }
 
   removeAdapter(instanceId, key) {
-    return this._callOptional('removeAdapter', false, instanceId, this.getPasskey(key));
+    return this._callOptional('adapters.unregister', false, instanceId, this.getPasskey(key));
   }
 
   getCustomAdapter(instanceId, key) {
-    return this._callOptional('getCustomAdapter', null, instanceId, this.getPasskey(key));
+    return this._callOptional('adapters.get', null, instanceId, this.getPasskey(key));
   }
 
   list(key) {
-    return this._callOptional('list', [], this.getPasskey(key));
+    return this._callOptional('instances.list', [], this.getPasskey(key));
   }
 
   status(instanceId, key) {
@@ -164,18 +172,7 @@ export class UserscriptDriver extends BaseDriver {
   }
 
   capabilities(instanceId, key) {
-    const api = this.getApi();
-    const passkey = this.getPasskey(key);
-    if (api && typeof api.capabilities === 'function') {
-      return api.capabilities(instanceId, passkey);
-    }
-    if (api?.instances && typeof api.instances.capabilities === 'function') {
-      return api.instances.capabilities(instanceId, passkey);
-    }
-    if (api && typeof api.getCapabilities === 'function') {
-      return api.getCapabilities(instanceId, passkey);
-    }
-    return null;
+    return this._callOptional('capabilities', null, instanceId, this.getPasskey(key));
   }
 
   bindMetadata(meta, instanceId, key) {
@@ -183,27 +180,27 @@ export class UserscriptDriver extends BaseDriver {
   }
 
   setMultiMode(mode, key) {
-    return this._callOptional('setMultiMode', undefined, mode, this.getPasskey(key));
+    return this._callOptional('instances.setMultiMode', undefined, mode, this.getPasskey(key));
   }
 
   isMultiMode(key) {
-    return this._callOptional('isMultiMode', false, this.getPasskey(key));
+    return this._callOptional('instances.isMultiMode', false, this.getPasskey(key));
   }
 
   setExclusive(mode, key) {
-    return this._callOptional('setExclusive', undefined, mode, this.getPasskey(key));
+    return this._callOptional('instances.setExclusive', undefined, mode, this.getPasskey(key));
   }
 
   query(key) {
-    return this._callOptional('query', [], this.getPasskey(key));
+    return this._callOptional('instances.query', [], this.getPasskey(key));
   }
 
   call(action, params, instanceId, key) {
-    return this._callRequired('call', action, params, instanceId, this.getPasskey(key));
+    return this._callRequired('rpc.call', action, params, instanceId, this.getPasskey(key));
   }
 
   postWindowMessage(message, targetOrigin = '*', instanceId = null, from = 'parent', key = null) {
-    return this._callOptional('postWindowMessage', false, message, targetOrigin, instanceId, from, this.getPasskey(key));
+    return this._callOptional('rpc.postMessage', false, message, targetOrigin, instanceId, from, this.getPasskey(key));
   }
 
   on(event, handler, key) {

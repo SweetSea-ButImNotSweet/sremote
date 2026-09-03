@@ -135,14 +135,26 @@ var o = class extends e {
 		if (e && !n) throw Error("[SRemote:Wrapper] SRemote Userscript not detected");
 		return n;
 	}
+	_resolveMethod(e, t) {
+		if (!e || !t) return null;
+		let n = t.split("."), r = e, i = null;
+		for (let e of n) {
+			if (!r || typeof r != "object" && typeof r != "function") return null;
+			i = r, r = r[e];
+		}
+		return typeof r == "function" ? {
+			fn: r,
+			context: i
+		} : null;
+	}
 	_callRequired(e, ...t) {
-		let n = this.getApi(!0), r = n[e];
-		if (typeof r != "function") throw Error(`[SRemote:Wrapper] Method '${e}' not supported by userscript`);
-		return r.call(n, ...t);
+		let n = this.getApi(!0), r = this._resolveMethod(n, e);
+		if (!r) throw Error(`[SRemote:Wrapper] Method '${e}' not supported by userscript`);
+		return r.fn.call(r.context, ...t);
 	}
 	_callOptional(e, t, ...n) {
-		let r = this.getApi();
-		return !r || typeof r[e] != "function" ? t : r[e](...n);
+		let r = this.getApi(), i = this._resolveMethod(r, e);
+		return i ? i.fn.call(i.context, ...n) : t;
 	}
 	async play(e, t) {
 		return this._callRequired("play", e, this.getPasskey(t));
@@ -169,8 +181,7 @@ var o = class extends e {
 		return this._callRequired("mute", e, t, this.getPasskey(n));
 	}
 	async speed(e, t, n) {
-		let r = this.getApi(!0), i = this.getPasskey(n);
-		return typeof r.speed == "function" ? r.speed(e, t, i) : r.playbackRate(e, t, i);
+		return this._callRequired("rate", e, t, this.getPasskey(n));
 	}
 	async pip(e, t, n) {
 		return this._callRequired("pip", e, t, this.getPasskey(n));
@@ -197,61 +208,55 @@ var o = class extends e {
 		return this._callOptional("repeat", void 0, e, t, this.getPasskey(n));
 	}
 	async next(e, t) {
-		let n = this.getApi(), r = this.getPasskey(t);
-		return n && typeof n.next == "function" ? n.next(e, r) : this._callOptional("nexttrack", void 0, e, r);
+		return this._callOptional("next", void 0, e, this.getPasskey(t));
 	}
 	async previous(e, t) {
-		let n = this.getApi(), r = this.getPasskey(t);
-		return n && typeof n.previous == "function" ? n.previous(e, r) : this._callOptional("previoustrack", void 0, e, r);
+		return this._callOptional("previous", void 0, e, this.getPasskey(t));
 	}
 	assignId(e, t) {
-		return this._callOptional("assignId", !1, e, t);
+		return this._callOptional("instances.assign", !1, e, t);
 	}
 	getIframe(e, t) {
-		return this._callOptional("getIframe", null, e, this.getPasskey(t));
+		return this._callOptional("instances.getIframe", null, e, this.getPasskey(t));
 	}
 	useAdapter(e, t, n) {
-		return this._callOptional("useAdapter", null, e, t, this.getPasskey(n));
+		return this._callOptional("adapters.register", null, e, t, this.getPasskey(n));
 	}
 	removeAdapter(e, t) {
-		return this._callOptional("removeAdapter", !1, e, this.getPasskey(t));
+		return this._callOptional("adapters.unregister", !1, e, this.getPasskey(t));
 	}
 	getCustomAdapter(e, t) {
-		return this._callOptional("getCustomAdapter", null, e, this.getPasskey(t));
+		return this._callOptional("adapters.get", null, e, this.getPasskey(t));
 	}
 	list(e) {
-		return this._callOptional("list", [], this.getPasskey(e));
+		return this._callOptional("instances.list", [], this.getPasskey(e));
 	}
 	status(e, t) {
 		return this._callOptional("status", null, e, this.getPasskey(t));
 	}
 	capabilities(e, t) {
-		let n = this.getApi(), r = this.getPasskey(t);
-		return n && typeof n.capabilities == "function" ? n.capabilities(e, r) : n?.instances && typeof n.instances.capabilities == "function" ? n.instances.capabilities(e, r) : n && typeof n.getCapabilities == "function" ? n.getCapabilities(e, r) : null;
-	}
-	bindMediaSession(e, t) {
-		return this._callOptional("bindMediaSession", void 0, e, this.getPasskey(t));
+		return this._callOptional("capabilities", null, e, this.getPasskey(t));
 	}
 	bindMetadata(e, t, n) {
 		return this._callOptional("bindMetadata", void 0, e, t, this.getPasskey(n));
 	}
 	setMultiMode(e, t) {
-		return this._callOptional("setMultiMode", void 0, e, this.getPasskey(t));
+		return this._callOptional("instances.setMultiMode", void 0, e, this.getPasskey(t));
 	}
 	isMultiMode(e) {
-		return this._callOptional("isMultiMode", !1, this.getPasskey(e));
+		return this._callOptional("instances.isMultiMode", !1, this.getPasskey(e));
 	}
 	setExclusive(e, t) {
-		return this._callOptional("setExclusive", void 0, e, this.getPasskey(t));
+		return this._callOptional("instances.setExclusive", void 0, e, this.getPasskey(t));
 	}
 	query(e) {
-		return this._callOptional("query", [], this.getPasskey(e));
+		return this._callOptional("instances.query", [], this.getPasskey(e));
 	}
 	call(e, t, n, r) {
-		return this._callRequired("call", e, t, n, this.getPasskey(r));
+		return this._callRequired("rpc.call", e, t, n, this.getPasskey(r));
 	}
 	postWindowMessage(e, t = "*", n = null, r = "parent", i = null) {
-		return this._callOptional("postWindowMessage", !1, e, t, n, r, this.getPasskey(i));
+		return this._callOptional("rpc.postMessage", !1, e, t, n, r, this.getPasskey(i));
 	}
 	on(e, t, n) {
 		let r = this.getApi();
@@ -1101,9 +1106,6 @@ var v = class {
 			if (n && typeof n.hello == "function") return n.hello(e, t || this.options.passkey);
 		}
 	}
-	bindMediaSession(e, t) {
-		return this.userscriptDriver.bindMediaSession(e, t);
-	}
 	bindMetadata(e, t, n) {
 		return this.userscriptDriver.bindMetadata(e, t, n);
 	}
@@ -1281,4 +1283,4 @@ function x(e = {}) {
 	return T;
 }
 //#endregion
-export { e as BaseDriver, f as DomDriver, v as SRemoteClient, o as UserscriptDriver, y as createSRemote, x as createUniversalAdapter, _ as showInstallModal, b as sremote };
+export { e as BaseDriver, f as DomDriver, v as SRemoteClient, o as UserscriptDriver, y as createSRemote, x as createUniversalAdapter, b as default, b as sremote, _ as showInstallModal };

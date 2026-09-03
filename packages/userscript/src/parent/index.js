@@ -1,6 +1,7 @@
 import { VERSION, NS, ENABLE_DEBUG_API, console_log, console_warn, console_error } from '../config.js';
 import { Storage, GM } from '../core/storage.js';
 import { getOriginStorageKeys } from '../core/utils.js';
+import { executeAdapterAction } from '../core/adapter-runner.js';
 import { t } from '../core/i18n.js';
 import { registerMenuCommands } from './menu.js';
 import { pendingCommandQueue } from './queue.js';
@@ -85,111 +86,7 @@ export function initParentController() {
     if (!targetId || !parentAdaptersMap.has(targetId)) return false;
 
     const adapter = parentAdaptersMap.get(targetId);
-    const norm = action.toLowerCase();
-    try {
-      if (norm === 'play' && typeof adapter.play === 'function') {
-        adapter.play();
-        return true;
-      }
-      if (norm === 'pause' && typeof adapter.pause === 'function') {
-        adapter.pause();
-        return true;
-      }
-      if (norm === 'toggle') {
-        if (typeof adapter.toggle === 'function') {
-          adapter.toggle();
-          return true;
-        }
-        if (typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
-          const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : typeof adapter.paused === 'boolean' ? adapter.paused : true;
-          if (isPaused) {
-            adapter.play();
-          } else {
-            adapter.pause();
-          }
-          return true;
-        }
-      }
-      if (norm === 'seek' && typeof adapter.seek === 'function') {
-        adapter.seek(Number(value));
-        return true;
-      }
-      if (norm === 'seek' && typeof adapter.seekTo === 'function' && typeof adapter.getCurrentTime === 'function') {
-        const cur = Number(adapter.getCurrentTime() || 0);
-        adapter.seekTo(Math.max(0, cur + Number(value)));
-        return true;
-      }
-      if ((norm === 'currenttime' || norm === 'seekto') && typeof adapter.seekTo === 'function') {
-        adapter.seekTo(Number(value));
-        return true;
-      }
-      if (norm === 'volume' && typeof adapter.setVolume === 'function') {
-        adapter.setVolume(Number(value));
-        return true;
-      }
-      if ((norm === 'muted' || norm === 'mute') && typeof adapter.setMuted === 'function') {
-        adapter.setMuted(Boolean(value));
-        return true;
-      }
-      if ((norm === 'speed' || norm === 'rate' || norm === 'playbackrate') && typeof adapter.setPlaybackRate === 'function') {
-        adapter.setPlaybackRate(Number(value) || 1);
-        return true;
-      }
-      if (norm === 'quality' && typeof adapter.setQuality === 'function') {
-        adapter.setQuality(value);
-        return true;
-      }
-      if (norm === 'subtitle' && typeof adapter.setSubtitle === 'function') {
-        adapter.setSubtitle(value);
-        return true;
-      }
-      if (norm === 'shuffle' && typeof adapter.setShuffle === 'function') {
-        adapter.setShuffle(value);
-        return true;
-      }
-      if (norm === 'repeat' && typeof adapter.setRepeat === 'function') {
-        adapter.setRepeat(value);
-        return true;
-      }
-      if (norm === 'next' && typeof adapter.next === 'function') {
-        adapter.next();
-        return true;
-      }
-      if (norm === 'previous' && typeof adapter.previous === 'function') {
-        adapter.previous();
-        return true;
-      }
-      if (norm === 'pip' || norm === 'enterpip' || norm === 'exitpip') {
-        if (typeof adapter.pip === 'function') {
-          adapter.pip(value);
-          return true;
-        }
-        if (typeof adapter.requestPip === 'function') {
-          adapter.requestPip(value);
-          return true;
-        }
-      }
-      if (norm === 'load') {
-        if (typeof adapter.load === 'function') {
-          adapter.load(value);
-          return true;
-        }
-        console_warn('[SRemote] load() is primarily designed for custom adapters and is not implemented by default. Implement it via sremote.useAdapter().');
-        return true;
-      }
-      if (norm === 'stop') {
-        if (typeof adapter.stop === 'function') adapter.stop();
-        else {
-          if (typeof adapter.pause === 'function') adapter.pause();
-          if (typeof adapter.seekTo === 'function') adapter.seekTo(0);
-        }
-        return true;
-      }
-    } catch (e) {
-      console_warn(`[sremote] Error invoking parent adapter action for '${targetId}':`, e);
-      return true; // Still handled by adapter
-    }
-    return false;
+    return executeAdapterAction(adapter, action, value);
   }
 
   function dispatchCommand(action, value, targetInstanceId = null, key = null) {
