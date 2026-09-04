@@ -323,6 +323,7 @@
 		});
 		return btn;
 	}
+	var adapterPreviousVolumeMap = new WeakMap();
 	async function executeAdapterAction(adapter, action, value = void 0, isPureGet = false) {
 		if (!adapter || typeof adapter !== "object") return false;
 		const norm = String(action || "").toLowerCase();
@@ -366,11 +367,44 @@
 					if (!isPureGet && typeof adapter.seekTo === "function") await adapter.seekTo(Number(value));
 					return true;
 				case "volume":
-					if (!isPureGet && typeof adapter.setVolume === "function") await adapter.setVolume(Number(value));
+					if (!isPureGet) {
+						const targetVol = Math.max(0, Math.min(1, Number(value)));
+						if (targetVol > 0) adapterPreviousVolumeMap.set(adapter, targetVol);
+						if (typeof adapter.setVolume === "function") {
+							await adapter.setVolume(targetVol);
+							if (typeof adapter.setMuted === "function") try {
+								await adapter.setMuted(false);
+							} catch {}
+						} else if (adapter.mediaElement && (adapter.mediaElement.tagName === "AUDIO" || adapter.mediaElement.tagName === "VIDEO")) {
+							adapter.mediaElement.volume = targetVol;
+							adapter.mediaElement.muted = false;
+						}
+					}
 					return true;
 				case "muted":
 				case "mute":
-					if (!isPureGet && typeof adapter.setMuted === "function") await adapter.setMuted(Boolean(value));
+					if (!isPureGet) {
+						const isMuted = Boolean(value);
+						const prevVol = adapterPreviousVolumeMap.get(adapter) || 1;
+						if (isMuted) {
+							let curVol = 1;
+							if (typeof adapter.getVolume === "function") try {
+								curVol = Number(await adapter.getVolume());
+							} catch {}
+							else if (adapter.mediaElement) curVol = adapter.mediaElement.volume;
+							if (curVol > 0) adapterPreviousVolumeMap.set(adapter, curVol);
+						}
+						if (typeof adapter.setMuted === "function") {
+							await adapter.setMuted(isMuted);
+							if (!isMuted && typeof adapter.setVolume === "function") try {
+								if ((typeof adapter.getVolume === "function" ? await adapter.getVolume() : null) === 0) await adapter.setVolume(prevVol);
+							} catch {}
+						} else if (typeof adapter.setVolume === "function") await adapter.setVolume(isMuted ? 0 : prevVol);
+						else if (adapter.mediaElement && (adapter.mediaElement.tagName === "AUDIO" || adapter.mediaElement.tagName === "VIDEO")) {
+							adapter.mediaElement.muted = isMuted;
+							if (!isMuted && adapter.mediaElement.volume === 0) adapter.mediaElement.volume = prevVol;
+						}
+					}
 					return true;
 				case "speed":
 				case "rate":
@@ -2877,8 +2911,13 @@
 							if (num > 1 && num <= 100) num /= 100;
 							num = Math.min(1, Math.max(0, num));
 							configuredVolumeSetter(num);
+							configuredMutedSetter(false);
 							safeSetProp(activeMedia, descriptors.volume, "volume", num);
-							for (const el of findAllMedia()) if (el !== activeMedia) safeSetProp(el, descriptors.volume, "volume", num);
+							safeSetProp(activeMedia, descriptors.muted, "muted", false);
+							for (const el of findAllMedia()) if (el !== activeMedia) {
+								safeSetProp(el, descriptors.volume, "volume", num);
+								safeSetProp(el, descriptors.muted, "muted", false);
+							}
 						}
 						resVal = safeGetProp(activeMedia, descriptors.volume, "volume");
 						break;

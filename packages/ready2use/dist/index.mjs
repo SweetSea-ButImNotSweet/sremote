@@ -95,8 +95,38 @@ var s = class {
 		return typeof e == "string" ? { videoId: e } : { ...e };
 	}
 	_setupAdapter(e) {
-		let t = e || {};
-		return typeof t.toggle != "function" && typeof t.play == "function" && typeof t.pause == "function" && (t.toggle = function() {
+		let t = e || {}, n = 1, r = t.setVolume;
+		typeof r == "function" && (t.setVolume = async function(e) {
+			let i = Number(e);
+			i > 0 && (n = i);
+			let a = await r.call(this, e);
+			if (typeof t.setMuted == "function") try {
+				await t.setMuted(!1);
+			} catch {}
+			return a;
+		});
+		let i = t.setMuted;
+		return typeof i == "function" ? t.setMuted = async function(e) {
+			let r = !!e;
+			if (r && typeof t.getVolume == "function") try {
+				let e = Number(await t.getVolume());
+				e > 0 && (n = e);
+			} catch {}
+			let a = await i.call(this, r);
+			if (!r && typeof t.getVolume == "function") try {
+				Number(await t.getVolume()) === 0 && typeof t.setVolume == "function" && await t.setVolume(n || 1);
+			} catch {}
+			return a;
+		} : typeof t.setVolume == "function" && (t.setMuted = async function(e) {
+			if (e) {
+				if (typeof t.getVolume == "function") try {
+					let e = Number(await t.getVolume());
+					e > 0 && (n = e);
+				} catch {}
+				return t.setVolume(0);
+			}
+			return t.setVolume(n || 1);
+		}), typeof t.toggle != "function" && typeof t.play == "function" && typeof t.pause == "function" && (t.toggle = function() {
 			(typeof t.paused == "function" ? t.paused() : typeof t.paused != "boolean" || t.paused) ? t.play() : t.pause();
 		}), t.capabilities ||= this.getCapabilities(t), t;
 	}

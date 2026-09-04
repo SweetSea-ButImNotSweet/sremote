@@ -659,7 +659,7 @@ var f = class extends e {
 		if (!n) throw Error("[SRemote:DomDriver] Media target not found");
 		if (n.type === "adapter") return n.instance.setVolume?.(e);
 		let r = n.instance;
-		r.volume = Math.max(0, Math.min(1, e));
+		r.volume = Math.max(0, Math.min(1, e)), r.muted = !1;
 	}
 	async mute(e, t) {
 		let n = this.resolveTarget(t);
@@ -1136,7 +1136,7 @@ if (typeof globalThis < "u") try {
 //#endregion
 //#region src/universal-adapter.js
 function x(e = {}) {
-	let { name: t = "universal-adapter", play: n, pause: r, toggle: i, stop: a, seek: o, seekTo: s, setCurrentTime: c, setVolume: l, setMuted: u, setPlaybackRate: d, setQuality: f, getQualities: p, setSubtitle: m, getSubtitles: h, setShuffle: g, setRepeat: _, next: v, previous: y, load: b, requestPip: x, getState: S } = e, C = {
+	let { name: t = "universal-adapter", mediaElement: n = null, play: r, pause: i, toggle: a, stop: o, seek: s, seekTo: c, setCurrentTime: l, setVolume: u, setMuted: d, setPlaybackRate: f, setQuality: p, getQualities: m, setSubtitle: h, getSubtitles: g, setShuffle: _, setRepeat: v, next: y, previous: b, load: x, requestPip: S, getState: C } = e, w = 1, T = {
 		paused: !0,
 		currentTime: 0,
 		duration: null,
@@ -1147,140 +1147,163 @@ function x(e = {}) {
 		subtitle: null,
 		shuffle: !1,
 		repeat: "off"
-	}, w = (e) => typeof e == "function", T = {
+	}, E = !!(n && (n.tagName === "AUDIO" || n.tagName === "VIDEO" || n instanceof HTMLMediaElement)), D = (e) => typeof e == "function", O = {
 		name: t,
 		capabilities: {
-			play: w(n),
-			pause: w(r),
-			toggle: w(i) || w(n) && w(r),
-			stop: w(a) || w(r),
-			seek: w(o) || w(s) || w(c),
-			volume: w(l),
-			muted: w(u),
-			speed: w(d),
-			playbackRate: w(d),
-			pip: w(x),
-			quality: w(f),
-			subtitles: w(m) || w(h),
-			shuffle: w(g),
-			repeat: w(_),
-			next: w(v),
-			previous: w(y),
-			load: w(b),
+			play: D(r) || E,
+			pause: D(i) || E,
+			toggle: D(a) || D(r) && D(i) || E,
+			stop: D(o) || D(i) || E,
+			seek: D(s) || D(c) || D(l) || E,
+			volume: D(u) || E,
+			muted: D(d) || E,
+			speed: D(f) || E,
+			playbackRate: D(f) || E,
+			pip: D(S) || E && !!n.requestPictureInPicture,
+			quality: D(p),
+			subtitles: D(h) || D(g),
+			shuffle: D(_),
+			repeat: D(v),
+			next: D(y),
+			previous: D(b),
+			load: D(x),
 			hasAdapter: !0,
-			hasNative: !1,
+			hasNative: E,
 			hasMediaSession: !1,
 			...e.capabilities && typeof e.capabilities == "object" ? e.capabilities : {}
 		},
 		async play() {
-			if (typeof n == "function") {
-				let e = await n();
-				return C.paused = !1, e;
+			if (typeof r == "function") {
+				let e = await r();
+				return T.paused = !1, e;
+			}
+			if (E) {
+				let e = await n.play();
+				return T.paused = !1, e;
 			}
 		},
 		async pause() {
-			if (typeof r == "function") {
-				let e = await r();
-				return C.paused = !0, e;
+			if (typeof i == "function") {
+				let e = await i();
+				return T.paused = !0, e;
 			}
+			E && (n.pause(), T.paused = !0);
 		},
 		async toggle() {
-			return typeof i == "function" ? i() : (T.paused ? typeof T.paused == "function" ? T.paused() : T.paused : C.paused) ? T.play() : T.pause();
+			return typeof a == "function" ? a() : (O.paused ? typeof O.paused == "function" ? O.paused() : O.paused : E ? n.paused : T.paused) ? O.play() : O.pause();
 		},
 		async stop() {
-			if (typeof a == "function") return a();
-			await T.pause(), await T.seekTo?.(0);
+			if (typeof o == "function") return o();
+			await O.pause(), await O.seekTo?.(0);
 		},
 		async seek(e) {
-			if (typeof o == "function") return o(e);
-			let t = await T.getCurrentTime?.() ?? C.currentTime ?? 0;
-			return T.seekTo?.(Math.max(0, t + e));
+			if (typeof s == "function") return s(e);
+			let t = await O.getCurrentTime?.() ?? (E ? n.currentTime : T.currentTime) ?? 0;
+			return O.seekTo?.(Math.max(0, t + e));
 		},
 		async seekTo(e) {
-			if (typeof s == "function") {
-				let t = await s(e);
-				return C.currentTime = e, t;
-			}
 			if (typeof c == "function") {
 				let t = await c(e);
-				return C.currentTime = e, t;
+				return T.currentTime = e, t;
 			}
-		},
-		async setCurrentTime(e) {
-			return T.seekTo(e);
-		},
-		async setVolume(e) {
 			if (typeof l == "function") {
 				let t = await l(e);
-				return C.volume = e, t;
+				return T.currentTime = e, t;
+			}
+			E && (n.currentTime = Number(e), T.currentTime = Number(e));
+		},
+		async setCurrentTime(e) {
+			return O.seekTo(e);
+		},
+		async setVolume(e) {
+			let t = Math.max(0, Math.min(1, Number(e)));
+			if (t > 0 && (w = t), T.volume = t, T.muted = !1, E && (n.volume = t, n.muted = !1), typeof u == "function") {
+				let e = await u(t);
+				if (typeof d == "function") try {
+					await d(!1);
+				} catch {}
+				return e;
 			}
 		},
 		async setMuted(e) {
+			let t = !!e;
+			if (t) {
+				let e = E ? n.volume : T.volume || 1;
+				e > 0 && (w = e);
+			}
+			if (T.muted = t, E && (n.muted = t, !t && n.volume === 0 && (n.volume = w || 1)), typeof d == "function") {
+				let e = await d(t);
+				if (!t && typeof u == "function" && T.volume === 0) try {
+					await u(w || 1), T.volume = w || 1;
+				} catch {}
+				return e;
+			}
 			if (typeof u == "function") {
-				let t = await u(e);
-				return C.muted = !!e, t;
+				let e = t ? 0 : w || 1;
+				return T.volume = e, u(e);
 			}
 		},
 		async setPlaybackRate(e) {
-			if (typeof d == "function") {
-				let t = await d(e);
-				return C.playbackRate = e, t;
-			}
-		},
-		async setQuality(e) {
 			if (typeof f == "function") {
 				let t = await f(e);
-				return C.quality = e, t;
+				return T.playbackRate = e, t;
+			}
+			E && (n.playbackRate = Number(e), T.playbackRate = Number(e));
+		},
+		async setQuality(e) {
+			if (typeof p == "function") {
+				let t = await p(e);
+				return T.quality = e, t;
 			}
 		},
 		async getQualities() {
-			return typeof p == "function" ? p() : [];
+			return typeof m == "function" ? m() : [];
 		},
 		async setSubtitle(e) {
-			if (typeof m == "function") {
-				let t = await m(e);
-				return C.subtitle = e, t;
+			if (typeof h == "function") {
+				let t = await h(e);
+				return T.subtitle = e, t;
 			}
 		},
 		async getSubtitles() {
-			return typeof h == "function" ? h() : [];
+			return typeof g == "function" ? g() : [];
 		},
 		async setShuffle(e) {
-			if (typeof g == "function") {
-				let t = await g(e);
-				return C.shuffle = !!e, t;
+			if (typeof _ == "function") {
+				let t = await _(e);
+				return T.shuffle = !!e, t;
 			}
 		},
 		async setRepeat(e) {
-			if (typeof _ == "function") {
-				let t = await _(e);
-				return C.repeat = e, t;
+			if (typeof v == "function") {
+				let t = await v(e);
+				return T.repeat = e, t;
 			}
 		},
 		async next() {
-			if (typeof v == "function") return v();
-		},
-		async previous() {
 			if (typeof y == "function") return y();
 		},
-		async load(e) {
-			if (typeof b == "function") return b(e);
+		async previous() {
+			if (typeof b == "function") return b();
 		},
-		async requestPip(e) {
+		async load(e) {
 			if (typeof x == "function") return x(e);
 		},
+		async requestPip(e) {
+			if (typeof S == "function") return S(e);
+		},
 		getState() {
-			if (typeof S == "function") {
-				let e = S();
+			if (typeof C == "function") {
+				let e = C();
 				return typeof e == "object" && e ? {
-					...C,
+					...T,
 					...e
-				} : C;
+				} : T;
 			}
-			return { ...C };
+			return { ...T };
 		}
 	};
-	return T;
+	return O;
 }
 //#endregion
 export { e as BaseDriver, f as DomDriver, v as SRemoteClient, o as UserscriptDriver, y as createSRemote, x as createUniversalAdapter, b as default, b as sremote, _ as showInstallModal };
