@@ -7,7 +7,7 @@
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](../LICENSE)
 [![npm version](https://img.shields.io/npm/v/@sremote/wrapper.svg)](https://www.npmjs.com/package/@sremote/wrapper)
 
-**SRemote** cung cấp một giao diện điều khiển thống nhất cho media nhúng trên web (HTML5 video/audio, YouTube, Spotify, Vimeo, SoundCloud, Bilibili và hơn 20 nền tảng khác). Dự án giải quyết triệt để rào cản Same-Origin Policy (SOP) thông qua cầu nối Userscript và cung cấp SDK tiện lợi cho lập trình viên.
+**SRemote** cung cấp một giao diện điều khiển thống nhất cho media nhúng trên web (HTML5 video/audio, YouTube, Spotify, Vimeo, SoundCloud, Bilibili và nhiều nền tảng khác). Dự án làm việc quanh giới hạn Same-Origin Policy (SOP) thông qua cầu nối Userscript tùy chọn, kèm theo SDK phía client cho lập trình viên.
 
 ---
 
@@ -16,7 +16,7 @@
 | Gói | Mục đích | Tài liệu |
 | :--- | :--- | :--- |
 | **`@sremote/wrapper`** | SDK phía client giúp tự động nhận diện, kết nối, điều khiển player và hiển thị modal hướng dẫn cài đặt | [Wrapper README](../packages/wrapper/README.md) |
-| **`@sremote/ready2use`** | Bộ preset & adapter dựng sẵn cho hơn 22 nền tảng (YouTube, Spotify, Apple Music, v.v.) | [Ready2Use README](../packages/ready2use/README.md) |
+| **`@sremote/ready2use`** | Bộ preset & adapter dựng sẵn cho nhiều nền tảng (YouTube, Spotify, Apple Music, v.v.) | [Ready2Use README](../packages/ready2use/README.md) |
 | **`@sremote/userscript`** | Cầu nối Userscript cho trình duyệt giúp điều khiển các iframe bị chặn bởi Same-Origin Policy | [Userscript Hướng Dẫn](../packages/userscript/README/vi.md) |
 
 ---
@@ -46,7 +46,7 @@ await remote.seek(10);
 await remote.volume(0.8);
 ```
 
-### 2. Dùng gói preset `@sremote/ready2use` (Mì ăn liền cho YouTube, Spotify...)
+### 2. Dùng gói preset `@sremote/ready2use` (Preset dựng sẵn cho YouTube, Spotify...)
 
 ```bash
 npm install @sremote/ready2use @sremote/wrapper
@@ -81,7 +81,7 @@ await yt.remote.seek(15);
 
 | Nền tảng | Cơ chế hỗ trợ | Ghi chú tích hợp |
 | :--- | :---: | :--- |
-| **HTML5 Media thuần (Plyr, VideoJS...)** | ✅ Tự động (Zero-Config) | Điều khiển trực tiếp out-of-the-box |
+| **HTML5 Media thuần (Plyr, VideoJS...)** | ✅ Native | Điều khiển trực tiếp qua DOM/event, không cần adapter |
 | **Bilibili / Rumble / Kick / Bandcamp** | ✅ Userscript Discovery | Tự động nhận diện qua Userscript |
 | **YouTube** | ⚡ Adapter / Ready2Use | Qua YouTube IFrame Player API |
 | **Spotify** | ⚡ Adapter / Ready2Use | Qua Spotify IFrame API |
@@ -95,7 +95,7 @@ await yt.remote.seek(15);
 ## 👤 Dành cho người dùng cuối (Cài đặt Userscript)
 
 Nếu bạn được trang web chuyển hướng sang đây để cài Userscript:
-- 👉 Hãy đọc [Cốt truyện & Hướng dẫn Userscript](../packages/userscript/README/vi.md) để hiểu tại sao trang web cần bạn cài cầu nối này.
+- 👉 Hãy đọc [Hướng dẫn Userscript](../packages/userscript/README/vi.md) để hiểu tại sao trang web cần cầu nối này.
 - Link tải Userscript trực tiếp: [`dist/sremote.user.js`](https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.user.js)
 
 ---
@@ -104,7 +104,7 @@ Nếu bạn được trang web chuyển hướng sang đây để cài Userscrip
 
 - 📘 **Tài liệu Kỹ thuật:** [SRemote Documentation](../docs/index.html)
 - 🍳 **Cookbook / Thư viện code mẫu:** [Recipes](../docs/recipes.html)
-- 🎮 **Trải nghiệm thử nghiệm:** [Live Demo](../demo/index.html)
+- 🎮 **Test Harness:** [Demo](../demo/index.html)
 
 ---
 

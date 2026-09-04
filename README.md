@@ -16,7 +16,7 @@
 | Package | Purpose | Documentation |
 | :--- | :--- | :--- |
 | **`@sremote/wrapper`** | Client-side SDK to auto-discover, connect, control players, and show install prompts | [Wrapper README](packages/wrapper/README.md) |
-| **`@sremote/ready2use`** | 22+ Pre-configured player presets & official SDK adapters (YouTube, Spotify, Apple Music, etc.) | [Ready2Use README](packages/ready2use/README.md) |
+| **`@sremote/ready2use`** | Pre-configured player presets & official SDK adapters (YouTube, Spotify, Apple Music, etc.) | [Ready2Use README](packages/ready2use/README.md) |
 | **`@sremote/userscript`** | The companion Userscript bridging cross-origin iframes without native APIs | [Userscript Guide](packages/userscript/README.md) |
 
 ---
@@ -46,7 +46,7 @@ await remote.seek(10);
 await remote.volume(0.8);
 ```
 
-### 2. Using `@sremote/ready2use` (Out-of-the-Box Player Presets)
+### 2. Using `@sremote/ready2use` (Pre-configured Player Presets)
 
 ```bash
 npm install @sremote/ready2use @sremote/wrapper
@@ -81,8 +81,8 @@ await yt.remote.seek(15);
 
 | Platform / Service | Support Mechanism | Integration Notes |
 | :--- | :---: | :--- |
-| **Pure HTML5 (Plyr, VideoJS, etc.)** | ✅ Native Zero-Config | Direct control out-of-the-box |
-| **Bilibili / Rumble / Kick / Bandcamp** | ✅ Userscript Discovery | Discovered automatically via Userscript |
+| **Pure HTML5 (Plyr, VideoJS, etc.)** | ✅ Native | Direct DOM/event control, no adapter needed |
+| **Bilibili / Rumble / Kick / Bandcamp** | ✅ Userscript Discovery | Auto-discovered via the companion userscript |
 | **YouTube** | ⚡ Adapter / Ready2Use | Via IFrame Player API |
 | **Spotify** | ⚡ Adapter / Ready2Use | Via Spotify IFrame API |
 | **Apple Music (MusicKit)** | ⚡ Adapter / Ready2Use | Via MusicKit JS |
@@ -95,7 +95,7 @@ await yt.remote.seek(15);
 ## 👤 End-User / Userscript Installation
 
 If a website redirected you here to install the SRemote Userscript:
-- 👉 Read the [Userscript Guide & Story](packages/userscript/README.md) to understand why the hosting site needs this bridge.
+- 👉 Read the [Userscript Guide](packages/userscript/README.md) to understand why the hosting site needs this bridge.
 - Direct script URL: [`dist/sremote.user.js`](https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.user.js)
 
 ---
