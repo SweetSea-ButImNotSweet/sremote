@@ -21,6 +21,26 @@
   gap: 8px;
 }
 
+.sv-install-desc {
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.sv-install-learn-more {
+  display: inline;
+  margin-left: 6px;
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.sv-install-learn-more:hover {
+  color: #1d4ed8;
+}
+
 .sv-install-close-btn {
   background: transparent;
   border: none;
@@ -167,6 +187,14 @@
 
   .sv-install-title {
     color: #5eb5e6;
+  }
+
+  .sv-install-learn-more {
+    color: #60a5fa;
+  }
+
+  .sv-install-learn-more:hover {
+    color: #93c5fd;
   }
 
   .sv-install-close-btn:hover {

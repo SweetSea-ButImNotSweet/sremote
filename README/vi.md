@@ -1,142 +1,131 @@
 [ English ](../README.md) | [ Tiếng Việt ]
 
 # SRemote
-*(hay, Sea's Remote, nghĩa là: Điều khiển từ xa của Sea)*
 
-Một userscript được viết ra chỉ để giải quyết vấn nạn "trời ơi đất hỡi": trang thì muốn nhúng video của bên khác nhưng bên khác cho nhúng thì không đưa luôn cái remote
+> **Framework & SDK Điều Khiển Media Nhúng (Cross-Origin) Đa Nền Tảng**
 
-## Nếu bạn tự dưng thấy project này trên mạng thấy hay quá mà muốn cài
-Thì hãy khoan bấm cài, cho dù project này nghe có "ngầu" đến mấy. Bản chất của SRemote là một **SDK / cầu nối kỹ thuật** cho lập trình viên. Nếu bạn không phải là Dev đang tìm cách điều khiển iframe, cũng chẳng có trang web nào bảo bạn sang đây cài để xem phim hay nghe nhạc... thì cài vào chỉ tổ chật Tampermonkey chứ nó chả tự phát huy phép thuật nào đâu. Đừng cài vội nhé!
+[![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](../LICENSE)
+[![npm version](https://img.shields.io/npm/v/@sremote/wrapper.svg)](https://www.npmjs.com/package/@sremote/wrapper)
 
-## Nếu bạn chỉ đơn giản là lướt internet nhưng bị trang web đẩy sang đây
-Bạn bị trang web nhờ sang đây và cài userscript của mình? Trước khi bạn soạn một tin nhắn "tình thương mến thương" chửi dev bên đấy từ A tới Z, hãy ở đây và để tui kể cho bạn lí do tại sao "bên đấy PHẢI BẤT LỰC LẮM RỒI mới phải đưa bạn sang đây", và bật mí tí luôn: tui cũng từng rơi vào tình cảnh của những dev đấy rồi.
+**SRemote** cung cấp một giao diện điều khiển thống nhất cho media nhúng trên web (HTML5 video/audio, YouTube, Spotify, Vimeo, SoundCloud, Bilibili và hơn 20 nền tảng khác). Dự án giải quyết triệt để rào cản Same-Origin Policy (SOP) thông qua cầu nối Userscript và cung cấp SDK tiện lợi cho lập trình viên.
 
-Hình dung như này: bạn sang nhà bạn chơi, hai đứa ngồi xem phim. Nhưng mà bạn không được cầm remote, nó hỏi bạn muốn xem gì nó mở cho. Bạn muốn tua nhanh, bạn muốn tăng giảm âm lượng, bạn muốn đổi phim? Nope, nó vẫn không đưa remote cho bạn, nó thích mở gì là việc của nó. Nghe có tức tức không?
+---
 
-Thì đây cũng vậy, dù bản chất về công nghệ hơi khác biệt một chút:
+## 📦 Các gói trong Monorepo
 
-- Ngắn gọn: Web bạn truy cập không có remote để mà điều khiển video mà mình nhúng từ một dịch vụ khác.
-- Nói đầy đủ: Có 2 nguyên nhân:
-  1. Dịch vụ bên kia không cung cấp cho web bạn truy cập API (API hiểu đơn giản là ngôn ngữ đọc hiểu thống nhất của 2 dịch vụ khác nhau); hay hiểu đơn giản, dịch vụ bên kia giả bộ câm điếc không muốn nói chuyện với trang bên này.
-  2. Chính sách Same-Origin Policy, tức là trang này không thể can thiệp vào trang khác nếu 2 trang không cùng tên miền. Hiểu đơn giản là A-kun không thể nhận vơ B-chan làm em gái rồi sai vặt vì 2 đứa đâu có cùng dòng máu huyết thống đâu =)))
+| Gói | Mục đích | Tài liệu |
+| :--- | :--- | :--- |
+| **`@sremote/wrapper`** | SDK phía client giúp tự động nhận diện, kết nối, điều khiển player và hiển thị modal hướng dẫn cài đặt | [Wrapper README](../packages/wrapper/README.md) |
+| **`@sremote/ready2use`** | Bộ preset & adapter dựng sẵn cho hơn 22 nền tảng (YouTube, Spotify, Apple Music, v.v.) | [Ready2Use README](../packages/ready2use/README.md) |
+| **`@sremote/userscript`** | Cầu nối Userscript cho trình duyệt giúp điều khiển các iframe bị chặn bởi Same-Origin Policy | [Userscript Hướng Dẫn](../packages/userscript/README/vi.md) |
 
-Vì những lí do trên, SRemote ra đời chỉ để làm đúng một nhiệm vụ duy nhất: tạo một cái remote thống nhất cho các website có thể điều khiển video nhúng từ các dịch vụ khác mà tới 2026 rồi bên đấy không có nổi một cái điều khiển từ xa.
+---
 
-## Thế, tôi chỉ lướt internet bình thường, nhưng trang bảo tôi cài cái này, thì tôi cài như nào?
-1. Cài đặt tiện ích mở rộng quản lý userscript trên trình duyệt của bạn (khuyên dùng Tampermonkey hoặc ViolentMonkey).
-2. Thêm script `dist/sremote.user.js` vào tiện ích mở rộng và bật kích hoạt.
-3. Khi tải lại trang web có nhúng media, nếu trang yêu cầu cấp quyền điều khiển, hãy chọn **Đồng ý** (có thể chọn tích chọn nhớ quyền cho trang web đó).
+## 🚀 Bắt đầu nhanh
 
-## Tôi có website riêng muốn tích hợp cái này thì làm như nào?
+### 1. Dùng thư viện `@sremote/wrapper` (Khuyên dùng cho Web App hiện đại)
 
-Bạn có thể tích hợp qua 2 cách:
-
-### Cách 1: Dùng thư viện `@sremote/wrapper` (Khuyên dùng cho Web App hiện đại)
-Nếu dự án của bạn dùng React, Vue, Svelte, Vite hay Next.js:
 ```bash
 npm install @sremote/wrapper
 ```
+
 ```javascript
-import { createSRemote, showInstallModal } from '@sremote/wrapper';
+import { createSRemote } from '@sremote/wrapper';
 
 const remote = createSRemote();
 await remote.ready();
 
-// Kiểm tra nếu userscript chưa có, mở modal hướng dẫn người dùng cài đặt
+// Hiển thị modal hướng dẫn nếu trang web yêu cầu userscript cho iframe bên thứ ba
 if (!remote.isUserscriptAvailable()) {
   remote.showInstallModal();
 }
 
-// Điều khiển như bình thường, wrapper tự động lo liệu phần bắt tay & adapter
-remote.play();
+// Điều khiển thống nhất tất cả player
+await remote.play();
+await remote.seek(10);
+await remote.volume(0.8);
 ```
 
-### Cách 2: Dùng gói preset `@sremote/ready2use` (Mì ăn liền cho YouTube, v.v.)
-Nếu bạn muốn nhúng và điều khiển các player bên thứ 3 (như YouTube) mà không cần tự load SDK hay tự viết adapter từ đầu:
+### 2. Dùng gói preset `@sremote/ready2use` (Mì ăn liền cho YouTube, Spotify...)
+
 ```bash
 npm install @sremote/ready2use @sremote/wrapper
 ```
-```javascript
-import { youtube } from '@sremote/ready2use';
 
-// Tự động chèn iframe vào DOM và kết nối sẵn với SRemote
-const { remote } = await youtube.mount('#player-container', {
+```javascript
+import { youtube, spotify } from '@sremote/ready2use';
+
+// Tự động chèn iframe YouTube vào DOM và kết nối sẵn với SRemote
+const yt = await youtube.mount('#player-container', {
   videoId: 'dQw4w9WgXcQ'
 });
 
-await remote.play();
-await remote.seek(15);
-await remote.load('M7lc1UVf-VE'); // Đổi video khác
+await yt.remote.play();
+await yt.remote.seek(15);
 ```
 
-### Cách 3: Dùng trực tiếp qua `window.sremote` (Thuần HTML/JS)
-1. Nhúng `iframe` chứa video/audio từ nguồn bạn cần phát. Đừng quên bật đầy đủ các quyền qua thuộc tính `allow` (đặc biệt cần thiết với YouTube, Spotify hay các dịch vụ streaming bảo vệ bản quyền):
-   ```html
-   <iframe
-     src="https://..."
-     allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-     allowfullscreen>
-   </iframe>
-   ```
-2. Gọi `sremote.hello()` từ trang cha (top-level window) để bắt đầu tìm kiếm và kết nối tới media bên trong iframe:
-   ```javascript
-   // Khởi tạo kết nối tới tất cả iframe hoặc truyền target cụ thể
-   window.sremote.hello();
-   ```
-3. Lắng nghe các sự kiện hoặc trạng thái sẵn sàng từ `sremote`:
-   ```javascript
-   window.sremote.on('accept', (data) => {
-     console.log('Đã kết nối thành công tới media:', data.instanceId);
-   });
+### 3. Dùng trực tiếp qua thẻ Script (`window.sremote`)
 
-   window.sremote.on('timeupdate', (data) => {
-     console.log('Tiến độ phát:', data.state.currentTime);
-   });
-   ```
-4. Gọi các hàm điều khiển trực tiếp qua đối tượng toàn cục `window.sremote` (ví dụ: `sremote.play()`, `sremote.pause()`, `sremote.seek(10)`).
+```html
+<script src="https://cdn.jsdelivr.net/npm/@sremote/wrapper/dist/index.global.js"></script>
+<script>
+  window.sremote.hello();
+  window.sremote.on('accept', (data) => console.log('Đã kết nối:', data.instanceId));
+  window.sremote.play();
+</script>
+```
 
 ---
 
-## Bảng tra cứu độ tương thích nhanh (Compatibility Snapshot)
+## 🎯 Khả năng hỗ trợ & Độ tương thích
 
 | Nền tảng | Cơ chế hỗ trợ | Ghi chú tích hợp |
 | :--- | :---: | :--- |
-| **HTML5 Media thuần (Plyr, VideoJS...)** | ✅ Tự động (Zero-Config) | Nhúng vào là chạy trực tiếp |
-| **Bilibili Embed** | ✅ Tự động (Zero-Config) | Nhúng với `autoplay=1` |
-| **YouTube** | ⚡ Adapter Mode | Cần thêm `enablejsapi=1` |
-| **SoundCloud** | ⚡ Adapter Mode | Kết nối qua SoundCloud Widget API |
-| **Spotify** | ⚡ Adapter Mode | Kết nối qua Spotify IFrame API |
-| **Vimeo / Dailymotion / Twitch** | ⚡ Adapter Mode | Kết nối qua Player SDK chính thức |
-| **NicoNico Douga** | ⚡ PostMessage Mode | Kết nối qua giao thức 2 chiều |
+| **HTML5 Media thuần (Plyr, VideoJS...)** | ✅ Tự động (Zero-Config) | Điều khiển trực tiếp out-of-the-box |
+| **Bilibili / Rumble / Kick / Bandcamp** | ✅ Userscript Discovery | Tự động nhận diện qua Userscript |
+| **YouTube** | ⚡ Adapter / Ready2Use | Qua YouTube IFrame Player API |
+| **Spotify** | ⚡ Adapter / Ready2Use | Qua Spotify IFrame API |
+| **Apple Music (MusicKit)** | ⚡ Adapter / Ready2Use | Qua MusicKit JS |
+| **SoundCloud** | ⚡ Adapter / Ready2Use | Qua SoundCloud Widget API |
+| **Vimeo / Dailymotion / Twitch / Mixcloud** | ⚡ Adapter / Ready2Use | Qua Player SDK chính thức |
+| **NicoNico Douga** | ⚡ PostMessage Mode | Giao thức 2 chiều postMessage |
 
 ---
 
-## Tài liệu & Tra cứu API
-- Xem hướng dẫn chi tiết và danh mục toàn bộ API tại [Tài liệu Kỹ thuật SRemote](../docs/index.html).
-- Xem thư viện mẫu nhúng iframe & code Adapter tại [Cookbook](../docs/recipes.html).
-- Trải nghiệm thử nghiệm đa slot: [Live Demo](../demo/index.html).
+## 👤 Dành cho người dùng cuối (Cài đặt Userscript)
+
+Nếu bạn được trang web chuyển hướng sang đây để cài Userscript:
+- 👉 Hãy đọc [Cốt truyện & Hướng dẫn Userscript](../packages/userscript/README/vi.md) để hiểu tại sao trang web cần bạn cài cầu nối này.
+- Link tải Userscript trực tiếp: [`dist/sremote.user.js`](https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.user.js)
 
 ---
 
-## Giới hạn kĩ thuật đã biết
-1. Ưu tiên dùng trực tiếp API chính thức từ iframe (nếu dịch vụ có hỗ trợ). SRemote cung cấp `adapters.set` nếu bạn cần gom về một giao diện điều khiển chung.
-2. Một số dịch vụ yêu cầu người dùng tương tác vào nút Phát (Play) lần đầu. Theo những gì tui đã biết cho tới thời điểm hiện tại thì có 2 khả năng: một là do chính sách chặn tự động phát (may sao bên Firefox người dùng có thể chọn Cho phép tự động phát video có âm thanh). Hai là có thể do watcher trong một số dịch vụ không chịu nạp nguồn media nếu như state nội bộ trong đó báo chưa thấy nút Phát.
-3. SRemote không phải là cây đũa thần của Harry Potter cho mọi dịch vụ. Một số trường hợp hiếm gặp sẽ không hỗ trợ nếu trang nhúng không sử dụng thẻ HTML5 Video/Audio tiêu chuẩn hoặc không đăng ký MediaSession API.
-4. SRemote chỉ đóng vai trò làm remote điều khiển media đã nhúng, không có khả năng vượt rào (bypass) các hạn chế nhúng hay chặn phát từ phía dịch vụ.
+## 📖 Tài liệu kỹ thuật & Tham khảo
+
+- 📘 **Tài liệu Kỹ thuật:** [SRemote Documentation](../docs/index.html)
+- 🍳 **Cookbook / Thư viện code mẫu:** [Recipes](../docs/recipes.html)
+- 🎮 **Trải nghiệm thử nghiệm:** [Live Demo](../demo/index.html)
 
 ---
 
-## Báo cáo lỗi
-1. Mô tả chi tiết lỗi gặp phải và các bước tái hiện.
-2. Tên dịch vụ, URL trang web hoặc link test xảy ra lỗi.
-3. Bản thử nghiệm tối giản (Minimal reproduction) nếu có thể.
+## 🛠️ Phát triển & Build Monorepo
+
+```bash
+# Cài đặt dependencies
+npm install
+
+# Khởi động dev server với hot reload
+npm run dev
+
+# Build toàn bộ packages (Userscript, Wrapper, Ready2Use)
+npm run build
+
+# Format mã nguồn
+npm run format
+```
 
 ---
 
-## Donate
-(Sẽ chèn sau khi tui hỏi được ngân hàng có cách nào tạo STK mà không cần lập tài khoản mới)
+## 📄 License
 
----
-
-## License
 Dự án được phân phối dưới giấy phép **GNU Lesser General Public License v3.0 (LGPL-3.0)** - xem chi tiết tại file [LICENSE](../LICENSE).

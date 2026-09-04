@@ -36,6 +36,8 @@ SRemote v2.1.0 is a major feature and stabilization update. This release massive
 - **Documentation & Recipes**:
   - Interactive recipes showcase for all 7 new platforms (Vanilla JS and `@sremote/wrapper` SDK).
   - Bilingual localization (i18n) for recipe comments, tooltips, and platform descriptions.
+  - Reorganized documentation structure: separated end-user userscript guide into `packages/userscript/README.md` and streamlined root `README.md` for web developers.
+  - Enhanced shared navigation `<sremote-header>` with quick access to userscript docs and NPM packages (`@sremote/wrapper`, `@sremote/ready2use`).
 
 ### 🔄 Changed
 

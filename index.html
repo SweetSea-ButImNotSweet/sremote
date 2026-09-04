@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SRemote - Universal Embedded Media Controller</title>
-  <meta name="description" content="SRemote Userscript & Documentation Hub">
+  <meta name="description" content="SRemote Documentation Hub - Root Ecosystem, Userscript, Wrapper & Ready2Use">
 
   <!-- Marked.js via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -21,22 +21,59 @@
   <!-- Shared Header Component -->
   <sremote-header active="home"></sremote-header>
 
-  <!-- Main Single Column Clean Layout -->
-  <main class="single-doc-container">
-    <div class="doc-meta-bar">
-      <h1 id="sec-doc-title" style="font-size: 18px; margin: 0; font-weight: 700; color: var(--text-heading);">📖 Tài liệu Kỹ thuật</h1>
-      <span id="doc-renderer-badge">Rendered by <strong>Marked.js</strong></span>
-    </div>
+  <!-- Main 2-Column Clean Layout -->
+  <div class="app-layout">
+    <!-- Left Sidebar: Package Readme Selector -->
+    <aside class="sidebar">
+      <div class="panel">
+        <div class="panel-heading">
+          <span id="label-sidebar-title">📚 Tài liệu README</span>
+        </div>
+        <div class="panel-body">
+          <nav class="toc-list" id="readme-nav-list">
+            <button type="button" class="toc-link active" data-target="root" id="btn-doc-root">
+              <span>🌐 <strong>SRemote Monorepo</strong></span>
+              <span class="toc-badge">Root</span>
+            </button>
+            <button type="button" class="toc-link" data-target="userscript" id="btn-doc-userscript">
+              <span>🔌 <strong>SRemote Userscript</strong></span>
+              <span class="toc-badge">Extension</span>
+            </button>
+            <button type="button" class="toc-link" data-target="wrapper" id="btn-doc-wrapper">
+              <span>📦 <strong>@sremote/wrapper</strong></span>
+              <span class="toc-badge">SDK</span>
+            </button>
+            <button type="button" class="toc-link" data-target="ready2use" id="btn-doc-ready2use">
+              <span>🚀 <strong>@sremote/ready2use</strong></span>
+              <span class="toc-badge">Presets</span>
+            </button>
+          </nav>
+        </div>
+      </div>
+    </aside>
 
-    <!-- Dynamic Markdown Container (Frameless) -->
-    <article class="markdown-body" id="markdown-container">
-      <div class="loading-spinner">Đang tải và xử lý nội dung Markdown...</div>
-    </article>
-  </main>
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <div class="panel">
+        <div class="panel-heading">
+          <div class="doc-heading-row">
+            <h1 id="sec-doc-title" class="doc-heading-title">📖 Tài liệu Kỹ thuật</h1>
+          </div>
+          <span id="doc-renderer-badge" class="doc-renderer-badge">Rendered by <strong>Marked.js</strong></span>
+        </div>
+        <div class="panel-body">
+          <!-- Dynamic Markdown Container -->
+          <article class="markdown-body" id="markdown-container">
+            <div class="loading-spinner">Đang tải và xử lý nội dung Markdown...</div>
+          </article>
+        </div>
+      </div>
+    </main>
+  </div>
 
   <!-- Footer -->
   <footer class="footer">
-    <div style="max-width: 1000px; margin: 0 auto; padding: 0 20px;">
+    <div class="footer-inner">
       <p id="footer-text">
         SRemote Frame Controller &copy; 2026 sweetsea &bull; Giấy phép LGPL-3.0 &bull; Hỗ trợ mọi trình duyệt & Tampermonkey.
       </p>
@@ -45,25 +82,50 @@
 
   <!-- Script: UI Logic & Live Markdown Loader with Prefetch Cache -->
   <script>
+    const DOC_SOURCES = {
+      root: {
+        vi: { title: "SRemote - Monorepo Overview", file: "README/vi.md" },
+        en: { title: "SRemote - Monorepo Overview", file: "README.md" }
+      },
+      userscript: {
+        vi: { title: "SRemote Userscript - Cầu nối & Hướng dẫn", file: "packages/userscript/README/vi.md" },
+        en: { title: "SRemote Userscript - Bridge & Setup Guide", file: "packages/userscript/README.md" }
+      },
+      wrapper: {
+        vi: { title: "@sremote/wrapper - Client SDK", file: "packages/wrapper/README.md" },
+        en: { title: "@sremote/wrapper - Client SDK", file: "packages/wrapper/README.md" }
+      },
+      ready2use: {
+        vi: { title: "@sremote/ready2use - Player Presets", file: "packages/ready2use/README.md" },
+        en: { title: "@sremote/ready2use - Player Presets", file: "packages/ready2use/README.md" }
+      }
+    };
+
     const i18nUI = {
       en: {
         pageTitle: "SRemote - Universal Embedded Media Controller",
-        secDocTitle: "📖 Technical Documentation",
+        sidebarTitle: "📚 Documentation Hub",
         footerText: "SRemote Frame Controller © 2026 sweetsea • Licensed under LGPL-3.0 • Supports all browsers & Tampermonkey.",
-        mdSource: "README.md"
+        rootBadge: "Root",
+        userscriptBadge: "Extension",
+        wrapperBadge: "SDK",
+        ready2useBadge: "Presets"
       },
       vi: {
         pageTitle: "SRemote - Universal Embedded Media Controller",
-        secDocTitle: "📖 Tài liệu Kỹ thuật",
+        sidebarTitle: "📚 Tài liệu README",
         footerText: "SRemote Frame Controller © 2026 sweetsea • Giấy phép LGPL-3.0 • Hỗ trợ mọi trình duyệt & Tampermonkey.",
-        mdSource: "README/vi.md"
+        rootBadge: "Root",
+        userscriptBadge: "Extension",
+        wrapperBadge: "SDK",
+        ready2useBadge: "Presets"
       }
-      // Thêm ngôn ngữ tương lai ở đây, prefetch sẽ tự động quét
     };
 
     // Cache lưu trữ nội dung thô của các file markdown
     const mdCache = new Map();
-    let currentLang = 'en'; // Mặc định hiển thị EN ban đầu
+    let currentLang = 'vi';
+    let currentDocTarget = 'root';
 
     // Configure Marked.js options
     if (typeof marked !== 'undefined') {
@@ -78,6 +140,34 @@
           }
           return code;
         }
+      });
+    }
+
+    // Helper: Parse GitHub Alerts (> [!NOTE], > [!TIP], etc.)
+    function renderGfmAlerts(html) {
+      const alertTypes = {
+        NOTE: { title: 'Note', icon: 'ℹ️', class: 'gfm-alert-note' },
+        TIP: { title: 'Tip', icon: '💡', class: 'gfm-alert-tip' },
+        IMPORTANT: { title: 'Important', icon: '🔔', class: 'gfm-alert-important' },
+        WARNING: { title: 'Warning', icon: '⚠️', class: 'gfm-alert-warning' },
+        CAUTION: { title: 'Caution', icon: '🛑', class: 'gfm-alert-caution' },
+      };
+
+      return html.replace(/<blockquote>([\s\S]*?)<\/blockquote>/gi, (match, inner) => {
+        const alertMatch = inner.match(/^\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\s*<br\s*\/?>|\s*\n)?([\s\S]*)$/i);
+        if (!alertMatch) return match;
+
+        const type = alertMatch[1].toUpperCase();
+        const alert = alertTypes[type] || alertTypes.NOTE;
+        let body = inner.replace(/^\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\s*<br\s*\/?>|\s*\n)?/i, '<p>');
+        body = body.replace(/<p>\s*<\/p>/gi, '');
+
+        return `
+          <div class="gfm-alert ${alert.class}">
+            <div class="gfm-alert-title">${alert.icon} ${alert.title}</div>
+            ${body}
+          </div>
+        `;
       });
     }
 
@@ -98,23 +188,40 @@
       return markdownText;
     }
 
-    // Prefetch toàn bộ file markdown có trong i18nUI chạy ngầm
+    // Prefetch toàn bộ file markdown
     function prefetchAllMarkdownDocs() {
-      Object.values(i18nUI).forEach(config => {
-        if (config.mdSource && !mdCache.has(config.mdSource)) {
-          fetchMarkdownText(config.mdSource).catch(err => {
-            console.warn(`[Prefetch] Không thể nạp trước file ${config.mdSource}:`, err);
-          });
-        }
+      Object.values(DOC_SOURCES).forEach(pkg => {
+        ['vi', 'en'].forEach(l => {
+          if (pkg[l] && pkg[l].file && !mdCache.has(pkg[l].file)) {
+            fetchMarkdownText(pkg[l].file).catch(() => {});
+          }
+        });
       });
     }
 
     // Render markdown ra giao diện
-    async function loadLiveMarkdown(sourceFile) {
+    async function loadDocument(target = currentDocTarget) {
+      currentDocTarget = target;
+      const targetConfig = DOC_SOURCES[target] ? (DOC_SOURCES[target][currentLang] || DOC_SOURCES[target].en) : DOC_SOURCES.root.en;
+      const sourceFile = targetConfig.file;
       const container = document.getElementById('markdown-container');
+      const secTitle = document.getElementById('sec-doc-title');
       if (!container) return;
 
-      // Chỉ hiện spinner nếu file này chưa có trong bộ nhớ đệm
+      // Update sidebar active state
+      document.querySelectorAll('#readme-nav-list .toc-link').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-target') === target);
+      });
+
+      if (secTitle) {
+        secTitle.textContent = targetConfig.title;
+      }
+
+      // Update URL search query
+      const url = new URL(window.location.href);
+      url.searchParams.set('doc', target);
+      window.history.replaceState({ doc: target }, '', url.toString());
+
       if (!mdCache.has(sourceFile)) {
         container.innerHTML = '<div class="loading-spinner">Đang tải và xử lý nội dung Markdown...</div>';
       }
@@ -123,7 +230,9 @@
         const markdownText = await fetchMarkdownText(sourceFile);
 
         if (typeof marked !== 'undefined') {
-          container.innerHTML = marked.parse(markdownText);
+          let html = marked.parse(markdownText);
+          html = renderGfmAlerts(html);
+          container.innerHTML = html;
           if (typeof hljs !== 'undefined') {
             container.querySelectorAll('pre code').forEach((block) => {
               hljs.highlightElement(block);
@@ -132,6 +241,7 @@
         } else {
           container.innerHTML = `<pre>${markdownText}</pre>`;
         }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (err) {
         console.error('Lỗi khi tải file markdown:', err);
         container.innerHTML = `
@@ -151,25 +261,44 @@
 
       // Cập nhật text tiêu đề & footer
       document.title = i18nUI[lang].pageTitle;
-      const secTitle = document.getElementById('sec-doc-title');
-      if (secTitle) secTitle.textContent = i18nUI[lang].secDocTitle;
+      const sidebarTitle = document.getElementById('label-sidebar-title');
+      if (sidebarTitle) sidebarTitle.textContent = i18nUI[lang].sidebarTitle;
       const footer = document.getElementById('footer-text');
       if (footer) footer.textContent = i18nUI[lang].footerText;
 
-      // Render markdown tương ứng
-      loadLiveMarkdown(i18nUI[lang].mdSource);
+      // Render lại document hiện tại với ngôn ngữ mới
+      loadDocument(currentDocTarget);
     }
 
-    // 1. Kích hoạt tải ngay README.md (EN) ngay khi script được phân tích cú pháp
-    fetchMarkdownText(i18nUI.en.mdSource);
-    // 2. Đồng thời kích hoạt prefetch tất cả các file ngôn ngữ khác chạy nền
-    prefetchAllMarkdownDocs();
-
     document.addEventListener('DOMContentLoaded', () => {
-      // Khi DOM load xong, kiểm tra ngôn ngữ đã lưu (hoặc mặc định 'en') để render đúng ngôn ngữ
-      const savedLang = localStorage.getItem('sremote_lang') || 'en';
+      const savedLang = localStorage.getItem('sremote_lang') || 'vi';
+      const params = new URLSearchParams(window.location.search);
+      const requestedDoc = params.get('doc');
+      if (requestedDoc && DOC_SOURCES[requestedDoc]) {
+        currentDocTarget = requestedDoc;
+      }
+
+      // Gán sự kiện click cho các nút bên trái
+      document.querySelectorAll('#readme-nav-list .toc-link').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = btn.getAttribute('data-target');
+          if (target && DOC_SOURCES[target]) {
+            loadDocument(target);
+          }
+        });
+      });
+
+      // Lắng nghe thay đổi ngôn ngữ từ Header
+      window.addEventListener('i18n:changed', e => {
+        if (e.detail?.lang && e.detail.lang !== currentLang) {
+          setLanguage(e.detail.lang);
+        }
+      });
+
       setLanguage(savedLang);
+      prefetchAllMarkdownDocs();
     });
   </script>
 </body>
 </html>
+

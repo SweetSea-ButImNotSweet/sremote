@@ -27,6 +27,9 @@
       optUnmin: 'Bản tiêu chuẩn (Mặc định)',
       optMin: 'Bản nén (Minified)',
       optDev: 'Môi trường phát triển (Local Dev)',
+      userscriptGuide: 'Tại sao cần Userscript? (Hướng dẫn)',
+      wrapperPkg: 'NPM: @sremote/wrapper',
+      ready2usePkg: 'NPM: @sremote/ready2use',
       langLabel: 'Ngôn ngữ',
       github: 'GitHub',
       devModalTitle: 'Cấu hình Userscript Local Dev',
@@ -46,6 +49,9 @@
       optUnmin: 'Standard Build (Default)',
       optMin: 'Minified Build',
       optDev: 'Local Dev Environment',
+      userscriptGuide: 'Why Userscript? (User Guide)',
+      wrapperPkg: 'NPM: @sremote/wrapper',
+      ready2usePkg: 'NPM: @sremote/ready2use',
       langLabel: 'Language',
       github: 'GitHub',
       devModalTitle: 'Local Dev Userscript Setup',
@@ -211,10 +217,23 @@
                   <small>dist/sremote.min.user.js</small>
                 </a>
                 <div class="header-dropdown-divider"></div>
+                <a href="${this._lang === 'vi' ? `${base}packages/userscript/README/vi.md` : `${base}packages/userscript/README.md`}" class="header-dropdown-item" target="_blank" rel="noopener noreferrer">
+                  <strong>📖 ${dict.userscriptGuide}</strong>
+                  <small>packages/userscript</small>
+                </a>
                 <button type="button" class="header-dropdown-item header-dropdown-btn" id="header-btn-dev-snippet">
-                  <strong>${dict.optDev}</strong>
+                  <strong>🛠️ ${dict.optDev}</strong>
                   <small>Local @require file:/// template</small>
                 </button>
+                <div class="header-dropdown-divider"></div>
+                <a href="https://www.npmjs.com/package/@sremote/wrapper" class="header-dropdown-item" target="_blank" rel="noopener noreferrer">
+                  <strong>📦 ${dict.wrapperPkg}</strong>
+                  <small>Client SDK & Auto-discovery</small>
+                </a>
+                <a href="https://www.npmjs.com/package/@sremote/ready2use" class="header-dropdown-item" target="_blank" rel="noopener noreferrer">
+                  <strong>📦 ${dict.ready2usePkg}</strong>
+                  <small>22+ Pre-configured Player Presets</small>
+                </a>
               </div>
             </div>
 

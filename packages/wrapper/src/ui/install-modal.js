@@ -54,6 +54,8 @@ export function showInstallModal(options = {}) {
 
   const {
     userscriptUrl = 'https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.user.js',
+    learnMoreUrl = 'https://github.com/SweetSea-ButImNotSweet/sremote/blob/main/packages/userscript/README.md',
+    learnMoreText = 'Tại sao cần cài script này?',
     title = 'Yêu cầu SRemote Userscript',
     description = 'Trang web cần SRemote Userscript để tương tác và điều khiển media trong iframe cross-origin.',
     autoDetect = true,
@@ -115,11 +117,24 @@ export function showInstallModal(options = {}) {
   header.append(titleEl, closeBtn);
   box.append(header);
 
-  // Description
-  if (description) {
+  // Description & Learn More
+  if (description || learnMoreUrl) {
     const descEl = document.createElement('div');
-    descEl.className = 'sv-text';
-    descEl.textContent = description;
+    descEl.className = 'sv-text sv-install-desc';
+    if (description) {
+      const textSpan = document.createElement('span');
+      textSpan.textContent = description;
+      descEl.append(textSpan);
+    }
+    if (learnMoreUrl) {
+      const learnMoreLink = document.createElement('a');
+      learnMoreLink.className = 'sv-install-learn-more';
+      learnMoreLink.href = learnMoreUrl;
+      learnMoreLink.target = '_blank';
+      learnMoreLink.rel = 'noopener noreferrer';
+      learnMoreLink.textContent = ` ${learnMoreText}`;
+      descEl.append(learnMoreLink);
+    }
     box.append(descEl);
   }
 
