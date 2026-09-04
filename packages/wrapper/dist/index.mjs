@@ -1198,7 +1198,7 @@ function S(e = {}) {
 			E && (n.pause(), T.paused = !0);
 		},
 		async toggle() {
-			return typeof a == "function" ? a() : (O.paused ? typeof O.paused == "function" ? O.paused() : O.paused : E ? n.paused : T.paused) ? O.play() : O.pause();
+			return typeof a == "function" ? a() : (typeof e.paused == "function" ? e.paused() : typeof e.paused == "boolean" ? e.paused : E ? n.paused : T.paused) ? O.play() : O.pause();
 		},
 		async stop() {
 			if (typeof o == "function") return o();
