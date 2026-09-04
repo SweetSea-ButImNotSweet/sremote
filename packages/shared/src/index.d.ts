@@ -123,3 +123,4 @@ export declare function bindMediaEvents(
   onEvent: (event: string, payload: any) => void,
   options?: { instanceId?: string; source?: string; treatAlmostEndAsEnd?: boolean; events?: readonly string[] | string[] },
 ): () => void;
+export declare function wrapCustomAdapter(rawAdapter: any, options?: { instanceId?: string; onEmit?: (event: string, payload: any) => void; source?: string }): any;

@@ -1,6 +1,6 @@
 import { NS, console_log, console_debug } from '../config.js';
 import { generateInstanceId } from '../core/utils.js';
-import { createEventPayload } from '@sremote/shared';
+import { createEventPayload, wrapCustomAdapter } from '@sremote/shared';
 
 export function createInstanceManager() {
   const instances = new Map(); // instanceId -> { port, location, origin, note, state, mediaType, lastSeen, status, iframeEl, authenticated }
@@ -140,25 +140,21 @@ export function createInstanceManager() {
       }
     }
 
-    adapterVal.emit = (event, payload = {}) => {
-      const ev = String(event || '').toLowerCase();
-      const fullPayload = createEventPayload(ev, {
-        source: 'adapter',
-        instanceId: targetId,
-        mediaType: 'adapter',
-        ...(typeof payload === 'object' && payload !== null ? payload : { value: payload }),
-      });
-
-      if (ev === 'play' || ev === 'playing') {
-        if (exclusiveMode === 'auto') {
-          pauseOthersExcept(targetId);
+    // Create a non-mutating adapter wrapper inheriting from the user's object
+    const adapter = wrapCustomAdapter(adapterVal, {
+      instanceId: targetId,
+      source: 'adapter',
+      onEmit: (ev, fullPayload) => {
+        if (ev === 'play' || ev === 'playing') {
+          if (exclusiveMode === 'auto') {
+            pauseOthersExcept(targetId);
+          }
         }
-      }
+        emitGlobalEvent(ev, fullPayload);
+      },
+    });
 
-      emitGlobalEvent(ev, fullPayload);
-    };
-
-    parentAdaptersMap.set(targetId, adapterVal);
+    parentAdaptersMap.set(targetId, adapter);
     currentActiveInstanceId = targetId;
     console_log(`%c[SRemote:adapter] Registered custom adapter for instance '${targetId}'`, 'color: #06b6d4; font-weight: bold;');
 

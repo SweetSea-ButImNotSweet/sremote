@@ -230,3 +230,63 @@ export function bindMediaEvents(media, onEvent, options = {}) {
     boundListeners.length = 0;
   };
 }
+
+/**
+ * Wraps a user-provided custom adapter without mutating the original object.
+ * Provides prototype inheritance, safe emit wiring, and fallback toggle implementation.
+ *
+ * @param {Object} rawAdapter - Raw adapter object provided by the user
+ * @param {Object} options - Configuration options
+ * @param {string} options.instanceId - Instance ID assigned to the adapter
+ * @param {Function} [options.onEmit] - Callback triggered when adapter calls emit(event, payload)
+ * @param {string} [options.source='adapter'] - Source identifier
+ * @returns {Object} Wrapped SRemote custom adapter
+ */
+export function wrapCustomAdapter(rawAdapter, options = {}) {
+  if (!rawAdapter || typeof rawAdapter !== 'object') return null;
+
+  const { instanceId, onEmit, source = 'adapter' } = options;
+  const adapter = Object.create(rawAdapter);
+  const originalEmit = typeof rawAdapter.emit === 'function' ? rawAdapter.emit.bind(rawAdapter) : null;
+
+  adapter.emit = (event, payload = {}) => {
+    if (originalEmit) {
+      try {
+        originalEmit(event, payload);
+      } catch {}
+    }
+
+    const ev = String(event || '').toLowerCase();
+    const state = extractMediaState(adapter);
+    const fullPayload = createEventPayload(ev, {
+      source,
+      instanceId,
+      mediaType: 'adapter',
+      ...(state ? { state } : {}),
+      ...(typeof payload === 'object' && payload !== null ? payload : { value: payload }),
+    });
+
+    if (typeof onEmit === 'function') {
+      try {
+        onEmit(ev, fullPayload);
+      } catch {}
+    }
+  };
+
+  if (typeof adapter.toggle !== 'function' && typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
+    adapter.toggle = async function () {
+      const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : typeof adapter.paused === 'boolean' ? adapter.paused : true;
+      if (isPaused) {
+        return adapter.play();
+      } else {
+        return adapter.pause();
+      }
+    };
+  }
+
+  if (!adapter.capabilities) {
+    adapter.capabilities = evaluateCapabilities(adapter);
+  }
+
+  return adapter;
+}

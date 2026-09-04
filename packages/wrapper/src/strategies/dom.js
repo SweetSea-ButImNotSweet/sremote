@@ -1,5 +1,5 @@
 import { BaseDriver } from './base.js';
-import { extractMediaState, createEventPayload, evaluateCapabilities, bindMediaEvents } from '@sremote/shared';
+import { extractMediaState, createEventPayload, evaluateCapabilities, bindMediaEvents, wrapCustomAdapter } from '@sremote/shared';
 
 export class DomDriver extends BaseDriver {
   constructor(options = {}) {
@@ -130,48 +130,30 @@ export class DomDriver extends BaseDriver {
     return list;
   }
 
-  useAdapter(adapter, customInstanceId = null) {
-    if (!adapter || typeof adapter !== 'object') return null;
+  useAdapter(rawAdapter, customInstanceId = null) {
+    if (!rawAdapter || typeof rawAdapter !== 'object') return null;
     const instanceId = customInstanceId || `adapter-${Math.random().toString(36).slice(2, 9)}`;
 
-    // Wire adapter emit to DomDriver emit so sremote.on() receives it
-    const handleEmit = (event, payload = {}) => {
-      const ev = String(event || '').toLowerCase();
-      const state = extractMediaState(adapter);
-      const fullPayload = createEventPayload(ev, {
-        source: 'adapter',
-        instanceId,
-        mediaType: 'adapter',
-        ...(state ? { state } : {}),
-        ...(typeof payload === 'object' && payload !== null ? payload : { value: payload }),
-      });
-
-      if (ev === 'play' || ev === 'playing') {
-        this.lastActiveInstanceId = instanceId;
-        if (this.exclusiveMode === 'auto' || this.exclusiveMode === true) {
-          this.pauseOthersExcept(instanceId);
+    // Wrap adapter safely using shared helper
+    const wrappedAdapter = wrapCustomAdapter(rawAdapter, {
+      instanceId,
+      source: 'adapter',
+      onEmit: (ev, fullPayload) => {
+        if (ev === 'play' || ev === 'playing') {
+          this.lastActiveInstanceId = instanceId;
+          if (this.exclusiveMode === 'auto' || this.exclusiveMode === true) {
+            this.pauseOthersExcept(instanceId);
+          }
+          this.startAdapterStatePolling(instanceId, wrappedAdapter);
+        } else if (ev === 'pause' || ev === 'ended' || ev === 'stop') {
+          this.stopAdapterStatePolling(instanceId);
         }
-        this.startAdapterStatePolling(instanceId, adapter);
-      } else if (ev === 'pause' || ev === 'ended' || ev === 'stop') {
-        this.stopAdapterStatePolling(instanceId);
-      }
 
-      this.emit(ev, fullPayload);
-    };
+        this.emit(ev, fullPayload);
+      },
+    });
 
-    if (!adapter.emit) {
-      adapter.emit = handleEmit;
-    } else {
-      const origEmit = adapter.emit;
-      adapter.emit = (event, payload = {}) => {
-        try {
-          origEmit(event, payload);
-        } catch {}
-        handleEmit(event, payload);
-      };
-    }
-
-    this.adaptersMap.set(instanceId, adapter);
+    this.adaptersMap.set(instanceId, wrappedAdapter);
     this.lastActiveInstanceId = instanceId;
     return instanceId;
   }
