@@ -14,6 +14,7 @@
 export function createUniversalAdapter(options = {}) {
   const {
     name = 'universal-adapter',
+    mediaElement = null,
     play,
     pause,
     toggle,
@@ -37,20 +38,22 @@ export function createUniversalAdapter(options = {}) {
     getState,
   } = options;
 
+  let previousVolume = 1;
   const localState = { paused: true, currentTime: 0, duration: null, volume: 1, muted: false, playbackRate: 1, quality: 'auto', subtitle: null, shuffle: false, repeat: 'off' };
 
+  const hasMediaEl = Boolean(mediaElement && (mediaElement.tagName === 'AUDIO' || mediaElement.tagName === 'VIDEO' || mediaElement instanceof HTMLMediaElement));
   const hasFn = fn => typeof fn === 'function';
   const calculatedCapabilities = {
-    play: hasFn(play),
-    pause: hasFn(pause),
-    toggle: hasFn(toggle) || (hasFn(play) && hasFn(pause)),
-    stop: hasFn(stop) || hasFn(pause),
-    seek: hasFn(seek) || hasFn(seekTo) || hasFn(setCurrentTime),
-    volume: hasFn(setVolume),
-    muted: hasFn(setMuted),
-    speed: hasFn(setPlaybackRate),
-    playbackRate: hasFn(setPlaybackRate),
-    pip: hasFn(requestPip),
+    play: hasFn(play) || hasMediaEl,
+    pause: hasFn(pause) || hasMediaEl,
+    toggle: hasFn(toggle) || (hasFn(play) && hasFn(pause)) || hasMediaEl,
+    stop: hasFn(stop) || hasFn(pause) || hasMediaEl,
+    seek: hasFn(seek) || hasFn(seekTo) || hasFn(setCurrentTime) || hasMediaEl,
+    volume: hasFn(setVolume) || hasMediaEl,
+    muted: hasFn(setMuted) || hasMediaEl,
+    speed: hasFn(setPlaybackRate) || hasMediaEl,
+    playbackRate: hasFn(setPlaybackRate) || hasMediaEl,
+    pip: hasFn(requestPip) || (hasMediaEl && Boolean(mediaElement.requestPictureInPicture)),
     quality: hasFn(setQuality),
     subtitles: hasFn(setSubtitle) || hasFn(getSubtitles),
     shuffle: hasFn(setShuffle),
@@ -59,7 +62,7 @@ export function createUniversalAdapter(options = {}) {
     previous: hasFn(previous),
     load: hasFn(load),
     hasAdapter: true,
-    hasNative: false,
+    hasNative: hasMediaEl,
     hasMediaSession: false,
     ...(options.capabilities && typeof options.capabilities === 'object' ? options.capabilities : {}),
   };
@@ -74,6 +77,11 @@ export function createUniversalAdapter(options = {}) {
         localState.paused = false;
         return res;
       }
+      if (hasMediaEl) {
+        const res = await mediaElement.play();
+        localState.paused = false;
+        return res;
+      }
     },
 
     async pause() {
@@ -82,13 +90,17 @@ export function createUniversalAdapter(options = {}) {
         localState.paused = true;
         return res;
       }
+      if (hasMediaEl) {
+        mediaElement.pause();
+        localState.paused = true;
+      }
     },
 
     async toggle() {
       if (typeof toggle === 'function') {
         return toggle();
       }
-      const isPaused = adapter.paused ? (typeof adapter.paused === 'function' ? adapter.paused() : adapter.paused) : localState.paused;
+      const isPaused = adapter.paused ? (typeof adapter.paused === 'function' ? adapter.paused() : adapter.paused) : (hasMediaEl ? mediaElement.paused : localState.paused);
       return isPaused ? adapter.play() : adapter.pause();
     },
 
@@ -104,7 +116,7 @@ export function createUniversalAdapter(options = {}) {
       if (typeof seek === 'function') {
         return seek(offset);
       }
-      const cur = (await adapter.getCurrentTime?.()) ?? localState.currentTime ?? 0;
+      const cur = (await adapter.getCurrentTime?.()) ?? (hasMediaEl ? mediaElement.currentTime : localState.currentTime) ?? 0;
       return adapter.seekTo?.(Math.max(0, cur + offset));
     },
 
@@ -119,6 +131,10 @@ export function createUniversalAdapter(options = {}) {
         localState.currentTime = time;
         return res;
       }
+      if (hasMediaEl) {
+        mediaElement.currentTime = Number(time);
+        localState.currentTime = Number(time);
+      }
     },
 
     async setCurrentTime(time) {
@@ -126,18 +142,66 @@ export function createUniversalAdapter(options = {}) {
     },
 
     async setVolume(vol) {
+      const targetVol = Math.max(0, Math.min(1, Number(vol)));
+      if (targetVol > 0) {
+        previousVolume = targetVol;
+      }
+      localState.volume = targetVol;
+
+      // Discard mute when volume is actively set
+      localState.muted = false;
+
+      if (hasMediaEl) {
+        mediaElement.volume = targetVol;
+        mediaElement.muted = false;
+      }
+
       if (typeof setVolume === 'function') {
-        const res = await setVolume(vol);
-        localState.volume = vol;
+        const res = await setVolume(targetVol);
+        if (typeof setMuted === 'function') {
+          try {
+            await setMuted(false);
+          } catch {}
+        }
         return res;
       }
     },
 
     async setMuted(muted) {
+      const isMute = Boolean(muted);
+      if (isMute) {
+        // Save current volume before muting
+        const curVol = hasMediaEl ? mediaElement.volume : (localState.volume || 1);
+        if (curVol > 0) {
+          previousVolume = curVol;
+        }
+      }
+
+      localState.muted = isMute;
+
+      if (hasMediaEl) {
+        mediaElement.muted = isMute;
+        if (!isMute && mediaElement.volume === 0) {
+          mediaElement.volume = previousVolume || 1;
+        }
+      }
+
       if (typeof setMuted === 'function') {
-        const res = await setMuted(muted);
-        localState.muted = Boolean(muted);
+        const res = await setMuted(isMute);
+        if (!isMute && typeof setVolume === 'function' && localState.volume === 0) {
+          try {
+            await setVolume(previousVolume || 1);
+            localState.volume = previousVolume || 1;
+          } catch {}
+        }
         return res;
+      }
+
+      // Fallback if no setMuted function but setVolume exists
+      if (typeof setVolume === 'function') {
+        const nextVol = isMute ? 0 : (previousVolume || 1);
+        localState.volume = nextVol;
+        return setVolume(nextVol);
       }
     },
 
@@ -146,6 +210,10 @@ export function createUniversalAdapter(options = {}) {
         const res = await setPlaybackRate(rate);
         localState.playbackRate = rate;
         return res;
+      }
+      if (hasMediaEl) {
+        mediaElement.playbackRate = Number(rate);
+        localState.playbackRate = Number(rate);
       }
     },
 

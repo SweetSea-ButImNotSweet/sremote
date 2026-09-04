@@ -44,6 +44,12 @@ SRemote v2.1.0 is a major feature and stabilization update. This release massive
 
 ### 🐛 Fixed
 
+- **Early MutationObserver & Closed Shadow DOM Media Hunting**:
+  - Initialized `MutationObserver` and constructor hooks (`attachShadow`, `new Audio()`, `Document.prototype.createElement`) immediately on early script execution (`document-start`) instead of deferring until `DOMContentLoaded` or handshake negotiation.
+  - Hooked `Element.prototype.attachShadow` to capture both open and closed ShadowRoots, enabling recursive hunting of dynamically rendered and web-component-encapsulated media elements (e.g., Apple Music Player, Custom Web Players).
+- **Mute State & Previous Volume Retention**:
+  - Fixed an issue in `createUniversalAdapter`, `executeAdapterAction`, and `BaseMediaProvider` where muting failed to store the previous volume level, preventing audio from being properly restored upon un-muting.
+  - Automatically discard mute state (`muted: false`) whenever a new non-zero volume is explicitly set across all adapter runners and HTML5 controller drivers.
 - **Spotify Provider `ReferenceError`**: Fixed a critical bug in `playback_update` event listener where an undeclared `currentTime` variable was referenced directly, causing runtime crashes.
 - **Dummy Instance Guard in `resolveSRemote`**: Fixed an issue where providers could bind to placeholder dummy objects by verifying `!window.sremote.isDummy`, checking `!globalThis.sremote.isDummy`, and prioritizing `Symbol.for('__sremote_client__')`.
 - **Memory Leaks on Teardown**: Added dedicated `destroy()` hooks to **TikTok**, **NicoNico**, and **YouTube** adapters to properly detach `window` message listeners (`removeEventListener`) and clear active `timeupdate` intervals.

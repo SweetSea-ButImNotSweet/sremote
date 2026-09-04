@@ -316,6 +316,7 @@ export class DomDriver extends BaseDriver {
     if (resolved.type === 'adapter') return resolved.instance.setVolume?.(vol);
     const el = resolved.instance;
     el.volume = Math.max(0, Math.min(1, vol));
+    el.muted = false;
   }
 
   async mute(muted, target) {

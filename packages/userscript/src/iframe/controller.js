@@ -254,9 +254,14 @@ export function createMediaController({
             if (num > 1 && num <= 100) num /= 100;
             num = Math.min(1, Math.max(0, num));
             configuredVolumeSetter(num);
+            configuredMutedSetter(false);
             safeSetProp(activeMedia, descriptors.volume, 'volume', num);
+            safeSetProp(activeMedia, descriptors.muted, 'muted', false);
             for (const el of findAllMedia()) {
-              if (el !== activeMedia) safeSetProp(el, descriptors.volume, 'volume', num);
+              if (el !== activeMedia) {
+                safeSetProp(el, descriptors.volume, 'volume', num);
+                safeSetProp(el, descriptors.muted, 'muted', false);
+              }
             }
           }
           resVal = safeGetProp(activeMedia, descriptors.volume, 'volume');

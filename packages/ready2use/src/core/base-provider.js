@@ -141,6 +141,65 @@ export class BaseProvider {
   _setupAdapter(adapter) {
     const safeAdapter = adapter || {};
 
+    let previousVolume = 1;
+
+    // Wrap setVolume to record previous volume and automatically un-mute
+    const origSetVolume = safeAdapter.setVolume;
+    if (typeof origSetVolume === 'function') {
+      safeAdapter.setVolume = async function (vol) {
+        const v = Number(vol);
+        if (v > 0) previousVolume = v;
+        const res = await origSetVolume.call(this, vol);
+        if (typeof safeAdapter.setMuted === 'function') {
+          try {
+            await safeAdapter.setMuted(false);
+          } catch {}
+        }
+        return res;
+      };
+    }
+
+    // Wrap setMuted to save and restore previous volume if un-muting
+    const origSetMuted = safeAdapter.setMuted;
+    if (typeof origSetMuted === 'function') {
+      safeAdapter.setMuted = async function (muted) {
+        const isMute = Boolean(muted);
+        if (isMute) {
+          if (typeof safeAdapter.getVolume === 'function') {
+            try {
+              const cur = Number(await safeAdapter.getVolume());
+              if (cur > 0) previousVolume = cur;
+            } catch {}
+          }
+        }
+        const res = await origSetMuted.call(this, isMute);
+        if (!isMute && typeof safeAdapter.getVolume === 'function') {
+          try {
+            const cur = Number(await safeAdapter.getVolume());
+            if (cur === 0 && typeof safeAdapter.setVolume === 'function') {
+              await safeAdapter.setVolume(previousVolume || 1);
+            }
+          } catch {}
+        }
+        return res;
+      };
+    } else if (typeof safeAdapter.setVolume === 'function') {
+      // Fallback setMuted using setVolume if adapter doesn't provide setMuted
+      safeAdapter.setMuted = async function (muted) {
+        const isMute = Boolean(muted);
+        if (isMute) {
+          if (typeof safeAdapter.getVolume === 'function') {
+            try {
+              const cur = Number(await safeAdapter.getVolume());
+              if (cur > 0) previousVolume = cur;
+            } catch {}
+          }
+          return safeAdapter.setVolume(0);
+        }
+        return safeAdapter.setVolume(previousVolume || 1);
+      };
+    }
+
     if (typeof safeAdapter.toggle !== 'function' && typeof safeAdapter.play === 'function' && typeof safeAdapter.pause === 'function') {
       safeAdapter.toggle = function () {
         const isPaused = typeof safeAdapter.paused === 'function' ? safeAdapter.paused() : typeof safeAdapter.paused === 'boolean' ? safeAdapter.paused : true;
