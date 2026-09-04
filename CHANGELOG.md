@@ -9,11 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.1.0] - 2026-09-03
 
-SRemote v2.1.0 is a major feature and stabilization update. This release massively expands platform compatibility in `@sremote/ready2use` by introducing 7 brand new providers, completely revamps the Facebook Video integration, optimizes core player lifecycle architecture, and patches several critical runtime and memory leak bugs.
+SRemote v2.1.0 is a major feature and stabilization update. This release massively expands platform compatibility in `@sremote/ready2use` by bringing the total supported platforms up to **22**, introducing new embed providers and controllers (Instagram, Threads, Apple Music, Apple MusicKit JS), expanding Facebook Reels/Watch URL parsing, optimizing core player lifecycle architecture, and patching several critical runtime and memory leak bugs.
 
 ### 🚀 Added
 
-- **7 New Platform Providers (`@sremote/ready2use`)**:
+- **New Platform Providers (`@sremote/ready2use`)**:
+  - **Apple MusicKit JS (`applemusickit`)**: Full-featured player and SRemote adapter powered by Apple's official MusicKit JS v3 SDK (`play`, `pause`, `toggle`, `seek`, `seekTo`, `volume`, `mute`, `next`, `previous`, `setQueue`, and real-time event tracking).
+  - **Apple Music Embed (`applemusic`)**: Zero-token Iframe widget embed (`embed.music.apple.com/...`) for quick preview playback of songs, albums, and playlists.
+  - **Instagram (`instagram`)**: View-only embed provider for Instagram Posts and Reels via `instagram.com/embed.js`.
+  - **Threads (`threads`)**: View-only embed provider for Threads posts and video embeds via `threads.net/embed.js`.
   - **Twitter / X (`twitter`)**: Programmatically render and control embedded tweet videos using the official Twitter Widgets JS SDK (`platform.twitter.com/widgets.js`).
   - **PeerTube (`peertube`)**: Added native two-way remote control support for decentralized PeerTube instances via `@peertube/embed-api` (`play`, `pause`, `seek`, `volume`, `rate`, and state synchronization).
   - **Rumble (`rumble`)**: Zero-config auto-discovery and playback integration for embedded HTML5 videos (`rumble.com/embed/...`).
@@ -35,8 +39,9 @@ SRemote v2.1.0 is a major feature and stabilization update. This release massive
 
 ### 🔄 Changed
 
-- **Facebook Video Player Revamp**:
+- **Facebook Video, Reels & Watch Revamp**:
   - Replaced static iframe embedding with full **Facebook JavaScript SDK (`connect.facebook.net/en_US/sdk.js`)** integration.
+  - Added URL normalization supporting standard videos, Facebook Watch (`/watch/?v=...`), Facebook Reels (`/reel/...`), and `fb.watch` shortlinks.
   - Subscribes to `xfbml.ready` events to bind the underlying player controller to SRemote Adapter interfaces (`play`, `pause`, `seek`, `volume`, `mute`, and real-time playback state updates).
 - **Dailymotion SDK URL Migration**: Updated Dailymotion embed recipes to load the new SDK CDN endpoint at `https://geo.dailymotion.com/libs/player.js`.
 - **Tooling & Dependencies**:

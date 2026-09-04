@@ -100,7 +100,14 @@ export function createUniversalAdapter(options = {}) {
       if (typeof toggle === 'function') {
         return toggle();
       }
-      const isPaused = adapter.paused ? (typeof adapter.paused === 'function' ? adapter.paused() : adapter.paused) : (hasMediaEl ? mediaElement.paused : localState.paused);
+      const isPaused =
+        typeof options.paused === 'function'
+          ? Boolean(options.paused())
+          : typeof options.paused === 'boolean'
+            ? options.paused
+            : hasMediaEl
+              ? mediaElement.paused
+              : localState.paused;
       return isPaused ? adapter.play() : adapter.pause();
     },
 
@@ -171,7 +178,7 @@ export function createUniversalAdapter(options = {}) {
       const isMute = Boolean(muted);
       if (isMute) {
         // Save current volume before muting
-        const curVol = hasMediaEl ? mediaElement.volume : (localState.volume || 1);
+        const curVol = hasMediaEl ? mediaElement.volume : localState.volume || 1;
         if (curVol > 0) {
           previousVolume = curVol;
         }
@@ -199,7 +206,7 @@ export function createUniversalAdapter(options = {}) {
 
       // Fallback if no setMuted function but setVolume exists
       if (typeof setVolume === 'function') {
-        const nextVol = isMute ? 0 : (previousVolume || 1);
+        const nextVol = isMute ? 0 : previousVolume || 1;
         localState.volume = nextVol;
         return setVolume(nextVol);
       }

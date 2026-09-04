@@ -17,6 +17,10 @@ import { kick } from './providers/kick.js';
 import { streamable } from './providers/streamable.js';
 import { odysee } from './providers/odysee.js';
 import { bandcamp } from './providers/bandcamp.js';
+import { instagram } from './providers/instagram.js';
+import { threads } from './providers/threads.js';
+import { applemusic } from './providers/applemusic.js';
+import { applemusickit } from './providers/musickit.js';
 
 export {
   BaseProvider,
@@ -38,6 +42,10 @@ export {
   streamable,
   odysee,
   bandcamp,
+  instagram,
+  threads,
+  applemusic,
+  applemusickit,
 };
 
 export default {
@@ -60,4 +68,8 @@ export default {
   streamable,
   odysee,
   bandcamp,
+  instagram,
+  threads,
+  applemusic,
+  applemusickit,
 };

@@ -6,7 +6,7 @@ Automatically initializes third-party SDKs, mounts iframes/elements, and binds c
 
 ---
 
-## 🎯 Supported Providers (18 Platforms)
+## 🎯 Supported Providers (22 Platforms)
 
 | Provider | Adapters for SRemote available? | Exported Name |
 | :--- | :---: | :--- |
@@ -17,11 +17,15 @@ Automatically initializes third-party SDKs, mounts iframes/elements, and binds c
 | **Twitch** | True | `twitch` |
 | **Mixcloud** | True | `mixcloud` |
 | **Spotify** | True | `spotify` |
+| **Apple MusicKit** | True | `applemusickit` |
 | **TikTok** | True | `tiktok` |
 | **NicoNico** | True | `niconico` |
-| **Facebook** | True | `facebook` |
+| **Facebook (Video, Reels, Watch)** | True | `facebook` |
 | **PeerTube** | True | `peertube` |
-| **Twitter / X** | True | `twitter` |
+| **Twitter / X** | True *(View-only)* | `twitter` |
+| **Instagram (Post, Reel)** | False *(View-only Embed)* | `instagram` |
+| **Threads** | False *(View-only Embed)* | `threads` |
+| **Apple Music (Embed)** | False *(View-only Embed)* | `applemusic` |
 | **Bilibili** | False *(HTML5 Discovery)* | `bilibili` |
 | **Rumble** | False *(HTML5 Discovery)* | `rumble` |
 | **Kick** | False *(HTML5 Discovery)* | `kick` |

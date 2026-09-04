@@ -495,6 +495,81 @@ export declare const bandcamp: {
   provider: BandcampProvider;
 };
 
+// --- Instagram Provider Definitions ---
+export interface InstagramPlayerOptions extends BaseProviderOptions {
+  postUrl?: string;
+  url?: string;
+  id?: string;
+  captioned?: boolean;
+}
+
+export declare class InstagramProvider extends BaseProvider<InstagramPlayerOptions, any> {
+  constructor();
+}
+
+export declare const instagram: {
+  create: (options?: InstagramPlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: InstagramPlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: InstagramProvider;
+};
+
+// --- Threads Provider Definitions ---
+export interface ThreadsPlayerOptions extends BaseProviderOptions {
+  postUrl?: string;
+  url?: string;
+  id?: string;
+}
+
+export declare class ThreadsProvider extends BaseProvider<ThreadsPlayerOptions, any> {
+  constructor();
+}
+
+export declare const threads: {
+  create: (options?: ThreadsPlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: ThreadsPlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: ThreadsProvider;
+};
+
+// --- Apple Music Embed Provider Definitions ---
+export interface AppleMusicPlayerOptions extends BaseProviderOptions {
+  url?: string;
+  src?: string;
+  albumId?: string;
+  playlistId?: string;
+  songId?: string;
+}
+
+export declare class AppleMusicProvider extends BaseProvider<AppleMusicPlayerOptions, any> {
+  constructor();
+}
+
+export declare const applemusic: {
+  create: (options?: AppleMusicPlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: AppleMusicPlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: AppleMusicProvider;
+};
+
+// --- Apple MusicKit JS Provider Definitions ---
+export interface AppleMusicKitPlayerOptions extends BaseProviderOptions {
+  developerToken?: string;
+  appName?: string;
+  appBuild?: string;
+  song?: string | object;
+  album?: string | object;
+  playlist?: string | object;
+  musicKitOptions?: Record<string, any>;
+}
+
+export declare class AppleMusicKitProvider extends BaseProvider<AppleMusicKitPlayerOptions, any> {
+  constructor();
+}
+
+export declare const applemusickit: {
+  create: (options?: AppleMusicKitPlayerOptions) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: AppleMusicKitPlayerOptions) => Promise<ProviderMountResult<any>>;
+  provider: AppleMusicKitProvider;
+};
+
 declare const _default: {
   BaseProvider: typeof BaseProvider;
   youtube: typeof youtube;
@@ -515,6 +590,10 @@ declare const _default: {
   streamable: typeof streamable;
   odysee: typeof odysee;
   bandcamp: typeof bandcamp;
+  instagram: typeof instagram;
+  threads: typeof threads;
+  applemusic: typeof applemusic;
+  applemusickit: typeof applemusickit;
 };
 
 export default _default;

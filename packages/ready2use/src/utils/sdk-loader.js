@@ -316,3 +316,80 @@ export function loadPeerTubeSdk() {
 
   return peerTubeSdkPromise;
 }
+
+let instagramSdkPromise = null;
+/**
+ * Loads the Instagram embed.js script and resolves when window.instgrm is available.
+ * @returns {Promise<any>}
+ */
+export function loadInstagramSdk() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
+  if (window.instgrm && window.instgrm.Embeds) {
+    return Promise.resolve(window.instgrm);
+  }
+
+  if (instagramSdkPromise) return instagramSdkPromise;
+
+  instagramSdkPromise = loadScript('https://www.instagram.com/embed.js')
+    .then(() => window.instgrm)
+    .catch(err => {
+      instagramSdkPromise = null;
+      throw err;
+    });
+
+  return instagramSdkPromise;
+}
+
+let threadsSdkPromise = null;
+/**
+ * Loads the Threads embed.js script.
+ * @returns {Promise<void>}
+ */
+export function loadThreadsSdk() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
+  if (threadsSdkPromise) return threadsSdkPromise;
+
+  threadsSdkPromise = loadScript('https://www.threads.net/embed.js')
+    .then(() => {})
+    .catch(err => {
+      threadsSdkPromise = null;
+      throw err;
+    });
+
+  return threadsSdkPromise;
+}
+
+let musicKitSdkPromise = null;
+/**
+ * Loads the Apple MusicKit JS v3 SDK and resolves when window.MusicKit is ready.
+ * @returns {Promise<any>}
+ */
+export function loadMusicKitSdk() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
+  if (window.MusicKit) {
+    return Promise.resolve(window.MusicKit);
+  }
+
+  if (musicKitSdkPromise) return musicKitSdkPromise;
+
+  musicKitSdkPromise = new Promise((resolve, reject) => {
+    const onLoaded = () => {
+      document.removeEventListener('musickitloaded', onLoaded);
+      resolve(window.MusicKit);
+    };
+
+    if (window.MusicKit) {
+      return resolve(window.MusicKit);
+    }
+
+    document.addEventListener('musickitloaded', onLoaded);
+
+    loadScript('https://js-cdn.music.apple.com/musickit/v3/musickit.js').catch(err => {
+      document.removeEventListener('musickitloaded', onLoaded);
+      musicKitSdkPromise = null;
+      reject(err);
+    });
+  });
+
+  return musicKitSdkPromise;
+}

@@ -3,6 +3,17 @@ import { applyElementAttributes, createTempNode } from '../core/dom-utils.js';
 import { loadFacebookSdk } from '../utils/sdk-loader.js';
 
 /**
+ * Normalizes Facebook video URLs (standard video, watch, reels, fb.watch).
+ * @param {string} input
+ * @returns {string}
+ */
+function normalizeFacebookUrl(input) {
+  if (!input) return 'https://www.facebook.com/facebook/videos/10153231379946729/';
+  const str = String(input).trim();
+  return str;
+}
+
+/**
  * Provider for Facebook Video Embed & Embedded Video Player API
  * Reference: https://developers.facebook.com/docs/plugins/embedded-video-player/api
  */
@@ -18,7 +29,8 @@ export class FacebookProvider extends BaseProvider {
   async initPlayer(options, instanceId) {
     const width = options.width || '500px';
     const height = options.height || 'auto';
-    const videoUrl = options.videoUrl || options.url || 'https://www.facebook.com/facebook/videos/10153231379946729/';
+    const rawUrl = options.videoUrl || options.url || options.id || options.videoId || '';
+    const videoUrl = normalizeFacebookUrl(rawUrl);
     const fbDomId = `sremote-facebook-video-${instanceId}`;
 
     const { hiddenWrapper, tempNode, cleanup } = createTempNode(instanceId, width, height);
