@@ -130,9 +130,49 @@ export function initIframeAgent() {
     }
   }
 
-  // Hook constructors & MediaSession
+  // Hook constructors & MediaSession early
   hookMediaSession();
-  setupMediaHooks({ trackMediaElement });
+  setupMediaHooks({
+    trackMediaElement,
+    onElementAdded: () => {
+      checkActiveMediaLiveness();
+    },
+  });
+
+  function checkActiveMediaLiveness() {
+    IframeStyleEngine.maintainStyles();
+
+    const had = Boolean(resolver.getActiveMedia());
+    const oldType = resolver.getMediaType();
+    const activeMedia = resolver.getActiveMedia();
+    const isCurrentAttached = activeMedia && (activeMedia.isConnected || createdMediaPool.has(activeMedia));
+
+    if (!isCurrentAttached || !resolver.resolveActiveMedia()) {
+      if (had) {
+        console_log(`%c[SRemote:media] Active media detached / dropped in iframe`, 'color: #f59e0b;');
+        if (!resolver.resolveActiveMedia()) {
+          resolver.setActiveMedia(null);
+          resolver.setMediaType(null);
+          emitToParent('mediaDisconnected', { instanceId, hasMedia: false });
+          return;
+        }
+      }
+    }
+
+    if (resolver.resolveActiveMedia() && (!had || oldType !== resolver.getMediaType())) {
+      onMediaAvailable();
+    }
+  }
+
+  // Early MutationObserver on root / documentElement
+  let observer = null;
+  try {
+    observer = new MutationObserver(checkActiveMediaLiveness);
+    const rootEl = document.documentElement || document;
+    if (rootEl) {
+      observer.observe(rootEl, { childList: true, subtree: true });
+    }
+  } catch {}
 
   function sendMediaSessionState(action, specificValue) {
     const ms = navigator.mediaSession || mockMediaSessionInstance;
@@ -425,35 +465,15 @@ export function initIframeAgent() {
   function boot() {
     if (resolver.resolveActiveMedia()) onMediaAvailable();
 
-    const checkActiveMediaLiveness = () => {
-      IframeStyleEngine.maintainStyles();
-
-      const had = Boolean(resolver.getActiveMedia());
-      const oldType = resolver.getMediaType();
-      const activeMedia = resolver.getActiveMedia();
-      const isCurrentAttached = activeMedia && (activeMedia.isConnected || createdMediaPool.has(activeMedia));
-
-      if (!isCurrentAttached || !resolver.resolveActiveMedia()) {
-        if (had) {
-          console_log(`%c[SRemote:media] Active media detached / dropped in iframe`, 'color: #f59e0b;');
-          if (!resolver.resolveActiveMedia()) {
-            resolver.setActiveMedia(null);
-            resolver.setMediaType(null);
-            emitToParent('mediaDisconnected', { instanceId, hasMedia: false });
-            return;
-          }
+    // Re-ensure root observer is active if documentElement was not ready during early init
+    if (!observer) {
+      try {
+        observer = new MutationObserver(checkActiveMediaLiveness);
+        const mountTarget = document.documentElement || document.body || document;
+        if (mountTarget) {
+          observer.observe(mountTarget, { childList: true, subtree: true });
         }
-      }
-
-      if (resolver.resolveActiveMedia() && (!had || oldType !== resolver.getMediaType())) {
-        onMediaAvailable();
-      }
-    };
-
-    const observer = new MutationObserver(checkActiveMediaLiveness);
-    const mountTarget = document.documentElement || document;
-    if (mountTarget) {
-      observer.observe(mountTarget, { childList: true, subtree: true });
+      } catch {}
     }
 
     const poolCheckInterval = setInterval(checkActiveMediaLiveness, 1000);
@@ -477,7 +497,7 @@ export function initIframeAgent() {
       clearInterval(huntTimer);
       clearInterval(poolCheckInterval);
       try {
-        observer.disconnect();
+        if (observer) observer.disconnect();
       } catch {}
       try {
         hideConnectedIndicator();

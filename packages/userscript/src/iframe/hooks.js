@@ -1,7 +1,62 @@
 import { pageWindow, console_warn } from '../config.js';
 
-export function setupMediaHooks({ trackMediaElement }) {
+// Global registry of all known ShadowRoots (both open and closed)
+const knownShadowRoots = new Set();
+
+export function getKnownShadowRoots() {
+  return Array.from(knownShadowRoots);
+}
+
+export function setupMediaHooks({ trackMediaElement, onElementAdded }) {
   try {
+    // Hook Element.prototype.attachShadow to capture all shadow roots (even mode: 'closed')
+    const hookAttachShadowOn = targetProto => {
+      if (!targetProto || targetProto.__sremote_attach_shadow_hooked__) return;
+      try {
+        const nativeAttachShadow = targetProto.attachShadow;
+        if (typeof nativeAttachShadow === 'function') {
+          targetProto.attachShadow = function (init) {
+            const shadowRoot = nativeAttachShadow.call(this, init);
+            if (shadowRoot) {
+              knownShadowRoots.add(shadowRoot);
+
+              // Observe mutations inside the newly created shadow root
+              try {
+                const shadowObserver = new MutationObserver(mutations => {
+                  for (let i = 0; i < mutations.length; i++) {
+                    const m = mutations[i];
+                    if (m.addedNodes) {
+                      for (let j = 0; j < m.addedNodes.length; j++) {
+                        const node = m.addedNodes[j];
+                        if (node.nodeType === 1) {
+                          // ELEMENT_NODE
+                          if (node.tagName === 'AUDIO' || node.tagName === 'VIDEO' || node instanceof HTMLMediaElement) {
+                            trackMediaElement(node);
+                          }
+                          if (typeof onElementAdded === 'function') {
+                            onElementAdded(node);
+                          }
+                        }
+                      }
+                    }
+                  }
+                });
+                shadowObserver.observe(shadowRoot, { childList: true, subtree: true });
+              } catch {}
+            }
+            return shadowRoot;
+          };
+          targetProto.__sremote_attach_shadow_hooked__ = true;
+        }
+      } catch {}
+    };
+
+    const elemProto = window.Element?.prototype || (typeof globalThis !== 'undefined' && globalThis.Element?.prototype);
+    if (elemProto) hookAttachShadowOn(elemProto);
+    if (pageWindow?.Element?.prototype && pageWindow.Element.prototype !== elemProto) {
+      hookAttachShadowOn(pageWindow.Element.prototype);
+    }
+
     // Hook Audio constructor on both pageWindow and window
     const hookAudioConstructorOn = targetWin => {
       if (!targetWin) return;

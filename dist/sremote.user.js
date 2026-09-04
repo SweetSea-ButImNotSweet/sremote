@@ -2502,70 +2502,48 @@
 			console_warn("[sremote] MediaSession hook warning:", e);
 		}
 	}
-	function queryMediaDeep(root = document) {
-		const list = [];
+	var knownShadowRoots = new Set();
+	function getKnownShadowRoots() {
+		return Array.from(knownShadowRoots);
+	}
+	function setupMediaHooks({ trackMediaElement, onElementAdded }) {
 		try {
-			if (!root) return list;
-			if (root.querySelectorAll) {
-				const found = root.querySelectorAll("video, audio");
-				for (let i = 0; i < found.length; i++) list.push(found[i]);
-			}
-			const allElements = root.querySelectorAll ? root.querySelectorAll("*") : [];
-			for (let i = 0; i < allElements.length; i++) {
-				const el = allElements[i];
-				if (el.shadowRoot) list.push(...queryMediaDeep(el.shadowRoot));
-				if (el.tagName === "IFRAME" || el.tagName === "FRAME") try {
-					const childDoc = el.contentDocument || el.contentWindow?.document;
-					if (childDoc) list.push(...queryMediaDeep(childDoc));
+			const hookAttachShadowOn = (targetProto) => {
+				if (!targetProto || targetProto.__sremote_attach_shadow_hooked__) return;
+				try {
+					const nativeAttachShadow = targetProto.attachShadow;
+					if (typeof nativeAttachShadow === "function") {
+						targetProto.attachShadow = function(init) {
+							const shadowRoot = nativeAttachShadow.call(this, init);
+							if (shadowRoot) {
+								knownShadowRoots.add(shadowRoot);
+								try {
+									new MutationObserver((mutations) => {
+										for (let i = 0; i < mutations.length; i++) {
+											const m = mutations[i];
+											if (m.addedNodes) for (let j = 0; j < m.addedNodes.length; j++) {
+												const node = m.addedNodes[j];
+												if (node.nodeType === 1) {
+													if (node.tagName === "AUDIO" || node.tagName === "VIDEO" || node instanceof HTMLMediaElement) trackMediaElement(node);
+													if (typeof onElementAdded === "function") onElementAdded(node);
+												}
+											}
+										}
+									}).observe(shadowRoot, {
+										childList: true,
+										subtree: true
+									});
+								} catch {}
+							}
+							return shadowRoot;
+						};
+						targetProto.__sremote_attach_shadow_hooked__ = true;
+					}
 				} catch {}
-			}
-		} catch {}
-		return list;
-	}
-	function findAllMedia() {
-		return queryMediaDeep(document);
-	}
-	function createMediaResolver(createdMediaPool, bindVideoEvents) {
-		let activeMedia = null;
-		let mediaType = null;
-		function resolveActiveMedia() {
-			if (activeMedia && (mediaType === "adapter" || activeMedia.isConnected || createdMediaPool.has(activeMedia))) return true;
-			if (mediaType === "adapter" && activeMedia) return true;
-			const all = findAllMedia();
-			if (all.length > 0) {
-				const valid = all.find((el) => !el.paused && !el.ended && el.currentTime > 0) || all.find((el) => !el.paused) || all.find((el) => el.duration && el.duration > 0 || el.currentSrc || el.src) || all[0];
-				activeMedia = valid;
-				mediaType = valid.tagName ? valid.tagName.toLowerCase() : "video";
-				bindVideoEvents(valid);
-				return true;
-			}
-			const ms = pageWindow.navigator?.mediaSession || navigator?.mediaSession;
-			const hasHandlers = mockMediaSessionInstance._handlers.size > 0;
-			const hasMetadata = Boolean(ms?.metadata && (ms.metadata.title || ms.metadata.artist));
-			const isPlayingState = ms?.playbackState === "playing" || ms?.playbackState === "paused";
-			if (hasHandlers || hasMetadata || isPlayingState) {
-				activeMedia = activeMediaSession;
-				mediaType = "mediasession";
-				return true;
-			}
-			activeMedia = null;
-			mediaType = null;
-			return false;
-		}
-		return {
-			getActiveMedia: () => activeMedia,
-			getMediaType: () => mediaType,
-			setActiveMedia: (m) => {
-				activeMedia = m;
-			},
-			setMediaType: (t) => {
-				mediaType = t;
-			},
-			resolveActiveMedia
-		};
-	}
-	function setupMediaHooks({ trackMediaElement }) {
-		try {
+			};
+			const elemProto = window.Element?.prototype || typeof globalThis !== "undefined" && globalThis.Element?.prototype;
+			if (elemProto) hookAttachShadowOn(elemProto);
+			if (pageWindow?.Element?.prototype && pageWindow.Element.prototype !== elemProto) hookAttachShadowOn(pageWindow.Element.prototype);
 			const hookAudioConstructorOn = (targetWin) => {
 				if (!targetWin) return;
 				try {
@@ -2631,6 +2609,81 @@
 		} catch (e) {
 			console_warn("[sremote] Media constructors hook warning:", e);
 		}
+	}
+	function queryMediaDeep(root = document, visitedRoots = new Set()) {
+		const list = [];
+		try {
+			if (!root || visitedRoots.has(root)) return list;
+			visitedRoots.add(root);
+			if (root.querySelectorAll) {
+				const found = root.querySelectorAll("video, audio");
+				for (let i = 0; i < found.length; i++) list.push(found[i]);
+			}
+			const allElements = root.querySelectorAll ? root.querySelectorAll("*") : [];
+			for (let i = 0; i < allElements.length; i++) {
+				const el = allElements[i];
+				if (el.shadowRoot) list.push(...queryMediaDeep(el.shadowRoot, visitedRoots));
+				if (el.tagName === "IFRAME" || el.tagName === "FRAME") try {
+					const childDoc = el.contentDocument || el.contentWindow?.document;
+					if (childDoc) list.push(...queryMediaDeep(childDoc, visitedRoots));
+				} catch {}
+			}
+		} catch {}
+		return list;
+	}
+	function findAllMedia() {
+		const visitedRoots = new Set();
+		const mediaList = queryMediaDeep(document, visitedRoots);
+		try {
+			const shadowRoots = getKnownShadowRoots();
+			for (let i = 0; i < shadowRoots.length; i++) {
+				const sr = shadowRoots[i];
+				if (sr && !visitedRoots.has(sr)) {
+					const subMedia = queryMediaDeep(sr, visitedRoots);
+					for (let j = 0; j < subMedia.length; j++) if (!mediaList.includes(subMedia[j])) mediaList.push(subMedia[j]);
+				}
+			}
+		} catch {}
+		return mediaList;
+	}
+	function createMediaResolver(createdMediaPool, bindVideoEvents) {
+		let activeMedia = null;
+		let mediaType = null;
+		function resolveActiveMedia() {
+			if (activeMedia && (mediaType === "adapter" || activeMedia.isConnected || createdMediaPool.has(activeMedia))) return true;
+			if (mediaType === "adapter" && activeMedia) return true;
+			const all = findAllMedia();
+			if (all.length > 0) {
+				const valid = all.find((el) => !el.paused && !el.ended && el.currentTime > 0) || all.find((el) => !el.paused) || all.find((el) => el.duration && el.duration > 0 || el.currentSrc || el.src) || all[0];
+				activeMedia = valid;
+				mediaType = valid.tagName ? valid.tagName.toLowerCase() : "video";
+				bindVideoEvents(valid);
+				return true;
+			}
+			const ms = pageWindow.navigator?.mediaSession || navigator?.mediaSession;
+			const hasHandlers = mockMediaSessionInstance._handlers.size > 0;
+			const hasMetadata = Boolean(ms?.metadata && (ms.metadata.title || ms.metadata.artist));
+			const isPlayingState = ms?.playbackState === "playing" || ms?.playbackState === "paused";
+			if (hasHandlers || hasMetadata || isPlayingState) {
+				activeMedia = activeMediaSession;
+				mediaType = "mediasession";
+				return true;
+			}
+			activeMedia = null;
+			mediaType = null;
+			return false;
+		}
+		return {
+			getActiveMedia: () => activeMedia,
+			getMediaType: () => mediaType,
+			setActiveMedia: (m) => {
+				activeMedia = m;
+			},
+			setMediaType: (t) => {
+				mediaType = t;
+			},
+			resolveActiveMedia
+		};
 	}
 	function getVideoState(targetMedia, activeMedia, resolveActiveMedia) {
 		const media = targetMedia || activeMedia || (resolveActiveMedia() ? activeMedia : null);
@@ -3486,7 +3539,42 @@
 			}
 		}
 		hookMediaSession();
-		setupMediaHooks({ trackMediaElement });
+		setupMediaHooks({
+			trackMediaElement,
+			onElementAdded: () => {
+				checkActiveMediaLiveness();
+			}
+		});
+		function checkActiveMediaLiveness() {
+			IframeStyleEngine.maintainStyles();
+			const had = Boolean(resolver.getActiveMedia());
+			const oldType = resolver.getMediaType();
+			const activeMedia = resolver.getActiveMedia();
+			if (!(activeMedia && (activeMedia.isConnected || createdMediaPool.has(activeMedia))) || !resolver.resolveActiveMedia()) {
+				if (had) {
+					console_log(`%c[SRemote:media] Active media detached / dropped in iframe`, "color: #f59e0b;");
+					if (!resolver.resolveActiveMedia()) {
+						resolver.setActiveMedia(null);
+						resolver.setMediaType(null);
+						emitToParent("mediaDisconnected", {
+							instanceId,
+							hasMedia: false
+						});
+						return;
+					}
+				}
+			}
+			if (resolver.resolveActiveMedia() && (!had || oldType !== resolver.getMediaType())) onMediaAvailable();
+		}
+		let observer = null;
+		try {
+			observer = new MutationObserver(checkActiveMediaLiveness);
+			const rootEl = document.documentElement || document;
+			if (rootEl) observer.observe(rootEl, {
+				childList: true,
+				subtree: true
+			});
+		} catch {}
 		function sendMediaSessionState(action, specificValue) {
 			const ms = navigator.mediaSession || mockMediaSessionInstance;
 			const payload = {
@@ -3755,33 +3843,14 @@
 		});
 		function boot() {
 			if (resolver.resolveActiveMedia()) onMediaAvailable();
-			const checkActiveMediaLiveness = () => {
-				IframeStyleEngine.maintainStyles();
-				const had = Boolean(resolver.getActiveMedia());
-				const oldType = resolver.getMediaType();
-				const activeMedia = resolver.getActiveMedia();
-				if (!(activeMedia && (activeMedia.isConnected || createdMediaPool.has(activeMedia))) || !resolver.resolveActiveMedia()) {
-					if (had) {
-						console_log(`%c[SRemote:media] Active media detached / dropped in iframe`, "color: #f59e0b;");
-						if (!resolver.resolveActiveMedia()) {
-							resolver.setActiveMedia(null);
-							resolver.setMediaType(null);
-							emitToParent("mediaDisconnected", {
-								instanceId,
-								hasMedia: false
-							});
-							return;
-						}
-					}
-				}
-				if (resolver.resolveActiveMedia() && (!had || oldType !== resolver.getMediaType())) onMediaAvailable();
-			};
-			const observer = new MutationObserver(checkActiveMediaLiveness);
-			const mountTarget = document.documentElement || document;
-			if (mountTarget) observer.observe(mountTarget, {
-				childList: true,
-				subtree: true
-			});
+			if (!observer) try {
+				observer = new MutationObserver(checkActiveMediaLiveness);
+				const mountTarget = document.documentElement || document.body || document;
+				if (mountTarget) observer.observe(mountTarget, {
+					childList: true,
+					subtree: true
+				});
+			} catch {}
 			const poolCheckInterval = setInterval(checkActiveMediaLiveness, 1e3);
 			let huntAttempts = 0;
 			const huntTimer = setInterval(() => {
@@ -3799,7 +3868,7 @@
 				clearInterval(huntTimer);
 				clearInterval(poolCheckInterval);
 				try {
-					observer.disconnect();
+					if (observer) observer.disconnect();
 				} catch {}
 				try {
 					hideConnectedIndicator();
