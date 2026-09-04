@@ -11,7 +11,7 @@
   'use strict';
 
   // SRemote Client from SDK Wrapper (or fallback to window.sremote)
-  const client = window.SRemoteWrapper ? window.SRemoteWrapper.createSRemoteClient() : window.sremote;
+  const client = window.SRemoteWrapper ? window.SRemoteWrapper.createSRemote() : window.sremote;
   const sremoteApi = client || window.sremote;
 
   // Constants

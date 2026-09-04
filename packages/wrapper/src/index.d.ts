@@ -163,6 +163,7 @@ export interface SRemoteInstancesNamespace {
    * Get the evaluated capabilities of an instance.
    */
   capabilities(instanceId?: string, key?: string): SRemoteCapabilities | null;
+  getCapabilities(instanceId?: string, key?: string): SRemoteCapabilities | null;
 
   /**
    * Get a list of all currently connected media instances and adapters.
@@ -227,7 +228,7 @@ export interface SRemoteRpcNamespace {
   /**
    * Bridge arbitrary window `postMessage` directly into the iframe's window context.
    */
-  postMessage(message: any, targetOrigin?: string, instanceId?: string, from?: string, key?: string): boolean;
+  postMessage(message: any, targetOrigin?: string, instanceId?: string | null, from?: string, key?: string | null): boolean;
 
   /**
    * Subscribe to messages bridged from child iframes.
@@ -274,6 +275,14 @@ export declare abstract class BaseDriver {
   speed(rate: number, target?: string | HTMLElement, key?: string): Promise<any>;
   pip(enable?: boolean, target?: string | HTMLElement, key?: string): Promise<any>;
   load(source: any, target?: string | HTMLElement, key?: string): Promise<any>;
+  quality(level: string | number, target?: string | HTMLElement, key?: string): Promise<any>;
+  getQualities(target?: string | HTMLElement, key?: string): Promise<string[]>;
+  subtitle(track: string | null, target?: string | HTMLElement, key?: string): Promise<any>;
+  getSubtitles(target?: string | HTMLElement, key?: string): Promise<any[]>;
+  shuffle(enable?: boolean, target?: string | HTMLElement, key?: string): Promise<any>;
+  repeat(mode?: 'off' | 'all' | 'one' | boolean, target?: string | HTMLElement, key?: string): Promise<any>;
+  next(target?: string | HTMLElement, key?: string): Promise<any>;
+  previous(target?: string | HTMLElement, key?: string): Promise<any>;
 
   useAdapter(adapter: SRemoteCustomAdapter, instanceId?: string, key?: string): string | null;
   removeAdapter(instanceId: string, key?: string): boolean;
@@ -291,11 +300,17 @@ export declare class UserscriptDriver extends BaseDriver {
   isAvailable(): boolean;
   getApi(required?: boolean): any;
   call(action: string, params?: any, instanceId?: string, key?: string): Promise<any>;
-  postWindowMessage(message: any, targetOrigin?: string, instanceId?: string, from?: string, key?: string): boolean;
+  postWindowMessage(message: any, targetOrigin?: string, instanceId?: string | null, from?: string, key?: string | null): boolean;
+  getIframe(instanceId?: string, key?: string): HTMLIFrameElement | null;
+  list(key?: string): SRemoteInstanceInfo[];
   status(instanceId?: string, key?: string): SRemoteMediaState | null;
   capabilities(instanceId?: string, key?: string): SRemoteCapabilities | null;
   assignId(iframeOrSelector: string | HTMLIFrameElement, customId: string): boolean;
   bindMetadata(meta: any, instanceId?: string, key?: string): void;
+  setMultiMode(mode: boolean | null, key?: string): void;
+  isMultiMode(key?: string): boolean;
+  setExclusive(mode: 'auto' | string | null, key?: string): void;
+  query(key?: string): any[];
 }
 
 /**
