@@ -21,6 +21,9 @@ SRemote v2.1.0 is a major feature and stabilization update. This release massive
   - **Streamable (`streamable`)**: Seamless HTML5 playback control for embedded video clips (`streamable.com/e/...`).
   - **Odysee / LBRY (`odysee`)**: Integrated playback control for decentralized video embeds (`odysee.com/$/embed/...`).
   - **Bandcamp (`bandcamp`)**: Support for Bandcamp embedded music player widgets with dynamic album and track loading capabilities.
+- **Non-Mutating Adapter Pipeline (`@sremote/shared`)**:
+  - Introduced `wrapCustomAdapter` in `@sremote/shared` to standardize custom adapter registration across Userscript, Wrapper (`DomDriver`), and Ready2use ecosystems.
+  - Safely wraps user-provided adapter objects via `Object.create` without mutating original instances or overwriting native `emit` methods, while automatically injecting fallback `toggle()` implementations and evaluating capabilities.
 - **Architectural Upgrades (`BaseProvider`)**:
   - **Unified Pipeline (`_instantiate`)**: Consolidated player creation and mounting logic to prevent DOM desynchronization.
   - **Automatic Capabilities & Fallbacks**: Adapters now automatically derive fallback `toggle()` methods (if `play` and `pause` exist) and auto-detect capability flags.

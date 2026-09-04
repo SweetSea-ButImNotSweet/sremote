@@ -159,6 +159,35 @@
 		"enterpictureinpicture",
 		"exitpictureinpicture"
 	];
+	function wrapCustomAdapter(rawAdapter, options = {}) {
+		if (!rawAdapter || typeof rawAdapter !== "object") return null;
+		const { instanceId, onEmit, source = "adapter" } = options;
+		const adapter = Object.create(rawAdapter);
+		const originalEmit = typeof rawAdapter.emit === "function" ? rawAdapter.emit.bind(rawAdapter) : null;
+		adapter.emit = (event, payload = {}) => {
+			if (originalEmit) try {
+				originalEmit(event, payload);
+			} catch {}
+			const ev = String(event || "").toLowerCase();
+			const state = extractMediaState(adapter);
+			const fullPayload = createEventPayload(ev, {
+				source,
+				instanceId,
+				mediaType: "adapter",
+				...state ? { state } : {},
+				...typeof payload === "object" && payload !== null ? payload : { value: payload }
+			});
+			if (typeof onEmit === "function") try {
+				onEmit(ev, fullPayload);
+			} catch {}
+		};
+		if (typeof adapter.toggle !== "function" && typeof adapter.play === "function" && typeof adapter.pause === "function") adapter.toggle = async function() {
+			if (typeof adapter.paused === "function" ? adapter.paused() : typeof adapter.paused === "boolean" ? adapter.paused : true) return adapter.play();
+			else return adapter.pause();
+		};
+		if (!adapter.capabilities) adapter.capabilities = evaluateCapabilities(adapter);
+		return adapter;
+	}
 	var VERSION = "2.0.0";
 	var NS = "sremote:";
 	var console_log = console.log.bind(console);
@@ -1663,20 +1692,17 @@
 					parentAdaptersMap.delete(oldId);
 				}
 			}
-			adapterVal.emit = (event, payload = {}) => {
-				const ev = String(event || "").toLowerCase();
-				const fullPayload = createEventPayload(ev, {
-					source: "adapter",
-					instanceId: targetId,
-					mediaType: "adapter",
-					...typeof payload === "object" && payload !== null ? payload : { value: payload }
-				});
-				if (ev === "play" || ev === "playing") {
-					if (exclusiveMode === "auto") pauseOthersExcept(targetId);
+			const adapter = wrapCustomAdapter(adapterVal, {
+				instanceId: targetId,
+				source: "adapter",
+				onEmit: (ev, fullPayload) => {
+					if (ev === "play" || ev === "playing") {
+						if (exclusiveMode === "auto") pauseOthersExcept(targetId);
+					}
+					emitGlobalEvent(ev, fullPayload);
 				}
-				emitGlobalEvent(ev, fullPayload);
-			};
-			parentAdaptersMap.set(targetId, adapterVal);
+			});
+			parentAdaptersMap.set(targetId, adapter);
 			currentActiveInstanceId = targetId;
 			console_log(`%c[SRemote:adapter] Registered custom adapter for instance '${targetId}'`, "color: #06b6d4; font-weight: bold;");
 			emitGlobalEvent("accept", {
