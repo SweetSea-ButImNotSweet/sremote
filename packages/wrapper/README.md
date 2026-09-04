@@ -3,19 +3,12 @@
 [![npm version](https://img.shields.io/npm/v/@sremote/wrapper.svg)](https://www.npmjs.com/package/@sremote/wrapper)
 [![license](https://img.shields.io/npm/l/@sremote/wrapper.svg)](https://github.com/SweetSea-ButImNotSweet/sremote)
 
-> A client-side wrapper library designed to interact with [SRemote](https://sweetsea-butimnotsweet.github.io/sremote).
->
-> However, it can also be used as a standalone abstraction layer if you just want a unified interface to control different embedded media players (HTML5, YouTube, SoundCloud, Vimeo, etc.) in one consistent place.
+A client-side library for controlling embedded media players via [SRemote](https://sweetsea-butimnotsweet.github.io/sremote) or custom adapters. Can also be used standalone as a unified abstraction layer across different player SDKs without requiring the SRemote bridge.
 
----
+- **Standalone**: Controls same-origin media elements via DOM or registered adapters.
+- **With Userscript**: Bridges cross-origin iframes (YouTube, Bilibili, SoundCloud, etc.) across the Same-Origin Policy boundary.
 
-> [!NOTE]
-> - **Standalone Mode:** Controls same-origin media elements directly via DOM/Custom Adapters.
-> - **With SRemote Userscript:** Automatically bridges cross-origin iframes (YouTube, Bilibili, SoundCloud, etc.) bypassing browser Same-Origin Policy (SOP).
->
-> 💡 **Best Practice / Script Order:** Always import and initialize `@sremote/wrapper` (or place its script tag) as early as possible in your HTML `<head>` or bundle entry — before untrusted third-party scripts, ads, or iframes mount. If the Userscript is not present, `@sremote/wrapper` immediately locks down and guards `window.sremote` with a safe non-writable Proxy, preventing third-party scripts from tampering with or hijacking the global object.
->
-> 👉 **Userscript:** [SRemote Repository](https://github.com/SweetSea-ButImNotSweet/sremote)
+> **Script Order**: Load `@sremote/wrapper` before untrusted third-party scripts or iframes. When the userscript is absent, `@sremote/wrapper` guards `window.sremote` with a non-writable Proxy to prevent tampering.
 
 ---
 
@@ -111,9 +104,9 @@ remote.on('timeupdate', (data) => {
 
 ---
 
-### 4. Userscript Installation Guide Modal
-
-If your application requires the userscript for cross-domain control, you can display a built-in guide modal with one line of code:
+### 4. Userscript Installation Modal
+ 
+ Displays a modal prompting users to install the userscript if cross-origin bridging is needed:
 
 ```javascript
 import { createSRemote, showInstallModal } from '@sremote/wrapper';

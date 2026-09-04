@@ -8,7 +8,7 @@ All methods are available on the global `window.sremote` object (or the client i
 
 👉 **See Full API Documentation:** **[SRemote Ready2use API Guide](./ready2use.md)**
 
-Out-of-the-box player presets for YouTube, Vimeo, Spotify, SoundCloud, Twitch, Dailymotion, TikTok, Mixcloud, NicoNico, Bilibili, Facebook.
+Player presets and adapters for YouTube, Vimeo, Spotify, SoundCloud, Twitch, Dailymotion, TikTok, Mixcloud, NicoNico, Bilibili, Facebook.
 
 ```javascript
 import { youtube } from '@sremote/ready2use';

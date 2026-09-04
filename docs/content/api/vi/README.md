@@ -8,7 +8,7 @@ Tất cả các hàm được cung cấp qua đối tượng toàn cục `window
 
 👉 **Xem chi tiết tài liệu API:** **[SRemote Ready2use API Guide](./ready2use.md)**
 
-Gói cung cấp sẵn các bộ Player Preset ăn liền cho YouTube, Vimeo, Spotify, SoundCloud, Twitch, Dailymotion, TikTok, Mixcloud, NicoNico, Bilibili, Facebook.
+Bộ Preset và Adapter dựng sẵn cho YouTube, Vimeo, Spotify, SoundCloud, Twitch, Dailymotion, TikTok, Mixcloud, NicoNico, Bilibili, Facebook.
 
 ```javascript
 import { youtube } from '@sremote/ready2use';
