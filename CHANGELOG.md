@@ -39,6 +39,9 @@ SRemote v2.1.0 is a major feature and stabilization update. This release massive
 
 ### 🔄 Changed
 
+- **Pure ESM Transition (Dropped CommonJS / CJS)**:
+  - Dropped legacy CommonJS build targets (`.cjs`) across `@sremote/wrapper` and `@sremote/ready2use` packages in favor of modern **Pure ESM (`.mjs`)** and standalone browser bundles (`.global.js`).
+  - Streamlined `package.json` export maps (`"exports": { ".": { "import": "./dist/index.mjs" } }`), reducing published package footprints and preventing dual-package hazard.
 - **Facebook Video, Reels & Watch Revamp**:
   - Replaced static iframe embedding with full **Facebook JavaScript SDK (`connect.facebook.net/en_US/sdk.js`)** integration.
   - Added URL normalization supporting standard videos, Facebook Watch (`/watch/?v=...`), Facebook Reels (`/reel/...`), and `fb.watch` shortlinks.
@@ -49,6 +52,10 @@ SRemote v2.1.0 is a major feature and stabilization update. This release massive
   - ESLint Flat Config updated to ignore `tarballs/**` and `**/dist/**`.
   - Knip configuration streamlined.
   - Bumped dependencies: RollDown (`1.2.7`), Knip (`6.34.0`), Zod (`4.5.4`).
+
+### 🗑️ Removed
+
+- **CommonJS Support (`index.cjs`)**: Completely dropped legacy CJS output bundles across all published NPM packages. All consumers must use ES Modules (`import`) or direct script inclusion.
 
 ### 🐛 Fixed
 

@@ -8,10 +8,9 @@ export default defineConfig({
       name: 'SRemoteWrapper',
       fileName: format => {
         if (format === 'es') return 'index.mjs';
-        if (format === 'cjs') return 'index.cjs';
         return 'index.global.js';
       },
-      formats: ['es', 'cjs', 'iife'],
+      formats: ['es', 'iife'],
     },
     outDir: 'dist',
     emptyOutDir: true,

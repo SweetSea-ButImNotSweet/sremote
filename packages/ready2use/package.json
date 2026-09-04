@@ -3,10 +3,16 @@
   "version": "2.1.0",
   "description": "Ready-to-use out-of-the-box providers and adapters for SRemote",
   "type": "module",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
   "types": "./src/index.d.ts",
-  "exports": { ".": { "types": "./src/index.d.ts", "import": "./dist/index.mjs", "require": "./dist/index.cjs" } },
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    }
+  },
   "files": ["dist", "src/index.d.ts", "README.md"],
   "publishConfig": { "access": "public" },
   "scripts": { "build": "vite build", "dev": "vite build --watch" },
