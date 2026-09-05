@@ -281,10 +281,3 @@ export declare function createExportedApi(context: {
   validateDomainAccess: (providedKey?: string | null) => boolean;
   queryMediaInstancesViaGM: () => any[];
 }): SRemoteParentApi;
-
-declare global {
-  interface Window {
-    sremote?: SRemoteParentApi;
-    SRemote?: SRemoteParentApi;
-  }
-}

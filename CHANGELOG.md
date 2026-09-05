@@ -55,7 +55,8 @@ SRemote v3.0.0 is a major architecture overhaul, unification, and feature releas
   - Added URL normalization supporting standard videos, Facebook Watch (`/watch/?v=...`), Facebook Reels (`/reel/...`), and `fb.watch` shortlinks.
   - Subscribes to `xfbml.ready` events to bind the underlying player controller to SRemote Adapter interfaces (`play`, `pause`, `seek`, `volume`, `mute`, and real-time playback state updates).
 - **Dailymotion SDK URL Migration**: Updated Dailymotion embed recipes to load the new SDK CDN endpoint at `https://geo.dailymotion.com/libs/player.js`.
-- **Tooling & Dependencies**:
+- **Tooling, Types & Dependencies**:
+  - **Module-First TypeScript Definitions**: Cleaned up all `.d.ts` files across published packages (`@sremote/wrapper`, `@sremote/ready2use`, `@sremote/shared`) to only export explicit ESM types without polluting the global `Window` interface.
   - Monorepo package versions synchronized to `v3.0.0`.
   - ESLint Flat Config updated to ignore `tarballs/**` and `**/dist/**`.
   - Cleaned up unused variables, parameters, and imports.
