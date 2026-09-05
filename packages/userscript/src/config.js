@@ -1,6 +1,6 @@
 import { unsafeWindow } from '$';
 
-export const VERSION = '2.0.0';
+export const VERSION = '3.0.0';
 export const NS = 'sremote:';
 
 export const LOG_LEVEL = 3; // 0: None, 1: Error/Warn, 2: Debug, 3: Full Log

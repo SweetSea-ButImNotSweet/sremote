@@ -3,7 +3,7 @@ import { Storage, setHandshakeSecret } from '../core/storage.js';
 import { generateInstanceId } from '../core/utils.js';
 import { pendingRpcRequests } from './queue.js';
 import { createParentDebugApi } from '../debug/parent-debug.js';
-import { extractMediaState, evaluateCapabilities } from '@sremote/shared';
+import { extractMediaState, evaluateCapabilities, buildSRemoteApi } from '@sremote/shared';
 
 export function createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM }) {
   const {
@@ -297,242 +297,225 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
   const getIframeCSS = (instanceId, key) => rpcCall('getIframeCSS', {}, instanceId, key);
   const removeIframeCSS = (instanceId, key) => rpcCall('removeIframeCSS', {}, instanceId, key);
 
-  // --- 2. Clean Dedicated Domain Sub-Namespaces ---
-
-  const instancesNamespace = Object.freeze({
-    list: listInstances,
-    get: (instanceId, key) => getStatus(instanceId, key),
-    capabilities: (instanceId, key) => getCapabilities(instanceId, key),
-    getCapabilities: (instanceId, key) => getCapabilities(instanceId, key),
-    getIframe: getIframeElement,
-    assign: assignIframeId,
-    setMultiMode,
-    isMultiMode,
-    setExclusive,
-    query: queryInstances,
-    note: annotateInstances,
-  });
-
-  const adaptersNamespace = Object.freeze({ register: registerAdapter, unregister: unregisterAdapter, get: getCustomAdapter });
-
-  const rpcNamespace = Object.freeze({ call: rpcCall, postMessage: postWindowMessage, onMessage: (handler, key) => exportedApi.on('iframe:message', handler, key) });
-
-  const cssNamespace = Object.freeze({ set: setIframeCSS, get: getIframeCSS, remove: removeIframeCSS });
-
-  // --- 3. Build Strict Decluttered Root API ---
-
-  const exportedApi = {
-    // Quick Playback Controls
-    play: (instanceId, key) => dispatchCommand('play', undefined, instanceId, key),
-    pause: (instanceId, key) => dispatchCommand('pause', undefined, instanceId, key),
-    toggle: (instanceId, key) => dispatchCommand('toggle', undefined, instanceId, key),
-    stop: (instanceId, key) => dispatchCommand('stop', undefined, instanceId, key),
-    seek: (offset, instanceId, key) => dispatchCommand('seek', offset, instanceId, key),
-    seekTo: (time, instanceId, key) => dispatchCommand('currentTime', time, instanceId, key),
-    volume: (vol, instanceId, key) => dispatchCommand('volume', vol, instanceId, key),
-    mute: (muted, instanceId, key) => dispatchCommand('muted', muted, instanceId, key),
-    rate: (rate, instanceId, key) => dispatchCommand('playbackRate', rate, instanceId, key),
-    playbackRate: (rate, instanceId, key) => dispatchCommand('playbackRate', rate, instanceId, key),
-    quality: (level, instanceId, key) => dispatchCommand('quality', level, instanceId, key),
-    getQualities: (instanceId, key) => {
-      const adapter = getCustomAdapter(instanceId, key);
-      return adapter && typeof adapter.getQualities === 'function' ? adapter.getQualities() : [];
-    },
-    subtitle: (track, instanceId, key) => dispatchCommand('subtitle', track, instanceId, key),
-    getSubtitles: (instanceId, key) => {
-      const adapter = getCustomAdapter(instanceId, key);
-      return adapter && typeof adapter.getSubtitles === 'function' ? adapter.getSubtitles() : [];
-    },
-    shuffle: (enable, instanceId, key) => dispatchCommand('shuffle', enable, instanceId, key),
-    repeat: (mode, instanceId, key) => dispatchCommand('repeat', mode, instanceId, key),
-    next: (instanceId, key) => dispatchCommand('next', undefined, instanceId, key),
-    previous: (instanceId, key) => dispatchCommand('previous', undefined, instanceId, key),
-    pip: (enable, instanceId, key) => {
-      const _instanceId = typeof enable === 'string' ? enable : instanceId;
-      const _enabled = typeof enable === 'boolean' ? enable : undefined;
-      return dispatchCommand(_enabled === true ? 'enterpip' : _enabled === false ? 'exitpip' : 'pip', undefined, _instanceId, key);
-    },
-    load: (source, instanceId, key) => dispatchCommand('load', source, instanceId, key),
-    status: getStatus,
-    capabilities: getCapabilities,
-
-    // Subsystems
-    instances: instancesNamespace,
-    adapters: adaptersNamespace,
-    rpc: rpcNamespace,
-    css: cssNamespace,
-
-    // Metadata
-    bindMetadata: (meta, instanceId, key) => dispatchCommand('bindMetadata', meta, instanceId, key),
-
-    // Events & Lifecycle
-    on: (event, handler, key) => {
-      if (!validateDomainAccess(key)) {
-        console_error('[SRemote:auth] Blocked on()! Valid Passkey is required.');
-        return () => {};
-      }
-      const ev = String(event || '').toLowerCase();
-      if (!globalEventListeners.has(ev)) globalEventListeners.set(ev, new Set());
-      globalEventListeners.get(ev).add(handler);
-
-      // Sticky replay
-      const lastAcceptedData = instanceManager.lastAcceptedData;
-      if ((ev === 'accept' || ev === '*') && lastAcceptedData && (instances.has(lastAcceptedData.instanceId) || parentAdaptersMap.has(lastAcceptedData.instanceId))) {
-        try {
-          const payload = ev === '*' ? { action: 'accept', ...lastAcceptedData } : lastAcceptedData;
-          setTimeout(() => {
-            try {
-              handler(payload);
-            } catch {}
-          }, 0);
-        } catch {}
-      }
-
-      return () => exportedApi.off(ev, handler);
-    },
-    off: (event, handler) => {
-      const ev = String(event || '').toLowerCase();
-      globalEventListeners.get(ev)?.delete(handler);
-    },
-    lock: () => {
-      instanceManager.setSessionLocked(true);
-      console_log(`%c[SRemote:lock] SRemote is now session-locked for this page`, 'background: #0f172a; color: #38bdf8; font-weight: bold;');
-      return true;
-    },
-    hello: (options = {}, target = null) => {
-      let targetIframeWindow = target;
-      let providedKey = null;
-      let customCss = null;
-      let treatAlmostEndAsEnd = null;
-
-      if (options && typeof options === 'object') {
-        if (typeof options.multiMode === 'boolean' || options.multiMode === null) {
-          instanceManager.setMultiModeConfig(options.multiMode);
-        }
-        if (typeof options.treatAlmostEndAsEnd === 'boolean') {
-          treatAlmostEndAsEnd = options.treatAlmostEndAsEnd;
-        }
-        if (!targetIframeWindow && options.target) {
-          targetIframeWindow = options.target;
-        }
-        if (options.key) {
-          providedKey = String(options.key).trim();
-        }
-        if (options.css && typeof options.css === 'string') {
-          customCss = options.css;
-        }
-      }
-
-      if (!validateDomainAccess(providedKey)) {
-        const hostDomain = location.hostname || 'this_domain';
-        console_error(
-          `%c[SRemote:auth] Blocked hello() on locked domain '${hostDomain}'! Valid Passkey is required in hello({ key: '...' }).`,
-          'color: #ef4444; font-weight: bold;',
-        );
-        return false;
-      }
-
-      console_log(`%c[SRemote:auth] Access authorized for domain '${location.hostname}'`, 'color: #10b981; font-weight: bold;');
-
-      const handshakeId = generateInstanceId('hs');
-      const handshakeToken = generateInstanceId('tok');
-      setHandshakeSecret(handshakeId, handshakeToken);
-
-      const currentSeq = Number(Storage.get('sremote:hello_seq', 0)) || 0;
-      const nextSeq = currentSeq + 1;
-      Storage.set('sremote:hello_seq', nextSeq);
-      Storage.set('sremote:latest_handshake', {
-        seq: nextSeq,
-        handshakeId,
-        handshakeToken,
-        parentOrigin: location.origin,
-        css: customCss,
-        ...(treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {}),
-        timestamp: Date.now(),
-      });
-
-      const createHelloPayload = assignedInstanceId => ({
-        type: `${NS}hello`,
-        source: 'parent',
-        handshakeId,
-        handshakeToken,
-        seq: nextSeq,
-        ...(customCss ? { css: customCss } : {}),
-        ...(treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {}),
-        ...(assignedInstanceId ? { assignedInstanceId } : {}),
-      });
-
-      console_log(`%c[SRemote:hello] Parent sending hello (seq: ${nextSeq}) ->`, 'color: #38bdf8; font-weight: bold;', {
-        hasTarget: !!targetIframeWindow,
-        handshakeId,
-        seq: nextSeq,
-        hasCss: Boolean(customCss),
-      });
-
-      if (targetIframeWindow && typeof targetIframeWindow.postMessage === 'function') {
-        try {
-          let assignedId = null;
-          try {
-            const iframes = document.querySelectorAll('iframe');
-            for (let i = 0; i < iframes.length; i++) {
-              if (iframes[i].contentWindow === targetIframeWindow) {
-                assignedId = iframes[i].getAttribute('data-sremote-id') || iframeToAssignedIdMap.get(iframes[i]) || null;
-                break;
-              }
-            }
-          } catch {}
-          targetIframeWindow.postMessage(createHelloPayload(assignedId), '*');
-        } catch (err) {
-          console_warn('[sremote] Error posting hello to target iframe:', err);
-        }
-        return;
-      }
-
-      try {
-        const iframes = document.querySelectorAll('iframe');
-        for (let i = 0; i < iframes.length; i++) {
-          try {
-            const ifr = iframes[i];
-            const assignedId = ifr.getAttribute('data-sremote-id') || iframeToAssignedIdMap.get(ifr) || null;
-            ifr.contentWindow?.postMessage(createHelloPayload(assignedId), '*');
-          } catch {}
-        }
-      } catch {}
-
-      try {
-        for (let i = 0; i < window.frames.length; i++) {
-          try {
-            window.frames[i].postMessage(createHelloPayload(null), '*');
-          } catch {}
-        }
-      } catch {}
-    },
+  const getQualities = (instanceId, key) => {
+    const adapter = getCustomAdapter(instanceId, key);
+    return adapter && typeof adapter.getQualities === 'function' ? adapter.getQualities() : [];
   };
 
-  if (ENABLE_DEBUG_API) {
-    exportedApi.debug = createParentDebugApi({
-      instances,
-      currentActiveInstanceIdGetter: () => instanceManager.currentActiveInstanceId,
-      assignedIframeIdMap,
-      iframeToAssignedIdMap,
-      dispatchCommand,
-      exportedApi,
+  const getSubtitles = (instanceId, key) => {
+    const adapter = getCustomAdapter(instanceId, key);
+    return adapter && typeof adapter.getSubtitles === 'function' ? adapter.getSubtitles() : [];
+  };
+
+  const onEvent = (event, handler, key) => {
+    if (!validateDomainAccess(key)) {
+      console_error('[SRemote:auth] Blocked on()! Valid Passkey is required.');
+      return () => {};
+    }
+    const ev = String(event || '').toLowerCase();
+    if (!globalEventListeners.has(ev)) globalEventListeners.set(ev, new Set());
+    globalEventListeners.get(ev).add(handler);
+
+    // Sticky replay
+    const lastAcceptedData = instanceManager.lastAcceptedData;
+    if ((ev === 'accept' || ev === '*') && lastAcceptedData && (instances.has(lastAcceptedData.instanceId) || parentAdaptersMap.has(lastAcceptedData.instanceId))) {
+      try {
+        const payload = ev === '*' ? { action: 'accept', ...lastAcceptedData } : lastAcceptedData;
+        setTimeout(() => {
+          try {
+            handler(payload);
+          } catch {}
+        }, 0);
+      } catch {}
+    }
+
+    return () => offEvent(ev, handler);
+  };
+
+  const offEvent = (event, handler) => {
+    const ev = String(event || '').toLowerCase();
+    globalEventListeners.get(ev)?.delete(handler);
+  };
+
+  const lockSession = () => {
+    instanceManager.setSessionLocked(true);
+    console_log(`%c[SRemote:lock] SRemote is now session-locked for this page`, 'background: #0f172a; color: #38bdf8; font-weight: bold;');
+    return true;
+  };
+
+  const broadcastHello = (options = {}, target = null) => {
+    let targetIframeWindow = target;
+    let providedKey = null;
+    let customCss = null;
+    let treatAlmostEndAsEnd = null;
+
+    if (options && typeof options === 'object') {
+      if (typeof options.multiMode === 'boolean' || options.multiMode === null) {
+        instanceManager.setMultiModeConfig(options.multiMode);
+      }
+      if (typeof options.treatAlmostEndAsEnd === 'boolean') {
+        treatAlmostEndAsEnd = options.treatAlmostEndAsEnd;
+      }
+      if (!targetIframeWindow && options.target) {
+        targetIframeWindow = options.target;
+      }
+      if (options.key) {
+        providedKey = String(options.key).trim();
+      }
+      if (options.css && typeof options.css === 'string') {
+        customCss = options.css;
+      }
+    }
+
+    if (!validateDomainAccess(providedKey)) {
+      const hostDomain = location.hostname || 'this_domain';
+      console_error(
+        `%c[SRemote:auth] Blocked hello() on locked domain '${hostDomain}'! Valid Passkey is required in hello({ key: '...' }).`,
+        'color: #ef4444; font-weight: bold;',
+      );
+      return false;
+    }
+
+    console_log(`%c[SRemote:auth] Access authorized for domain '${location.hostname}'`, 'color: #10b981; font-weight: bold;');
+
+    const handshakeId = generateInstanceId('hs');
+    const handshakeToken = generateInstanceId('tok');
+    setHandshakeSecret(handshakeId, handshakeToken);
+
+    const currentSeq = Number(Storage.get('sremote:hello_seq', 0)) || 0;
+    const nextSeq = currentSeq + 1;
+    Storage.set('sremote:hello_seq', nextSeq);
+    Storage.set('sremote:latest_handshake', {
+      seq: nextSeq,
+      handshakeId,
+      handshakeToken,
+      parentOrigin: location.origin,
+      css: customCss,
+      ...(treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {}),
+      timestamp: Date.now(),
     });
-  }
 
-  exportedApi.isDummy = false;
-  exportedApi.isSremoteNative = true;
-  try {
-    exportedApi[Symbol.for('__sremote_native__')] = true;
-  } catch {}
+    const createHelloPayload = assignedInstanceId => ({
+      type: `${NS}hello`,
+      source: 'parent',
+      handshakeId,
+      handshakeToken,
+      seq: nextSeq,
+      ...(customCss ? { css: customCss } : {}),
+      ...(treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {}),
+      ...(assignedInstanceId ? { assignedInstanceId } : {}),
+    });
 
-  Object.freeze(exportedApi);
+    console_log(`%c[SRemote:hello] Parent sending hello (seq: ${nextSeq}) ->`, 'color: #38bdf8; font-weight: bold;', {
+      hasTarget: !!targetIframeWindow,
+      handshakeId,
+      seq: nextSeq,
+      hasCss: Boolean(customCss),
+    });
+
+    if (targetIframeWindow && typeof targetIframeWindow.postMessage === 'function') {
+      try {
+        let assignedId = null;
+        try {
+          const iframes = document.querySelectorAll('iframe');
+          for (let i = 0; i < iframes.length; i++) {
+            if (iframes[i].contentWindow === targetIframeWindow) {
+              assignedId = iframes[i].getAttribute('data-sremote-id') || iframeToAssignedIdMap.get(iframes[i]) || null;
+              break;
+            }
+          }
+        } catch {}
+        targetIframeWindow.postMessage(createHelloPayload(assignedId), '*');
+      } catch (err) {
+        console_warn('[sremote] Error posting hello to target iframe:', err);
+      }
+      return;
+    }
+
+    try {
+      const iframes = document.querySelectorAll('iframe');
+      for (let i = 0; i < iframes.length; i++) {
+        try {
+          const ifr = iframes[i];
+          const assignedId = ifr.getAttribute('data-sremote-id') || iframeToAssignedIdMap.get(ifr) || null;
+          ifr.contentWindow?.postMessage(createHelloPayload(assignedId), '*');
+        } catch {}
+      }
+    } catch {}
+
+    try {
+      for (let i = 0; i < window.frames.length; i++) {
+        try {
+          window.frames[i].postMessage(createHelloPayload(null), '*');
+        } catch {}
+      }
+    } catch {}
+  };
+
+  // --- 2. Build Unified API Object via buildSRemoteApi ---
+  let exportedApi;
+
+  const debugApi = ENABLE_DEBUG_API
+    ? createParentDebugApi({
+        instances,
+        currentActiveInstanceIdGetter: () => instanceManager.currentActiveInstanceId,
+        assignedIframeIdMap,
+        iframeToAssignedIdMap,
+        dispatchCommand,
+        get exportedApi() {
+          return exportedApi;
+        },
+      })
+    : null;
+
+  exportedApi = buildSRemoteApi({
+    dispatchCommand,
+    handlers: {
+      getStatus,
+      getCapabilities,
+      getQualities,
+      getSubtitles,
+      listInstances,
+      getIframeElement,
+      assignIframeId,
+      setMultiMode,
+      isMultiMode,
+      setExclusive,
+      queryInstances,
+      annotateInstances,
+      registerAdapter,
+      unregisterAdapter,
+      getCustomAdapter,
+      rpcCall,
+      postWindowMessage,
+      onRpcMessage: (handler, key) => exportedApi.on('iframe:message', handler, key),
+      setIframeCSS,
+      getIframeCSS,
+      removeIframeCSS,
+    },
+    eventsManager: {
+      on: onEvent,
+      off: offEvent,
+    },
+    lifecycleHandlers: {
+      hello: broadcastHello,
+      lock: lockSession,
+      bindMetadata: (meta, instanceId, key) => dispatchCommand('bindMetadata', meta, instanceId, key),
+    },
+    debugApi,
+    customExtensions: {
+      isDummy: false,
+      isSremoteNative: true,
+      [Symbol.for('__sremote_native__')]: true,
+    },
+  });
 
   try {
     Object.defineProperty(pageWindow, 'sremote', { value: exportedApi, writable: false, configurable: false, enumerable: true });
   } catch {
     pageWindow.sremote = exportedApi;
   }
-  console_log(`%c[sremote] window.sremote is ready with decluttered namespaces`, 'background: #065f46; color: #34d399; font-weight: bold;');
+
+  console_log(`%c[sremote] window.sremote is ready with unified builder`, 'background: #065f46; color: #34d399; font-weight: bold;');
   return exportedApi;
 }

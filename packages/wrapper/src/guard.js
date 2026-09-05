@@ -11,7 +11,7 @@ export function createDummyProxy() {
       if (typeof prop === 'symbol' || prop === 'inspect' || prop === 'toJSON') return undefined;
 
       // Return a function for any method call that warns the developer
-      return (..._args) => {
+      return () => {
         console.warn(`[SRemote:Wrapper] SRemote userscript is not installed. '${String(prop)}()' cannot control cross-domain iframes.`);
         return undefined;
       };

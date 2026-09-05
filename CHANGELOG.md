@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [2.1.0] - 2026-09-03
+## [3.0.0] - 2026-09-05
 
-SRemote v2.1.0 is a major feature and stabilization update. This release massively expands platform compatibility in `@sremote/ready2use` by bringing the total supported platforms up to **22**, introducing new embed providers and controllers (Instagram, Threads, Apple Music, Apple MusicKit JS), expanding Facebook Reels/Watch URL parsing, optimizing core player lifecycle architecture, and patching several critical runtime and memory leak bugs.
+SRemote v3.0.0 is a major architecture overhaul, unification, and feature release. This release introduces a unified API schema and factory builder across the entire monorepo (`@sremote/shared`), massively expands platform compatibility in `@sremote/ready2use` up to **22 supported platforms**, transitions completely to modern Pure ESM, revamps the Facebook/Instagram/Threads/Apple Music pipelines, and delivers critical runtime fixes.
 
 ### 🚀 Added
 
+- **Unified API Architecture (`@sremote/shared`)**:
+  - **`API_SPEC` (`packages/shared/src/api/schema.js`)**: Single source of truth for all root playback methods, argument schemas, action dispatch mappings, and sub-namespaces (`instances`, `adapters`, `rpc`, `css`).
+  - **`buildSRemoteApi` (`packages/shared/src/api/builder.js`)**: Universal API factory generating standardized, immutable (`Object.freeze`) SRemote API objects with automated argument parsing, action forwarding, event manager hookup, and lifecycle binding.
 - **New Platform Providers (`@sremote/ready2use`)**:
   - **Apple MusicKit JS (`applemusickit`)**: Full-featured player and SRemote adapter powered by Apple's official MusicKit JS v3 SDK (`play`, `pause`, `toggle`, `seek`, `seekTo`, `volume`, `mute`, `next`, `previous`, `setQueue`, and real-time event tracking).
   - **Apple Music Embed (`applemusic`)**: Zero-token Iframe widget embed (`embed.music.apple.com/...`) for quick preview playback of songs, albums, and playlists.
@@ -34,13 +37,16 @@ SRemote v2.1.0 is a major feature and stabilization update. This release massive
   - **Automatic Remote Teardown**: Teardown handlers (`destroy()`) now cleanly unregister the adapter from the active SRemote instance registry (`remote.adapters.unregister`).
   - **DOM Readiness Utility**: Added `waitForIframeLoad` helper with configurable timeout handling to ensure embedded frames are ready before handshake negotiation.
 - **Documentation & Recipes**:
-  - Interactive recipes showcase for all 7 new platforms (Vanilla JS and `@sremote/wrapper` SDK).
+  - Interactive recipes showcase for all newly added platforms (Vanilla JS and `@sremote/wrapper` SDK).
   - Bilingual localization (i18n) for recipe comments, tooltips, and platform descriptions.
   - Reorganized documentation structure: separated end-user userscript guide into `packages/userscript/README.md` and streamlined root `README.md` for web developers.
   - Enhanced shared navigation `<sremote-header>` with quick access to userscript docs and NPM packages (`@sremote/wrapper`, `@sremote/ready2use`).
 
 ### 🔄 Changed
 
+- **Userscript Parent API Refactoring (`@sremote/userscript`)**:
+  - Refactored `createExportedApi` in `packages/userscript/src/parent/api.js` to build `window.sremote` directly via `buildSRemoteApi`, removing redundant manual method declarations.
+  - Aligned API method aliases (`rate`, `playbackRate`, `speed`) across environments.
 - **Pure ESM Transition (Dropped CommonJS / CJS)**:
   - Dropped legacy CommonJS build targets (`.cjs`) across `@sremote/wrapper` and `@sremote/ready2use` packages in favor of modern **Pure ESM (`.mjs`)** and standalone browser bundles (`.global.js`).
   - Streamlined `package.json` export maps (`"exports": { ".": { "import": "./dist/index.mjs" } }`), reducing published package footprints and preventing dual-package hazard.
@@ -50,9 +56,9 @@ SRemote v2.1.0 is a major feature and stabilization update. This release massive
   - Subscribes to `xfbml.ready` events to bind the underlying player controller to SRemote Adapter interfaces (`play`, `pause`, `seek`, `volume`, `mute`, and real-time playback state updates).
 - **Dailymotion SDK URL Migration**: Updated Dailymotion embed recipes to load the new SDK CDN endpoint at `https://geo.dailymotion.com/libs/player.js`.
 - **Tooling & Dependencies**:
-  - Monorepo package versions synchronized to `v2.1.0`.
+  - Monorepo package versions synchronized to `v3.0.0`.
   - ESLint Flat Config updated to ignore `tarballs/**` and `**/dist/**`.
-  - Knip configuration streamlined.
+  - Cleaned up unused variables, parameters, and imports.
   - Bumped dependencies: RollDown (`1.2.7`), Knip (`6.34.0`), Zod (`4.5.4`).
 
 ### 🗑️ Removed

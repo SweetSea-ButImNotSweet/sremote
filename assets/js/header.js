@@ -144,7 +144,7 @@
           <div class="header-left">
             <a href="${homeHref}" class="header-brand" title="SRemote Home">
               <span class="header-title">${dict.brandTitle}</span>
-              <span class="header-version-badge">v2.1.0</span>
+              <span class="header-version-badge">v3.0.0</span>
             </a>
 
             <nav class="header-nav" aria-label="Main navigation">

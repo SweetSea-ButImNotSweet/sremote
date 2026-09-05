@@ -91,7 +91,6 @@ export declare const SREMOTE_ACTIONS: {
   readonly VOLUME: 'volume';
   readonly MUTE: 'muted';
   readonly SPEED: 'playbackRate';
-  readonly PLAYBACK_RATE: 'playbackRate';
   readonly PIP: 'pip';
   readonly ENTER_PIP: 'enterpip';
   readonly EXIT_PIP: 'exitpip';
@@ -124,3 +123,13 @@ export declare function bindMediaEvents(
   options?: { instanceId?: string; source?: string; treatAlmostEndAsEnd?: boolean; events?: readonly string[] | string[] },
 ): () => void;
 export declare function wrapCustomAdapter(rawAdapter: any, options?: { instanceId?: string; onEmit?: (event: string, payload: any) => void; source?: string }): any;
+
+export declare const API_SPEC: any;
+export declare function buildSRemoteApi(context: {
+  dispatchCommand?: (action: string, value?: any, targetInstanceId?: string | null, key?: string | null) => Promise<any>;
+  handlers?: Record<string, any>;
+  eventsManager?: { on?: any; off?: any; emit?: any };
+  lifecycleHandlers?: { hello?: any; lock?: any; bindMetadata?: any };
+  debugApi?: any;
+  customExtensions?: Record<string, any>;
+}): any;

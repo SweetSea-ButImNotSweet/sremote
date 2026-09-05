@@ -1,6 +1,6 @@
 {
   "name": "@sremote/ready2use",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Ready-to-use out-of-the-box providers and adapters for SRemote",
   "type": "module",
   "main": "./dist/index.mjs",

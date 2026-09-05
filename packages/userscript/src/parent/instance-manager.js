@@ -1,6 +1,6 @@
 import { NS, console_log, console_debug } from '../config.js';
 import { generateInstanceId } from '../core/utils.js';
-import { createEventPayload, wrapCustomAdapter } from '@sremote/shared';
+import { wrapCustomAdapter } from '@sremote/shared';
 
 export function createInstanceManager() {
   const instances = new Map(); // instanceId -> { port, location, origin, note, state, mediaType, lastSeen, status, iframeEl, authenticated }
