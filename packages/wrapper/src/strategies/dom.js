@@ -1,23 +1,38 @@
 import { BaseDriver } from './base.js';
-import { extractMediaState, createEventPayload, evaluateCapabilities, bindMediaEvents, wrapCustomAdapter } from '@sremote/shared';
+import { createInstanceManager, extractMediaState, createEventPayload, evaluateCapabilities, bindMediaEvents } from '@sremote/shared';
 
 export class DomDriver extends BaseDriver {
   constructor(options = {}) {
     super(options);
-    this.adaptersMap = new Map();
-    this.eventListeners = new Map();
+    this.instanceManager = createInstanceManager({ ns: 'sremote:', getIframeCount: () => (typeof document !== 'undefined' ? document.querySelectorAll('iframe').length : 0) });
+
     this.trackedMediaElements = new WeakSet();
-    this.adapterPollTimers = new Map(); // instanceId -> intervalTimer
-    this.almostEndFlags = new Map(); // instanceId -> boolean
-    this.multiMode = false;
-    this.exclusiveMode = 'auto'; // 'auto' | true | false
-    this.lastActiveInstanceId = null;
     this.treatAlmostEndAsEnd = Boolean(options.treatAlmostEndAsEnd);
 
     // Auto-discover existing media in document
     if (typeof document !== 'undefined') {
       this.initDomAutoTracking();
     }
+  }
+
+  get adaptersMap() {
+    return this.instanceManager.parentAdaptersMap;
+  }
+
+  get multiMode() {
+    return this.instanceManager.isMultiModeActive();
+  }
+
+  get exclusiveMode() {
+    return this.instanceManager.exclusiveMode;
+  }
+
+  get lastActiveInstanceId() {
+    return this.instanceManager.currentActiveInstanceId;
+  }
+
+  set lastActiveInstanceId(id) {
+    this.instanceManager.setCurrentActiveInstanceId(id);
   }
 
   initDomAutoTracking() {
@@ -61,69 +76,21 @@ export class DomDriver extends BaseDriver {
     );
   }
 
-  startAdapterStatePolling(instanceId, adapter) {
-    this.stopAdapterStatePolling(instanceId);
-    if (!adapter) return;
-
-    let hasEmittedAlmostEnd = false;
-
-    const timer = setInterval(() => {
-      if (!this.adaptersMap.has(instanceId)) {
-        this.stopAdapterStatePolling(instanceId);
-        return;
-      }
-
-      const state = extractMediaState(adapter);
-      if (!state) return;
-
-      const dur = Number.isFinite(state.duration) ? state.duration : null;
-      const curTime = state.currentTime || 0;
-
-      // Smart almostend detection
-      if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
-        if (!hasEmittedAlmostEnd) {
-          hasEmittedAlmostEnd = true;
-          const endEvt = this.treatAlmostEndAsEnd ? 'ended' : 'almostend';
-          this.emit(endEvt, createEventPayload(endEvt, { source: 'adapter', instanceId, mediaType: 'adapter', state }));
-        }
-      } else if (dur && curTime < dur - 1.5) {
-        hasEmittedAlmostEnd = false;
-      }
-
-      // Periodic timeupdate emit
-      this.emit('timeupdate', createEventPayload('timeupdate', { source: 'adapter', instanceId, mediaType: 'adapter', state }));
-
-      // If finished, stop polling
-      if (state.ended || (dur && dur > 0 && curTime >= dur - 0.1)) {
-        this.stopAdapterStatePolling(instanceId);
-      }
-    }, 250);
-
-    this.adapterPollTimers.set(instanceId, timer);
-  }
-
-  stopAdapterStatePolling(instanceId) {
-    if (this.adapterPollTimers.has(instanceId)) {
-      clearInterval(this.adapterPollTimers.get(instanceId));
-      this.adapterPollTimers.delete(instanceId);
-    }
-  }
-
   setMultiMode(mode) {
-    this.multiMode = Boolean(mode);
+    this.instanceManager.setMultiModeConfig(mode);
   }
 
   isMultiMode() {
-    return this.multiMode;
+    return this.instanceManager.isMultiModeActive();
   }
 
   setExclusive(mode) {
-    this.exclusiveMode = mode;
+    this.instanceManager.setExclusiveMode(mode);
   }
 
   list() {
     const list = [];
-    for (const [id, ad] of this.adaptersMap.entries()) {
+    for (const [id, ad] of this.instanceManager.parentAdaptersMap.entries()) {
       const state = extractMediaState(ad);
       list.push({ instanceId: id, mediaType: 'adapter', capabilities: this.getCapabilities(id), status: 'ready', state });
     }
@@ -131,67 +98,33 @@ export class DomDriver extends BaseDriver {
   }
 
   useAdapter(rawAdapter, customInstanceId = null) {
-    if (!rawAdapter || typeof rawAdapter !== 'object') return null;
-    const instanceId = customInstanceId || `adapter-${Math.random().toString(36).slice(2, 9)}`;
-
-    // Wrap adapter safely using shared helper
-    const wrappedAdapter = wrapCustomAdapter(rawAdapter, {
-      instanceId,
-      source: 'adapter',
-      onEmit: (ev, fullPayload) => {
-        if (ev === 'play' || ev === 'playing') {
-          this.lastActiveInstanceId = instanceId;
-          if (this.exclusiveMode === 'auto' || this.exclusiveMode === true) {
-            this.pauseOthersExcept(instanceId);
-          }
-          this.startAdapterStatePolling(instanceId, wrappedAdapter);
-        } else if (ev === 'pause' || ev === 'ended' || ev === 'stop') {
-          this.stopAdapterStatePolling(instanceId);
-        }
-
-        this.emit(ev, fullPayload);
-      },
-    });
-
-    this.adaptersMap.set(instanceId, wrappedAdapter);
-    this.lastActiveInstanceId = instanceId;
-    return instanceId;
+    return this.instanceManager.handleUseAdapter(rawAdapter, customInstanceId);
   }
 
   pauseOthersExcept(activeInstanceId) {
-    for (const [id, ad] of this.adaptersMap.entries()) {
-      if (id !== activeInstanceId) {
-        try {
-          ad.pause?.();
-        } catch {}
-        this.stopAdapterStatePolling(id);
-      }
-    }
+    this.instanceManager.pauseOthersExcept(activeInstanceId);
   }
 
   removeAdapter(instanceId) {
-    if (!instanceId) return false;
-    this.stopAdapterStatePolling(instanceId);
-    return this.adaptersMap.delete(instanceId);
+    return this.instanceManager.handleRemoveAdapter(instanceId);
   }
 
   getCustomAdapter(instanceId) {
-    if (instanceId) return this.adaptersMap.get(instanceId) || null;
-    return this.adaptersMap.values().next().value || null;
+    return this.instanceManager.getCustomAdapter(instanceId);
   }
 
   resolveTarget(target) {
-    if (typeof target === 'string' && this.adaptersMap.has(target)) {
-      return { type: 'adapter', instance: this.adaptersMap.get(target), instanceId: target };
+    if (typeof target === 'string' && this.instanceManager.parentAdaptersMap.has(target)) {
+      return { type: 'adapter', instance: this.instanceManager.parentAdaptersMap.get(target), instanceId: target };
     }
-    if (!target && this.adaptersMap.size > 0) {
-      const firstEntry = this.adaptersMap.entries().next().value;
+    if (!target && this.instanceManager.parentAdaptersMap.size > 0) {
+      const firstEntry = this.instanceManager.parentAdaptersMap.entries().next().value;
       return { type: 'adapter', instance: firstEntry[1], instanceId: firstEntry[0] };
     }
     const el = this.resolveMediaElement(target);
     if (el) return { type: 'element', instance: el };
-    if (this.adaptersMap.size > 0) {
-      const firstEntry = this.adaptersMap.entries().next().value;
+    if (this.instanceManager.parentAdaptersMap.size > 0) {
+      const firstEntry = this.instanceManager.parentAdaptersMap.entries().next().value;
       return { type: 'adapter', instance: firstEntry[1], instanceId: firstEntry[0] };
     }
     return null;
@@ -435,42 +368,17 @@ export class DomDriver extends BaseDriver {
   }
 
   emit(event, payload) {
-    const fullEvent = event.startsWith('sremote:') ? event : `sremote:${event}`;
-    const rawEvent = event.replace(/^sremote:/, '');
-
-    const dispatchTo = evName => {
-      const handlersMap = this.eventListeners.get(evName);
-      if (handlersMap) {
-        for (const [handler] of handlersMap) {
-          try {
-            handler(payload);
-          } catch {}
-        }
-      }
-    };
-
-    dispatchTo(fullEvent);
-    dispatchTo(rawEvent);
-    dispatchTo('*');
+    this.instanceManager.emitGlobalEvent(event, payload);
   }
 
   on(event, handler) {
     if (typeof handler !== 'function') return () => {};
-    const fullEvent = event.startsWith('sremote:') ? event : `sremote:${event}`;
-    const domEventName = event.replace(/^sremote:/, '');
+    const unbindManager = this.instanceManager.on(event, handler);
+    const domEventName = String(event || '')
+      .toLowerCase()
+      .replace(/^sremote:/, '');
 
-    // 1. Register onto DomDriver internal event bus (for adapter emits)
-    const registerBusListener = evKey => {
-      if (!this.eventListeners.has(evKey)) {
-        this.eventListeners.set(evKey, new Map());
-      }
-      this.eventListeners.get(evKey).set(handler, true);
-    };
-
-    registerBusListener(fullEvent);
-    registerBusListener(domEventName);
-
-    // 2. Register native DOM listener (for direct HTML5 media tags on the page)
+    // Register native DOM listener (for direct HTML5 media tags on the page)
     let domListener = null;
     if (typeof document !== 'undefined') {
       domListener = e => {
@@ -490,22 +398,15 @@ export class DomDriver extends BaseDriver {
       document.addEventListener(domEventName, domListener, true);
     }
 
-    return () => this.off(event, handler);
+    return () => {
+      unbindManager();
+      if (domListener && typeof document !== 'undefined') {
+        document.removeEventListener(domEventName, domListener, true);
+      }
+    };
   }
 
   off(event, handler) {
-    const fullEvent = event.startsWith('sremote:') ? event : `sremote:${event}`;
-    const domEventName = event.replace(/^sremote:/, '');
-
-    const unregisterBus = evKey => {
-      const handlersMap = this.eventListeners.get(evKey);
-      if (handlersMap) {
-        if (handler) handlersMap.delete(handler);
-        else this.eventListeners.delete(evKey);
-      }
-    };
-
-    unregisterBus(fullEvent);
-    unregisterBus(domEventName);
+    this.instanceManager.off(event, handler);
   }
 }

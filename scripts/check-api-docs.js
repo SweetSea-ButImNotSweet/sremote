@@ -18,24 +18,17 @@ const docFiles = [
   'packages/userscript/README.md',
   'packages/wrapper/src/index.d.ts',
   'packages/shared/src/index.d.ts',
-].map(rel => ({
-  path: rel,
-  fullPath: path.join(rootDir, rel),
-  content: fs.existsSync(path.join(rootDir, rel)) ? fs.readFileSync(path.join(rootDir, rel), 'utf-8') : '',
-}));
+].map(rel => ({ path: rel, fullPath: path.join(rootDir, rel), content: fs.existsSync(path.join(rootDir, rel)) ? fs.readFileSync(path.join(rootDir, rel), 'utf-8') : '' }));
 
 const allDocContent = docFiles.map(d => d.content).join('\n');
 const wrapperDts = docFiles.find(d => d.path === 'packages/wrapper/src/index.d.ts')?.content || '';
 const sharedDts = docFiles.find(d => d.path === 'packages/shared/src/index.d.ts')?.content || '';
 
-const results = {
-  passed: 0,
-  warnings: [],
-};
+const results = { passed: 0, warnings: [] };
 
 function checkItem(category, name, inDts = true, inDocs = false) {
   const presentInDocs = allDocContent.includes(name);
-  const presentInDts = inDts ? (wrapperDts.includes(name) || sharedDts.includes(name)) : true;
+  const presentInDts = inDts ? wrapperDts.includes(name) || sharedDts.includes(name) : true;
 
   if (presentInDocs && presentInDts) {
     results.passed++;
@@ -44,11 +37,7 @@ function checkItem(category, name, inDts = true, inDocs = false) {
     if (!presentInDts) missing.push('.d.ts (TypeScript definition)');
     if (inDocs && !presentInDocs) missing.push('README/Markdown docs');
     if (missing.length > 0) {
-      results.warnings.push({
-        category,
-        name,
-        missing: missing.join(' and '),
-      });
+      results.warnings.push({ category, name, missing: missing.join(' and ') });
     } else {
       results.passed++;
     }
@@ -80,17 +69,7 @@ for (const [key, val] of Object.entries(SREMOTE_EVENTS)) {
 
 // 5. Check Options & Config interfaces
 console.log('Checking Config Properties & Options...');
-const expectedOptions = [
-  'fallbackToDom',
-  'timeout',
-  'passkey',
-  'treatAlmostEndAsEnd',
-  'trackParent',
-  'multiMode',
-  'target',
-  'key',
-  'css',
-];
+const expectedOptions = ['fallbackToDom', 'timeout', 'passkey', 'treatAlmostEndAsEnd', 'trackParent', 'multiMode', 'target', 'key', 'css'];
 
 for (const opt of expectedOptions) {
   checkItem('Client/Hello Option', opt, true, false);

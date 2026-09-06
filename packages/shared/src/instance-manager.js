@@ -20,16 +20,11 @@ export function generateInstanceId(prefix = 'sv') {
  * @returns {Object} InstanceManager
  */
 export function createInstanceManager(options = {}) {
-  const {
-    ns = 'sremote:',
-    logger = {},
-    onSignal = null,
-    getIframeCount = null,
-  } = options;
+  const { ns = 'sremote:', logger = {}, onSignal = null, getIframeCount = null } = options;
 
   const log = typeof logger.log === 'function' ? logger.log : () => {};
   const debug = typeof logger.debug === 'function' ? logger.debug : () => {};
-  const warn = typeof logger.warn === 'function' ? logger.warn : (typeof console !== 'undefined' ? console.warn.bind(console) : () => {});
+  const warn = typeof logger.warn === 'function' ? logger.warn : typeof console !== 'undefined' ? console.warn.bind(console) : () => {};
 
   const instances = new Map(); // instanceId -> { port, location, origin, note, state, mediaType, lastSeen, status, iframeEl, authenticated }
   const parentAdaptersMap = new Map(); // adapterKey -> adapterObject
@@ -47,9 +42,7 @@ export function createInstanceManager(options = {}) {
   function isMultiModeActive() {
     if (typeof multiModeConfig === 'boolean') return multiModeConfig;
     try {
-      const iframesCount = typeof getIframeCount === 'function'
-        ? getIframeCount()
-        : (typeof document !== 'undefined' ? document.querySelectorAll('iframe').length : 0);
+      const iframesCount = typeof getIframeCount === 'function' ? getIframeCount() : typeof document !== 'undefined' ? document.querySelectorAll('iframe').length : 0;
 
       if (iframesCount <= 1 && instances.size <= 1) return false;
     } catch {}
@@ -87,12 +80,7 @@ export function createInstanceManager(options = {}) {
   }
 
   function notifyMediaCountChange() {
-    const activeInstances = Array.from(instances.entries()).map(([id, item]) => ({
-      instanceId: id,
-      location: item.location,
-      note: item.note,
-      mediaType: item.mediaType,
-    }));
+    const activeInstances = Array.from(instances.entries()).map(([id, item]) => ({ instanceId: id, location: item.location, note: item.note, mediaType: item.mediaType }));
     const count = activeInstances.length;
 
     let payload = null;
@@ -118,22 +106,30 @@ export function createInstanceManager(options = {}) {
   }
 
   function emitGlobalEvent(event, payload = {}) {
-    const ev = String(event || '').toLowerCase();
-    if (ev === 'accept' && payload?.instanceId) {
+    const rawEv = String(event || '').toLowerCase();
+    const ev = rawEv.replace(/^sremote:/, '');
+    const fullEv = `sremote:${ev}`;
+
+    if ((ev === 'accept' || rawEv === 'accept') && payload?.instanceId) {
       lastAcceptedData = payload;
-    } else if (ev === 'disconnect' && payload?.instanceId && lastAcceptedData?.instanceId === payload.instanceId) {
+    } else if ((ev === 'disconnect' || rawEv === 'disconnect') && payload?.instanceId && lastAcceptedData?.instanceId === payload.instanceId) {
       lastAcceptedData = null;
     }
 
-    const specificListeners = globalEventListeners.get(ev);
-    if (specificListeners) {
-      for (const fn of specificListeners) {
+    const triggerHandlers = targetMap => {
+      if (!targetMap) return;
+      for (const fn of targetMap) {
         try {
           fn(payload);
         } catch (e) {
           warn('[sremote] Error in event listener:', e);
         }
       }
+    };
+
+    triggerHandlers(globalEventListeners.get(ev));
+    if (fullEv !== ev) {
+      triggerHandlers(globalEventListeners.get(fullEv));
     }
 
     const wildcardListeners = globalEventListeners.get('*');
@@ -149,11 +145,66 @@ export function createInstanceManager(options = {}) {
     }
   }
 
+  function on(event, handler) {
+    if (typeof handler !== 'function') return () => {};
+    const rawEv = String(event || '').toLowerCase();
+    const ev = rawEv.replace(/^sremote:/, '');
+    const fullEv = `sremote:${ev}`;
+
+    const addListener = key => {
+      if (!globalEventListeners.has(key)) globalEventListeners.set(key, new Set());
+      globalEventListeners.get(key).add(handler);
+    };
+
+    addListener(ev);
+    if (fullEv !== ev) {
+      addListener(fullEv);
+    }
+
+    // Sticky replay for accept / wildcard
+    if ((ev === 'accept' || ev === '*') && lastAcceptedData && (instances.has(lastAcceptedData.instanceId) || parentAdaptersMap.has(lastAcceptedData.instanceId))) {
+      try {
+        const replayPayload = ev === '*' ? { action: 'accept', ...lastAcceptedData } : lastAcceptedData;
+        setTimeout(() => {
+          try {
+            handler(replayPayload);
+          } catch {}
+        }, 0);
+      } catch {}
+    }
+
+    return () => off(event, handler);
+  }
+
+  function off(event, handler) {
+    const rawEv = String(event || '').toLowerCase();
+    const ev = rawEv.replace(/^sremote:/, '');
+    const fullEv = `sremote:${ev}`;
+
+    const removeListener = key => {
+      const set = globalEventListeners.get(key);
+      if (set) {
+        if (handler) set.delete(handler);
+        else globalEventListeners.delete(key);
+      }
+    };
+
+    removeListener(ev);
+    removeListener(fullEv);
+  }
+
   function pauseOthersExcept(activeInstanceId) {
     for (const [id, item] of instances.entries()) {
       if (id !== activeInstanceId) {
         try {
           item.port?.postMessage({ type: `${ns}pause` });
+        } catch {}
+      }
+    }
+    for (const [id, ad] of parentAdaptersMap.entries()) {
+      if (id !== activeInstanceId) {
+        try {
+          ad.pause?.();
         } catch {}
       }
     }
@@ -193,7 +244,8 @@ export function createInstanceManager(options = {}) {
       source: 'adapter',
       onEmit: (ev, fullPayload) => {
         if (ev === 'play' || ev === 'playing') {
-          if (exclusiveMode === 'auto') {
+          currentActiveInstanceId = targetId;
+          if (exclusiveMode === 'auto' || exclusiveMode === true) {
             pauseOthersExcept(targetId);
           }
         }
@@ -224,6 +276,12 @@ export function createInstanceManager(options = {}) {
     parentAdaptersMap.clear();
     currentActiveInstanceId = null;
     return true;
+  }
+
+  function getCustomAdapter(instanceId = null) {
+    if (instanceId) return parentAdaptersMap.get(instanceId) || null;
+    if (parentAdaptersMap.size === 1) return Array.from(parentAdaptersMap.values())[0] || null;
+    return parentAdaptersMap.get(currentActiveInstanceId) || Array.from(parentAdaptersMap.values())[0] || null;
   }
 
   return {
@@ -270,9 +328,12 @@ export function createInstanceManager(options = {}) {
     broadcastToPorts,
     notifyMediaCountChange,
     emitGlobalEvent,
+    on,
+    off,
     pauseOthersExcept,
     removeInstance,
     handleUseAdapter,
     handleRemoveAdapter,
+    getCustomAdapter,
   };
 }

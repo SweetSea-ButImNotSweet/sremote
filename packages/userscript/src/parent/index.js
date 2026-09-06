@@ -203,12 +203,7 @@ export function initParentController() {
 
     // Direct execution on Top DOM Media Elements
     if (target?.isTopMedia && target.mediaElement) {
-      return executeTopMediaAction(target.mediaElement, action, value).then(ok => ({
-        success: ok,
-        instanceId: targetId,
-        source: 'top-dom',
-        action,
-      }));
+      return executeTopMediaAction(target.mediaElement, action, value).then(ok => ({ success: ok, instanceId: targetId, source: 'top-dom', action }));
     }
 
     const multi = isMultiModeActive();

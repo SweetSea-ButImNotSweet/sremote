@@ -68,22 +68,12 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
 
         emitGlobalEvent(evtName, payload);
       },
-      {
-        instanceId: customId,
-        source: 'top-dom',
-        mediaType,
-      },
+      { instanceId: customId, source: 'top-dom', mediaType },
     );
 
     unbindFns.set(customId, unbind);
     notifyMediaCountChange();
-    emitGlobalEvent('accept', {
-      source: 'top-dom',
-      instanceId: customId,
-      mediaType,
-      location: location.href,
-      origin: location.origin,
-    });
+    emitGlobalEvent('accept', { source: 'top-dom', instanceId: customId, mediaType, location: location.href, origin: location.origin });
   }
 
   function untrackElement(customId) {

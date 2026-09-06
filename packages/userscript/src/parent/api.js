@@ -381,10 +381,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
     if (!validateDomainAccess(providedKey)) {
       const hostDomain = location.hostname || 'this_domain';
-      console_error(
-        `%c[SRemote:auth] Blocked hello() on locked domain '${hostDomain}'! Valid Passkey is required in hello({ key: '...' }).`,
-        'color: #ef4444; font-weight: bold;',
-      );
+      console_error(`%c[SRemote:auth] Blocked hello() on locked domain '${hostDomain}'! Valid Passkey is required in hello({ key: '...' }).`, 'color: #ef4444; font-weight: bold;');
       return false;
     }
 
@@ -505,21 +502,10 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       getIframeCSS,
       removeIframeCSS,
     },
-    eventsManager: {
-      on: onEvent,
-      off: offEvent,
-    },
-    lifecycleHandlers: {
-      hello: broadcastHello,
-      lock: lockSession,
-      bindMetadata: (meta, instanceId, key) => dispatchCommand('bindMetadata', meta, instanceId, key),
-    },
+    eventsManager: { on: onEvent, off: offEvent },
+    lifecycleHandlers: { hello: broadcastHello, lock: lockSession, bindMetadata: (meta, instanceId, key) => dispatchCommand('bindMetadata', meta, instanceId, key) },
     debugApi,
-    customExtensions: {
-      isDummy: false,
-      isSremoteNative: true,
-      [Symbol.for('__sremote_native__')]: true,
-    },
+    customExtensions: { isDummy: false, isSremoteNative: true, [Symbol.for('__sremote_native__')]: true },
   });
 
   try {

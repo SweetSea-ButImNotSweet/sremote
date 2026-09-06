@@ -138,12 +138,7 @@ export declare function generateInstanceId(prefix?: string): string;
 
 export interface InstanceManagerOptions {
   ns?: string;
-  logger?: {
-    log?: (...args: any[]) => void;
-    debug?: (...args: any[]) => void;
-    warn?: (...args: any[]) => void;
-    error?: (...args: any[]) => void;
-  };
+  logger?: { log?: (...args: any[]) => void; debug?: (...args: any[]) => void; warn?: (...args: any[]) => void; error?: (...args: any[]) => void };
   onSignal?: (payload: any) => void;
   getIframeCount?: () => number;
 }
@@ -170,10 +165,13 @@ export interface InstanceManager {
   broadcastToPorts: (payload: any, excludeInstanceId?: string | null) => void;
   notifyMediaCountChange: () => void;
   emitGlobalEvent: (event: string, payload?: any) => void;
+  on: (event: string, handler: (payload: any) => void) => () => void;
+  off: (event: string, handler?: (payload: any) => void) => void;
   pauseOthersExcept: (activeInstanceId: string) => void;
   removeInstance: (instanceId: string, reason?: string) => void;
   handleUseAdapter: (adapterVal: any, instanceId?: string | null) => string | null;
   handleRemoveAdapter: (instanceId?: string | null) => boolean;
+  getCustomAdapter: (instanceId?: string | null) => any;
 }
 
 export declare function createInstanceManager(options?: InstanceManagerOptions): InstanceManager;

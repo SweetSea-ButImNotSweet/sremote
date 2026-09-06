@@ -14,14 +14,7 @@ import { API_SPEC } from './schema.js';
  * @returns {Object} Standard SRemote API Object
  */
 export function buildSRemoteApi(context) {
-  const {
-    dispatchCommand,
-    handlers = {},
-    eventsManager = {},
-    lifecycleHandlers = {},
-    debugApi = null,
-    customExtensions = {},
-  } = context;
+  const { dispatchCommand, handlers = {}, eventsManager = {}, lifecycleHandlers = {}, debugApi = null, customExtensions = {} } = context;
 
   const api = {};
 
