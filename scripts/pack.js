@@ -55,3 +55,9 @@ if (fs.existsSync(distDir)) {
 
 console.log('\n🎉 Packaging complete! Files in tarballs/:');
 fs.readdirSync(outputDir).forEach(f => console.log(` - tarballs/${f}`));
+
+console.log('\n📥 Install commands (Absolute path):');
+for (const tarball of generatedTarballs) {
+  const absPath = path.resolve(outputDir, tarball);
+  console.log(` npm install "${absPath}"`);
+}
