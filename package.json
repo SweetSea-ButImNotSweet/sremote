@@ -22,6 +22,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "format": "biome format --write .",
+    "check:docs": "node scripts/check-api-docs.js",
     "knip": "knip"
   },
   "keywords": ["userscript", "iframe", "media-controller", "sremote"],

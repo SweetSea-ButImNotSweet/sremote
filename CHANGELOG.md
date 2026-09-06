@@ -16,6 +16,14 @@ SRemote v3.0.0 is a major architecture overhaul, unification, and feature releas
 - **Unified API Architecture (`@sremote/shared`)**:
   - **`API_SPEC` (`packages/shared/src/api/schema.js`)**: Single source of truth for all root playback methods, argument schemas, action dispatch mappings, and sub-namespaces (`instances`, `adapters`, `rpc`, `css`).
   - **`buildSRemoteApi` (`packages/shared/src/api/builder.js`)**: Universal API factory generating standardized, immutable (`Object.freeze`) SRemote API objects with automated argument parsing, action forwarding, event manager hookup, and lifecycle binding.
+- **Shared Instance Manager Architecture (`@sremote/shared`)**:
+  - Extracted core instance management and lifecycle tracking into `@sremote/shared` via `createInstanceManager`.
+  - Enables unified instance state tracking, adapter registration (`wrapCustomAdapter`), active instance detection, exclusivity management (`exclusiveMode: 'auto'`), and custom signal notifications across both `@sremote/userscript` and `@sremote/wrapper`.
+  - Added lightweight top-level DOM media tracking in Userscript (`setupTopMediaTracker`), with zero native prototype overrides, controlled via `hello({ trackParent: true })` (defaults to `false`).
+- **Public API Documentation & Types Auditor**:
+  - Introduced `scripts/check-api-docs.js` (`npm run check:docs`) to automatically audit public API surface methods, namespaces, action constants, and configuration options against `.d.ts` type definitions and documentation files.
+- **Unified Playback Speed Naming Cleanup**:
+  - Standardized `SREMOTE_ACTIONS.SPEED = 'speed'` and cleaned up all internal legacy `rate` / `playbackRate` action switch branches in `controller.js` and `adapter-runner.js`.
 - **New Platform Providers (`@sremote/ready2use`)**:
   - **Apple MusicKit JS (`applemusickit`)**: Full-featured player and SRemote adapter powered by Apple's official MusicKit JS v3 SDK (`play`, `pause`, `toggle`, `seek`, `seekTo`, `volume`, `mute`, `next`, `previous`, `setQueue`, and real-time event tracking).
   - **Apple Music Embed (`applemusic`)**: Zero-token Iframe widget embed (`embed.music.apple.com/...`) for quick preview playback of songs, albums, and playlists.

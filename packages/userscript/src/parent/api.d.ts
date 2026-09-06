@@ -237,8 +237,7 @@ export interface SRemoteParentApi {
   seekTo(time: number, instanceId?: string, key?: string): Promise<SRemoteCommandResult>;
   volume(vol: number, instanceId?: string, key?: string): Promise<SRemoteCommandResult>;
   mute(muted: boolean, instanceId?: string, key?: string): Promise<SRemoteCommandResult>;
-  rate(rate: number, instanceId?: string, key?: string): Promise<SRemoteCommandResult>;
-  playbackRate(rate: number, instanceId?: string, key?: string): Promise<SRemoteCommandResult>;
+  speed(rate: number, instanceId?: string, key?: string): Promise<SRemoteCommandResult>;
   quality(level: string | number, instanceId?: string, key?: string): Promise<SRemoteCommandResult>;
   getQualities(instanceId?: string, key?: string): string[];
   subtitle(track: string | null, instanceId?: string, key?: string): Promise<SRemoteCommandResult>;

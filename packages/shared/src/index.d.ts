@@ -90,7 +90,7 @@ export declare const SREMOTE_ACTIONS: {
   readonly SEEK_TO: 'currentTime';
   readonly VOLUME: 'volume';
   readonly MUTE: 'muted';
-  readonly SPEED: 'playbackRate';
+  readonly SPEED: 'speed';
   readonly PIP: 'pip';
   readonly ENTER_PIP: 'enterpip';
   readonly EXIT_PIP: 'exitpip';

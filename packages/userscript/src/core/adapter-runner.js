@@ -129,8 +129,6 @@ export async function executeAdapterAction(adapter, action, value = undefined, i
         return true;
 
       case 'speed':
-      case 'rate':
-      case 'playbackrate':
         if (!isPureGet && typeof adapter.setPlaybackRate === 'function') {
           await adapter.setPlaybackRate(Number(value) || 1);
         }

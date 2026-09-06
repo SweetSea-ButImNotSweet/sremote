@@ -136,8 +136,6 @@ export function initParentController() {
           }
           return true;
         case 'speed':
-        case 'rate':
-        case 'playbackrate':
           if (value !== undefined && value !== null) {
             mediaEl.playbackRate = Number(value) || 1;
           }

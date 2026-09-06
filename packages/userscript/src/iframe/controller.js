@@ -278,7 +278,7 @@ export function createMediaController({
           }
           resVal = safeGetProp(activeMedia, descriptors.muted, 'muted');
           break;
-        case 'playbackrate':
+        case 'speed':
           if (!isPureGet && value !== undefined) {
             safeSetProp(activeMedia, descriptors.playbackRate, 'playbackRate', Number(value) || 1);
           }
