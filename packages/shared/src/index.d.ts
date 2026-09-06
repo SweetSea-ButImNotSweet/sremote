@@ -133,3 +133,47 @@ export declare function buildSRemoteApi(context: {
   debugApi?: any;
   customExtensions?: Record<string, any>;
 }): any;
+
+export declare function generateInstanceId(prefix?: string): string;
+
+export interface InstanceManagerOptions {
+  ns?: string;
+  logger?: {
+    log?: (...args: any[]) => void;
+    debug?: (...args: any[]) => void;
+    warn?: (...args: any[]) => void;
+    error?: (...args: any[]) => void;
+  };
+  onSignal?: (payload: any) => void;
+  getIframeCount?: () => number;
+}
+
+export interface InstanceManager {
+  instances: Map<string, any>;
+  parentAdaptersMap: Map<string, any>;
+  assignedIframeIdMap: Map<string, any>;
+  iframeToAssignedIdMap: WeakMap<any, string>;
+  globalEventListeners: Map<string, Set<Function>>;
+  exclusiveMode: string | null;
+  setExclusiveMode: (mode: string | null) => void;
+  multiModeConfig: boolean | null;
+  setMultiModeConfig: (mode: boolean | null) => void;
+  currentActiveInstanceId: string | null;
+  setCurrentActiveInstanceId: (id: string | null) => void;
+  isSessionLocked: boolean;
+  setSessionLocked: (locked: boolean) => void;
+  isSessionDenied: boolean;
+  setSessionDenied: (denied: boolean) => void;
+  readonly lastAcceptedData: any;
+  isMultiModeActive: () => boolean;
+  getLatestActiveInstanceId: () => string | null;
+  broadcastToPorts: (payload: any, excludeInstanceId?: string | null) => void;
+  notifyMediaCountChange: () => void;
+  emitGlobalEvent: (event: string, payload?: any) => void;
+  pauseOthersExcept: (activeInstanceId: string) => void;
+  removeInstance: (instanceId: string, reason?: string) => void;
+  handleUseAdapter: (adapterVal: any, instanceId?: string | null) => string | null;
+  handleRemoveAdapter: (instanceId?: string | null) => boolean;
+}
+
+export declare function createInstanceManager(options?: InstanceManagerOptions): InstanceManager;
