@@ -5,7 +5,7 @@ import { pendingRpcRequests } from './queue.js';
 import { createParentDebugApi } from '../debug/parent-debug.js';
 import { extractMediaState, evaluateCapabilities, buildSRemoteApi } from '@sremote/shared';
 
-export function createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM }) {
+export function createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker = null }) {
   const {
     instances,
     parentAdaptersMap,
@@ -55,8 +55,13 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     }
     const activeId = instanceManager.currentActiveInstanceId;
     const targetId = instanceId || activeId || (instances.size === 1 ? Array.from(instances.keys())[0] : null);
-    if (!targetId) return null;
-    if (instances.has(targetId)) return instances.get(targetId).state || null;
+    if (instances.has(targetId)) {
+      const inst = instances.get(targetId);
+      if (inst.isTopMedia && inst.mediaElement) {
+        return extractMediaState(inst.mediaElement);
+      }
+      return inst.state || null;
+    }
     if (parentAdaptersMap.has(targetId)) {
       const adapter = parentAdaptersMap.get(targetId);
       return extractMediaState(adapter);
@@ -364,6 +369,13 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       }
       if (options.css && typeof options.css === 'string') {
         customCss = options.css;
+      }
+      if (typeof options.trackParent === 'boolean' && topMediaTracker) {
+        if (options.trackParent) {
+          topMediaTracker.start();
+        } else {
+          topMediaTracker.stop();
+        }
       }
     }
 

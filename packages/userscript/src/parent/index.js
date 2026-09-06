@@ -9,6 +9,7 @@ import { setupLivenessReaper } from './liveness.js';
 import { createExportedApi } from './api.js';
 import { createInstanceManager } from './instance-manager.js';
 import { setupParentHandshake } from './handshake.js';
+import { setupTopMediaTracker } from './top-media.js';
 
 export function initParentController() {
   const currentOrigin = location.origin;
@@ -47,6 +48,9 @@ export function initParentController() {
   const instanceManager = createInstanceManager();
   const { instances, parentAdaptersMap, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts, removeInstance } =
     instanceManager;
+
+  // Setup Top DOM Media Tracker (video/audio on top window)
+  const topMediaTracker = setupTopMediaTracker(instanceManager);
 
   function validateDomainAccess(providedKey = null) {
     if (ENABLE_DEBUG_API && providedKey === '__DEBUG_BYPASS__') return true;
@@ -89,6 +93,84 @@ export function initParentController() {
     return executeAdapterAction(adapter, action, value);
   }
 
+  async function executeTopMediaAction(mediaEl, action, value) {
+    if (!mediaEl) return false;
+    const norm = String(action || '').toLowerCase();
+    try {
+      switch (norm) {
+        case 'play':
+          await mediaEl.play?.();
+          return true;
+        case 'pause':
+          mediaEl.pause?.();
+          return true;
+        case 'toggle':
+          if (mediaEl.paused) await mediaEl.play?.();
+          else mediaEl.pause?.();
+          return true;
+        case 'stop':
+          mediaEl.pause?.();
+          mediaEl.currentTime = 0;
+          return true;
+        case 'seek':
+          if (value !== undefined && value !== null) {
+            mediaEl.currentTime = Math.max(0, (mediaEl.currentTime || 0) + Number(value));
+          }
+          return true;
+        case 'currenttime':
+        case 'seekto':
+          if (value !== undefined && value !== null) {
+            mediaEl.currentTime = Math.max(0, Number(value));
+          }
+          return true;
+        case 'volume':
+          if (value !== undefined && value !== null) {
+            mediaEl.volume = Math.max(0, Math.min(1, Number(value)));
+            mediaEl.muted = false;
+          }
+          return true;
+        case 'muted':
+        case 'mute':
+          if (value !== undefined && value !== null) {
+            mediaEl.muted = Boolean(value);
+          }
+          return true;
+        case 'speed':
+        case 'rate':
+        case 'playbackrate':
+          if (value !== undefined && value !== null) {
+            mediaEl.playbackRate = Number(value) || 1;
+          }
+          return true;
+        case 'repeat':
+          if (value !== undefined && value !== null) {
+            mediaEl.loop = value === true || value === 'one';
+          }
+          return true;
+        case 'pip':
+        case 'enterpip':
+          if (typeof document !== 'undefined') {
+            if (document.pictureInPictureElement === mediaEl) {
+              await document.exitPictureInPicture?.();
+            } else if (mediaEl.requestPictureInPicture) {
+              await mediaEl.requestPictureInPicture();
+            }
+          }
+          return true;
+        case 'exitpip':
+          if (typeof document !== 'undefined' && document.pictureInPictureElement) {
+            await document.exitPictureInPicture?.();
+          }
+          return true;
+        default:
+          return false;
+      }
+    } catch (e) {
+      console_warn(`[sremote] Error executing top media action '${action}':`, e);
+      return false;
+    }
+  }
+
   function dispatchCommand(action, value, targetInstanceId = null, key = null) {
     if (!validateDomainAccess(key)) {
       const errMsg = `[SRemote:auth] Blocked command '${action}'! Valid Passkey is required.`;
@@ -121,6 +203,16 @@ export function initParentController() {
       if (handled) return Promise.resolve({ success: true, instanceId: targetId || targetInstanceId, source: 'adapter', action });
     }
 
+    // Direct execution on Top DOM Media Elements
+    if (target?.isTopMedia && target.mediaElement) {
+      return executeTopMediaAction(target.mediaElement, action, value).then(ok => ({
+        success: ok,
+        instanceId: targetId,
+        source: 'top-dom',
+        action,
+      }));
+    }
+
     const multi = isMultiModeActive();
     if (multi && instances.size > 1 && !targetInstanceId) {
       emitWhereIsInstanceIdError(action);
@@ -129,6 +221,11 @@ export function initParentController() {
 
     if (targetInstanceId === 'all') {
       broadcastToPorts({ type: `${NS}${action}`, source: 'parent', value });
+      for (const item of instances.values()) {
+        if (item.isTopMedia && item.mediaElement) {
+          executeTopMediaAction(item.mediaElement, action, value);
+        }
+      }
       return Promise.resolve({ success: true, instanceId: 'all', action });
     }
 
@@ -183,5 +280,5 @@ export function initParentController() {
   setupLivenessReaper(instances, removeInstance, iframeToAssignedIdMap);
 
   // Initialize and Export window.sremote
-  createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM });
+  createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker });
 }

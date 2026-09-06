@@ -114,6 +114,7 @@ export declare function createUniversalAdapter(options?: UniversalAdapterOptions
 export interface SRemoteHelloOptions {
   multiMode?: boolean | null;
   treatAlmostEndAsEnd?: boolean;
+  trackParent?: boolean;
   target?: Window;
   key?: string;
   css?: string;
