@@ -36,7 +36,7 @@ based on the Application, and not on the Linked Version.
 
   The "Corresponding Application Code" for a Combined Work means the
 object code and/or source code for the Application, including any data
-and utility programs needed for reproducing the Combined Work from
+and utility programs needed for reproducing the Combined Work from the
 Application, but excluding the System Libraries of the Combined Work.
 
   1. Exception to Section 3 of the GNU GPL.
@@ -78,10 +78,11 @@ layouts and accessors, or small macros, inline functions and templates
 
   4. Combined Works.
 
-  You may convey a Combined Work under terms of your choice that, taken
-together, effectively do not restrict modification of the portions of
-the Library contained in the Combined Work and reverse engineering for
-debugging such modifications, if you also do each of the following:
+  You may convey a Combined Work under terms of your choice that,
+taken together, effectively do not restrict modification of the
+portions of the Library contained in the Combined Work and reverse
+engineering for debugging such modifications, if you also do each of
+the following:
 
    a) Give prominent notice with each copy of the Combined Work that
    the Library is used in it and that the Library and its use are
