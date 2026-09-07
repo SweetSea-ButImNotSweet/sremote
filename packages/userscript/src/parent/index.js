@@ -1,4 +1,4 @@
-import { VERSION, NS, ENABLE_DEBUG_API, console_log, console_warn, console_error } from '../config.js';
+import { VERSION, NS, ENABLE_DEBUG_API, console_log, console_warn, console_error, pageWindow } from '../config.js';
 import { Storage, GM } from '../core/storage.js';
 import { getOriginStorageKeys } from '../core/utils.js';
 import { executeAdapterAction } from '../core/adapter-runner.js';
@@ -53,6 +53,7 @@ export function initParentController() {
       const parsedLevel = Number(storedLogLevel);
       if (!Number.isNaN(parsedLevel) && parsedLevel >= -1) {
         window.__sremote_log_level__ = parsedLevel;
+        if (typeof pageWindow !== 'undefined') pageWindow.__sremote_log_level__ = parsedLevel;
       }
     }
   } catch {}

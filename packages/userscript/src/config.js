@@ -18,6 +18,16 @@ export const console_error = (...args) => logger.error(...args);
 
 export const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
+// Expose userscript LOG_LEVEL to page window so web apps (wrapper) inherit log level
+try {
+  if (typeof pageWindow !== 'undefined' && typeof LOG_LEVEL === 'number' && LOG_LEVEL >= 0) {
+    pageWindow.__sremote_log_level__ = LOG_LEVEL;
+  }
+  if (typeof window !== 'undefined' && typeof LOG_LEVEL === 'number' && LOG_LEVEL >= 0) {
+    window.__sremote_log_level__ = LOG_LEVEL;
+  }
+} catch {}
+
 export { MEDIA_EVENTS } from '@sremote/shared';
 
 // Native HTMLMediaElement property descriptors
