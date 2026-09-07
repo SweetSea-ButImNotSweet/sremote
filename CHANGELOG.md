@@ -13,6 +13,12 @@ SRemote v3.0.0 is a major architecture overhaul, unification, and feature releas
 
 ### 🚀 Added
 
+- **Unified Hierarchical Logging System (`@sremote/shared`, `@sremote/wrapper`, `@sremote/userscript`)**:
+  - **Logger Factory & Scoped Channels (`createLogger`)**: Standardized scoped loggers with colored namespace headers (`[SRemote:wrapper]`, `[SRemote:userscript]`, etc.) and zero runtime performance cost via short-circuited no-op functions when logging levels are not met.
+  - **Hierarchical Log Level Resolution (`LOG_LEVELS`)**: Supports `-1` (Inherit), `0` (Silent), `1` (Error/Warn), `2` (Info), and `3` (Debug). Global overrides from developer console (`window.__sremote_log_level__`, `globalThis[Symbol.for('__sremote_log_level__')]`) or persistent storage (`sremote:log_level`) seamlessly take precedence over web application options if set to anything other than `-1`.
+  - **Client Configuration Options**: Added `logLevel` (`number`) and `debug` (`boolean`) options to `createSRemote()` / `SRemoteClient` in `@sremote/wrapper`.
+  - **Dynamic Level Checking**: Logger dynamically evaluates effective log levels at runtime so adjustments in browser DevTools or storage take effect immediately without requiring a page refresh.
+
 - **Event Seeking & Seeked Ecosystem (`@sremote/ready2use`)**:
   - **YouTube Provider**: Added complete support for `seeking` and `seeked` events across both programmatic seek calls (`seek()`, `seekTo()`) and native player UI scrubbing (automatic scrubber jump detection `> 1.5s`).
   - Added missing lifecycle and state change events to YouTube provider: `buffering` (`onStateChange === 3`), `ratechange` (`onPlaybackRateChange`), and `volumechange` (`setVolume()`, `setMuted()`).

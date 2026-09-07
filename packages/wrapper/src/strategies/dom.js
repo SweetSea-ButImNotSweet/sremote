@@ -4,7 +4,12 @@ import { createInstanceManager, extractMediaState, createEventPayload, evaluateC
 export class DomDriver extends BaseDriver {
   constructor(options = {}) {
     super(options);
-    this.instanceManager = createInstanceManager({ ns: 'sremote:', getIframeCount: () => (typeof document !== 'undefined' ? document.querySelectorAll('iframe').length : 0) });
+    this.logger = options.logger || null;
+    this.instanceManager = createInstanceManager({
+      ns: 'sremote:',
+      logger: this.logger,
+      getIframeCount: () => (typeof document !== 'undefined' ? document.querySelectorAll('iframe').length : 0),
+    });
 
     this.trackedMediaElements = new WeakSet();
     this.treatAlmostEndAsEnd = Boolean(options.treatAlmostEndAsEnd);

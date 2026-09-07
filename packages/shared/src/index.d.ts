@@ -184,3 +184,23 @@ export interface InstanceManager {
 }
 
 export declare function createInstanceManager(options?: InstanceManagerOptions): InstanceManager;
+
+export declare const LOG_LEVELS: { readonly INHERIT: -1; readonly SILENT: 0; readonly ERROR: 1; readonly INFO: 2; readonly DEBUG: 3 };
+
+export interface Logger {
+  readonly level: number;
+  log: (...args: any[]) => void;
+  debug: (...args: any[]) => void;
+  warn: (...args: any[]) => void;
+  error: (...args: any[]) => void;
+}
+
+export declare function getGlobalLogLevelOverride(): number | null;
+export declare function resolveLogLevel(localLevel?: number, defaultLevel?: number): number;
+export declare function createLogger(options?: { prefix?: string; level?: number; getLevel?: () => number; defaultLevel?: number }): Logger;
+
+export declare const defaultLogger: Logger;
+export declare const console_log: (...args: any[]) => void;
+export declare const console_debug: (...args: any[]) => void;
+export declare const console_warn: (...args: any[]) => void;
+export declare const console_error: (...args: any[]) => void;

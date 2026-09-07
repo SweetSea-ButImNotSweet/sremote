@@ -46,6 +46,17 @@ export function initParentController() {
   Storage.set('sremote:hello_seq', 0);
   Storage.set('sremote:parent_origin', location.origin);
 
+  // Sync log level from storage to window override if configured
+  try {
+    const storedLogLevel = Storage.get('sremote:log_level', null);
+    if (storedLogLevel !== null && storedLogLevel !== undefined && storedLogLevel !== '') {
+      const parsedLevel = Number(storedLogLevel);
+      if (!Number.isNaN(parsedLevel) && parsedLevel >= -1) {
+        window.__sremote_log_level__ = parsedLevel;
+      }
+    }
+  } catch {}
+
   const instanceManager = createInstanceManager();
   const { instances, parentAdaptersMap, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts, removeInstance } =
     instanceManager;

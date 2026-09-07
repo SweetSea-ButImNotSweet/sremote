@@ -2,6 +2,7 @@ import { UserscriptDriver } from './strategies/userscript.js';
 import { DomDriver } from './strategies/dom.js';
 import { showInstallModal } from './ui/install-modal.js';
 import { lockGlobalSRemoteIfAbsent } from './guard.js';
+import { createLogger, LOG_LEVELS } from '@sremote/shared';
 
 // Execute immediately when module is loaded to protect window.sremote
 lockGlobalSRemoteIfAbsent();
@@ -11,8 +12,13 @@ export class SRemoteClient {
     lockGlobalSRemoteIfAbsent();
     this.options = { fallbackToDom: true, timeout: 2000, passkey: null, ...options };
 
-    this.userscriptDriver = new UserscriptDriver(this.options);
-    this.domDriver = new DomDriver(this.options);
+    const initialLogLevel = typeof this.options.logLevel === 'number' ? this.options.logLevel : this.options.debug ? LOG_LEVELS.DEBUG : undefined;
+
+    this.logger = createLogger({ prefix: 'wrapper', level: initialLogLevel, defaultLevel: LOG_LEVELS.ERROR });
+
+    const driverOptions = { ...this.options, logger: this.logger };
+    this.userscriptDriver = new UserscriptDriver(driverOptions);
+    this.domDriver = new DomDriver(driverOptions);
     this.mode = 'detecting'; // 'userscript' | 'dom-direct' | 'unsupported'
     this._readyPromise = null;
 

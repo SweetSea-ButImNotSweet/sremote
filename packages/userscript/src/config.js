@@ -3,13 +3,18 @@ import { unsafeWindow } from '$';
 export const VERSION = '3.0.0';
 export const NS = 'sremote:';
 
+import { LOG_LEVELS, createLogger } from '@sremote/shared';
+
 export const LOG_LEVEL = 3; // 0: None, 1: Error/Warn, 2: Debug, 3: Full Log
 export const ENABLE_DEBUG_API = true;
 
-export const console_log = LOG_LEVEL >= 3 ? console.log.bind(console) : () => {};
-export const console_debug = LOG_LEVEL >= 2 ? console.debug.bind(console) : () => {};
-export const console_warn = LOG_LEVEL >= 1 ? console.warn.bind(console) : () => {};
-export const console_error = LOG_LEVEL >= 1 ? console.error.bind(console) : () => {};
+// Create unified logger for userscript with dynamic level checking
+export const logger = createLogger({ prefix: 'userscript', level: LOG_LEVEL, defaultLevel: LOG_LEVELS.INFO });
+
+export const console_log = (...args) => logger.log(...args);
+export const console_debug = (...args) => logger.debug(...args);
+export const console_warn = (...args) => logger.warn(...args);
+export const console_error = (...args) => logger.error(...args);
 
 export const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 

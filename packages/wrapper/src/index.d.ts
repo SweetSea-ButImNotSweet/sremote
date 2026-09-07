@@ -33,6 +33,23 @@ export interface SRemoteClientOptions {
    */
   treatAlmostEndAsEnd?: boolean;
 
+  /**
+   * Logging verbosity level:
+   * - `-1`: Inherit from global/userscript or default
+   * - `0`: Silent (no logs)
+   * - `1`: Error/Warn
+   * - `2`: Info (lifecycle, connections)
+   * - `3`: Debug (verbose events, command executions)
+   * @default 1
+   */
+  logLevel?: number;
+
+  /**
+   * Shorthand boolean to enable verbose debug logging (sets logLevel = 3).
+   * @default false
+   */
+  debug?: boolean;
+
   [key: string]: any;
 }
 
