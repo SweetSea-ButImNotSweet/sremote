@@ -10,6 +10,7 @@ import { createExportedApi } from './api.js';
 import { createInstanceManager } from './instance-manager.js';
 import { setupParentHandshake } from './handshake.js';
 import { setupTopMediaTracker } from './top-media.js';
+import { hasMediaSource } from '@sremote/shared';
 
 export function initParentController() {
   const currentOrigin = location.origin;
@@ -95,24 +96,28 @@ export function initParentController() {
 
   async function executeTopMediaAction(mediaEl, action, value) {
     if (!mediaEl) return false;
+    const hasSource = hasMediaSource(mediaEl);
     const norm = String(action || '').toLowerCase();
     try {
       switch (norm) {
         case 'play':
+          if (!hasSource) return false;
           await mediaEl.play?.();
           return true;
         case 'pause':
           mediaEl.pause?.();
           return true;
         case 'toggle':
+          if (!hasSource && mediaEl.paused) return false;
           if (mediaEl.paused) await mediaEl.play?.();
           else mediaEl.pause?.();
           return true;
         case 'stop':
           mediaEl.pause?.();
-          mediaEl.currentTime = 0;
+          if (hasSource) mediaEl.currentTime = 0;
           return true;
         case 'seek':
+          if (!hasSource) return false;
           if (value !== undefined && value !== null) {
             mediaEl.currentTime = Math.max(0, (mediaEl.currentTime || 0) + Number(value));
           }

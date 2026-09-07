@@ -1,4 +1,4 @@
-import { bindMediaEvents, extractMediaState, evaluateCapabilities } from '@sremote/shared';
+import { bindMediaEvents, extractMediaState, evaluateCapabilities, isValidMediaElement, hasMediaSource } from '@sremote/shared';
 import { generateInstanceId } from '../core/utils.js';
 import { console_log } from '../config.js';
 
@@ -21,7 +21,7 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
   const topMediaElementsMap = new Map(); // instanceId -> HTMLMediaElement
 
   function trackElement(mediaEl, trackOpts = {}) {
-    if (!mediaEl || trackedElements.has(mediaEl)) return;
+    if (!isValidMediaElement(mediaEl) || trackedElements.has(mediaEl)) return;
     trackedElements.add(mediaEl);
 
     const customId = mediaEl.id || mediaEl.getAttribute('data-sremote-id') || generateInstanceId('top_media');
@@ -73,9 +73,11 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
         }
 
         if (evtName === 'play' || evtName === 'playing') {
-          instanceManager.setCurrentActiveInstanceId(customId);
-          if (instanceManager.exclusiveMode === 'auto') {
-            pauseOthersExcept(customId);
+          if (hasMediaSource(mediaEl)) {
+            instanceManager.setCurrentActiveInstanceId(customId);
+            if (instanceManager.exclusiveMode === 'auto') {
+              pauseOthersExcept(customId);
+            }
           }
         }
 

@@ -1,6 +1,7 @@
 import { mockMediaSessionInstance, activeMediaSession } from './media-session.js';
 import { pageWindow } from '../config.js';
 import { getKnownShadowRoots } from './hooks.js';
+import { isValidMediaElement, hasMediaSource } from '@sremote/shared';
 
 export function queryMediaDeep(root = document, visitedRoots = new Set()) {
   const list = [];
@@ -10,7 +11,11 @@ export function queryMediaDeep(root = document, visitedRoots = new Set()) {
 
     if (root.querySelectorAll) {
       const found = root.querySelectorAll('video, audio');
-      for (let i = 0; i < found.length; i++) list.push(found[i]);
+      for (let i = 0; i < found.length; i++) {
+        if (isValidMediaElement(found[i])) {
+          list.push(found[i]);
+        }
+      }
     }
     const allElements = root.querySelectorAll ? root.querySelectorAll('*') : [];
     for (let i = 0; i < allElements.length; i++) {
@@ -73,8 +78,8 @@ export function createMediaResolver(createdMediaPool, bindVideoEvents) {
     if (all.length > 0) {
       const valid =
         all.find(el => !el.paused && !el.ended && el.currentTime > 0) ||
-        all.find(el => !el.paused) ||
-        all.find(el => (el.duration && el.duration > 0) || el.currentSrc || el.src) ||
+        all.find(el => !el.paused && hasMediaSource(el)) ||
+        all.find(el => (el.duration && el.duration > 0) || hasMediaSource(el)) ||
         all[0];
 
       activeMedia = valid;

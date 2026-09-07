@@ -19,9 +19,10 @@ SRemote v3.0.0 is a major architecture overhaul, unification, and feature releas
 - **Shared Instance Manager Architecture (`@sremote/shared`)**:
   - Extracted core instance management and lifecycle tracking into `@sremote/shared` via `createInstanceManager`.
   - Enables unified instance state tracking, adapter registration (`wrapCustomAdapter`), active instance detection, exclusivity management (`exclusiveMode: 'auto'`), and custom signal notifications across both `@sremote/userscript` and `@sremote/wrapper`.
-  - Added lightweight top-level DOM media tracking in Userscript (`setupTopMediaTracker`), with zero native prototype overrides, controlled via `hello({ trackParent: true })` (defaults to `false`).
+  - Added lightweight top-level DOM media tracking in Userscript (`setupTopMediaTracker`), with zero native prototype overrides, controlled via `hello({ trackParent: true })` (defaults to `false`). Includes `timeupdate` throttling, microtask batching for `MutationObserver`, and non-blocking initial scans.
+  - Added centralized media validation utilities in `@sremote/shared`: `isValidMediaElement` (filters detached DOM and tracking/beacon video elements `< 32x32`) and `hasMediaSource` (verifies media attachment), applied across both top-level parent tracker and iframe media hunter.
   - Refactored `@sremote/wrapper`'s `DomDriver` to directly leverage `createInstanceManager` from `@sremote/shared`, eliminating duplicate adapter state storage, event busses, and exclusivity logic.
-  - Enhanced `createInstanceManager` with unified `on` / `off` event subscriptions, `getCustomAdapter` query helper, and automatic adapter-level pause coordination in `pauseOthersExcept`.
+  - Enhanced `createInstanceManager` with unified `on` / `off` event subscriptions, `getCustomAdapter` query helper, and automatic adapter-level pause coordination in `pauseOthersExcept` (including direct pause execution for top-level DOM media elements).
 - **Public API Documentation & Types Auditor**:
   - Introduced `scripts/check-api-docs.js` (`npm run check:docs`) to automatically audit public API surface methods, namespaces, action constants, and configuration options against `.d.ts` type definitions and documentation files.
 - **Unified Playback Speed Naming Cleanup**:
@@ -90,6 +91,12 @@ SRemote v3.0.0 is a major architecture overhaul, unification, and feature releas
 - **Bilibili Video ID Extraction**: Resolved regex edge-cases when passing nested option objects, raw `BV`/`av` strings, or full `bilibili.com` URLs to ensure proper parameter serialization.
 - **Vimeo oEmbed Restrictions**: Replaced implicit SDK DOM wrapping with direct `<iframe>` element generation (`autoplay`, `muted`, `loop`, `api=1`) alongside timeout race conditions to prevent mounting hangs.
 - **Defensive SoundCloud Teardown**: Added safety checks for `SC.Widget.Events` before unbinding widget listeners on `destroy()`, avoiding uncaught errors during early component unmounting.
+- **Top DOM Media Tracking Performance & Race Condition Fixes**:
+  - Throttled high-frequency `timeupdate` events (~250ms) in `setupTopMediaTracker` to prevent layout thrashing and event flood.
+  - Batched `MutationObserver` callbacks into microtasks (`Promise.resolve`) and guarded subtree queries with `childElementCount > 0` to eliminate main-thread stutter on dynamic pages.
+  - Resolved active instance shadowing race condition by properly calling `setCurrentActiveInstanceId()` rather than mutating the getter.
+  - Fixed exclusive mode (`exclusiveMode: 'auto'`) to properly pause top-level media elements without ports via `mediaElement.pause()`.
+  - Filtered detached and miniature tracking/beacon elements (`< 32x32`), and guarded against commands dispatched to elements without media sources attached.
 - **Custom Container Mounting**: Fixed element detachment and duplication issues when providing custom `container` targets in **YouTube**, **Dailymotion**, and **Spotify** providers.
 
 ### ⚠️ Removed & Breaking API Cleanups

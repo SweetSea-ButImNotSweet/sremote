@@ -140,6 +140,55 @@ export function evaluateCapabilities(target) {
 }
 
 /**
+ * Checks whether a media element has a valid media source attached.
+ * @param {HTMLMediaElement|Object} media
+ * @returns {boolean}
+ */
+export function hasMediaSource(media) {
+  if (!media) return false;
+  return Boolean(media.currentSrc || media.src || media.srcObject);
+}
+
+/**
+ * Validates whether an element is a real, connected, interactable HTML media element.
+ * Excludes detached DOM elements and tiny tracking/beacon videos (<32x32).
+ *
+ * @param {HTMLMediaElement|HTMLElement|Object} media
+ * @param {Object} [options]
+ * @param {number} [options.minSize=32] - Minimum width/height required for video elements
+ * @param {boolean} [options.requireConnected=true] - Require media to be connected to DOM
+ * @returns {boolean}
+ */
+export function isValidMediaElement(media, options = {}) {
+  if (!media) return false;
+
+  const { minSize = 32, requireConnected = true } = options;
+
+  if (requireConnected && !media.isConnected) {
+    return false;
+  }
+
+  const tag = media.tagName ? media.tagName.toUpperCase() : '';
+
+  if (tag === 'VIDEO') {
+    if (typeof media.getBoundingClientRect === 'function') {
+      try {
+        const rect = media.getBoundingClientRect();
+        const isTooSmall = (rect.width > 0 && rect.width < minSize) || (rect.height > 0 && rect.height < minSize);
+        const isHidden = rect.width === 0 && rect.height === 0 && !media.hasAttribute?.('controls');
+
+        // Reject tracking pixels or hidden videos without source/playback
+        if (isTooSmall || (isHidden && media.paused && !hasMediaSource(media))) {
+          return false;
+        }
+      } catch {}
+    }
+  }
+
+  return true;
+}
+
+/**
  * Standard list of HTML5 Media Events supported by SRemote
  */
 export const MEDIA_EVENTS = [
