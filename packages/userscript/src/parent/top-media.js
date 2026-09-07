@@ -20,7 +20,7 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
   const unbindFns = new Map(); // instanceId -> unbindFunction
   const topMediaElementsMap = new Map(); // instanceId -> HTMLMediaElement
 
-  function trackElement(mediaEl) {
+  function trackElement(mediaEl, trackOpts = {}) {
     if (!mediaEl || trackedElements.has(mediaEl)) return;
     trackedElements.add(mediaEl);
 
@@ -50,17 +50,30 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
 
     console_log(`%c[SRemote:top-dom] Registered top-level <${mediaType}> instance: ${customId}`, 'color: #10b981; font-weight: bold;');
 
+    let lastTimeupdate = 0;
+    const TIMEUPDATE_THROTTLE_MS = 250;
+
     // Standard event listener binding without prototype hooking
     const unbind = bindMediaEvents(
       mediaEl,
       (evtName, payload) => {
-        instanceInfo.lastSeen = Date.now();
+        const now = Date.now();
+        instanceInfo.lastSeen = now;
+
+        // Throttle high-frequency timeupdate events to avoid event flood and CPU jank
+        if (evtName === 'timeupdate') {
+          if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) {
+            return;
+          }
+          lastTimeupdate = now;
+        }
+
         if (payload?.state) {
           instanceInfo.state = payload.state;
         }
 
         if (evtName === 'play' || evtName === 'playing') {
-          instanceManager.currentActiveInstanceId = customId;
+          instanceManager.setCurrentActiveInstanceId(customId);
           if (instanceManager.exclusiveMode === 'auto') {
             pauseOthersExcept(customId);
           }
@@ -72,7 +85,9 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
     );
 
     unbindFns.set(customId, unbind);
-    notifyMediaCountChange();
+    if (!trackOpts.silent) {
+      notifyMediaCountChange();
+    }
     emitGlobalEvent('accept', { source: 'top-dom', instanceId: customId, mediaType, location: location.href, origin: location.origin });
   }
 
@@ -92,46 +107,77 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
 
   let isTracking = false;
   let observer = null;
+  let pendingMutations = [];
+  let mutationMicrotaskScheduled = false;
+
+  function processPendingMutations() {
+    mutationMicrotaskScheduled = false;
+    if (!isTracking || pendingMutations.length === 0) return;
+
+    const mutations = pendingMutations;
+    pendingMutations = [];
+
+    let hasAdded = false;
+
+    for (const m of mutations) {
+      // 1. Handle added nodes
+      for (const node of m.addedNodes) {
+        if (node.nodeType === 1) {
+          if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
+            trackElement(node);
+            hasAdded = true;
+          } else if (node.childElementCount > 0 && node.querySelectorAll) {
+            const nested = node.querySelectorAll('video, audio');
+            for (const n of nested) {
+              trackElement(n);
+              hasAdded = true;
+            }
+          }
+        }
+      }
+
+      // 2. Handle removed nodes - only if there are tracked elements to clean up
+      if (topMediaElementsMap.size > 0) {
+        for (const node of m.removedNodes) {
+          if (node.nodeType === 1) {
+            for (const [id, el] of topMediaElementsMap.entries()) {
+              if (el === node || (node.contains && node.contains(el))) {
+                untrackElement(id);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (hasAdded) {
+      notifyMediaCountChange();
+    }
+  }
 
   function start() {
     if (isTracking) return;
     isTracking = true;
 
-    // 1. Initial scan of existing media elements
+    // 1. Initial scan of existing media elements (batch silently)
     try {
       const mediaEls = document.querySelectorAll('video, audio');
-      for (const el of mediaEls) {
-        trackElement(el);
+      if (mediaEls.length > 0) {
+        for (const el of mediaEls) {
+          trackElement(el, { silent: true });
+        }
+        notifyMediaCountChange();
       }
     } catch {}
 
-    // 2. Observe DOM mutations for dynamically added or removed media elements
+    // 2. Observe DOM mutations with microtask batching for dynamically added/removed media elements
     if (typeof MutationObserver !== 'undefined' && !observer) {
       observer = new MutationObserver(mutations => {
         if (!isTracking) return;
-        for (const m of mutations) {
-          // Handle added nodes
-          for (const node of m.addedNodes) {
-            if (node.nodeType === 1) {
-              if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
-                trackElement(node);
-              } else if (node.querySelectorAll) {
-                const nested = node.querySelectorAll('video, audio');
-                for (const n of nested) trackElement(n);
-              }
-            }
-          }
-
-          // Handle removed nodes
-          for (const node of m.removedNodes) {
-            if (node.nodeType === 1) {
-              for (const [id, el] of topMediaElementsMap.entries()) {
-                if (el === node || (node.contains && node.contains(el))) {
-                  untrackElement(id);
-                }
-              }
-            }
-          }
+        pendingMutations.push(...mutations);
+        if (!mutationMicrotaskScheduled) {
+          mutationMicrotaskScheduled = true;
+          Promise.resolve().then(processPendingMutations);
         }
       });
 
@@ -144,6 +190,9 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
   function stop() {
     if (!isTracking) return;
     isTracking = false;
+    pendingMutations = [];
+    mutationMicrotaskScheduled = false;
+
     if (observer) {
       try {
         observer.disconnect();

@@ -197,7 +197,11 @@ export function createInstanceManager(options = {}) {
     for (const [id, item] of instances.entries()) {
       if (id !== activeInstanceId) {
         try {
-          item.port?.postMessage({ type: `${ns}pause` });
+          if (item.isTopMedia && item.mediaElement) {
+            item.mediaElement.pause?.();
+          } else {
+            item.port?.postMessage({ type: `${ns}pause` });
+          }
         } catch {}
       }
     }
