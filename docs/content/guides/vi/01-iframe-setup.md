@@ -1,12 +1,12 @@
-# 01. Cách tạo thẻ `<iframe>` đúng chuẩn
+# 01. Thiết lập thẻ `<iframe>` đúng chuẩn
 
-Tài liệu này hướng dẫn chi tiết cách cấu hình thẻ `<iframe>` an toàn, chuẩn kỹ thuật và tối ưu tương thích khi nhúng trình phát media (video/audio) từ dịch vụ bên thứ ba vào website của bạn.
+Tài liệu này hướng dẫn chi tiết cách cấu hình thẻ `<iframe>` chuẩn kỹ thuật, đảm bảo an toàn và tối ưu khả năng tương thích khi nhúng trình phát media (video/audio) từ dịch vụ bên thứ ba vào website của bạn.
 
 ---
 
-## 1. Cấu trúc thẻ `<iframe>` khuyến nghị
+## 1. Cấu trúc thẻ `<iframe>` chuẩn khuyến nghị
 
-Khi nhúng video/audio từ bên thứ ba (YouTube, Spotify, SoundCloud, Bilibili, Dailymotion, Player tùy biến...), bảo mật trình duyệt sẽ giới hạn một số tính năng quan trọng nếu bạn không cấp quyền qua thuộc tính `allow`.
+Khi nhúng video/audio từ bên thứ ba (YouTube, Spotify, SoundCloud, Bilibili, Dailymotion, Player tùy biến...), trình duyệt sẽ hạn chế một số tính năng nếu thẻ `<iframe>` chưa được cấp quyền phù hợp qua thuộc tính `allow`.
 
 ```html
 <iframe
@@ -23,24 +23,24 @@ Khi nhúng video/audio từ bên thứ ba (YouTube, Spotify, SoundCloud, Bilibil
 
 ## 2. Giải thích các quyền quan trọng trong `allow`
 
-| Quyền hạn | Bắt buộc? | Mô tả & Tác dụng |
+| Quyền hạn | Mức độ | Mục đích & Tác dụng |
 | :--- | :---: | :--- |
-| **`autoplay`** | ⭐ **Bắt buộc** | Cho phép media bên trong iframe được quyền phát hoặc tự động phát âm thanh/hình ảnh khi nhận lệnh từ trang cha. |
-| **`encrypted-media`** | ⭐ **Bắt buộc DRM** | Cho phép iframe khởi tạo luồng giải mã dữ liệu bản quyền số (Spotify, Netflix, Widevine, Apple FairPlay...). |
-| **`picture-in-picture`** | Khuyên dùng | Cho phép video kích hoạt chế độ cửa sổ nổi thu nhỏ qua API `sremote.pip()`. |
-| **`fullscreen` / `allowfullscreen`**| Khuyên dùng | Cho phép trình phát phóng to toàn màn hình. |
-| **`clipboard-write`** | Tùy chọn | Cho phép iframe sao chép link chia sẻ hoặc timestamp vào clipboard. |
+| **`autoplay`** | ⭐ **Bắt buộc** | Cho phép trình phát bên trong iframe phát video/audio hoặc tự động phát khi nhận lệnh từ trang cha. |
+| **`encrypted-media`** | ⭐ **Bắt buộc DRM** | Cho phép iframe giải mã nội dung số có bản quyền (Spotify, Netflix, Widevine, Apple FairPlay...). |
+| **`picture-in-picture`** | Khuyến nghị | Cho phép kích hoạt chế độ thu nhỏ cửa sổ nổi (PiP) qua API `sremote.pip()`. |
+| **`fullscreen` / `allowfullscreen`**| Khuyến nghị | Cho phép trình phát phóng to toàn màn hình. |
+| **`clipboard-write`** | Tùy chọn | Cho phép iframe sao chép đường dẫn chia sẻ hoặc timestamp vào clipboard. |
 
 > [!WARNING]
-> Nếu thiếu quyền `autoplay` hoặc `encrypted-media`, trình duyệt sẽ tự động chặn luồng audio/video khiến lệnh `sremote.play()` không thể phát âm thanh hoặc bị dừng ngay lập tức.
+> Nếu thiếu quyền `autoplay` hoặc `encrypted-media`, trình duyệt sẽ chặn luồng phát, khiến lệnh `sremote.play()` không phát được âm thanh hoặc bị dừng ngay lập tức.
 
 ---
 
 ## 3. Thiết kế Responsive & Tỷ lệ khung hình (Aspect Ratio)
 
-Để khung video tự động co giãn theo kích thước màn hình mà không bị vỡ tỷ lệ 16:9:
+Để khung video tự động co giãn theo kích thước màn hình mà vẫn giữ đúng tỷ lệ chuẩn 16:9:
 
-### Cách hiện đại với CSS `aspect-ratio` (Khuyên dùng):
+### Sử dụng thuộc tính CSS `aspect-ratio` hiện đại (Khuyến nghị):
 ```css
 .video-container {
   width: 100%;
@@ -57,9 +57,9 @@ Khi nhúng video/audio từ bên thứ ba (YouTube, Spotify, SoundCloud, Bilibil
 
 ---
 
-## 4. Lưu ý sống còn về thuộc tính `sandbox`
+## 4. Lưu ý quan trọng khi dùng thuộc tính `sandbox`
 
-Nếu bạn sử dụng thuộc tính `sandbox` trên thẻ `<iframe>` để tăng cường bảo mật, bạn **phải** cấp tối thiểu các cờ sau để SRemote và Player có thể giao tiếp:
+Nếu bạn sử dụng thuộc tính `sandbox` trên thẻ `<iframe>` để tăng cường bảo mật, bạn **bắt buộc phải cấp tối thiểu** các cờ sau để SRemote và trình phát có thể hoạt động:
 
 ```html
 <iframe
@@ -70,10 +70,11 @@ Nếu bạn sử dụng thuộc tính `sandbox` trên thẻ `<iframe>` để tă
 ```
 
 > [!CAUTION]
-> - Nếu đặt thuộc tính `sandbox` rỗng (`sandbox=""`) hoặc thiếu `allow-scripts`, mã JavaScript của Player và Userscript sẽ bị chặn hoàn toàn.
-> - Nếu thiếu `allow-same-origin`, iframe sẽ bị cách ly hoàn toàn và không thể lưu trữ local state hoặc thiết lập cổng `MessageChannel`.
+> - Nếu đặt thuộc tính `sandbox` rỗng (`sandbox=""`) hoặc thiếu `allow-scripts`, mã JavaScript của trình phát và Userscript sẽ bị chặn hoàn toàn.
+> - Nếu thiếu `allow-same-origin`, iframe sẽ bị cách ly hoàn toàn và không thể lưu trữ dữ liệu cục bộ hay thiết lập kênh truyền `MessageChannel`.
 
 ---
 
 ## ⏭️ Bước tiếp theo
-Sau khi tạo thẻ `<iframe>`, hãy tiếp tục sang **[02. Kiểm tra tính tương thích dịch vụ](./02-compatibility-check.md)** để kiểm tra xem dịch vụ của bạn có thể điều khiển trực tiếp được hay không.
+Sau khi tạo thẻ `<iframe>`, hãy tiếp tục sang **[02. Bảng dịch vụ hỗ trợ & Kiểm tra tương thích](./02-compatibility-check.md)** để kiểm tra các tính năng được hỗ trợ trên nền tảng của bạn.
+

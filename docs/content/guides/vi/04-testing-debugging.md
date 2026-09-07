@@ -1,6 +1,6 @@
 # 04. Thử nghiệm & Chẩn đoán kết nối
 
-Sau khi nhúng mã điều khiển, tài liệu này hướng dẫn cách kiểm tra trạng thái hoạt động, tra cứu thông tin player và debug khi gặp sự cố kết nối.
+Sau khi nhúng mã điều khiển, tài liệu này hướng dẫn cách kiểm tra trạng thái hoạt động, tra cứu thông tin trình phát và chẩn đoán lỗi khi gặp sự cố kết nối.
 
 ---
 
@@ -29,7 +29,7 @@ console.log('Trạng thái hiện tại:', {
 
 ## 2. Lắng nghe các sự kiện vòng đời (Lifecycle Events)
 
-Đăng ký nhận đầy đủ các sự kiện để kiểm tra luồng dữ liệu:
+Đăng ký nhận đầy đủ các sự kiện để theo dõi luồng dữ liệu phát:
 
 ```javascript
 // Sự kiện khi bắt đầu phát
@@ -51,15 +51,15 @@ window.sremote.on('volumechange', (data) => {
 
 ## 3. Sử dụng Bộ công cụ Debug tích hợp (`sremote.debug`)
 
-SRemote tích hợp sẵn bộ công cụ tự chẩn đoán để kiểm tra nhanh các API ngay trong DevTools Console:
+SRemote tích hợp sẵn bộ công cụ tự chẩn đoán để bạn kiểm tra nhanh các API ngay trong DevTools Console:
 
 ```javascript
-// Chạy bộ test tự động toàn diện
+// Chạy bộ kiểm thử tự động toàn diện
 window.sremote.debug.runAllTests().then(results => {
   console.table(results);
 });
 
-// Hoặc kiểm tra chi tiết cấu hình Handshake
+// Hoặc xem chi tiết toàn bộ trạng thái Handshake hiện tại
 console.log(window.sremote.debug.dumpState());
 ```
 
@@ -69,4 +69,5 @@ console.log(window.sremote.debug.dumpState());
 ---
 
 ## ⏭️ Bước tiếp theo
-Sau khi thử nghiệm thành công, hãy tiếp tục sang **[05. Best Practices & Hướng dẫn End-User](./05-ux-best-practices.md)** để hoàn thiện trải nghiệm người dùng trên website của bạn.
+Sau khi thử nghiệm thành công, hãy tiếp tục sang **[05. Best Practices & Hướng dẫn End-User](./05-ux-best-practices.md)** để tối ưu trải nghiệm người dùng trên website của bạn.
+

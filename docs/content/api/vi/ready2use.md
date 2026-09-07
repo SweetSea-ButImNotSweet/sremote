@@ -65,6 +65,19 @@ await sremote.play(instanceId);
 await sremote.seek(30, instanceId);
 await sremote.volume(0.8, instanceId);
 
+// Lắng nghe sự kiện phát theo thời gian thực (timeupdate, play, pause, ended...):
+sremote.on('timeupdate', (data) => {
+  if (data.instanceId === instanceId) {
+    console.log(`⏱️ Thời gian: ${Math.round(data.state.currentTime)}s / ${Math.round(data.state.duration)}s`);
+  }
+});
+
+sremote.on('ended', (data) => {
+  if (data.instanceId === instanceId) {
+    console.log('🎉 Video đã phát xong!');
+  }
+});
+
 // Đổi video mới:
 await sremote.load('M7lc1UVf-VE', instanceId);
 
@@ -90,7 +103,12 @@ document.getElementById('my-music-wrapper').appendChild(iframe);
 // 2. Tự đăng ký adapter vào SRemote (nếu không dùng mount):
 sremote.adapters.register(adapter, instanceId);
 
-// 3. Điều khiển:
+// 3. Lắng nghe sự kiện từ SoundCloud:
+sremote.on('play', (data) => {
+  if (data.instanceId === instanceId) console.log('▶ Đang phát SoundCloud');
+});
+
+// 4. Điều khiển:
 sremote.play(instanceId);
 ```
 
@@ -159,9 +177,9 @@ export class MyCustomVideoProvider extends BaseProvider {
     };
   }
 
-  // 3. Ánh xạ thành SRemote Custom Adapter
+  // 3. Ánh xạ thành SRemote Custom Adapter & Phát signal sự kiện
   createAdapter(player, context) {
-    return {
+    const adapter = {
       play: () => player.play(),
       pause: () => player.pause(),
       seekTo: (sec) => player.seek(sec),
@@ -170,8 +188,32 @@ export class MyCustomVideoProvider extends BaseProvider {
       paused: () => player.isPaused(),
       setVolume: (vol) => player.setVolume(vol),
       setMuted: (muted) => player.setMuted(muted),
-      load: (source) => player.load(source)
+      load: (source) => player.load(source),
+      getState: () => ({
+        paused: player.isPaused(),
+        currentTime: player.currentTime || 0,
+        duration: player.duration || 0
+      })
     };
+
+    // 💡 LƯU Ý QUAN TRỌNG:
+    // Lắng nghe event từ SDK gốc của Player và gọi `adapter.emit()` để bắn signal về SRemote client!
+    if (player && typeof player.on === 'function') {
+      player.on('play', () => {
+        adapter.emit?.('play', { state: adapter.getState() });
+      });
+      player.on('pause', () => {
+        adapter.emit?.('pause', { state: adapter.getState() });
+      });
+      player.on('timeupdate', () => {
+        adapter.emit?.('timeupdate', { state: adapter.getState() });
+      });
+      player.on('ended', () => {
+        adapter.emit?.('ended', { state: { ...adapter.getState(), paused: true, ended: true } });
+      });
+    }
+
+    return adapter;
   }
 }
 

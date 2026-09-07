@@ -1,19 +1,19 @@
-# 02. Kiểm tra tính tương thích của dịch vụ
+# 02. Bảng dịch vụ hỗ trợ & Kiểm tra tương thích
 
-Trước khi bắt tay vào viết mã tích hợp SRemote vào website, bạn cần xác định xem trình phát media (Player) trong `<iframe>` của dịch vụ đích hỗ trợ những phương thức điều khiển nào, các lệnh nào hoạt động và những sự kiện nào có thể phản hồi về trang cha.
+Trước khi tích hợp SRemote vào website, bạn cần xác định xem trình phát media bên trong `<iframe>` của dịch vụ đích hỗ trợ những phương thức điều khiển nào, những lệnh nào hoạt động và sự kiện nào có thể phản hồi về trang cha.
 
 ---
 
-## 1. Cách nhanh & chuẩn nhất: Dùng `@sremote/ready2use`
+## 1. Cách nhận biết nhanh nhất: Sử dụng `@sremote/ready2use`
 
-Nếu bạn đang xây dựng ứng dụng hiện đại, cách nhanh nhất là dùng gói **`@sremote/ready2use`**. Khi khởi tạo qua hàm `create()` hoặc `mount()`, bạn có thể kiểm tra trực tiếp xem nền tảng đó có cần Adapter hay chỉ chạy HTML5 Discovery:
+Nếu bạn đang xây dựng ứng dụng hiện đại, cách nhanh nhất là dùng gói **`@sremote/ready2use`**. Khi khởi tạo qua hàm `create()` hoặc `mount()`, bạn có thể kiểm tra trực tiếp xem nền tảng đó đã có sẵn Adapter riêng hay hoạt động qua cơ chế HTML5 Discovery:
 
 ```javascript
 import { youtube, rumble } from '@sremote/ready2use';
 
 // 1. Nền tảng có Adapter riêng (YouTube, Spotify, SoundCloud, Vimeo, FB SDK...)
 const yt = await youtube.create({ videoId: 'dQw4w9WgXcQ' });
-console.log(yt.adapter); // Object chứa các hàm { play, pause, seek... } -> Có Adapter!
+console.log(yt.adapter); // Object chứa các hàm { play, pause, seek... } -> Đã tích hợp sẵn Adapter!
 
 // 2. Nền tảng chạy tự động qua HTML5 Discovery (Rumble, Kick, Streamable, Odysee, Bandcamp, Bilibili...)
 const rb = await rumble.create({ video: 'v397yeg' });
@@ -22,35 +22,36 @@ console.log(rb.adapter); // null hoặc rỗng -> Tự động nhận diện qua
 
 > [!TIP]
 > **Hướng dẫn nhận biết nhanh:**
-> - **Nếu `adapter` tồn tại (khác `null` / có methods)**: Bạn có thể điều khiển trực tiếp qua Adapter hoặc qua SRemote client ngay cả khi trình duyệt chưa cài Userscript (nhờ tích hợp SDK chính thức).
+> - **Nếu `adapter` tồn tại (khác `null` / có chứa methods)**: Bạn có thể điều khiển trực tiếp qua Adapter hoặc SRemote Client ngay cả khi trình duyệt chưa cài Userscript (nhờ tích hợp sẵn SDK chính thức của nền tảng).
 > - **Nếu `adapter` là `null` hoặc rỗng**: Nền tảng hoạt động bằng cơ chế **HTML5 Discovery**. Người dùng cần cài **Userscript SRemote** để can thiệp trực tiếp vào thẻ `<video>` / `<audio>` trong Iframe.
 
 ---
 
-## 2. Thử nghiệm trực quan bằng trang Live Demo
+## 2. Kiểm tra trực quan bằng trang Live Demo
 
-Cách trực quan để kiểm tra xem một link embed bất kỳ có điều khiển được không:
+Để kiểm tra nhanh xem một link embed bất kỳ có thể điều khiển được hay không:
 1. Mở trang **[Live Demo](../demo/index.html)** của SRemote.
 2. Dán link embed hoặc URL của dịch vụ bạn muốn nhúng vào ô nhập Iframe URL.
 3. Bấm **Nạp Iframe** và quan sát:
-   - Nếu thanh trạng thái báo `Đã kết nối (instanceId: ...)` → **Tương thích hoàn toàn**.
-   - Thử bấm các nút ▶ Play, ⏸ Pause, 🔇 Mute, ⏩ +10s trên thanh điều khiển xem video/audio có phản hồi không.
+   - Nếu thanh trạng thái hiển thị `Đã kết nối (instanceId: ...)` → **Tương thích hoàn toàn**.
+   - Thử bấm các nút ▶ Play, ⏸ Pause, 🔇 Mute, ⏩ +10s trên thanh điều khiển xem video/audio có phản hồi tương ứng không.
 
 > [!NOTE]
-> Trang Live Demo **không hề viết sẵn code riêng cho từng dịch vụ**, nó chỉ hoạt động hoàn toàn bằng cơ chế tự động quét HTML5 video/audio và MediaSession. Nếu chạy được trên Demo, chắc chắn sẽ chạy được trên website của bạn!
+> Trang Live Demo **không cần viết trước mã riêng cho từng dịch vụ**, mà hoạt động hoàn toàn dựa trên cơ chế tự động quét thẻ HTML5 video/audio và MediaSession. Nếu chạy tốt trên Demo, dịch vụ đó chắc chắn sẽ hoạt động mượt mà trên website của bạn!
 
 ---
 
-## 3. Tự soi DevTools kiểm tra dịch vụ lạ
+## 3. Kiểm tra player chưa có sẵn trong danh sách bằng DevTools
 
-Nếu bạn nhúng một dịch vụ nội bộ hoặc player web chưa có trong danh sách:
+Nếu bạn nhúng một dịch vụ nội bộ hoặc trình phát web tùy biến chưa có trong tài liệu:
 1. Mở Chrome/Firefox DevTools (F12) → tab **Elements**.
-2. Chọn khung context của iframe đích.
-3. Chạy lệnh Console:
+2. Chọn ngữ cảnh (context) của iframe đích.
+3. Chạy lệnh sau trong Console:
    ```javascript
    document.querySelector('video, audio')
    ```
-4. Nếu kết quả trả về một phần tử `<video>` hoặc `<audio>`, SRemote chắc chắn điều khiển được!
+4. Nếu kết quả trả về một phần tử `<video>` hoặc `<audio>`, SRemote chắc chắn có thể điều khiển được!
+
 
 ---
 
@@ -292,7 +293,7 @@ Nếu bạn nhúng một dịch vụ nội bộ hoặc player web chưa có tron
       <td class="no"></td>
       <td class="warn"></td>
       <td class="warn"></td>
-      <td>Thẻ video lồng trong shadow/sandbox của Facebook</td>
+      <td>Thẻ video nằm sâu bên trong Shadow DOM / Sandbox của Facebook</td>
     </tr>
     <tr>
       <td><code>2. MediaSession</code></td>
