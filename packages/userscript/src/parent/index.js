@@ -94,12 +94,17 @@ export function initParentController() {
   function executeParentAdapterAction(action, value, targetInstanceId = null) {
     let targetId = targetInstanceId;
     if (!targetId) {
-      if (parentAdaptersMap.size === 1) {
-        targetId = Array.from(parentAdaptersMap.keys())[0];
+      if (parentAdaptersMap.size === 1 || !isMultiModeActive()) {
+        targetId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
       } else if (parentAdaptersMap.has(instanceManager.currentActiveInstanceId)) {
         targetId = instanceManager.currentActiveInstanceId;
       }
     }
+    // If targetId was resolved to an iframe/other instance not in parentAdaptersMap, but we are in Single Mode with an adapter:
+    if ((!targetId || !parentAdaptersMap.has(targetId)) && !isMultiModeActive() && parentAdaptersMap.size > 0) {
+      targetId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
+    }
+
     if (!targetId || !parentAdaptersMap.has(targetId)) return false;
 
     const adapter = parentAdaptersMap.get(targetId);
@@ -211,8 +216,9 @@ export function initParentController() {
     logger.scope('action').log(`(Wrapper) Dispatching -> ${action}`, { action, value, targetInstanceId: targetId || targetInstanceId || 'auto' });
 
     if (parentAdaptersMap.size > 0) {
-      const handled = executeParentAdapterAction(action, value, targetId || targetInstanceId);
-      if (handled) return Promise.resolve({ success: true, instanceId: targetId || targetInstanceId, source: 'adapter', action });
+      const adapterTargetId = (!targetInstanceId && !isMultiModeActive()) ? Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1] : (targetId || targetInstanceId);
+      const handled = executeParentAdapterAction(action, value, adapterTargetId);
+      if (handled) return Promise.resolve({ success: true, instanceId: adapterTargetId || targetId || targetInstanceId, source: 'adapter', action });
     }
 
     // Direct execution on Top DOM Media Elements

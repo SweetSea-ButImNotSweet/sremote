@@ -26,7 +26,7 @@ export function findIframeElementBySource(sourceWindow, root = document) {
 }
 
 export function setupParentHandshake(instanceManager) {
-  const { instances, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, removeInstance, notifyMediaCountChange, emitGlobalEvent, pauseOthersExcept } = instanceManager;
+  const { instances, parentAdaptersMap, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, removeInstance, notifyMediaCountChange, emitGlobalEvent, pauseOthersExcept } = instanceManager;
 
   async function cloneBlobFromParent(blobUrl, instanceId) {
     try {
@@ -73,7 +73,11 @@ export function setupParentHandshake(instanceManager) {
       if (!type.startsWith(NS)) return;
 
       item.lastSeen = Date.now();
-      instanceManager.setCurrentActiveInstanceId(instanceId);
+      // Only update active ID from iframe messages when there is no parent-registered adapter
+      // (adapter has higher priority in Single Mode to avoid being overwritten by iframe heartbeats)
+      if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
+        instanceManager.setCurrentActiveInstanceId(instanceId);
+      }
 
       const action = type.slice(NS.length);
       const lowerAction = action.toLowerCase();
@@ -129,7 +133,10 @@ export function setupParentHandshake(instanceManager) {
         }
         item.authenticated = true;
         item.status = 'ready';
-        instanceManager.setCurrentActiveInstanceId(instanceId);
+        // Only promote iframe to active instance if no parent adapter exists or multi-mode is active
+        if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
+          instanceManager.setCurrentActiveInstanceId(instanceId);
+        }
         if (data.state) item.state = data.state;
         if (data.mediaType) item.mediaType = data.mediaType;
         if (data.capabilities) item.capabilities = data.capabilities;

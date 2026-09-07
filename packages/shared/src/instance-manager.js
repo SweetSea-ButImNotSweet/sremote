@@ -53,6 +53,14 @@ export function createInstanceManager(options = {}) {
   }
 
   function getLatestActiveInstanceId() {
+    const isSingle = !isMultiModeActive();
+
+    // In Single Mode, if parent page registered a custom adapter, it MUST always take top priority
+    if (isSingle && parentAdaptersMap.size > 0) {
+      currentActiveInstanceId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
+      return currentActiveInstanceId;
+    }
+
     if (currentActiveInstanceId && (instances.has(currentActiveInstanceId) || parentAdaptersMap.has(currentActiveInstanceId))) {
       return currentActiveInstanceId;
     }

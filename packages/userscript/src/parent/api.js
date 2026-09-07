@@ -53,18 +53,29 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       console_error('[SRemote:auth] Blocked status()! Valid Passkey is required.');
       return null;
     }
-    const activeId = instanceManager.currentActiveInstanceId;
-    const targetId = instanceId || activeId || (instances.size === 1 ? Array.from(instances.keys())[0] : null);
-    if (instances.has(targetId)) {
+    const isSingle = !isMultiModeActive();
+    let targetId = instanceId;
+    if (!targetId) {
+      if (isSingle && parentAdaptersMap.size > 0) {
+        targetId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
+      } else {
+        targetId = instanceManager.currentActiveInstanceId || (instances.size === 1 ? Array.from(instances.keys())[0] : null);
+      }
+    }
+
+    if (targetId && parentAdaptersMap.has(targetId)) {
+      const adapter = parentAdaptersMap.get(targetId);
+      return extractMediaState(adapter);
+    }
+    if (targetId && instances.has(targetId)) {
       const inst = instances.get(targetId);
       if (inst.isTopMedia && inst.mediaElement) {
         return extractMediaState(inst.mediaElement);
       }
       return inst.state || null;
     }
-    if (parentAdaptersMap.has(targetId)) {
-      const adapter = parentAdaptersMap.get(targetId);
-      return extractMediaState(adapter);
+    if (!targetId && parentAdaptersMap.size > 0) {
+      return extractMediaState(Array.from(parentAdaptersMap.values())[parentAdaptersMap.size - 1]);
     }
     return null;
   };
@@ -79,14 +90,21 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       console_error('[SRemote:auth] Blocked capabilities()! Valid Passkey is required.');
       return null;
     }
-    const activeId = instanceManager.currentActiveInstanceId;
-    const targetId = instanceId || activeId || (instances.size === 1 ? Array.from(instances.keys())[0] : null);
+    const isSingle = !isMultiModeActive();
+    let targetId = instanceId;
+    if (!targetId) {
+      if (isSingle && parentAdaptersMap.size > 0) {
+        targetId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
+      } else {
+        targetId = instanceManager.currentActiveInstanceId || (instances.size === 1 ? Array.from(instances.keys())[0] : null);
+      }
+    }
 
     if (targetId && parentAdaptersMap.has(targetId)) {
       return resolveAdapterCapabilities(parentAdaptersMap.get(targetId));
     }
-    if (!targetId && parentAdaptersMap.size === 1) {
-      return resolveAdapterCapabilities(Array.from(parentAdaptersMap.values())[0]);
+    if (!targetId && parentAdaptersMap.size > 0) {
+      return resolveAdapterCapabilities(Array.from(parentAdaptersMap.values())[parentAdaptersMap.size - 1]);
     }
     if (targetId && instances.has(targetId)) {
       const inst = instances.get(targetId);
@@ -231,7 +249,8 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     }
     if (instanceId) return parentAdaptersMap.get(instanceId) || null;
     if (parentAdaptersMap.size === 1) return Array.from(parentAdaptersMap.values())[0] || null;
-    return parentAdaptersMap.get(instanceManager.currentActiveInstanceId) || null;
+    // Prefer currentActiveInstanceId if it points to an adapter, otherwise return the latest adapter
+    return parentAdaptersMap.get(instanceManager.currentActiveInstanceId) || Array.from(parentAdaptersMap.values())[parentAdaptersMap.size - 1] || null;
   };
 
   const rpcCall = (action, params, instanceId, key) => {

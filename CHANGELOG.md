@@ -126,6 +126,13 @@ SRemote v3.0.0 is a major architecture overhaul, unification, and feature releas
   - Resolved active instance shadowing race condition by properly calling `setCurrentActiveInstanceId()` rather than mutating the getter.
   - Fixed exclusive mode (`exclusiveMode: 'auto'`) to properly pause top-level media elements without ports via `mediaElement.pause()`.
   - Filtered detached and miniature tracking/beacon elements (`< 32x32`), and guarded against commands dispatched to elements without media sources attached.
+- **Single Mode Active Instance Routing & Custom Adapter Dispatching**:
+  - **Prioritized Parent Custom Adapters in Single Mode (`@sremote/shared`)**: Refactored `getLatestActiveInstanceId()` in `instance-manager.js` so that when Single Mode is active (`multiMode = false`), registered parent custom adapters (`parentAdaptersMap`) strictly take precedence over `currentActiveInstanceId`.
+  - **Iframe Message Port Active Instance Hijacking Protection (`@sremote/userscript`)**: Prevented incoming iframe heartbeat and message-channel events (`ping`, `timeupdate`, etc.) in `handshake.js` from continuously overwriting `currentActiveInstanceId` when a parent custom adapter is registered.
+  - **Top DOM Media Event Hijacking Protection (`@sremote/userscript`)**: Prevented `play` / `playing` events from top-level `<video>` / `<audio>` elements in `top-media.js` from stealing the active instance ID away from registered parent adapters in Single Mode.
+  - **Command Dispatch & Action Fallback (`@sremote/userscript`)**: Hardened `dispatchCommand()` and `executeParentAdapterAction()` in `parent/index.js` to reliably route to the parent adapter when no explicit `instanceId` is supplied in Single Mode, preventing lost or misrouted playback commands.
+  - **State & Capability Queries Resolution (`@sremote/userscript`)**: Updated `getStatus()`, `getCapabilities()`, and `getCustomAdapter()` in `parent/api.js` to immediately query and return state from registered custom adapters in Single Mode rather than querying empty or wrong iframe instances.
+  - **DOM Driver Adapter Connectivity Detection (`@sremote/wrapper`)**: Enhanced `_findConnectedAdapter()` in `strategies/dom.js` to return the active custom adapter in Single Mode even if it does not wrap a native DOM element (e.g. YouTube IFrame API and SDK-driven players).
 - **Custom Container Mounting**: Fixed element detachment and duplication issues when providing custom `container` targets in **YouTube**, **Dailymotion**, and **Spotify** providers.
 
 ### ⚠️ Removed & Breaking API Cleanups

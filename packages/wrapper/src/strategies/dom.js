@@ -149,6 +149,8 @@ export class DomDriver extends BaseDriver {
     const map = this.instanceManager.parentAdaptersMap;
     if (map.size === 0) return null;
 
+    const isSingle = !this.isMultiMode();
+
     if (preferredId && map.has(preferredId)) {
       const ad = map.get(preferredId);
       const el = ad?.mediaElement || ad?.element;
@@ -158,6 +160,13 @@ export class DomDriver extends BaseDriver {
     }
 
     const entries = Array.from(map.entries());
+
+    // In Single Mode, if an adapter was registered, prioritize the latest registered adapter
+    if (isSingle && entries.length > 0) {
+      const [latestId, latestAd] = entries[entries.length - 1];
+      return { type: 'adapter', instance: latestAd, instanceId: latestId };
+    }
+
     for (let i = entries.length - 1; i >= 0; i--) {
       const [id, ad] = entries[i];
       const el = ad?.mediaElement || ad?.element;
