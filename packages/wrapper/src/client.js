@@ -95,12 +95,13 @@ export class SRemoteClient {
       },
       unregister: (instanceId, key) => {
         this.logger.log(`Unregistering adapter for instance: ${instanceId}`);
+        const domResult = this.domDriver.removeAdapter(instanceId);
         if (this.userscriptDriver.isAvailable()) {
           const api = this.userscriptDriver.getApi();
           if (api?.adapters?.unregister) return api.adapters.unregister(instanceId, key || this.options.passkey);
           return this.userscriptDriver.removeAdapter(instanceId, key);
         }
-        return this.domDriver.removeAdapter(instanceId);
+        return domResult;
       },
       get: (instanceId, key) => {
         if (this.userscriptDriver.isAvailable()) {

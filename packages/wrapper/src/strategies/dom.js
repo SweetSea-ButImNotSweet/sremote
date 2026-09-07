@@ -144,14 +144,41 @@ export class DomDriver extends BaseDriver {
       return { type: 'adapter', instance: this.instanceManager.parentAdaptersMap.get(target), instanceId: target };
     }
     if (!target && this.instanceManager.parentAdaptersMap.size > 0) {
-      const firstEntry = this.instanceManager.parentAdaptersMap.entries().next().value;
-      return { type: 'adapter', instance: firstEntry[1], instanceId: firstEntry[0] };
+      // Prioritize active instance if available and still exists
+      const activeId = this.instanceManager.getLatestActiveInstanceId?.() || this.instanceManager.currentActiveInstanceId;
+      if (activeId && this.instanceManager.parentAdaptersMap.has(activeId)) {
+        const ad = this.instanceManager.parentAdaptersMap.get(activeId);
+        // Verify adapter element is not detached/stale if it has an element reference
+        const el = ad?.mediaElement || ad?.element;
+        if (!el || typeof el.isConnected === 'undefined' || el.isConnected) {
+          return { type: 'adapter', instance: ad, instanceId: activeId };
+        }
+      }
+
+      // If activeId is stale/detached or not found, find the most recently added connected adapter
+      const entries = Array.from(this.instanceManager.parentAdaptersMap.entries());
+      for (let i = entries.length - 1; i >= 0; i--) {
+        const [id, ad] = entries[i];
+        const el = ad?.mediaElement || ad?.element;
+        if (!el || typeof el.isConnected === 'undefined' || el.isConnected) {
+          return { type: 'adapter', instance: ad, instanceId: id };
+        }
+      }
+
+      // Fallback to the latest added entry if no element connectivity could be verified
+      const latestEntry = entries[entries.length - 1];
+      return { type: 'adapter', instance: latestEntry[1], instanceId: latestEntry[0] };
     }
     const el = this.resolveMediaElement(target);
     if (el) return { type: 'element', instance: el };
     if (this.instanceManager.parentAdaptersMap.size > 0) {
-      const firstEntry = this.instanceManager.parentAdaptersMap.entries().next().value;
-      return { type: 'adapter', instance: firstEntry[1], instanceId: firstEntry[0] };
+      const activeId = this.instanceManager.getLatestActiveInstanceId?.() || this.instanceManager.currentActiveInstanceId;
+      if (activeId && this.instanceManager.parentAdaptersMap.has(activeId)) {
+        return { type: 'adapter', instance: this.instanceManager.parentAdaptersMap.get(activeId), instanceId: activeId };
+      }
+      const entries = Array.from(this.instanceManager.parentAdaptersMap.entries());
+      const latestEntry = entries[entries.length - 1];
+      return { type: 'adapter', instance: latestEntry[1], instanceId: latestEntry[0] };
     }
     return null;
   }
