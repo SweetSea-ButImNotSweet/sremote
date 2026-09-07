@@ -88,13 +88,17 @@ export class DomDriver extends BaseDriver {
     } catch {}
 
     this.trackedMediaElements.add(mediaEl);
+    const instId = mediaEl.id || mediaEl.getAttribute('data-sremote-id') || 'dom-media';
+    if (this.logger?.debug) {
+      this.logger.debug(`DOM auto-tracking attached to media element:`, mediaEl, `(id: ${instId})`);
+    }
 
     bindMediaEvents(
       mediaEl,
       (evtName, payload) => {
         this.emit(evtName, payload);
       },
-      { instanceId: mediaEl.id || mediaEl.getAttribute('data-sremote-id') || 'dom-media', source: 'dom', treatAlmostEndAsEnd: this.treatAlmostEndAsEnd },
+      { instanceId: instId, source: 'dom', treatAlmostEndAsEnd: this.treatAlmostEndAsEnd },
     );
   }
 

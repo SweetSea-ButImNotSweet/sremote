@@ -7,6 +7,7 @@ export class BaseDriver {
    */
   constructor(options = {}) {
     this.options = { passkey: null, ...options };
+    this.logger = options.logger || null;
   }
 
   /**

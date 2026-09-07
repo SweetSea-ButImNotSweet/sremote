@@ -81,6 +81,7 @@ export class SRemoteClient {
 
     this.adapters = {
       register: (adapter, instanceId, key) => {
+        this.logger.log(`Registering custom adapter${adapter?.name ? ` [${adapter.name}]` : ''}`, { instanceId });
         const domId = this.domDriver.useAdapter(adapter, instanceId);
         if (this.userscriptDriver.isAvailable()) {
           const api = this.userscriptDriver.getApi();
@@ -90,6 +91,7 @@ export class SRemoteClient {
         return domId;
       },
       unregister: (instanceId, key) => {
+        this.logger.log(`Unregistering adapter for instance: ${instanceId}`);
         if (this.userscriptDriver.isAvailable()) {
           const api = this.userscriptDriver.getApi();
           if (api?.adapters?.unregister) return api.adapters.unregister(instanceId, key || this.options.passkey);
@@ -127,6 +129,10 @@ export class SRemoteClient {
   syncAdaptersToUserscript() {
     if (this.userscriptDriver.isAvailable()) {
       const api = this.userscriptDriver.getApi();
+      const count = this.domDriver.adaptersMap.size;
+      if (count > 0) {
+        this.logger.debug(`Syncing ${count} adapter(s) to userscript`);
+      }
       for (const [id, adapter] of this.domDriver.adaptersMap.entries()) {
         if (api?.adapters?.register) {
           api.adapters.register(adapter, id, this.options.passkey);
@@ -143,6 +149,7 @@ export class SRemoteClient {
     this._readyPromise = new Promise(resolve => {
       if (this.userscriptDriver.isAvailable()) {
         this.mode = 'userscript';
+        this.logger.log('Userscript detected immediately. Mode: userscript');
         this.syncAdaptersToUserscript();
         resolve(this);
         return;
@@ -154,6 +161,7 @@ export class SRemoteClient {
         if (resolved) return;
         resolved = true;
         this.mode = 'userscript';
+        this.logger.log("Received 'sremote:ready' event. Mode: userscript");
         this.syncAdaptersToUserscript();
         window.removeEventListener('sremote:ready', onReadyEvent);
         clearTimeout(timer);
@@ -173,11 +181,14 @@ export class SRemoteClient {
 
         if (this.userscriptDriver.isAvailable()) {
           this.mode = 'userscript';
+          this.logger.log('Userscript detected after wait timeout. Mode: userscript');
           this.syncAdaptersToUserscript();
         } else if (this.options.fallbackToDom) {
           this.mode = 'dom-direct';
+          this.logger.log('Userscript not detected. Falling back to Mode: dom-direct');
         } else {
           this.mode = 'unsupported';
+          this.logger.warn('Userscript not detected and DOM fallback disabled. Mode: unsupported');
         }
         resolve(this);
       }, this.options.timeout);
@@ -204,8 +215,10 @@ export class SRemoteClient {
     await this.ready();
     const driver = this.activeDriver;
     if (!driver) {
+      this.logger.error(`No active driver available to execute ${method}()`);
       throw new Error(`[SRemote:Wrapper] No active driver available to execute ${method}()`);
     }
+    this.logger.debug(`Executing command: ${method}`, ...args);
     return driver[method](...args);
   }
 
@@ -318,6 +331,7 @@ export class SRemoteClient {
   }
 
   emit(event, payload) {
+    this.logger.debug(`emit event '${event}':`, payload);
     if (this.userscriptDriver.isAvailable()) {
       const api = this.userscriptDriver.getApi();
       if (api && typeof api.emit === 'function') {
@@ -330,6 +344,7 @@ export class SRemoteClient {
   }
 
   on(event, handler, key) {
+    this.logger.debug(`Listening to event: ${event}`);
     if (this.userscriptDriver.isAvailable()) {
       return this.userscriptDriver.on(event, handler, key);
     }
@@ -337,6 +352,7 @@ export class SRemoteClient {
   }
 
   off(event, handler) {
+    this.logger.debug(`Unlistening event: ${event}`);
     if (this.userscriptDriver.isAvailable()) {
       return this.userscriptDriver.off(event, handler);
     }
