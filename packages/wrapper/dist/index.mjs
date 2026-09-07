@@ -70,7 +70,7 @@ function t() {
 	}, {
 		get(e, t) {
 			if (t in e) return e[t];
-			if (typeof t != "symbol" && t !== "inspect" && t !== "toJSON") return (...e) => {
+			if (typeof t != "symbol" && t !== "inspect" && t !== "toJSON") return () => {
 				console.warn(`[SRemote:Wrapper] SRemote userscript is not installed. '${String(t)}()' cannot control cross-domain iframes.`);
 			};
 		},
@@ -449,11 +449,520 @@ function f(e, t = {}) {
 		return (typeof a.paused == "function" ? a.paused() : typeof a.paused != "boolean" || a.paused) ? a.play() : a.pause();
 	}), a.capabilities ||= l(a), a;
 }
+Object.freeze({
+	rootMethods: {
+		play: {
+			action: "play",
+			type: "command",
+			args: ["targetOrId", "key"]
+		},
+		pause: {
+			action: "pause",
+			type: "command",
+			args: ["targetOrId", "key"]
+		},
+		toggle: {
+			action: "toggle",
+			type: "command",
+			args: ["targetOrId", "key"]
+		},
+		stop: {
+			action: "stop",
+			type: "command",
+			args: ["targetOrId", "key"]
+		},
+		seek: {
+			action: "seek",
+			type: "command_value",
+			args: [
+				"offset",
+				"targetOrId",
+				"key"
+			]
+		},
+		seekTo: {
+			action: "currentTime",
+			type: "command_value",
+			args: [
+				"time",
+				"targetOrId",
+				"key"
+			]
+		},
+		volume: {
+			action: "volume",
+			type: "command_value",
+			args: [
+				"vol",
+				"targetOrId",
+				"key"
+			]
+		},
+		mute: {
+			action: "muted",
+			type: "command_value",
+			args: [
+				"muted",
+				"targetOrId",
+				"key"
+			]
+		},
+		speed: {
+			action: "speed",
+			type: "command_value",
+			args: [
+				"rate",
+				"targetOrId",
+				"key"
+			]
+		},
+		quality: {
+			action: "quality",
+			type: "command_value",
+			args: [
+				"level",
+				"targetOrId",
+				"key"
+			]
+		},
+		getQualities: {
+			type: "handler",
+			handler: "getQualities",
+			args: ["targetOrId", "key"]
+		},
+		subtitle: {
+			action: "subtitle",
+			type: "command_value",
+			args: [
+				"track",
+				"targetOrId",
+				"key"
+			]
+		},
+		getSubtitles: {
+			type: "handler",
+			handler: "getSubtitles",
+			args: ["targetOrId", "key"]
+		},
+		shuffle: {
+			action: "shuffle",
+			type: "command_value",
+			args: [
+				"enable",
+				"targetOrId",
+				"key"
+			]
+		},
+		repeat: {
+			action: "repeat",
+			type: "command_value",
+			args: [
+				"mode",
+				"targetOrId",
+				"key"
+			]
+		},
+		next: {
+			action: "next",
+			type: "command",
+			args: ["targetOrId", "key"]
+		},
+		previous: {
+			action: "previous",
+			type: "command",
+			args: ["targetOrId", "key"]
+		},
+		pip: {
+			type: "pip",
+			args: [
+				"enable",
+				"targetOrId",
+				"key"
+			]
+		},
+		load: {
+			action: "load",
+			type: "command_value",
+			args: [
+				"source",
+				"targetOrId",
+				"key"
+			]
+		},
+		status: {
+			type: "handler",
+			handler: "getStatus",
+			args: ["targetOrId", "key"]
+		},
+		capabilities: {
+			type: "handler",
+			handler: "getCapabilities",
+			args: ["targetOrId", "key"]
+		}
+	},
+	namespaces: {
+		instances: {
+			list: {
+				type: "handler",
+				handler: "listInstances",
+				args: ["key"]
+			},
+			get: {
+				type: "handler",
+				handler: "getStatus",
+				args: ["instanceId", "key"]
+			},
+			capabilities: {
+				type: "handler",
+				handler: "getCapabilities",
+				args: ["instanceId", "key"]
+			},
+			getCapabilities: {
+				type: "handler",
+				handler: "getCapabilities",
+				args: ["instanceId", "key"]
+			},
+			getIframe: {
+				type: "handler",
+				handler: "getIframeElement",
+				args: ["instanceId", "key"]
+			},
+			assign: {
+				type: "handler",
+				handler: "assignIframeId",
+				args: ["iframeOrSelector", "customId"]
+			},
+			setMultiMode: {
+				type: "handler",
+				handler: "setMultiMode",
+				args: ["mode", "key"]
+			},
+			isMultiMode: {
+				type: "handler",
+				handler: "isMultiMode",
+				args: ["key"]
+			},
+			setExclusive: {
+				type: "handler",
+				handler: "setExclusive",
+				args: ["mode", "key"]
+			},
+			query: {
+				type: "handler",
+				handler: "queryInstances",
+				args: ["key"]
+			},
+			note: {
+				type: "handler",
+				handler: "annotateInstances",
+				args: ["dict", "key"]
+			}
+		},
+		adapters: {
+			register: {
+				type: "handler",
+				handler: "registerAdapter",
+				args: [
+					"adapter",
+					"instanceId",
+					"key"
+				]
+			},
+			unregister: {
+				type: "handler",
+				handler: "unregisterAdapter",
+				args: ["instanceId", "key"]
+			},
+			get: {
+				type: "handler",
+				handler: "getCustomAdapter",
+				args: ["instanceId", "key"]
+			}
+		},
+		rpc: {
+			call: {
+				type: "handler",
+				handler: "rpcCall",
+				args: [
+					"action",
+					"params",
+					"instanceId",
+					"key"
+				]
+			},
+			postMessage: {
+				type: "handler",
+				handler: "postWindowMessage",
+				args: [
+					"message",
+					"targetOrigin",
+					"instanceId",
+					"from",
+					"key"
+				]
+			},
+			onMessage: {
+				type: "handler",
+				handler: "onRpcMessage",
+				args: ["handler", "key"]
+			}
+		},
+		css: {
+			set: {
+				type: "handler",
+				handler: "setIframeCSS",
+				args: [
+					"css",
+					"instanceId",
+					"key"
+				]
+			},
+			get: {
+				type: "handler",
+				handler: "getIframeCSS",
+				args: ["instanceId", "key"]
+			},
+			remove: {
+				type: "handler",
+				handler: "removeIframeCSS",
+				args: ["instanceId", "key"]
+			}
+		}
+	}
+});
+//#endregion
+//#region ../shared/src/instance-manager.js
+function p(e = "sv") {
+	return `${e}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
+}
+function m(e = {}) {
+	let { ns: t = "sremote:", logger: n = {}, onSignal: r = null, getIframeCount: i = null } = e, a = typeof n.log == "function" ? n.log : () => {}, o = typeof n.debug == "function" ? n.debug : () => {}, s = typeof n.warn == "function" ? n.warn : typeof console < "u" ? console.warn.bind(console) : () => {}, c = /* @__PURE__ */ new Map(), l = /* @__PURE__ */ new Map(), u = /* @__PURE__ */ new Map(), d = /* @__PURE__ */ new WeakMap(), m = /* @__PURE__ */ new Map(), h = null, g = null, _ = null, v = !1, y = !1, b = null;
+	function x() {
+		if (typeof g == "boolean") return g;
+		try {
+			if ((typeof i == "function" ? i() : typeof document < "u" ? document.querySelectorAll("iframe").length : 0) <= 1 && c.size <= 1) return !1;
+		} catch {}
+		return c.size > 1;
+	}
+	function S() {
+		if (_ && (c.has(_) || l.has(_))) return _;
+		if (l.size > 0) return _ = Array.from(l.keys())[l.size - 1], _;
+		let e = null, t = -1;
+		for (let [n, r] of c.entries()) {
+			let i = r.lastSeen || 0;
+			i > t && (t = i, e = n);
+		}
+		return _ = e || Array.from(c.keys())[c.size - 1] || null, _;
+	}
+	function C(e, t = null) {
+		for (let [n, r] of c.entries()) if (n !== t) try {
+			r.port?.postMessage(e);
+		} catch {}
+	}
+	function w() {
+		let e = Array.from(c.entries()).map(([e, t]) => ({
+			instanceId: e,
+			location: t.location,
+			note: t.note,
+			mediaType: t.mediaType
+		})), n = e.length, i = null;
+		if (n > 1 ? (i = {
+			type: `${t}multipleMediaDetected`,
+			source: "parent",
+			count: n,
+			instances: e
+		}, o("%c[SRemote:signal] Emit -> multipleMediaDetected (source: parent)", "color: #06b6d4;", i)) : n === 1 && (i = {
+			type: `${t}singleMediaDetected`,
+			source: "parent",
+			count: 1,
+			instance: e[0]
+		}, o("%c[SRemote:signal] Emit -> singleMediaDetected (source: parent)", "color: #06b6d4;", i)), i) {
+			if (typeof r == "function") try {
+				r(i);
+			} catch (e) {
+				s("[sremote] Error in onSignal callback:", e);
+			}
+			else typeof window < "u" && typeof window.postMessage == "function" && window.postMessage(i, "*");
+		}
+	}
+	function T(e, t = {}) {
+		let n = String(e || "").toLowerCase(), r = n.replace(/^sremote:/, ""), i = `sremote:${r}`;
+		(r === "accept" || n === "accept") && t?.instanceId ? b = t : (r === "disconnect" || n === "disconnect") && t?.instanceId && b?.instanceId === t.instanceId && (b = null);
+		let a = (e) => {
+			if (e) for (let n of e) try {
+				n(t);
+			} catch (e) {
+				s("[sremote] Error in event listener:", e);
+			}
+		};
+		a(m.get(r)), i !== r && a(m.get(i));
+		let o = m.get("*");
+		if (o) {
+			let e = typeof t == "object" && t ? {
+				action: r,
+				...t
+			} : {
+				action: r,
+				value: t
+			};
+			for (let t of o) try {
+				t(e);
+			} catch (e) {
+				s("[sremote] Error in wildcard listener:", e);
+			}
+		}
+	}
+	function E(e, t) {
+		if (typeof t != "function") return () => {};
+		let n = String(e || "").toLowerCase().replace(/^sremote:/, ""), r = `sremote:${n}`, i = (e) => {
+			m.has(e) || m.set(e, /* @__PURE__ */ new Set()), m.get(e).add(t);
+		};
+		if (i(n), r !== n && i(r), (n === "accept" || n === "*") && b && (c.has(b.instanceId) || l.has(b.instanceId))) try {
+			let e = n === "*" ? {
+				action: "accept",
+				...b
+			} : b;
+			setTimeout(() => {
+				try {
+					t(e);
+				} catch {}
+			}, 0);
+		} catch {}
+		return () => D(e, t);
+	}
+	function D(e, t) {
+		let n = String(e || "").toLowerCase().replace(/^sremote:/, ""), r = `sremote:${n}`, i = (e) => {
+			let n = m.get(e);
+			n && (t ? n.delete(t) : m.delete(e));
+		};
+		i(n), i(r);
+	}
+	function O(e) {
+		for (let [n, r] of c.entries()) if (n !== e) try {
+			r.port?.postMessage({ type: `${t}pause` });
+		} catch {}
+		for (let [t, n] of l.entries()) if (t !== e) try {
+			n.pause?.();
+		} catch {}
+	}
+	function k(e, t = "disconnected") {
+		let n = c.get(e);
+		if (n) {
+			a(`%c[SRemote:lifecycle] Instance removed: ${e} (reason: ${t})`, "color: #ef4444; font-weight: bold;");
+			try {
+				n.port?.close();
+			} catch {}
+			c.delete(e), _ === e && (_ = null), w(), T("disconnect", {
+				instanceId: e,
+				reason: t
+			});
+		}
+	}
+	function A(e, t = null) {
+		if (!e || typeof e != "object") return null;
+		let n = t || p("adapter");
+		if (!x() && l.size > 0) for (let e of Array.from(l.keys())) e !== n && (a(`%c[SRemote:adapter] Replacing stale adapter in Single Mode: ${e} -> ${n}`, "color: #f59e0b;"), l.delete(e));
+		let r = f(e, {
+			instanceId: n,
+			source: "adapter",
+			onEmit: (e, t) => {
+				(e === "play" || e === "playing") && (_ = n, (h === "auto" || h === !0) && O(n)), T(e, t);
+			}
+		});
+		return l.set(n, r), _ = n, a(`%c[SRemote:adapter] Registered custom adapter for instance '${n}'`, "color: #06b6d4; font-weight: bold;"), T("accept", {
+			source: "adapter",
+			instanceId: n,
+			mediaType: "adapter",
+			location: typeof location < "u" ? location.href : "",
+			origin: typeof location < "u" ? location.origin : ""
+		}), n;
+	}
+	function j(e = null) {
+		if (e) {
+			let t = l.delete(e);
+			return t && _ === e && (_ = null), t;
+		}
+		return l.clear(), _ = null, !0;
+	}
+	function M(e = null) {
+		return e ? l.get(e) || null : l.size === 1 ? Array.from(l.values())[0] || null : l.get(_) || Array.from(l.values())[0] || null;
+	}
+	return {
+		instances: c,
+		parentAdaptersMap: l,
+		assignedIframeIdMap: u,
+		iframeToAssignedIdMap: d,
+		globalEventListeners: m,
+		get exclusiveMode() {
+			return h;
+		},
+		setExclusiveMode: (e) => {
+			h = e;
+		},
+		get multiModeConfig() {
+			return g;
+		},
+		setMultiModeConfig: (e) => {
+			g = e;
+		},
+		get currentActiveInstanceId() {
+			return _;
+		},
+		setCurrentActiveInstanceId: (e) => {
+			_ = e;
+		},
+		get isSessionLocked() {
+			return v;
+		},
+		setSessionLocked: (e) => {
+			v = e;
+		},
+		get isSessionDenied() {
+			return y;
+		},
+		setSessionDenied: (e) => {
+			y = e;
+		},
+		get lastAcceptedData() {
+			return b;
+		},
+		isMultiModeActive: x,
+		getLatestActiveInstanceId: S,
+		broadcastToPorts: C,
+		notifyMediaCountChange: w,
+		emitGlobalEvent: T,
+		on: E,
+		off: D,
+		pauseOthersExcept: O,
+		removeInstance: k,
+		handleUseAdapter: A,
+		handleRemoveAdapter: j,
+		getCustomAdapter: M
+	};
+}
 //#endregion
 //#region src/strategies/dom.js
-var p = class extends e {
+var h = class extends e {
 	constructor(e = {}) {
-		super(e), this.adaptersMap = /* @__PURE__ */ new Map(), this.eventListeners = /* @__PURE__ */ new Map(), this.trackedMediaElements = /* @__PURE__ */ new WeakSet(), this.adapterPollTimers = /* @__PURE__ */ new Map(), this.almostEndFlags = /* @__PURE__ */ new Map(), this.multiMode = !1, this.exclusiveMode = "auto", this.lastActiveInstanceId = null, this.treatAlmostEndAsEnd = !!e.treatAlmostEndAsEnd, typeof document < "u" && this.initDomAutoTracking();
+		super(e), this.instanceManager = m({
+			ns: "sremote:",
+			getIframeCount: () => typeof document < "u" ? document.querySelectorAll("iframe").length : 0
+		}), this.trackedMediaElements = /* @__PURE__ */ new WeakSet(), this.treatAlmostEndAsEnd = !!e.treatAlmostEndAsEnd, typeof document < "u" && this.initDomAutoTracking();
+	}
+	get adaptersMap() {
+		return this.instanceManager.parentAdaptersMap;
+	}
+	get multiMode() {
+		return this.instanceManager.isMultiModeActive();
+	}
+	get exclusiveMode() {
+		return this.instanceManager.exclusiveMode;
+	}
+	get lastActiveInstanceId() {
+		return this.instanceManager.currentActiveInstanceId;
+	}
+	set lastActiveInstanceId(e) {
+		this.instanceManager.setCurrentActiveInstanceId(e);
 	}
 	initDomAutoTracking() {
 		try {
@@ -482,52 +991,18 @@ var p = class extends e {
 			treatAlmostEndAsEnd: this.treatAlmostEndAsEnd
 		}));
 	}
-	startAdapterStatePolling(e, t) {
-		if (this.stopAdapterStatePolling(e), !t) return;
-		let n = !1, r = setInterval(() => {
-			if (!this.adaptersMap.has(e)) {
-				this.stopAdapterStatePolling(e);
-				return;
-			}
-			let r = s(t);
-			if (!r) return;
-			let i = Number.isFinite(r.duration) ? r.duration : null, a = r.currentTime || 0;
-			if (i && i > 3 && a >= i - .8 && a <= i) {
-				if (!n) {
-					n = !0;
-					let t = this.treatAlmostEndAsEnd ? "ended" : "almostend";
-					this.emit(t, c(t, {
-						source: "adapter",
-						instanceId: e,
-						mediaType: "adapter",
-						state: r
-					}));
-				}
-			} else i && a < i - 1.5 && (n = !1);
-			this.emit("timeupdate", c("timeupdate", {
-				source: "adapter",
-				instanceId: e,
-				mediaType: "adapter",
-				state: r
-			})), (r.ended || i && i > 0 && a >= i - .1) && this.stopAdapterStatePolling(e);
-		}, 250);
-		this.adapterPollTimers.set(e, r);
-	}
-	stopAdapterStatePolling(e) {
-		this.adapterPollTimers.has(e) && (clearInterval(this.adapterPollTimers.get(e)), this.adapterPollTimers.delete(e));
-	}
 	setMultiMode(e) {
-		this.multiMode = !!e;
+		this.instanceManager.setMultiModeConfig(e);
 	}
 	isMultiMode() {
-		return this.multiMode;
+		return this.instanceManager.isMultiModeActive();
 	}
 	setExclusive(e) {
-		this.exclusiveMode = e;
+		this.instanceManager.setExclusiveMode(e);
 	}
 	list() {
 		let e = [];
-		for (let [t, n] of this.adaptersMap.entries()) {
+		for (let [t, n] of this.instanceManager.parentAdaptersMap.entries()) {
 			let r = s(n);
 			e.push({
 				instanceId: t,
@@ -540,38 +1015,25 @@ var p = class extends e {
 		return e;
 	}
 	useAdapter(e, t = null) {
-		if (!e || typeof e != "object") return null;
-		let n = t || `adapter-${Math.random().toString(36).slice(2, 9)}`, r = f(e, {
-			instanceId: n,
-			source: "adapter",
-			onEmit: (e, t) => {
-				e === "play" || e === "playing" ? (this.lastActiveInstanceId = n, (this.exclusiveMode === "auto" || this.exclusiveMode === !0) && this.pauseOthersExcept(n), this.startAdapterStatePolling(n, r)) : (e === "pause" || e === "ended" || e === "stop") && this.stopAdapterStatePolling(n), this.emit(e, t);
-			}
-		});
-		return this.adaptersMap.set(n, r), this.lastActiveInstanceId = n, n;
+		return this.instanceManager.handleUseAdapter(e, t);
 	}
 	pauseOthersExcept(e) {
-		for (let [t, n] of this.adaptersMap.entries()) if (t !== e) {
-			try {
-				n.pause?.();
-			} catch {}
-			this.stopAdapterStatePolling(t);
-		}
+		this.instanceManager.pauseOthersExcept(e);
 	}
 	removeAdapter(e) {
-		return e ? (this.stopAdapterStatePolling(e), this.adaptersMap.delete(e)) : !1;
+		return this.instanceManager.handleRemoveAdapter(e);
 	}
 	getCustomAdapter(e) {
-		return e ? this.adaptersMap.get(e) || null : this.adaptersMap.values().next().value || null;
+		return this.instanceManager.getCustomAdapter(e);
 	}
 	resolveTarget(e) {
-		if (typeof e == "string" && this.adaptersMap.has(e)) return {
+		if (typeof e == "string" && this.instanceManager.parentAdaptersMap.has(e)) return {
 			type: "adapter",
-			instance: this.adaptersMap.get(e),
+			instance: this.instanceManager.parentAdaptersMap.get(e),
 			instanceId: e
 		};
-		if (!e && this.adaptersMap.size > 0) {
-			let e = this.adaptersMap.entries().next().value;
+		if (!e && this.instanceManager.parentAdaptersMap.size > 0) {
+			let e = this.instanceManager.parentAdaptersMap.entries().next().value;
 			return {
 				type: "adapter",
 				instance: e[1],
@@ -583,8 +1045,8 @@ var p = class extends e {
 			type: "element",
 			instance: t
 		};
-		if (this.adaptersMap.size > 0) {
-			let e = this.adaptersMap.entries().next().value;
+		if (this.instanceManager.parentAdaptersMap.size > 0) {
+			let e = this.instanceManager.parentAdaptersMap.entries().next().value;
 			return {
 				type: "adapter",
 				instance: e[1],
@@ -762,22 +1224,12 @@ var p = class extends e {
 		return t ? l(t.instance) : null;
 	}
 	emit(e, t) {
-		let n = e.startsWith("sremote:") ? e : `sremote:${e}`, r = e.replace(/^sremote:/, ""), i = (e) => {
-			let n = this.eventListeners.get(e);
-			if (n) for (let [e] of n) try {
-				e(t);
-			} catch {}
-		};
-		i(n), i(r), i("*");
+		this.instanceManager.emitGlobalEvent(e, t);
 	}
 	on(e, t) {
 		if (typeof t != "function") return () => {};
-		let n = e.startsWith("sremote:") ? e : `sremote:${e}`, r = e.replace(/^sremote:/, ""), i = (e) => {
-			this.eventListeners.has(e) || this.eventListeners.set(e, /* @__PURE__ */ new Map()), this.eventListeners.get(e).set(t, !0);
-		};
-		i(n), i(r);
-		let a = null;
-		return typeof document < "u" && (a = (e) => {
+		let n = this.instanceManager.on(e, t), r = String(e || "").toLowerCase().replace(/^sremote:/, ""), i = null;
+		return typeof document < "u" && (i = (e) => {
 			let n = e.target;
 			if (!n || n.tagName !== "VIDEO" && n.tagName !== "AUDIO") return;
 			let i = s(n);
@@ -788,22 +1240,20 @@ var p = class extends e {
 				state: i,
 				originalEvent: e
 			}));
-		}, document.addEventListener(r, a, !0)), () => this.off(e, t);
+		}, document.addEventListener(r, i, !0)), () => {
+			n(), i && typeof document < "u" && document.removeEventListener(r, i, !0);
+		};
 	}
 	off(e, t) {
-		let n = e.startsWith("sremote:") ? e : `sremote:${e}`, r = e.replace(/^sremote:/, ""), i = (e) => {
-			let n = this.eventListeners.get(e);
-			n && (t ? n.delete(t) : this.eventListeners.delete(e));
-		};
-		i(n), i(r);
+		this.instanceManager.off(e, t);
 	}
-}, m = ":host {\r\n  all: initial;\r\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\r\n  color-scheme: light dark;\r\n}\r\n\r\n.sv-btn,\r\n.sv-action-btn {\r\n  font-family: inherit;\r\n  cursor: pointer;\r\n  line-height: 1.2;\r\n  border: 1px solid #aeb7c2;\r\n  border-radius: 4px;\r\n  background: linear-gradient(to bottom, #fff 0%, #e7ebef 100%);\r\n  color: #263238;\r\n  box-shadow:\r\n    inset 0 1px 0 rgba(255, 255, 255, 0.85),\r\n    0 1px 2px rgba(0, 0, 0, 0.12);\r\n  transition:\r\n    background 0.12s ease,\r\n    border-color 0.12s ease,\r\n    box-shadow 0.12s ease,\r\n    transform 0.08s ease;\r\n  user-select: none;\r\n  display: inline-flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  gap: 6px;\r\n  text-decoration: none;\r\n}\r\n\r\n.sv-btn:hover,\r\n.sv-action-btn:hover {\r\n  background: linear-gradient(to bottom, #fff 0%, #dce2e8 100%);\r\n  color: #111820;\r\n  border-color: #8e9aa6;\r\n}\r\n\r\n.sv-btn:active,\r\n.sv-action-btn:active {\r\n  background: #d7dde3;\r\n  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);\r\n  transform: translateY(1px);\r\n}\r\n\r\n.sv-btn {\r\n  padding: 7px 16px;\r\n  font-size: 13px;\r\n  font-weight: 600;\r\n}\r\n\r\n.sv-action-btn {\r\n  font-size: 11px;\r\n  padding: 4px 8px;\r\n}\r\n\r\n.sv-btn-deny {\r\n  color: #374151;\r\n}\r\n\r\n.sv-btn-allow,\r\n.sv-btn-primary {\r\n  background: linear-gradient(to bottom, #4da3d9 0%, #2479b3 100%);\r\n  color: #fff;\r\n  border-color: #1e6597;\r\n  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);\r\n}\r\n\r\n.sv-btn-allow:hover,\r\n.sv-btn-primary:hover {\r\n  background: linear-gradient(to bottom, #5eb0e3 0%, #2b84be 100%);\r\n  border-color: #195d8d;\r\n  color: #fff;\r\n}\r\n\r\n.sv-btn-allow:active,\r\n.sv-btn-primary:active {\r\n  background: #2479b3;\r\n  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);\r\n}\r\n\r\n.sv-link {\r\n  color: #1769aa;\r\n  text-decoration: underline;\r\n  word-break: break-all;\r\n}\r\n\r\n.sv-link:hover {\r\n  color: #0b4f82;\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  .sv-btn,\r\n  .sv-action-btn {\r\n    border-color: #59636e;\r\n    background: linear-gradient(to bottom, #3b4249 0%, #2d3339 100%);\r\n    color: #e4e8eb;\r\n    box-shadow:\r\n      inset 0 1px 0 rgba(255, 255, 255, 0.08),\r\n      0 1px 2px rgba(0, 0, 0, 0.35);\r\n  }\r\n\r\n  .sv-btn:hover,\r\n  .sv-action-btn:hover {\r\n    background: linear-gradient(to bottom, #464e56 0%, #353c43 100%);\r\n    color: #fff;\r\n    border-color: #707b86;\r\n  }\r\n\r\n  .sv-btn:active,\r\n  .sv-action-btn:active {\r\n    background: #292f35;\r\n  }\r\n\r\n  .sv-btn-deny {\r\n    color: #d5dbe0;\r\n  }\r\n\r\n  .sv-btn-allow,\r\n  .sv-btn-primary {\r\n    background: linear-gradient(to bottom, #3d96cb 0%, #246e9c 100%);\r\n    border-color: #1d5b83;\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-btn-allow:hover,\r\n  .sv-btn-primary:hover {\r\n    background: linear-gradient(to bottom, #4ba4d8 0%, #2b7bab 100%);\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-link {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-link:hover {\r\n    color: #82c9ed;\r\n  }\r\n}\r\n\ndialog {\r\n  position: fixed;\r\n  inset: 0;\r\n  margin: auto;\r\n  border: none;\r\n  background: transparent;\r\n  color: #263238;\r\n  font-size: 13.5px;\r\n  box-sizing: border-box;\r\n  z-index: 2147483647;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n}\r\n\r\ndialog:not([open]) {\r\n  display: none;\r\n}\r\n\r\ndialog::backdrop {\r\n  background: rgba(0, 0, 0, 0.52);\r\n  backdrop-filter: blur(1px);\r\n}\r\n\r\n.sv-box {\r\n  width: min(420px, calc(100vw - 32px));\r\n  padding: 18px 20px;\r\n  box-sizing: border-box;\r\n  background: #f7f8fa;\r\n  border: 1px solid #aeb7c2;\r\n  border-radius: 6px;\r\n  box-shadow:\r\n    0 8px 25px rgba(0, 0, 0, 0.35),\r\n    inset 0 1px 0 rgba(255, 255, 255, 0.9);\r\n  pointer-events: auto;\r\n}\r\n\r\n.sv-title {\r\n  font-weight: 700;\r\n  font-size: 15px;\r\n  margin-bottom: 8px;\r\n  color: #1769aa;\r\n}\r\n\r\n.sv-text {\r\n  margin-bottom: 14px;\r\n  color: #4b5563;\r\n  font-size: 13px;\r\n  line-height: 1.5;\r\n}\r\n\r\n.sv-remember {\r\n  display: inline-flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n  margin-bottom: 18px;\r\n  font-size: 12.5px;\r\n  cursor: pointer;\r\n  user-select: none;\r\n  color: #5b6570;\r\n  pointer-events: auto;\r\n}\r\n\r\n.sv-remember:hover {\r\n  color: #263238;\r\n}\r\n\r\n.sv-remember input {\r\n  cursor: pointer;\r\n  margin: 0;\r\n  accent-color: #2479b3;\r\n  pointer-events: auto;\r\n  appearance: checkbox;\r\n  -webkit-appearance: checkbox;\r\n  width: 15px;\r\n  height: 15px;\r\n  opacity: 1;\r\n  position: static;\r\n  z-index: auto;\r\n  vertical-align: middle;\r\n}\r\n\r\n.sv-remember span {\r\n  pointer-events: auto;\r\n  user-select: none;\r\n}\r\n\r\n.sv-buttons {\r\n  display: flex;\r\n  gap: 8px;\r\n  justify-content: flex-end;\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  dialog {\r\n    color: #e4e8eb;\r\n  }\r\n\r\n  .sv-box {\r\n    background: #292f35;\r\n    color: #e5e9ec;\r\n    border-color: #59636e;\r\n    box-shadow:\r\n      0 8px 28px rgba(0, 0, 0, 0.7),\r\n      inset 0 1px 0 rgba(255, 255, 255, 0.05);\r\n  }\r\n\r\n  .sv-title {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-text {\r\n    color: #b9c1c8;\r\n  }\r\n\r\n  .sv-remember {\r\n    color: #aeb7bf;\r\n  }\r\n\r\n  .sv-remember:hover {\r\n    color: #e5e9ec;\r\n  }\r\n\r\n  .sv-remember input {\r\n    accent-color: #5eb5e6;\r\n  }\r\n}\r\n\n.sv-install-box {\r\n  width: min(520px, calc(100vw - 32px));\r\n  padding: 24px 26px;\r\n}\r\n\r\n.sv-install-header {\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: space-between;\r\n  margin-bottom: 16px;\r\n  padding-bottom: 12px;\r\n  border-bottom: 1px solid #dce2e8;\r\n}\r\n\r\n.sv-install-title {\r\n  font-size: 16px;\r\n  font-weight: 700;\r\n  color: #1769aa;\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n}\r\n\r\n.sv-install-desc {\r\n  margin-bottom: 14px;\r\n  line-height: 1.5;\r\n}\r\n\r\n.sv-install-learn-more {\r\n  display: inline;\r\n  margin-left: 6px;\r\n  color: #2563eb;\r\n  text-decoration: underline;\r\n  text-underline-offset: 2px;\r\n  font-size: 12.5px;\r\n  font-weight: 500;\r\n  white-space: nowrap;\r\n}\r\n\r\n.sv-install-learn-more:hover {\r\n  color: #1d4ed8;\r\n}\r\n\r\n.sv-install-close-btn {\r\n  background: transparent;\r\n  border: none;\r\n  font-size: 18px;\r\n  line-height: 1;\r\n  color: #8e9aa6;\r\n  cursor: pointer;\r\n  padding: 4px 6px;\r\n  border-radius: 4px;\r\n  transition: all 0.12s ease;\r\n}\r\n\r\n.sv-install-close-btn:hover {\r\n  background: rgba(0, 0, 0, 0.06);\r\n  color: #263238;\r\n}\r\n\r\n.sv-steps {\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 16px;\r\n  margin-bottom: 20px;\r\n}\r\n\r\n.sv-step {\r\n  display: flex;\r\n  gap: 12px;\r\n  background: #ffffff;\r\n  padding: 12px 14px;\r\n  border: 1px solid #dce2e8;\r\n  border-radius: 6px;\r\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);\r\n}\r\n\r\n.sv-step-num {\r\n  width: 24px;\r\n  height: 24px;\r\n  background: #2479b3;\r\n  color: #fff;\r\n  border-radius: 50%;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  font-weight: 700;\r\n  font-size: 12px;\r\n  flex-shrink: 0;\r\n}\r\n\r\n.sv-step-content {\r\n  flex: 1;\r\n  font-size: 13px;\r\n  line-height: 1.45;\r\n  color: #374151;\r\n}\r\n\r\n.sv-step-title {\r\n  font-weight: 600;\r\n  margin-bottom: 4px;\r\n  color: #1e293b;\r\n}\r\n\r\n.sv-extensions-list {\r\n  display: flex;\r\n  flex-wrap: wrap;\r\n  gap: 6px;\r\n  margin-top: 8px;\r\n}\r\n\r\n.sv-ext-link {\r\n  font-size: 11.5px;\r\n  padding: 3px 8px;\r\n  border-radius: 4px;\r\n  background: #f1f5f9;\r\n  color: #2563eb;\r\n  border: 1px solid #cbd5e1;\r\n  text-decoration: none;\r\n  display: inline-flex;\r\n  align-items: center;\r\n  gap: 4px;\r\n  transition: all 0.12s ease;\r\n}\r\n\r\n.sv-ext-link:hover {\r\n  background: #e2e8f0;\r\n  border-color: #94a3b8;\r\n  color: #1d4ed8;\r\n}\r\n\r\n.sv-ext-recommended {\r\n  background: #eff6ff;\r\n  border-color: #93c5fd;\r\n  font-weight: 600;\r\n}\r\n\r\n.sv-install-action {\r\n  margin-top: 8px;\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 10px;\r\n}\r\n\r\n.sv-status-banner {\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n  padding: 10px 14px;\r\n  border-radius: 6px;\r\n  font-size: 12.5px;\r\n  font-weight: 500;\r\n  margin-bottom: 16px;\r\n}\r\n\r\n.sv-status-banner.waiting {\r\n  background: #fef3c7;\r\n  color: #92400e;\r\n  border: 1px solid #fde68a;\r\n}\r\n\r\n.sv-status-banner.success {\r\n  background: #dcfce7;\r\n  color: #166534;\r\n  border: 1px solid #bbf7d0;\r\n}\r\n\r\n.sv-status-spinner {\r\n  width: 14px;\r\n  height: 14px;\r\n  border: 2px solid #b45309;\r\n  border-top-color: transparent;\r\n  border-radius: 50%;\r\n  animation: sv-spin 0.8s linear infinite;\r\n}\r\n\r\n@keyframes sv-spin {\r\n  to {\r\n    transform: rotate(360deg);\r\n  }\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  .sv-install-header {\r\n    border-bottom-color: #434c56;\r\n  }\r\n\r\n  .sv-install-title {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-install-learn-more {\r\n    color: #60a5fa;\r\n  }\r\n\r\n  .sv-install-learn-more:hover {\r\n    color: #93c5fd;\r\n  }\r\n\r\n  .sv-install-close-btn:hover {\r\n    background: rgba(255, 255, 255, 0.08);\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-step {\r\n    background: #23282e;\r\n    border-color: #434c56;\r\n    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);\r\n  }\r\n\r\n  .sv-step-num {\r\n    background: #3d96cb;\r\n  }\r\n\r\n  .sv-step-content {\r\n    color: #d1d7dc;\r\n  }\r\n\r\n  .sv-step-title {\r\n    color: #f1f5f9;\r\n  }\r\n\r\n  .sv-ext-link {\r\n    background: #2c333a;\r\n    border-color: #4b555f;\r\n    color: #60a5fa;\r\n  }\r\n\r\n  .sv-ext-link:hover {\r\n    background: #37404a;\r\n    border-color: #64748b;\r\n    color: #93c5fd;\r\n  }\r\n\r\n  .sv-ext-recommended {\r\n    background: #1e3a5f;\r\n    border-color: #3b82f6;\r\n  }\r\n\r\n  .sv-status-banner.waiting {\r\n    background: #3a2e15;\r\n    color: #fde047;\r\n    border-color: #715816;\r\n  }\r\n\r\n  .sv-status-banner.success {\r\n    background: #143522;\r\n    color: #86efac;\r\n    border-color: #1e5e38;\r\n  }\r\n\r\n  .sv-status-spinner {\r\n    border-color: #fde047;\r\n    border-top-color: transparent;\r\n  }\r\n}\r\n";
-function h() {
+}, g = ":host {\r\n  all: initial;\r\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\r\n  color-scheme: light dark;\r\n}\r\n\r\n.sv-btn,\r\n.sv-action-btn {\r\n  font-family: inherit;\r\n  cursor: pointer;\r\n  line-height: 1.2;\r\n  border: 1px solid #aeb7c2;\r\n  border-radius: 4px;\r\n  background: linear-gradient(to bottom, #fff 0%, #e7ebef 100%);\r\n  color: #263238;\r\n  box-shadow:\r\n    inset 0 1px 0 rgba(255, 255, 255, 0.85),\r\n    0 1px 2px rgba(0, 0, 0, 0.12);\r\n  transition:\r\n    background 0.12s ease,\r\n    border-color 0.12s ease,\r\n    box-shadow 0.12s ease,\r\n    transform 0.08s ease;\r\n  user-select: none;\r\n  display: inline-flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  gap: 6px;\r\n  text-decoration: none;\r\n}\r\n\r\n.sv-btn:hover,\r\n.sv-action-btn:hover {\r\n  background: linear-gradient(to bottom, #fff 0%, #dce2e8 100%);\r\n  color: #111820;\r\n  border-color: #8e9aa6;\r\n}\r\n\r\n.sv-btn:active,\r\n.sv-action-btn:active {\r\n  background: #d7dde3;\r\n  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);\r\n  transform: translateY(1px);\r\n}\r\n\r\n.sv-btn {\r\n  padding: 7px 16px;\r\n  font-size: 13px;\r\n  font-weight: 600;\r\n}\r\n\r\n.sv-action-btn {\r\n  font-size: 11px;\r\n  padding: 4px 8px;\r\n}\r\n\r\n.sv-btn-deny {\r\n  color: #374151;\r\n}\r\n\r\n.sv-btn-allow,\r\n.sv-btn-primary {\r\n  background: linear-gradient(to bottom, #4da3d9 0%, #2479b3 100%);\r\n  color: #fff;\r\n  border-color: #1e6597;\r\n  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);\r\n}\r\n\r\n.sv-btn-allow:hover,\r\n.sv-btn-primary:hover {\r\n  background: linear-gradient(to bottom, #5eb0e3 0%, #2b84be 100%);\r\n  border-color: #195d8d;\r\n  color: #fff;\r\n}\r\n\r\n.sv-btn-allow:active,\r\n.sv-btn-primary:active {\r\n  background: #2479b3;\r\n  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);\r\n}\r\n\r\n.sv-link {\r\n  color: #1769aa;\r\n  text-decoration: underline;\r\n  word-break: break-all;\r\n}\r\n\r\n.sv-link:hover {\r\n  color: #0b4f82;\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  .sv-btn,\r\n  .sv-action-btn {\r\n    border-color: #59636e;\r\n    background: linear-gradient(to bottom, #3b4249 0%, #2d3339 100%);\r\n    color: #e4e8eb;\r\n    box-shadow:\r\n      inset 0 1px 0 rgba(255, 255, 255, 0.08),\r\n      0 1px 2px rgba(0, 0, 0, 0.35);\r\n  }\r\n\r\n  .sv-btn:hover,\r\n  .sv-action-btn:hover {\r\n    background: linear-gradient(to bottom, #464e56 0%, #353c43 100%);\r\n    color: #fff;\r\n    border-color: #707b86;\r\n  }\r\n\r\n  .sv-btn:active,\r\n  .sv-action-btn:active {\r\n    background: #292f35;\r\n  }\r\n\r\n  .sv-btn-deny {\r\n    color: #d5dbe0;\r\n  }\r\n\r\n  .sv-btn-allow,\r\n  .sv-btn-primary {\r\n    background: linear-gradient(to bottom, #3d96cb 0%, #246e9c 100%);\r\n    border-color: #1d5b83;\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-btn-allow:hover,\r\n  .sv-btn-primary:hover {\r\n    background: linear-gradient(to bottom, #4ba4d8 0%, #2b7bab 100%);\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-link {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-link:hover {\r\n    color: #82c9ed;\r\n  }\r\n}\r\n\ndialog {\r\n  position: fixed;\r\n  inset: 0;\r\n  margin: auto;\r\n  border: none;\r\n  background: transparent;\r\n  color: #263238;\r\n  font-size: 13.5px;\r\n  box-sizing: border-box;\r\n  z-index: 2147483647;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n}\r\n\r\ndialog:not([open]) {\r\n  display: none;\r\n}\r\n\r\ndialog::backdrop {\r\n  background: rgba(0, 0, 0, 0.52);\r\n  backdrop-filter: blur(1px);\r\n}\r\n\r\n.sv-box {\r\n  width: min(420px, calc(100vw - 32px));\r\n  padding: 18px 20px;\r\n  box-sizing: border-box;\r\n  background: #f7f8fa;\r\n  border: 1px solid #aeb7c2;\r\n  border-radius: 6px;\r\n  box-shadow:\r\n    0 8px 25px rgba(0, 0, 0, 0.35),\r\n    inset 0 1px 0 rgba(255, 255, 255, 0.9);\r\n  pointer-events: auto;\r\n}\r\n\r\n.sv-title {\r\n  font-weight: 700;\r\n  font-size: 15px;\r\n  margin-bottom: 8px;\r\n  color: #1769aa;\r\n}\r\n\r\n.sv-text {\r\n  margin-bottom: 14px;\r\n  color: #4b5563;\r\n  font-size: 13px;\r\n  line-height: 1.5;\r\n}\r\n\r\n.sv-remember {\r\n  display: inline-flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n  margin-bottom: 18px;\r\n  font-size: 12.5px;\r\n  cursor: pointer;\r\n  user-select: none;\r\n  color: #5b6570;\r\n  pointer-events: auto;\r\n}\r\n\r\n.sv-remember:hover {\r\n  color: #263238;\r\n}\r\n\r\n.sv-remember input {\r\n  cursor: pointer;\r\n  margin: 0;\r\n  accent-color: #2479b3;\r\n  pointer-events: auto;\r\n  appearance: checkbox;\r\n  -webkit-appearance: checkbox;\r\n  width: 15px;\r\n  height: 15px;\r\n  opacity: 1;\r\n  position: static;\r\n  z-index: auto;\r\n  vertical-align: middle;\r\n}\r\n\r\n.sv-remember span {\r\n  pointer-events: auto;\r\n  user-select: none;\r\n}\r\n\r\n.sv-buttons {\r\n  display: flex;\r\n  gap: 8px;\r\n  justify-content: flex-end;\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  dialog {\r\n    color: #e4e8eb;\r\n  }\r\n\r\n  .sv-box {\r\n    background: #292f35;\r\n    color: #e5e9ec;\r\n    border-color: #59636e;\r\n    box-shadow:\r\n      0 8px 28px rgba(0, 0, 0, 0.7),\r\n      inset 0 1px 0 rgba(255, 255, 255, 0.05);\r\n  }\r\n\r\n  .sv-title {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-text {\r\n    color: #b9c1c8;\r\n  }\r\n\r\n  .sv-remember {\r\n    color: #aeb7bf;\r\n  }\r\n\r\n  .sv-remember:hover {\r\n    color: #e5e9ec;\r\n  }\r\n\r\n  .sv-remember input {\r\n    accent-color: #5eb5e6;\r\n  }\r\n}\r\n\n.sv-install-box {\r\n  width: min(520px, calc(100vw - 32px));\r\n  padding: 24px 26px;\r\n}\r\n\r\n.sv-install-header {\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: space-between;\r\n  margin-bottom: 16px;\r\n  padding-bottom: 12px;\r\n  border-bottom: 1px solid #dce2e8;\r\n}\r\n\r\n.sv-install-title {\r\n  font-size: 16px;\r\n  font-weight: 700;\r\n  color: #1769aa;\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n}\r\n\r\n.sv-install-desc {\r\n  margin-bottom: 14px;\r\n  line-height: 1.5;\r\n}\r\n\r\n.sv-install-learn-more {\r\n  display: inline;\r\n  margin-left: 6px;\r\n  color: #2563eb;\r\n  text-decoration: underline;\r\n  text-underline-offset: 2px;\r\n  font-size: 12.5px;\r\n  font-weight: 500;\r\n  white-space: nowrap;\r\n}\r\n\r\n.sv-install-learn-more:hover {\r\n  color: #1d4ed8;\r\n}\r\n\r\n.sv-install-close-btn {\r\n  background: transparent;\r\n  border: none;\r\n  font-size: 18px;\r\n  line-height: 1;\r\n  color: #8e9aa6;\r\n  cursor: pointer;\r\n  padding: 4px 6px;\r\n  border-radius: 4px;\r\n  transition: all 0.12s ease;\r\n}\r\n\r\n.sv-install-close-btn:hover {\r\n  background: rgba(0, 0, 0, 0.06);\r\n  color: #263238;\r\n}\r\n\r\n.sv-steps {\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 16px;\r\n  margin-bottom: 20px;\r\n}\r\n\r\n.sv-step {\r\n  display: flex;\r\n  gap: 12px;\r\n  background: #ffffff;\r\n  padding: 12px 14px;\r\n  border: 1px solid #dce2e8;\r\n  border-radius: 6px;\r\n  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);\r\n}\r\n\r\n.sv-step-num {\r\n  width: 24px;\r\n  height: 24px;\r\n  background: #2479b3;\r\n  color: #fff;\r\n  border-radius: 50%;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  font-weight: 700;\r\n  font-size: 12px;\r\n  flex-shrink: 0;\r\n}\r\n\r\n.sv-step-content {\r\n  flex: 1;\r\n  font-size: 13px;\r\n  line-height: 1.45;\r\n  color: #374151;\r\n}\r\n\r\n.sv-step-title {\r\n  font-weight: 600;\r\n  margin-bottom: 4px;\r\n  color: #1e293b;\r\n}\r\n\r\n.sv-extensions-list {\r\n  display: flex;\r\n  flex-wrap: wrap;\r\n  gap: 6px;\r\n  margin-top: 8px;\r\n}\r\n\r\n.sv-ext-link {\r\n  font-size: 11.5px;\r\n  padding: 3px 8px;\r\n  border-radius: 4px;\r\n  background: #f1f5f9;\r\n  color: #2563eb;\r\n  border: 1px solid #cbd5e1;\r\n  text-decoration: none;\r\n  display: inline-flex;\r\n  align-items: center;\r\n  gap: 4px;\r\n  transition: all 0.12s ease;\r\n}\r\n\r\n.sv-ext-link:hover {\r\n  background: #e2e8f0;\r\n  border-color: #94a3b8;\r\n  color: #1d4ed8;\r\n}\r\n\r\n.sv-ext-recommended {\r\n  background: #eff6ff;\r\n  border-color: #93c5fd;\r\n  font-weight: 600;\r\n}\r\n\r\n.sv-install-action {\r\n  margin-top: 8px;\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 10px;\r\n}\r\n\r\n.sv-status-banner {\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 8px;\r\n  padding: 10px 14px;\r\n  border-radius: 6px;\r\n  font-size: 12.5px;\r\n  font-weight: 500;\r\n  margin-bottom: 16px;\r\n}\r\n\r\n.sv-status-banner.waiting {\r\n  background: #fef3c7;\r\n  color: #92400e;\r\n  border: 1px solid #fde68a;\r\n}\r\n\r\n.sv-status-banner.success {\r\n  background: #dcfce7;\r\n  color: #166534;\r\n  border: 1px solid #bbf7d0;\r\n}\r\n\r\n.sv-status-spinner {\r\n  width: 14px;\r\n  height: 14px;\r\n  border: 2px solid #b45309;\r\n  border-top-color: transparent;\r\n  border-radius: 50%;\r\n  animation: sv-spin 0.8s linear infinite;\r\n}\r\n\r\n@keyframes sv-spin {\r\n  to {\r\n    transform: rotate(360deg);\r\n  }\r\n}\r\n\r\n@media (prefers-color-scheme: dark) {\r\n  .sv-install-header {\r\n    border-bottom-color: #434c56;\r\n  }\r\n\r\n  .sv-install-title {\r\n    color: #5eb5e6;\r\n  }\r\n\r\n  .sv-install-learn-more {\r\n    color: #60a5fa;\r\n  }\r\n\r\n  .sv-install-learn-more:hover {\r\n    color: #93c5fd;\r\n  }\r\n\r\n  .sv-install-close-btn:hover {\r\n    background: rgba(255, 255, 255, 0.08);\r\n    color: #fff;\r\n  }\r\n\r\n  .sv-step {\r\n    background: #23282e;\r\n    border-color: #434c56;\r\n    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);\r\n  }\r\n\r\n  .sv-step-num {\r\n    background: #3d96cb;\r\n  }\r\n\r\n  .sv-step-content {\r\n    color: #d1d7dc;\r\n  }\r\n\r\n  .sv-step-title {\r\n    color: #f1f5f9;\r\n  }\r\n\r\n  .sv-ext-link {\r\n    background: #2c333a;\r\n    border-color: #4b555f;\r\n    color: #60a5fa;\r\n  }\r\n\r\n  .sv-ext-link:hover {\r\n    background: #37404a;\r\n    border-color: #64748b;\r\n    color: #93c5fd;\r\n  }\r\n\r\n  .sv-ext-recommended {\r\n    background: #1e3a5f;\r\n    border-color: #3b82f6;\r\n  }\r\n\r\n  .sv-status-banner.waiting {\r\n    background: #3a2e15;\r\n    color: #fde047;\r\n    border-color: #715816;\r\n  }\r\n\r\n  .sv-status-banner.success {\r\n    background: #143522;\r\n    color: #86efac;\r\n    border-color: #1e5e38;\r\n  }\r\n\r\n  .sv-status-spinner {\r\n    border-color: #fde047;\r\n    border-top-color: transparent;\r\n  }\r\n}\r\n";
+function _() {
 	if (typeof navigator > "u") return "chrome";
 	let e = navigator.userAgent.toLowerCase();
 	return e.includes("firefox") ? "firefox" : e.includes("edg/") ? "edge" : e.includes("opr/") || e.includes("opera/") ? "opera" : e.includes("safari") && !e.includes("chrome") ? "safari" : "chrome";
 }
-var g = {
+var v = {
 	chrome: {
 		tampermonkey: "https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkmingnoiobeogfiigjmhednnj",
 		violentmonkey: "https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag"
@@ -818,29 +1268,29 @@ var g = {
 	},
 	opera: { tampermonkey: "https://addons.opera.com/extensions/details/tampermonkey-beta/" },
 	safari: { tampermonkey: "https://apps.apple.com/app/tampermonkey/id1482490089" }
-}, _ = null;
-function v(e = {}) {
+}, y = null;
+function b(e = {}) {
 	if (typeof document > "u") return {
 		host: null,
 		close: () => {}
 	};
-	_ && _.close();
-	let { userscriptUrl: t = "https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.user.js", learnMoreUrl: n = "https://github.com/SweetSea-ButImNotSweet/sremote/blob/main/packages/userscript/README.md", learnMoreText: r = "Tại sao cần cài script này?", title: i = "Yêu cầu SRemote Userscript", description: a = "Trang web cần SRemote Userscript để tương tác và điều khiển media trong iframe cross-origin.", autoDetect: o = !0, onClose: s = null, onSuccess: c = null } = e, l = h(), u = document.createElement("div");
+	y && y.close();
+	let { userscriptUrl: t = "https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.user.js", learnMoreUrl: n = "https://github.com/SweetSea-ButImNotSweet/sremote/blob/main/packages/userscript/README.md", learnMoreText: r = "Tại sao cần cài script này?", title: i = "Yêu cầu SRemote Userscript", description: a = "Trang web cần SRemote Userscript để tương tác và điều khiển media trong iframe cross-origin.", autoDetect: o = !0, onClose: s = null, onSuccess: c = null } = e, l = _(), u = document.createElement("div");
 	u.id = "sremote-install-modal-host";
 	let d = u.attachShadow({ mode: "closed" }), f = document.createElement("style");
-	f.textContent = m;
-	let p = document.createElement("dialog"), v = document.createElement("div");
-	v.className = "sv-box sv-install-box";
-	let y = !1, b = null, x = !1, S = () => {
-		if (!y) {
-			y = !0, typeof window < "u" && window.removeEventListener("sremote:ready", L);
+	f.textContent = g;
+	let p = document.createElement("dialog"), m = document.createElement("div");
+	m.className = "sv-box sv-install-box";
+	let h = !1, b = null, x = !1, S = () => {
+		if (!h) {
+			h = !0, typeof window < "u" && window.removeEventListener("sremote:ready", L);
 			try {
 				p.close();
 			} catch {}
-			u.remove(), _?.host === u && (_ = null), s?.({ success: x });
+			u.remove(), y?.host === u && (y = null), s?.({ success: x });
 		}
 	};
-	_ = {
+	y = {
 		host: u,
 		close: S
 	};
@@ -851,7 +1301,7 @@ function v(e = {}) {
 	let T = document.createElement("button");
 	if (T.className = "sv-install-close-btn", T.innerHTML = "&times;", T.title = "Đóng", T.addEventListener("click", (e) => {
 		e.stopPropagation(), S();
-	}), C.append(w, T), v.append(C), a || n) {
+	}), C.append(w, T), m.append(C), a || n) {
 		let e = document.createElement("div");
 		if (e.className = "sv-text sv-install-desc", a) {
 			let t = document.createElement("span");
@@ -861,14 +1311,14 @@ function v(e = {}) {
 			let t = document.createElement("a");
 			t.className = "sv-install-learn-more", t.href = n, t.target = "_blank", t.rel = "noopener noreferrer", t.textContent = ` ${r}`, e.append(t);
 		}
-		v.append(e);
+		m.append(e);
 	}
-	b = document.createElement("div"), b.className = "sv-status-banner waiting", b.innerHTML = "\n    <div class=\"sv-status-spinner\"></div>\n    <span>Chờ nhận diện Userscript...</span>\n  ", v.append(b);
+	b = document.createElement("div"), b.className = "sv-status-banner waiting", b.innerHTML = "\n    <div class=\"sv-status-spinner\"></div>\n    <span>Chờ nhận diện Userscript...</span>\n  ", m.append(b);
 	let E = document.createElement("div");
 	E.className = "sv-steps";
 	let D = document.createElement("div");
 	D.className = "sv-step";
-	let O = g[l] || g.chrome, k = "";
+	let O = v[l] || v.chrome, k = "";
 	O.tampermonkey && (k += `<a class="sv-ext-link sv-ext-recommended" href="${O.tampermonkey}" target="_blank" rel="noopener noreferrer">Tampermonkey (${l})</a>`), O.violentmonkey && (k += `<a class="sv-ext-link" href="${O.violentmonkey}" target="_blank" rel="noopener noreferrer">Violentmonkey</a>`), D.innerHTML = `
     <div class="sv-step-num">1</div>
     <div class="sv-step-content">
@@ -893,7 +1343,7 @@ function v(e = {}) {
     </div>
   `, E.append(A);
 	let j = document.createElement("div");
-	j.className = "sv-step", j.innerHTML = "\n    <div class=\"sv-step-num\">3</div>\n    <div class=\"sv-step-content\">\n      <div class=\"sv-step-title\">Xác nhận</div>\n      <div>Sau khi bấm Cài đặt trong extension, quay lại trang này hoặc tải lại trang.</div>\n    </div>\n  ", E.append(j), v.append(E);
+	j.className = "sv-step", j.innerHTML = "\n    <div class=\"sv-step-num\">3</div>\n    <div class=\"sv-step-content\">\n      <div class=\"sv-step-title\">Xác nhận</div>\n      <div>Sau khi bấm Cài đặt trong extension, quay lại trang này hoặc tải lại trang.</div>\n    </div>\n  ", E.append(j), m.append(E);
 	let M = document.createElement("div");
 	M.className = "sv-buttons";
 	let N = document.createElement("button");
@@ -903,7 +1353,7 @@ function v(e = {}) {
 	let P = document.createElement("button");
 	P.className = "sv-btn sv-btn-primary", P.textContent = "Đóng", P.addEventListener("click", () => {
 		S();
-	}), M.append(N, P), v.append(M), p.append(v), d.append(f, p), p.addEventListener("cancel", (e) => {
+	}), M.append(N, P), m.append(M), p.append(m), d.append(f, p), p.addEventListener("cancel", (e) => {
 		e.preventDefault(), S();
 	});
 	let F = () => {
@@ -930,14 +1380,14 @@ function v(e = {}) {
 //#endregion
 //#region src/client.js
 a();
-var y = class {
+var x = class {
 	constructor(e = {}) {
 		a(), this.options = {
 			fallbackToDom: !0,
 			timeout: 2e3,
 			passkey: null,
 			...e
-		}, this.userscriptDriver = new o(this.options), this.domDriver = new p(this.options), this.mode = "detecting", this._readyPromise = null, this.instances = {
+		}, this.userscriptDriver = new o(this.options), this.domDriver = new h(this.options), this.mode = "detecting", this._readyPromise = null, this.instances = {
 			list: (e) => {
 				if (this.userscriptDriver.isAvailable()) {
 					let t = this.userscriptDriver.getApi();
@@ -1139,19 +1589,19 @@ var y = class {
 		return this.userscriptDriver.isAvailable() ? this.userscriptDriver.off(e, t) : this.domDriver.off(e, t);
 	}
 	showInstallModal(e) {
-		return v(e);
+		return b(e);
 	}
 };
-function b(e) {
-	return new y(e);
+function S(e) {
+	return new x(e);
 }
-var x = new y();
+var C = new x();
 if (typeof globalThis < "u") try {
-	globalThis[Symbol.for("__sremote_client__")] = x;
+	globalThis[Symbol.for("__sremote_client__")] = C;
 } catch {}
 //#endregion
 //#region src/universal-adapter.js
-function S(e = {}) {
+function w(e = {}) {
 	let { name: t = "universal-adapter", mediaElement: n = null, play: r, pause: i, toggle: a, stop: o, seek: s, seekTo: c, setCurrentTime: l, setVolume: u, setMuted: d, setPlaybackRate: f, setQuality: p, getQualities: m, setSubtitle: h, getSubtitles: g, setShuffle: _, setRepeat: v, next: y, previous: b, load: x, requestPip: S, getState: C } = e, w = 1, T = {
 		paused: !0,
 		currentTime: 0,
@@ -1322,4 +1772,4 @@ function S(e = {}) {
 	return O;
 }
 //#endregion
-export { e as BaseDriver, p as DomDriver, y as SRemoteClient, o as UserscriptDriver, b as createSRemote, S as createUniversalAdapter, x as default, x as sremote, v as showInstallModal };
+export { e as BaseDriver, h as DomDriver, x as SRemoteClient, o as UserscriptDriver, S as createSRemote, w as createUniversalAdapter, C as default, C as sremote, b as showInstallModal };

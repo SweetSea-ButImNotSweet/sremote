@@ -159,6 +159,56 @@
 		"enterpictureinpicture",
 		"exitpictureinpicture"
 	];
+	function bindMediaEvents(media, onEvent, options = {}) {
+		if (!media || typeof media.addEventListener !== "function" || typeof onEvent !== "function") return () => {};
+		const { instanceId = "dom-media", source = "dom", treatAlmostEndAsEnd = false, events = MEDIA_EVENTS } = options;
+		let hasEmittedAlmostEnd = false;
+		const boundListeners = [];
+		for (const evtName of events) {
+			const listener = (eventObj) => {
+				const state = extractMediaState(media);
+				if (evtName === "timeupdate") {
+					const dur = Number.isFinite(media.duration) ? media.duration : null;
+					const curTime = media.currentTime || 0;
+					if (dur && dur > 3 && curTime >= dur - .8 && curTime <= dur) {
+						if (!hasEmittedAlmostEnd) {
+							hasEmittedAlmostEnd = true;
+							onEvent(treatAlmostEndAsEnd ? "ended" : "almostend", createEventPayload(treatAlmostEndAsEnd ? "ended" : "almostend", {
+								source,
+								instanceId,
+								mediaType: media.tagName ? media.tagName.toLowerCase() : "video",
+								state
+							}));
+						}
+					} else if (dur && curTime < dur - 1.5) hasEmittedAlmostEnd = false;
+				}
+				if (evtName === "ended") {
+					hasEmittedAlmostEnd = false;
+					const dur = Number.isFinite(media.duration) ? media.duration : null;
+					const curTime = media.currentTime || 0;
+					if (dur && dur > 0 && Math.abs(dur - curTime) > 1.5) return;
+				}
+				onEvent(evtName, createEventPayload(evtName, {
+					source,
+					instanceId,
+					mediaType: media.tagName ? media.tagName.toLowerCase() : "video",
+					state,
+					originalEvent: eventObj
+				}));
+			};
+			media.addEventListener(evtName, listener, true);
+			boundListeners.push({
+				evtName,
+				listener
+			});
+		}
+		return () => {
+			for (const { evtName, listener } of boundListeners) try {
+				media.removeEventListener(evtName, listener, true);
+			} catch {}
+			boundListeners.length = 0;
+		};
+	}
 	function wrapCustomAdapter(rawAdapter, options = {}) {
 		if (!rawAdapter || typeof rawAdapter !== "object") return null;
 		const { instanceId, onEmit, source = "adapter" } = options;
@@ -188,7 +238,593 @@
 		if (!adapter.capabilities) adapter.capabilities = evaluateCapabilities(adapter);
 		return adapter;
 	}
-	var VERSION = "2.0.0";
+	var API_SPEC = Object.freeze({
+		rootMethods: {
+			play: {
+				action: "play",
+				type: "command",
+				args: ["targetOrId", "key"]
+			},
+			pause: {
+				action: "pause",
+				type: "command",
+				args: ["targetOrId", "key"]
+			},
+			toggle: {
+				action: "toggle",
+				type: "command",
+				args: ["targetOrId", "key"]
+			},
+			stop: {
+				action: "stop",
+				type: "command",
+				args: ["targetOrId", "key"]
+			},
+			seek: {
+				action: "seek",
+				type: "command_value",
+				args: [
+					"offset",
+					"targetOrId",
+					"key"
+				]
+			},
+			seekTo: {
+				action: "currentTime",
+				type: "command_value",
+				args: [
+					"time",
+					"targetOrId",
+					"key"
+				]
+			},
+			volume: {
+				action: "volume",
+				type: "command_value",
+				args: [
+					"vol",
+					"targetOrId",
+					"key"
+				]
+			},
+			mute: {
+				action: "muted",
+				type: "command_value",
+				args: [
+					"muted",
+					"targetOrId",
+					"key"
+				]
+			},
+			speed: {
+				action: "speed",
+				type: "command_value",
+				args: [
+					"rate",
+					"targetOrId",
+					"key"
+				]
+			},
+			quality: {
+				action: "quality",
+				type: "command_value",
+				args: [
+					"level",
+					"targetOrId",
+					"key"
+				]
+			},
+			getQualities: {
+				type: "handler",
+				handler: "getQualities",
+				args: ["targetOrId", "key"]
+			},
+			subtitle: {
+				action: "subtitle",
+				type: "command_value",
+				args: [
+					"track",
+					"targetOrId",
+					"key"
+				]
+			},
+			getSubtitles: {
+				type: "handler",
+				handler: "getSubtitles",
+				args: ["targetOrId", "key"]
+			},
+			shuffle: {
+				action: "shuffle",
+				type: "command_value",
+				args: [
+					"enable",
+					"targetOrId",
+					"key"
+				]
+			},
+			repeat: {
+				action: "repeat",
+				type: "command_value",
+				args: [
+					"mode",
+					"targetOrId",
+					"key"
+				]
+			},
+			next: {
+				action: "next",
+				type: "command",
+				args: ["targetOrId", "key"]
+			},
+			previous: {
+				action: "previous",
+				type: "command",
+				args: ["targetOrId", "key"]
+			},
+			pip: {
+				type: "pip",
+				args: [
+					"enable",
+					"targetOrId",
+					"key"
+				]
+			},
+			load: {
+				action: "load",
+				type: "command_value",
+				args: [
+					"source",
+					"targetOrId",
+					"key"
+				]
+			},
+			status: {
+				type: "handler",
+				handler: "getStatus",
+				args: ["targetOrId", "key"]
+			},
+			capabilities: {
+				type: "handler",
+				handler: "getCapabilities",
+				args: ["targetOrId", "key"]
+			}
+		},
+		namespaces: {
+			instances: {
+				list: {
+					type: "handler",
+					handler: "listInstances",
+					args: ["key"]
+				},
+				get: {
+					type: "handler",
+					handler: "getStatus",
+					args: ["instanceId", "key"]
+				},
+				capabilities: {
+					type: "handler",
+					handler: "getCapabilities",
+					args: ["instanceId", "key"]
+				},
+				getCapabilities: {
+					type: "handler",
+					handler: "getCapabilities",
+					args: ["instanceId", "key"]
+				},
+				getIframe: {
+					type: "handler",
+					handler: "getIframeElement",
+					args: ["instanceId", "key"]
+				},
+				assign: {
+					type: "handler",
+					handler: "assignIframeId",
+					args: ["iframeOrSelector", "customId"]
+				},
+				setMultiMode: {
+					type: "handler",
+					handler: "setMultiMode",
+					args: ["mode", "key"]
+				},
+				isMultiMode: {
+					type: "handler",
+					handler: "isMultiMode",
+					args: ["key"]
+				},
+				setExclusive: {
+					type: "handler",
+					handler: "setExclusive",
+					args: ["mode", "key"]
+				},
+				query: {
+					type: "handler",
+					handler: "queryInstances",
+					args: ["key"]
+				},
+				note: {
+					type: "handler",
+					handler: "annotateInstances",
+					args: ["dict", "key"]
+				}
+			},
+			adapters: {
+				register: {
+					type: "handler",
+					handler: "registerAdapter",
+					args: [
+						"adapter",
+						"instanceId",
+						"key"
+					]
+				},
+				unregister: {
+					type: "handler",
+					handler: "unregisterAdapter",
+					args: ["instanceId", "key"]
+				},
+				get: {
+					type: "handler",
+					handler: "getCustomAdapter",
+					args: ["instanceId", "key"]
+				}
+			},
+			rpc: {
+				call: {
+					type: "handler",
+					handler: "rpcCall",
+					args: [
+						"action",
+						"params",
+						"instanceId",
+						"key"
+					]
+				},
+				postMessage: {
+					type: "handler",
+					handler: "postWindowMessage",
+					args: [
+						"message",
+						"targetOrigin",
+						"instanceId",
+						"from",
+						"key"
+					]
+				},
+				onMessage: {
+					type: "handler",
+					handler: "onRpcMessage",
+					args: ["handler", "key"]
+				}
+			},
+			css: {
+				set: {
+					type: "handler",
+					handler: "setIframeCSS",
+					args: [
+						"css",
+						"instanceId",
+						"key"
+					]
+				},
+				get: {
+					type: "handler",
+					handler: "getIframeCSS",
+					args: ["instanceId", "key"]
+				},
+				remove: {
+					type: "handler",
+					handler: "removeIframeCSS",
+					args: ["instanceId", "key"]
+				}
+			}
+		}
+	});
+	function buildSRemoteApi(context) {
+		const { dispatchCommand, handlers = {}, eventsManager = {}, lifecycleHandlers = {}, debugApi = null, customExtensions = {} } = context;
+		const api = {};
+		for (const [methodName, spec] of Object.entries(API_SPEC.rootMethods)) if (spec.type === "command") api[methodName] = (targetOrId, key) => dispatchCommand(spec.action, void 0, targetOrId, key);
+		else if (spec.type === "command_value") api[methodName] = (val, targetOrId, key) => dispatchCommand(spec.action, val, targetOrId, key);
+		else if (spec.type === "pip") api[methodName] = (enable, targetOrId, key) => {
+			const _instanceId = typeof enable === "string" ? enable : targetOrId;
+			const _enabled = typeof enable === "boolean" ? enable : void 0;
+			return dispatchCommand(_enabled === true ? "enterpip" : _enabled === false ? "exitpip" : "pip", void 0, _instanceId, key);
+		};
+		else if (spec.type === "handler" && handlers[spec.handler]) api[methodName] = handlers[spec.handler];
+		for (const [nsName, nsSpec] of Object.entries(API_SPEC.namespaces)) {
+			const nsObj = {};
+			for (const [fnName, fnSpec] of Object.entries(nsSpec)) if (fnSpec.type === "handler" && handlers[fnSpec.handler]) nsObj[fnName] = handlers[fnSpec.handler];
+			api[nsName] = Object.freeze(nsObj);
+		}
+		if (eventsManager.on) api.on = eventsManager.on;
+		if (eventsManager.off) api.off = eventsManager.off;
+		if (eventsManager.emit) api.emit = eventsManager.emit;
+		if (lifecycleHandlers.hello) api.hello = lifecycleHandlers.hello;
+		if (lifecycleHandlers.lock) api.lock = lifecycleHandlers.lock;
+		if (lifecycleHandlers.bindMetadata) api.bindMetadata = lifecycleHandlers.bindMetadata;
+		else if (dispatchCommand) api.bindMetadata = (meta, instanceId, key) => dispatchCommand("bindMetadata", meta, instanceId, key);
+		if (debugApi) api.debug = debugApi;
+		Object.assign(api, customExtensions);
+		return Object.freeze(api);
+	}
+	function generateInstanceId$1(prefix = "sv") {
+		return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
+	}
+	function createInstanceManager$1(options = {}) {
+		const { ns = "sremote:", logger = {}, onSignal = null, getIframeCount = null } = options;
+		const log = typeof logger.log === "function" ? logger.log : () => {};
+		const debug = typeof logger.debug === "function" ? logger.debug : () => {};
+		const warn = typeof logger.warn === "function" ? logger.warn : typeof console !== "undefined" ? console.warn.bind(console) : () => {};
+		const instances = new Map();
+		const parentAdaptersMap = new Map();
+		const assignedIframeIdMap = new Map();
+		const iframeToAssignedIdMap = new WeakMap();
+		const globalEventListeners = new Map();
+		let exclusiveMode = null;
+		let multiModeConfig = null;
+		let currentActiveInstanceId = null;
+		let isSessionLocked = false;
+		let isSessionDenied = false;
+		let lastAcceptedData = null;
+		function isMultiModeActive() {
+			if (typeof multiModeConfig === "boolean") return multiModeConfig;
+			try {
+				if ((typeof getIframeCount === "function" ? getIframeCount() : typeof document !== "undefined" ? document.querySelectorAll("iframe").length : 0) <= 1 && instances.size <= 1) return false;
+			} catch {}
+			return instances.size > 1;
+		}
+		function getLatestActiveInstanceId() {
+			if (currentActiveInstanceId && (instances.has(currentActiveInstanceId) || parentAdaptersMap.has(currentActiveInstanceId))) return currentActiveInstanceId;
+			if (parentAdaptersMap.size > 0) {
+				currentActiveInstanceId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
+				return currentActiveInstanceId;
+			}
+			let latestId = null;
+			let latestTime = -1;
+			for (const [id, item] of instances.entries()) {
+				const seen = item.lastSeen || 0;
+				if (seen > latestTime) {
+					latestTime = seen;
+					latestId = id;
+				}
+			}
+			currentActiveInstanceId = latestId || Array.from(instances.keys())[instances.size - 1] || null;
+			return currentActiveInstanceId;
+		}
+		function broadcastToPorts(payload, excludeInstanceId = null) {
+			for (const [id, item] of instances.entries()) {
+				if (id === excludeInstanceId) continue;
+				try {
+					item.port?.postMessage(payload);
+				} catch {}
+			}
+		}
+		function notifyMediaCountChange() {
+			const activeInstances = Array.from(instances.entries()).map(([id, item]) => ({
+				instanceId: id,
+				location: item.location,
+				note: item.note,
+				mediaType: item.mediaType
+			}));
+			const count = activeInstances.length;
+			let payload = null;
+			if (count > 1) {
+				payload = {
+					type: `${ns}multipleMediaDetected`,
+					source: "parent",
+					count,
+					instances: activeInstances
+				};
+				debug(`%c[SRemote:signal] Emit -> multipleMediaDetected (source: parent)`, "color: #06b6d4;", payload);
+			} else if (count === 1) {
+				payload = {
+					type: `${ns}singleMediaDetected`,
+					source: "parent",
+					count: 1,
+					instance: activeInstances[0]
+				};
+				debug(`%c[SRemote:signal] Emit -> singleMediaDetected (source: parent)`, "color: #06b6d4;", payload);
+			}
+			if (payload) {
+				if (typeof onSignal === "function") try {
+					onSignal(payload);
+				} catch (e) {
+					warn("[sremote] Error in onSignal callback:", e);
+				}
+				else if (typeof window !== "undefined" && typeof window.postMessage === "function") window.postMessage(payload, "*");
+			}
+		}
+		function emitGlobalEvent(event, payload = {}) {
+			const rawEv = String(event || "").toLowerCase();
+			const ev = rawEv.replace(/^sremote:/, "");
+			const fullEv = `sremote:${ev}`;
+			if ((ev === "accept" || rawEv === "accept") && payload?.instanceId) lastAcceptedData = payload;
+			else if ((ev === "disconnect" || rawEv === "disconnect") && payload?.instanceId && lastAcceptedData?.instanceId === payload.instanceId) lastAcceptedData = null;
+			const triggerHandlers = (targetMap) => {
+				if (!targetMap) return;
+				for (const fn of targetMap) try {
+					fn(payload);
+				} catch (e) {
+					warn("[sremote] Error in event listener:", e);
+				}
+			};
+			triggerHandlers(globalEventListeners.get(ev));
+			if (fullEv !== ev) triggerHandlers(globalEventListeners.get(fullEv));
+			const wildcardListeners = globalEventListeners.get("*");
+			if (wildcardListeners) {
+				const starPayload = typeof payload === "object" && payload !== null ? {
+					action: ev,
+					...payload
+				} : {
+					action: ev,
+					value: payload
+				};
+				for (const fn of wildcardListeners) try {
+					fn(starPayload);
+				} catch (e) {
+					warn("[sremote] Error in wildcard listener:", e);
+				}
+			}
+		}
+		function on(event, handler) {
+			if (typeof handler !== "function") return () => {};
+			const ev = String(event || "").toLowerCase().replace(/^sremote:/, "");
+			const fullEv = `sremote:${ev}`;
+			const addListener = (key) => {
+				if (!globalEventListeners.has(key)) globalEventListeners.set(key, new Set());
+				globalEventListeners.get(key).add(handler);
+			};
+			addListener(ev);
+			if (fullEv !== ev) addListener(fullEv);
+			if ((ev === "accept" || ev === "*") && lastAcceptedData && (instances.has(lastAcceptedData.instanceId) || parentAdaptersMap.has(lastAcceptedData.instanceId))) try {
+				const replayPayload = ev === "*" ? {
+					action: "accept",
+					...lastAcceptedData
+				} : lastAcceptedData;
+				setTimeout(() => {
+					try {
+						handler(replayPayload);
+					} catch {}
+				}, 0);
+			} catch {}
+			return () => off(event, handler);
+		}
+		function off(event, handler) {
+			const ev = String(event || "").toLowerCase().replace(/^sremote:/, "");
+			const fullEv = `sremote:${ev}`;
+			const removeListener = (key) => {
+				const set = globalEventListeners.get(key);
+				if (set) {
+					if (handler) set.delete(handler);
+					else globalEventListeners.delete(key);
+				}
+			};
+			removeListener(ev);
+			removeListener(fullEv);
+		}
+		function pauseOthersExcept(activeInstanceId) {
+			for (const [id, item] of instances.entries()) if (id !== activeInstanceId) try {
+				item.port?.postMessage({ type: `${ns}pause` });
+			} catch {}
+			for (const [id, ad] of parentAdaptersMap.entries()) if (id !== activeInstanceId) try {
+				ad.pause?.();
+			} catch {}
+		}
+		function removeInstance(instanceId, reason = "disconnected") {
+			const item = instances.get(instanceId);
+			if (!item) return;
+			log(`%c[SRemote:lifecycle] Instance removed: ${instanceId} (reason: ${reason})`, "color: #ef4444; font-weight: bold;");
+			try {
+				item.port?.close();
+			} catch {}
+			instances.delete(instanceId);
+			if (currentActiveInstanceId === instanceId) currentActiveInstanceId = null;
+			notifyMediaCountChange();
+			emitGlobalEvent("disconnect", {
+				instanceId,
+				reason
+			});
+		}
+		function handleUseAdapter(adapterVal, instanceId = null) {
+			if (!adapterVal || typeof adapterVal !== "object") return null;
+			const targetId = instanceId || generateInstanceId$1("adapter");
+			if (!isMultiModeActive() && parentAdaptersMap.size > 0) {
+				for (const oldId of Array.from(parentAdaptersMap.keys())) if (oldId !== targetId) {
+					log(`%c[SRemote:adapter] Replacing stale adapter in Single Mode: ${oldId} -> ${targetId}`, "color: #f59e0b;");
+					parentAdaptersMap.delete(oldId);
+				}
+			}
+			const adapter = wrapCustomAdapter(adapterVal, {
+				instanceId: targetId,
+				source: "adapter",
+				onEmit: (ev, fullPayload) => {
+					if (ev === "play" || ev === "playing") {
+						currentActiveInstanceId = targetId;
+						if (exclusiveMode === "auto" || exclusiveMode === true) pauseOthersExcept(targetId);
+					}
+					emitGlobalEvent(ev, fullPayload);
+				}
+			});
+			parentAdaptersMap.set(targetId, adapter);
+			currentActiveInstanceId = targetId;
+			log(`%c[SRemote:adapter] Registered custom adapter for instance '${targetId}'`, "color: #06b6d4; font-weight: bold;");
+			emitGlobalEvent("accept", {
+				source: "adapter",
+				instanceId: targetId,
+				mediaType: "adapter",
+				location: typeof location !== "undefined" ? location.href : "",
+				origin: typeof location !== "undefined" ? location.origin : ""
+			});
+			return targetId;
+		}
+		function handleRemoveAdapter(instanceId = null) {
+			if (instanceId) {
+				const deleted = parentAdaptersMap.delete(instanceId);
+				if (deleted && currentActiveInstanceId === instanceId) currentActiveInstanceId = null;
+				return deleted;
+			}
+			parentAdaptersMap.clear();
+			currentActiveInstanceId = null;
+			return true;
+		}
+		function getCustomAdapter(instanceId = null) {
+			if (instanceId) return parentAdaptersMap.get(instanceId) || null;
+			if (parentAdaptersMap.size === 1) return Array.from(parentAdaptersMap.values())[0] || null;
+			return parentAdaptersMap.get(currentActiveInstanceId) || Array.from(parentAdaptersMap.values())[0] || null;
+		}
+		return {
+			instances,
+			parentAdaptersMap,
+			assignedIframeIdMap,
+			iframeToAssignedIdMap,
+			globalEventListeners,
+			get exclusiveMode() {
+				return exclusiveMode;
+			},
+			setExclusiveMode: (mode) => {
+				exclusiveMode = mode;
+			},
+			get multiModeConfig() {
+				return multiModeConfig;
+			},
+			setMultiModeConfig: (mode) => {
+				multiModeConfig = mode;
+			},
+			get currentActiveInstanceId() {
+				return currentActiveInstanceId;
+			},
+			setCurrentActiveInstanceId: (id) => {
+				currentActiveInstanceId = id;
+			},
+			get isSessionLocked() {
+				return isSessionLocked;
+			},
+			setSessionLocked: (locked) => {
+				isSessionLocked = locked;
+			},
+			get isSessionDenied() {
+				return isSessionDenied;
+			},
+			setSessionDenied: (denied) => {
+				isSessionDenied = denied;
+			},
+			get lastAcceptedData() {
+				return lastAcceptedData;
+			},
+			isMultiModeActive,
+			getLatestActiveInstanceId,
+			broadcastToPorts,
+			notifyMediaCountChange,
+			emitGlobalEvent,
+			on,
+			off,
+			pauseOthersExcept,
+			removeInstance,
+			handleUseAdapter,
+			handleRemoveAdapter,
+			getCustomAdapter
+		};
+	}
+	var VERSION = "3.0.0";
 	var NS = "sremote:";
 	var console_log = console.log.bind(console);
 	var console_debug = console.debug.bind(console);
@@ -436,8 +1072,6 @@
 					}
 					return true;
 				case "speed":
-				case "rate":
-				case "playbackrate":
 					if (!isPureGet && typeof adapter.setPlaybackRate === "function") await adapter.setPlaybackRate(Number(value) || 1);
 					return true;
 				case "quality":
@@ -1108,7 +1742,7 @@
 			simulateStall: async (instanceId = null) => exportedApi.call("debug_simulateStall", {}, instanceId)
 		});
 	}
-	function createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM }) {
+	function createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker = null }) {
 		const { instances, parentAdaptersMap, assignedIframeIdMap, iframeToAssignedIdMap, globalEventListeners, isMultiModeActive, getLatestActiveInstanceId, pauseOthersExcept, handleUseAdapter, handleRemoveAdapter } = instanceManager;
 		const assignIframeId = (iframeOrSelector, customId) => {
 			if (!customId || typeof customId !== "string") return false;
@@ -1140,8 +1774,11 @@
 			}
 			const activeId = instanceManager.currentActiveInstanceId;
 			const targetId = instanceId || activeId || (instances.size === 1 ? Array.from(instances.keys())[0] : null);
-			if (!targetId) return null;
-			if (instances.has(targetId)) return instances.get(targetId).state || null;
+			if (instances.has(targetId)) {
+				const inst = instances.get(targetId);
+				if (inst.isTopMedia && inst.mediaElement) return extractMediaState(inst.mediaElement);
+				return inst.state || null;
+			}
 			if (parentAdaptersMap.has(targetId)) return extractMediaState(parentAdaptersMap.get(targetId));
 			return null;
 		};
@@ -1366,191 +2003,178 @@
 		const setIframeCSS = (css, instanceId, key) => rpcCall("setIframeCSS", { css: String(css || "") }, instanceId, key);
 		const getIframeCSS = (instanceId, key) => rpcCall("getIframeCSS", {}, instanceId, key);
 		const removeIframeCSS = (instanceId, key) => rpcCall("removeIframeCSS", {}, instanceId, key);
-		const exportedApi = {
-			play: (instanceId, key) => dispatchCommand("play", void 0, instanceId, key),
-			pause: (instanceId, key) => dispatchCommand("pause", void 0, instanceId, key),
-			toggle: (instanceId, key) => dispatchCommand("toggle", void 0, instanceId, key),
-			stop: (instanceId, key) => dispatchCommand("stop", void 0, instanceId, key),
-			seek: (offset, instanceId, key) => dispatchCommand("seek", offset, instanceId, key),
-			seekTo: (time, instanceId, key) => dispatchCommand("currentTime", time, instanceId, key),
-			volume: (vol, instanceId, key) => dispatchCommand("volume", vol, instanceId, key),
-			mute: (muted, instanceId, key) => dispatchCommand("muted", muted, instanceId, key),
-			rate: (rate, instanceId, key) => dispatchCommand("playbackRate", rate, instanceId, key),
-			playbackRate: (rate, instanceId, key) => dispatchCommand("playbackRate", rate, instanceId, key),
-			quality: (level, instanceId, key) => dispatchCommand("quality", level, instanceId, key),
-			getQualities: (instanceId, key) => {
-				const adapter = getCustomAdapter(instanceId, key);
-				return adapter && typeof adapter.getQualities === "function" ? adapter.getQualities() : [];
-			},
-			subtitle: (track, instanceId, key) => dispatchCommand("subtitle", track, instanceId, key),
-			getSubtitles: (instanceId, key) => {
-				const adapter = getCustomAdapter(instanceId, key);
-				return adapter && typeof adapter.getSubtitles === "function" ? adapter.getSubtitles() : [];
-			},
-			shuffle: (enable, instanceId, key) => dispatchCommand("shuffle", enable, instanceId, key),
-			repeat: (mode, instanceId, key) => dispatchCommand("repeat", mode, instanceId, key),
-			next: (instanceId, key) => dispatchCommand("next", void 0, instanceId, key),
-			previous: (instanceId, key) => dispatchCommand("previous", void 0, instanceId, key),
-			pip: (enable, instanceId, key) => {
-				const _instanceId = typeof enable === "string" ? enable : instanceId;
-				const _enabled = typeof enable === "boolean" ? enable : void 0;
-				return dispatchCommand(_enabled === true ? "enterpip" : _enabled === false ? "exitpip" : "pip", void 0, _instanceId, key);
-			},
-			load: (source, instanceId, key) => dispatchCommand("load", source, instanceId, key),
-			status: getStatus,
-			capabilities: getCapabilities,
-			instances: Object.freeze({
-				list: listInstances,
-				get: (instanceId, key) => getStatus(instanceId, key),
-				capabilities: (instanceId, key) => getCapabilities(instanceId, key),
-				getCapabilities: (instanceId, key) => getCapabilities(instanceId, key),
-				getIframe: getIframeElement,
-				assign: assignIframeId,
-				setMultiMode,
-				isMultiMode,
-				setExclusive,
-				query: queryInstances,
-				note: annotateInstances
-			}),
-			adapters: Object.freeze({
-				register: registerAdapter,
-				unregister: unregisterAdapter,
-				get: getCustomAdapter
-			}),
-			rpc: Object.freeze({
-				call: rpcCall,
-				postMessage: postWindowMessage,
-				onMessage: (handler, key) => exportedApi.on("iframe:message", handler, key)
-			}),
-			css: Object.freeze({
-				set: setIframeCSS,
-				get: getIframeCSS,
-				remove: removeIframeCSS
-			}),
-			bindMetadata: (meta, instanceId, key) => dispatchCommand("bindMetadata", meta, instanceId, key),
-			on: (event, handler, key) => {
-				if (!validateDomainAccess(key)) {
-					console_error("[SRemote:auth] Blocked on()! Valid Passkey is required.");
-					return () => {};
-				}
-				const ev = String(event || "").toLowerCase();
-				if (!globalEventListeners.has(ev)) globalEventListeners.set(ev, new Set());
-				globalEventListeners.get(ev).add(handler);
-				const lastAcceptedData = instanceManager.lastAcceptedData;
-				if ((ev === "accept" || ev === "*") && lastAcceptedData && (instances.has(lastAcceptedData.instanceId) || parentAdaptersMap.has(lastAcceptedData.instanceId))) try {
-					const payload = ev === "*" ? {
-						action: "accept",
-						...lastAcceptedData
-					} : lastAcceptedData;
-					setTimeout(() => {
-						try {
-							handler(payload);
-						} catch {}
-					}, 0);
-				} catch {}
-				return () => exportedApi.off(ev, handler);
-			},
-			off: (event, handler) => {
-				const ev = String(event || "").toLowerCase();
-				globalEventListeners.get(ev)?.delete(handler);
-			},
-			lock: () => {
-				instanceManager.setSessionLocked(true);
-				console_log(`%c[SRemote:lock] SRemote is now session-locked for this page`, "background: #0f172a; color: #38bdf8; font-weight: bold;");
-				return true;
-			},
-			hello: (options = {}, target = null) => {
-				let targetIframeWindow = target;
-				let providedKey = null;
-				let customCss = null;
-				let treatAlmostEndAsEnd = null;
-				if (options && typeof options === "object") {
-					if (typeof options.multiMode === "boolean" || options.multiMode === null) instanceManager.setMultiModeConfig(options.multiMode);
-					if (typeof options.treatAlmostEndAsEnd === "boolean") treatAlmostEndAsEnd = options.treatAlmostEndAsEnd;
-					if (!targetIframeWindow && options.target) targetIframeWindow = options.target;
-					if (options.key) providedKey = String(options.key).trim();
-					if (options.css && typeof options.css === "string") customCss = options.css;
-				}
-				if (!validateDomainAccess(providedKey)) {
-					console_error(`%c[SRemote:auth] Blocked hello() on locked domain '${location.hostname || "this_domain"}'! Valid Passkey is required in hello({ key: '...' }).`, "color: #ef4444; font-weight: bold;");
-					return false;
-				}
-				console_log(`%c[SRemote:auth] Access authorized for domain '${location.hostname}'`, "color: #10b981; font-weight: bold;");
-				const handshakeId = generateInstanceId("hs");
-				const handshakeToken = generateInstanceId("tok");
-				setHandshakeSecret(handshakeId, handshakeToken);
-				const nextSeq = (Number(Storage.get("sremote:hello_seq", 0)) || 0) + 1;
-				Storage.set("sremote:hello_seq", nextSeq);
-				Storage.set("sremote:latest_handshake", {
-					seq: nextSeq,
-					handshakeId,
-					handshakeToken,
-					parentOrigin: location.origin,
-					css: customCss,
-					...treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {},
-					timestamp: Date.now()
-				});
-				const createHelloPayload = (assignedInstanceId) => ({
-					type: `${NS}hello`,
-					source: "parent",
-					handshakeId,
-					handshakeToken,
-					seq: nextSeq,
-					...customCss ? { css: customCss } : {},
-					...treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {},
-					...assignedInstanceId ? { assignedInstanceId } : {}
-				});
-				console_log(`%c[SRemote:hello] Parent sending hello (seq: ${nextSeq}) ->`, "color: #38bdf8; font-weight: bold;", {
-					hasTarget: !!targetIframeWindow,
-					handshakeId,
-					seq: nextSeq,
-					hasCss: Boolean(customCss)
-				});
-				if (targetIframeWindow && typeof targetIframeWindow.postMessage === "function") {
-					try {
-						let assignedId = null;
-						try {
-							const iframes = document.querySelectorAll("iframe");
-							for (let i = 0; i < iframes.length; i++) if (iframes[i].contentWindow === targetIframeWindow) {
-								assignedId = iframes[i].getAttribute("data-sremote-id") || iframeToAssignedIdMap.get(iframes[i]) || null;
-								break;
-							}
-						} catch {}
-						targetIframeWindow.postMessage(createHelloPayload(assignedId), "*");
-					} catch (err) {
-						console_warn("[sremote] Error posting hello to target iframe:", err);
-					}
-					return;
-				}
-				try {
-					const iframes = document.querySelectorAll("iframe");
-					for (let i = 0; i < iframes.length; i++) try {
-						const ifr = iframes[i];
-						const assignedId = ifr.getAttribute("data-sremote-id") || iframeToAssignedIdMap.get(ifr) || null;
-						ifr.contentWindow?.postMessage(createHelloPayload(assignedId), "*");
-					} catch {}
-				} catch {}
-				try {
-					for (let i = 0; i < window.frames.length; i++) try {
-						window.frames[i].postMessage(createHelloPayload(null), "*");
-					} catch {}
-				} catch {}
-			}
+		const getQualities = (instanceId, key) => {
+			const adapter = getCustomAdapter(instanceId, key);
+			return adapter && typeof adapter.getQualities === "function" ? adapter.getQualities() : [];
 		};
-		exportedApi.debug = createParentDebugApi({
+		const getSubtitles = (instanceId, key) => {
+			const adapter = getCustomAdapter(instanceId, key);
+			return adapter && typeof adapter.getSubtitles === "function" ? adapter.getSubtitles() : [];
+		};
+		const onEvent = (event, handler, key) => {
+			if (!validateDomainAccess(key)) {
+				console_error("[SRemote:auth] Blocked on()! Valid Passkey is required.");
+				return () => {};
+			}
+			const ev = String(event || "").toLowerCase();
+			if (!globalEventListeners.has(ev)) globalEventListeners.set(ev, new Set());
+			globalEventListeners.get(ev).add(handler);
+			const lastAcceptedData = instanceManager.lastAcceptedData;
+			if ((ev === "accept" || ev === "*") && lastAcceptedData && (instances.has(lastAcceptedData.instanceId) || parentAdaptersMap.has(lastAcceptedData.instanceId))) try {
+				const payload = ev === "*" ? {
+					action: "accept",
+					...lastAcceptedData
+				} : lastAcceptedData;
+				setTimeout(() => {
+					try {
+						handler(payload);
+					} catch {}
+				}, 0);
+			} catch {}
+			return () => offEvent(ev, handler);
+		};
+		const offEvent = (event, handler) => {
+			const ev = String(event || "").toLowerCase();
+			globalEventListeners.get(ev)?.delete(handler);
+		};
+		const lockSession = () => {
+			instanceManager.setSessionLocked(true);
+			console_log(`%c[SRemote:lock] SRemote is now session-locked for this page`, "background: #0f172a; color: #38bdf8; font-weight: bold;");
+			return true;
+		};
+		const broadcastHello = (options = {}, target = null) => {
+			let targetIframeWindow = target;
+			let providedKey = null;
+			let customCss = null;
+			let treatAlmostEndAsEnd = null;
+			if (options && typeof options === "object") {
+				if (typeof options.multiMode === "boolean" || options.multiMode === null) instanceManager.setMultiModeConfig(options.multiMode);
+				if (typeof options.treatAlmostEndAsEnd === "boolean") treatAlmostEndAsEnd = options.treatAlmostEndAsEnd;
+				if (!targetIframeWindow && options.target) targetIframeWindow = options.target;
+				if (options.key) providedKey = String(options.key).trim();
+				if (options.css && typeof options.css === "string") customCss = options.css;
+				if (typeof options.trackParent === "boolean" && topMediaTracker) {
+					if (options.trackParent) topMediaTracker.start();
+					else topMediaTracker.stop();
+				}
+			}
+			if (!validateDomainAccess(providedKey)) {
+				console_error(`%c[SRemote:auth] Blocked hello() on locked domain '${location.hostname || "this_domain"}'! Valid Passkey is required in hello({ key: '...' }).`, "color: #ef4444; font-weight: bold;");
+				return false;
+			}
+			console_log(`%c[SRemote:auth] Access authorized for domain '${location.hostname}'`, "color: #10b981; font-weight: bold;");
+			const handshakeId = generateInstanceId("hs");
+			const handshakeToken = generateInstanceId("tok");
+			setHandshakeSecret(handshakeId, handshakeToken);
+			const nextSeq = (Number(Storage.get("sremote:hello_seq", 0)) || 0) + 1;
+			Storage.set("sremote:hello_seq", nextSeq);
+			Storage.set("sremote:latest_handshake", {
+				seq: nextSeq,
+				handshakeId,
+				handshakeToken,
+				parentOrigin: location.origin,
+				css: customCss,
+				...treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {},
+				timestamp: Date.now()
+			});
+			const createHelloPayload = (assignedInstanceId) => ({
+				type: `${NS}hello`,
+				source: "parent",
+				handshakeId,
+				handshakeToken,
+				seq: nextSeq,
+				...customCss ? { css: customCss } : {},
+				...treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {},
+				...assignedInstanceId ? { assignedInstanceId } : {}
+			});
+			console_log(`%c[SRemote:hello] Parent sending hello (seq: ${nextSeq}) ->`, "color: #38bdf8; font-weight: bold;", {
+				hasTarget: !!targetIframeWindow,
+				handshakeId,
+				seq: nextSeq,
+				hasCss: Boolean(customCss)
+			});
+			if (targetIframeWindow && typeof targetIframeWindow.postMessage === "function") {
+				try {
+					let assignedId = null;
+					try {
+						const iframes = document.querySelectorAll("iframe");
+						for (let i = 0; i < iframes.length; i++) if (iframes[i].contentWindow === targetIframeWindow) {
+							assignedId = iframes[i].getAttribute("data-sremote-id") || iframeToAssignedIdMap.get(iframes[i]) || null;
+							break;
+						}
+					} catch {}
+					targetIframeWindow.postMessage(createHelloPayload(assignedId), "*");
+				} catch (err) {
+					console_warn("[sremote] Error posting hello to target iframe:", err);
+				}
+				return;
+			}
+			try {
+				const iframes = document.querySelectorAll("iframe");
+				for (let i = 0; i < iframes.length; i++) try {
+					const ifr = iframes[i];
+					const assignedId = ifr.getAttribute("data-sremote-id") || iframeToAssignedIdMap.get(ifr) || null;
+					ifr.contentWindow?.postMessage(createHelloPayload(assignedId), "*");
+				} catch {}
+			} catch {}
+			try {
+				for (let i = 0; i < window.frames.length; i++) try {
+					window.frames[i].postMessage(createHelloPayload(null), "*");
+				} catch {}
+			} catch {}
+		};
+		let exportedApi;
+		const debugApi = createParentDebugApi({
 			instances,
 			currentActiveInstanceIdGetter: () => instanceManager.currentActiveInstanceId,
 			assignedIframeIdMap,
 			iframeToAssignedIdMap,
 			dispatchCommand,
-			exportedApi
+			get exportedApi() {
+				return exportedApi;
+			}
 		});
-		exportedApi.isDummy = false;
-		exportedApi.isSremoteNative = true;
-		try {
-			exportedApi[Symbol.for("__sremote_native__")] = true;
-		} catch {}
-		Object.freeze(exportedApi);
+		exportedApi = buildSRemoteApi({
+			dispatchCommand,
+			handlers: {
+				getStatus,
+				getCapabilities,
+				getQualities,
+				getSubtitles,
+				listInstances,
+				getIframeElement,
+				assignIframeId,
+				setMultiMode,
+				isMultiMode,
+				setExclusive,
+				queryInstances,
+				annotateInstances,
+				registerAdapter,
+				unregisterAdapter,
+				getCustomAdapter,
+				rpcCall,
+				postWindowMessage,
+				onRpcMessage: (handler, key) => exportedApi.on("iframe:message", handler, key),
+				setIframeCSS,
+				getIframeCSS,
+				removeIframeCSS
+			},
+			eventsManager: {
+				on: onEvent,
+				off: offEvent
+			},
+			lifecycleHandlers: {
+				hello: broadcastHello,
+				lock: lockSession,
+				bindMetadata: (meta, instanceId, key) => dispatchCommand("bindMetadata", meta, instanceId, key)
+			},
+			debugApi,
+			customExtensions: {
+				isDummy: false,
+				isSremoteNative: true,
+				[Symbol.for("__sremote_native__")]: true
+			}
+		});
 		try {
 			Object.defineProperty(pageWindow, "sremote", {
 				value: exportedApi,
@@ -1561,218 +2185,29 @@
 		} catch {
 			pageWindow.sremote = exportedApi;
 		}
-		console_log(`%c[sremote] window.sremote is ready with decluttered namespaces`, "background: #065f46; color: #34d399; font-weight: bold;");
+		console_log(`%c[sremote] window.sremote is ready with unified builder`, "background: #065f46; color: #34d399; font-weight: bold;");
 		return exportedApi;
 	}
-	function createInstanceManager() {
-		const instances = new Map();
-		const parentAdaptersMap = new Map();
-		const assignedIframeIdMap = new Map();
-		const iframeToAssignedIdMap = new WeakMap();
-		const globalEventListeners = new Map();
-		let exclusiveMode = null;
-		let multiModeConfig = null;
-		let currentActiveInstanceId = null;
-		let isSessionLocked = false;
-		let isSessionDenied = false;
-		let lastAcceptedData = null;
-		function isMultiModeActive() {
-			if (typeof multiModeConfig === "boolean") return multiModeConfig;
-			try {
-				if (document.querySelectorAll("iframe").length <= 1 && instances.size <= 1) return false;
-			} catch {}
-			return instances.size > 1;
-		}
-		function getLatestActiveInstanceId() {
-			if (currentActiveInstanceId && (instances.has(currentActiveInstanceId) || parentAdaptersMap.has(currentActiveInstanceId))) return currentActiveInstanceId;
-			if (parentAdaptersMap.size > 0) {
-				currentActiveInstanceId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
-				return currentActiveInstanceId;
-			}
-			let latestId = null;
-			let latestTime = -1;
-			for (const [id, item] of instances.entries()) {
-				const seen = item.lastSeen || 0;
-				if (seen > latestTime) {
-					latestTime = seen;
-					latestId = id;
-				}
-			}
-			currentActiveInstanceId = latestId || Array.from(instances.keys())[instances.size - 1] || null;
-			return currentActiveInstanceId;
-		}
-		function broadcastToPorts(payload, excludeInstanceId = null) {
-			for (const [id, item] of instances.entries()) {
-				if (id === excludeInstanceId) continue;
+	function createInstanceManager(customOptions = {}) {
+		return createInstanceManager$1({
+			ns: NS,
+			logger: {
+				log: console_log,
+				debug: console_debug,
+				warn: console_warn
+			},
+			onSignal: (payload) => {
+				window.postMessage(payload, "*");
+			},
+			getIframeCount: () => {
 				try {
-					item.port?.postMessage(payload);
-				} catch {}
-			}
-		}
-		function notifyMediaCountChange() {
-			const activeInstances = Array.from(instances.entries()).map(([id, item]) => ({
-				instanceId: id,
-				location: item.location,
-				note: item.note,
-				mediaType: item.mediaType
-			}));
-			const count = activeInstances.length;
-			if (count > 1) {
-				const payload = {
-					type: `${NS}multipleMediaDetected`,
-					source: "parent",
-					count,
-					instances: activeInstances
-				};
-				console_debug(`%c[SRemote:signal] Emit -> multipleMediaDetected (source: parent)`, "color: #06b6d4;", payload);
-				window.postMessage(payload, "*");
-			} else if (count === 1) {
-				const payload = {
-					type: `${NS}singleMediaDetected`,
-					source: "parent",
-					count: 1,
-					instance: activeInstances[0]
-				};
-				console_debug(`%c[SRemote:signal] Emit -> singleMediaDetected (source: parent)`, "color: #06b6d4;", payload);
-				window.postMessage(payload, "*");
-			}
-		}
-		function emitGlobalEvent(event, payload = {}) {
-			const ev = String(event || "").toLowerCase();
-			if (ev === "accept" && payload?.instanceId) lastAcceptedData = payload;
-			else if (ev === "disconnect" && payload?.instanceId && lastAcceptedData?.instanceId === payload.instanceId) lastAcceptedData = null;
-			const specificListeners = globalEventListeners.get(ev);
-			if (specificListeners) for (const fn of specificListeners) try {
-				fn(payload);
-			} catch (e) {
-				console.warn("[sremote] Error in event listener:", e);
-			}
-			const wildcardListeners = globalEventListeners.get("*");
-			if (wildcardListeners) {
-				const starPayload = typeof payload === "object" && payload !== null ? {
-					action: ev,
-					...payload
-				} : {
-					action: ev,
-					value: payload
-				};
-				for (const fn of wildcardListeners) try {
-					fn(starPayload);
-				} catch (e) {
-					console.warn("[sremote] Error in wildcard listener:", e);
+					return document.querySelectorAll("iframe").length;
+				} catch {
+					return 0;
 				}
-			}
-		}
-		function pauseOthersExcept(activeInstanceId) {
-			for (const [id, item] of instances.entries()) if (id !== activeInstanceId) try {
-				item.port?.postMessage({ type: `${NS}pause` });
-			} catch {}
-		}
-		function removeInstance(instanceId, reason = "disconnected") {
-			const item = instances.get(instanceId);
-			if (!item) return;
-			console_log(`%c[SRemote:lifecycle] Instance removed: ${instanceId} (reason: ${reason})`, "color: #ef4444; font-weight: bold;");
-			try {
-				item.port?.close();
-			} catch {}
-			instances.delete(instanceId);
-			if (currentActiveInstanceId === instanceId) currentActiveInstanceId = null;
-			notifyMediaCountChange();
-			emitGlobalEvent("disconnect", {
-				instanceId,
-				reason
-			});
-		}
-		function handleUseAdapter(adapterVal, instanceId = null) {
-			if (!adapterVal || typeof adapterVal !== "object") return null;
-			const targetId = instanceId || generateInstanceId("adapter");
-			if (!isMultiModeActive() && parentAdaptersMap.size > 0) {
-				for (const oldId of Array.from(parentAdaptersMap.keys())) if (oldId !== targetId) {
-					console_log(`%c[SRemote:adapter] Replacing stale adapter in Single Mode: ${oldId} -> ${targetId}`, "color: #f59e0b;");
-					parentAdaptersMap.delete(oldId);
-				}
-			}
-			const adapter = wrapCustomAdapter(adapterVal, {
-				instanceId: targetId,
-				source: "adapter",
-				onEmit: (ev, fullPayload) => {
-					if (ev === "play" || ev === "playing") {
-						if (exclusiveMode === "auto") pauseOthersExcept(targetId);
-					}
-					emitGlobalEvent(ev, fullPayload);
-				}
-			});
-			parentAdaptersMap.set(targetId, adapter);
-			currentActiveInstanceId = targetId;
-			console_log(`%c[SRemote:adapter] Registered custom adapter for instance '${targetId}'`, "color: #06b6d4; font-weight: bold;");
-			emitGlobalEvent("accept", {
-				source: "adapter",
-				instanceId: targetId,
-				mediaType: "adapter",
-				location: location.href,
-				origin: location.origin
-			});
-			return targetId;
-		}
-		function handleRemoveAdapter(instanceId = null) {
-			if (instanceId) {
-				const deleted = parentAdaptersMap.delete(instanceId);
-				if (deleted && currentActiveInstanceId === instanceId) currentActiveInstanceId = null;
-				return deleted;
-			}
-			parentAdaptersMap.clear();
-			currentActiveInstanceId = null;
-			return true;
-		}
-		return {
-			instances,
-			parentAdaptersMap,
-			assignedIframeIdMap,
-			iframeToAssignedIdMap,
-			globalEventListeners,
-			get exclusiveMode() {
-				return exclusiveMode;
 			},
-			setExclusiveMode: (mode) => {
-				exclusiveMode = mode;
-			},
-			get multiModeConfig() {
-				return multiModeConfig;
-			},
-			setMultiModeConfig: (mode) => {
-				multiModeConfig = mode;
-			},
-			get currentActiveInstanceId() {
-				return currentActiveInstanceId;
-			},
-			setCurrentActiveInstanceId: (id) => {
-				currentActiveInstanceId = id;
-			},
-			get isSessionLocked() {
-				return isSessionLocked;
-			},
-			setSessionLocked: (locked) => {
-				isSessionLocked = locked;
-			},
-			get isSessionDenied() {
-				return isSessionDenied;
-			},
-			setSessionDenied: (denied) => {
-				isSessionDenied = denied;
-			},
-			get lastAcceptedData() {
-				return lastAcceptedData;
-			},
-			isMultiModeActive,
-			getLatestActiveInstanceId,
-			broadcastToPorts,
-			notifyMediaCountChange,
-			emitGlobalEvent,
-			pauseOthersExcept,
-			removeInstance,
-			handleUseAdapter,
-			handleRemoveAdapter
-		};
+			...customOptions
+		});
 	}
 	var activePermissionHost = null;
 	function createPermissionDialog({ origin, onDecision, isTop = false }) {
@@ -2170,6 +2605,131 @@
 			}
 		};
 	}
+	function setupTopMediaTracker(instanceManager, options = {}) {
+		if (typeof document === "undefined") return {
+			destroy: () => {},
+			topMediaElementsMap: new Map()
+		};
+		const { instances, emitGlobalEvent, notifyMediaCountChange, pauseOthersExcept } = instanceManager;
+		const trackedElements = new WeakSet();
+		const unbindFns = new Map();
+		const topMediaElementsMap = new Map();
+		function trackElement(mediaEl) {
+			if (!mediaEl || trackedElements.has(mediaEl)) return;
+			trackedElements.add(mediaEl);
+			const customId = mediaEl.id || mediaEl.getAttribute("data-sremote-id") || generateInstanceId("top_media");
+			const mediaType = mediaEl.tagName ? mediaEl.tagName.toLowerCase() : "video";
+			const initialCapabilities = evaluateCapabilities(mediaEl);
+			const initialState = extractMediaState(mediaEl);
+			const instanceInfo = {
+				instanceId: customId,
+				location: typeof location !== "undefined" ? location.href : "",
+				origin: typeof location !== "undefined" ? location.origin : "",
+				note: "Top DOM Media",
+				mediaType,
+				capabilities: initialCapabilities,
+				state: initialState,
+				status: "ready",
+				lastSeen: Date.now(),
+				isTopMedia: true,
+				mediaElement: mediaEl
+			};
+			instances.set(customId, instanceInfo);
+			topMediaElementsMap.set(customId, mediaEl);
+			console_log(`%c[SRemote:top-dom] Registered top-level <${mediaType}> instance: ${customId}`, "color: #10b981; font-weight: bold;");
+			const unbind = bindMediaEvents(mediaEl, (evtName, payload) => {
+				instanceInfo.lastSeen = Date.now();
+				if (payload?.state) instanceInfo.state = payload.state;
+				if (evtName === "play" || evtName === "playing") {
+					instanceManager.currentActiveInstanceId = customId;
+					if (instanceManager.exclusiveMode === "auto") pauseOthersExcept(customId);
+				}
+				emitGlobalEvent(evtName, payload);
+			}, {
+				instanceId: customId,
+				source: "top-dom",
+				mediaType
+			});
+			unbindFns.set(customId, unbind);
+			notifyMediaCountChange();
+			emitGlobalEvent("accept", {
+				source: "top-dom",
+				instanceId: customId,
+				mediaType,
+				location: location.href,
+				origin: location.origin
+			});
+		}
+		function untrackElement(customId) {
+			const unbind = unbindFns.get(customId);
+			if (unbind) {
+				try {
+					unbind();
+				} catch {}
+				unbindFns.delete(customId);
+			}
+			topMediaElementsMap.delete(customId);
+			if (instances.has(customId)) instanceManager.removeInstance(customId, "dom-removed");
+		}
+		let isTracking = false;
+		let observer = null;
+		function start() {
+			if (isTracking) return;
+			isTracking = true;
+			try {
+				const mediaEls = document.querySelectorAll("video, audio");
+				for (const el of mediaEls) trackElement(el);
+			} catch {}
+			if (typeof MutationObserver !== "undefined" && !observer) {
+				observer = new MutationObserver((mutations) => {
+					if (!isTracking) return;
+					for (const m of mutations) {
+						for (const node of m.addedNodes) if (node.nodeType === 1) {
+							if (node.tagName === "VIDEO" || node.tagName === "AUDIO") trackElement(node);
+							else if (node.querySelectorAll) {
+								const nested = node.querySelectorAll("video, audio");
+								for (const n of nested) trackElement(n);
+							}
+						}
+						for (const node of m.removedNodes) if (node.nodeType === 1) {
+							for (const [id, el] of topMediaElementsMap.entries()) if (el === node || node.contains && node.contains(el)) untrackElement(id);
+						}
+					}
+				});
+				try {
+					observer.observe(document.documentElement || document.body, {
+						childList: true,
+						subtree: true
+					});
+				} catch {}
+			}
+		}
+		function stop() {
+			if (!isTracking) return;
+			isTracking = false;
+			if (observer) {
+				try {
+					observer.disconnect();
+				} catch {}
+				observer = null;
+			}
+			for (const id of Array.from(topMediaElementsMap.keys())) untrackElement(id);
+		}
+		function destroy() {
+			stop();
+			trackedElements.clear?.();
+		}
+		if (options.autoStart === true) start();
+		return {
+			start,
+			stop,
+			destroy,
+			get isTracking() {
+				return isTracking;
+			},
+			topMediaElementsMap
+		};
+	}
 	function initParentController() {
 		const currentOrigin = location.origin;
 		const { allowKey, denyKey, hideBadgeKey } = getOriginStorageKeys(currentOrigin);
@@ -2199,6 +2759,7 @@
 		Storage.set("sremote:parent_origin", location.origin);
 		const instanceManager = createInstanceManager();
 		const { instances, parentAdaptersMap, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts, removeInstance } = instanceManager;
+		const topMediaTracker = setupTopMediaTracker(instanceManager);
 		function validateDomainAccess(providedKey = null) {
 			if (providedKey === "__DEBUG_BYPASS__") return true;
 			const hostDomain = location.hostname || "this_domain";
@@ -2232,6 +2793,65 @@
 			if (!targetId || !parentAdaptersMap.has(targetId)) return false;
 			return executeAdapterAction(parentAdaptersMap.get(targetId), action, value);
 		}
+		async function executeTopMediaAction(mediaEl, action, value) {
+			if (!mediaEl) return false;
+			const norm = String(action || "").toLowerCase();
+			try {
+				switch (norm) {
+					case "play":
+						await mediaEl.play?.();
+						return true;
+					case "pause":
+						mediaEl.pause?.();
+						return true;
+					case "toggle":
+						if (mediaEl.paused) await mediaEl.play?.();
+						else mediaEl.pause?.();
+						return true;
+					case "stop":
+						mediaEl.pause?.();
+						mediaEl.currentTime = 0;
+						return true;
+					case "seek":
+						if (value !== void 0 && value !== null) mediaEl.currentTime = Math.max(0, (mediaEl.currentTime || 0) + Number(value));
+						return true;
+					case "currenttime":
+					case "seekto":
+						if (value !== void 0 && value !== null) mediaEl.currentTime = Math.max(0, Number(value));
+						return true;
+					case "volume":
+						if (value !== void 0 && value !== null) {
+							mediaEl.volume = Math.max(0, Math.min(1, Number(value)));
+							mediaEl.muted = false;
+						}
+						return true;
+					case "muted":
+					case "mute":
+						if (value !== void 0 && value !== null) mediaEl.muted = Boolean(value);
+						return true;
+					case "speed":
+						if (value !== void 0 && value !== null) mediaEl.playbackRate = Number(value) || 1;
+						return true;
+					case "repeat":
+						if (value !== void 0 && value !== null) mediaEl.loop = value === true || value === "one";
+						return true;
+					case "pip":
+					case "enterpip":
+						if (typeof document !== "undefined") {
+							if (document.pictureInPictureElement === mediaEl) await document.exitPictureInPicture?.();
+							else if (mediaEl.requestPictureInPicture) await mediaEl.requestPictureInPicture();
+						}
+						return true;
+					case "exitpip":
+						if (typeof document !== "undefined" && document.pictureInPictureElement) await document.exitPictureInPicture?.();
+						return true;
+					default: return false;
+				}
+			} catch (e) {
+				console_warn(`[sremote] Error executing top media action '${action}':`, e);
+				return false;
+			}
+		}
 		function dispatchCommand(action, value, targetInstanceId = null, key = null) {
 			if (!validateDomainAccess(key)) {
 				console_error(`%c${`[SRemote:auth] Blocked command '${action}'! Valid Passkey is required.`}`, "color: #ef4444; font-weight: bold;");
@@ -2262,6 +2882,12 @@
 					action
 				});
 			}
+			if (target?.isTopMedia && target.mediaElement) return executeTopMediaAction(target.mediaElement, action, value).then((ok) => ({
+				success: ok,
+				instanceId: targetId,
+				source: "top-dom",
+				action
+			}));
 			if (isMultiModeActive() && instances.size > 1 && !targetInstanceId) {
 				emitWhereIsInstanceIdError(action);
 				return Promise.resolve({
@@ -2277,6 +2903,7 @@
 					source: "parent",
 					value
 				});
+				for (const item of instances.values()) if (item.isTopMedia && item.mediaElement) executeTopMediaAction(item.mediaElement, action, value);
 				return Promise.resolve({
 					success: true,
 					instanceId: "all",
@@ -2345,7 +2972,8 @@
 			instanceManager,
 			dispatchCommand,
 			validateDomainAccess,
-			queryMediaInstancesViaGM
+			queryMediaInstancesViaGM,
+			topMediaTracker
 		});
 	}
 	var BADGE_CSS = `${theme_default}\n${styles_default}`;
@@ -2957,7 +3585,7 @@
 						}
 						resVal = safeGetProp(activeMedia, descriptors.muted, "muted");
 						break;
-					case "playbackrate":
+					case "speed":
 						if (!isPureGet && value !== void 0) safeSetProp(activeMedia, descriptors.playbackRate, "playbackRate", Number(value) || 1);
 						resVal = safeGetProp(activeMedia, descriptors.playbackRate, "playbackRate");
 						break;
