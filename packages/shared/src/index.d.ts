@@ -189,6 +189,7 @@ export declare const LOG_LEVELS: { readonly INHERIT: -1; readonly SILENT: 0; rea
 
 export interface Logger {
   readonly level: number;
+  setLevel: (level: number) => void;
   log: (...args: any[]) => void;
   debug: (...args: any[]) => void;
   warn: (...args: any[]) => void;

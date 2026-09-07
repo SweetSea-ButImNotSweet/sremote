@@ -10,7 +10,11 @@ export default defineConfig(({ command }) => {
   return {
     root: import.meta.dirname,
     resolve: {
-      alias: { '@sremote/wrapper': path.resolve(import.meta.dirname, 'packages/wrapper/src/index.js'), '@sremote/shared': path.resolve(import.meta.dirname, 'packages/shared') },
+      alias: {
+        '@sremote/wrapper': path.resolve(import.meta.dirname, 'packages/wrapper/src/index.js'),
+        '@sremote/shared/src': path.resolve(import.meta.dirname, 'packages/shared/src'),
+        '@sremote/shared': path.resolve(import.meta.dirname, 'packages/shared/src/index.js'),
+      },
     },
     server: {
       open: false, // Prevents Windows spawn EPERM error

@@ -143,15 +143,29 @@ export class SRemoteClient {
     }
   }
 
+  syncLogLevelFromUserscript() {
+    if (this.userscriptDriver.isAvailable()) {
+      const api = this.userscriptDriver.getApi();
+      if (api && typeof api.logLevel === 'number' && api.logLevel >= 0) {
+        this.logger.setLevel(api.logLevel);
+      }
+    }
+  }
+
   async ready() {
     if (this._readyPromise) return this._readyPromise;
 
     this._readyPromise = new Promise(resolve => {
-      if (this.userscriptDriver.isAvailable()) {
+      const onConnected = reason => {
         this.mode = 'userscript';
-        this.logger.log('Userscript detected immediately. Mode: userscript');
+        this.syncLogLevelFromUserscript();
+        this.logger.log(reason);
         this.syncAdaptersToUserscript();
         resolve(this);
+      };
+
+      if (this.userscriptDriver.isAvailable()) {
+        onConnected('Userscript detected immediately. Mode: userscript');
         return;
       }
 
@@ -160,12 +174,9 @@ export class SRemoteClient {
       const onReadyEvent = () => {
         if (resolved) return;
         resolved = true;
-        this.mode = 'userscript';
-        this.logger.log("Received 'sremote:ready' event. Mode: userscript");
-        this.syncAdaptersToUserscript();
         window.removeEventListener('sremote:ready', onReadyEvent);
         clearTimeout(timer);
-        resolve(this);
+        onConnected("Received 'sremote:ready' event. Mode: userscript");
       };
 
       if (typeof window !== 'undefined') {
@@ -180,17 +191,16 @@ export class SRemoteClient {
         }
 
         if (this.userscriptDriver.isAvailable()) {
-          this.mode = 'userscript';
-          this.logger.log('Userscript detected after wait timeout. Mode: userscript');
-          this.syncAdaptersToUserscript();
+          onConnected('Userscript detected after wait timeout. Mode: userscript');
         } else if (this.options.fallbackToDom) {
           this.mode = 'dom-direct';
           this.logger.log('Userscript not detected. Falling back to Mode: dom-direct');
+          resolve(this);
         } else {
           this.mode = 'unsupported';
           this.logger.warn('Userscript not detected and DOM fallback disabled. Mode: unsupported');
+          resolve(this);
         }
-        resolve(this);
       }, this.options.timeout);
     });
 

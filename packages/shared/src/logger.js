@@ -86,12 +86,14 @@ const PREFIX_COLORS = {
 export function createLogger(options = {}) {
   const { prefix = 'sremote', level: staticLevel, getLevel, defaultLevel = LOG_LEVELS.ERROR } = options;
 
+  let currentLevel = staticLevel;
+
   const getEffectiveLevel = () => {
     if (typeof getLevel === 'function') {
       const dynamic = getLevel();
       if (typeof dynamic === 'number' && dynamic >= 0) return resolveLogLevel(dynamic, defaultLevel);
     }
-    return resolveLogLevel(staticLevel, defaultLevel);
+    return resolveLogLevel(currentLevel, defaultLevel);
   };
 
   const tag = `[SRemote:${prefix}]`;
@@ -101,6 +103,12 @@ export function createLogger(options = {}) {
   return {
     get level() {
       return getEffectiveLevel();
+    },
+
+    setLevel(newLevel) {
+      if (typeof newLevel === 'number') {
+        currentLevel = newLevel;
+      }
     },
 
     log(...args) {
