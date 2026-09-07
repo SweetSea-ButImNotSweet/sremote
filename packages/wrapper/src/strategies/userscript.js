@@ -147,24 +147,49 @@ export class UserscriptDriver extends BaseDriver {
   }
 
   getIframe(instanceId, key) {
-    return this._callOptional('instances.getIframe', null, instanceId, this.getPasskey(key));
+    const api = this.getApi();
+    const fn = api?.instances?.getIframe || api?.getIframe;
+    if (typeof fn === 'function') {
+      return fn.call(api?.instances || api, instanceId, this.getPasskey(key));
+    }
+    return null;
   }
 
   // --- Custom Adapter Management ---
   useAdapter(adapter, instanceId, key) {
-    return this._callOptional('adapters.register', null, adapter, instanceId, this.getPasskey(key));
+    const api = this.getApi();
+    const fn = api?.adapters?.register || api?.adapters?.useAdapter || api?.useAdapter;
+    if (typeof fn === 'function') {
+      return fn.call(api?.adapters || api, adapter, instanceId, this.getPasskey(key));
+    }
+    return null;
   }
 
   removeAdapter(instanceId, key) {
-    return this._callOptional('adapters.unregister', false, instanceId, this.getPasskey(key));
+    const api = this.getApi();
+    const fn = api?.adapters?.unregister || api?.adapters?.removeAdapter || api?.removeAdapter;
+    if (typeof fn === 'function') {
+      return fn.call(api?.adapters || api, instanceId, this.getPasskey(key));
+    }
+    return false;
   }
 
   getCustomAdapter(instanceId, key) {
-    return this._callOptional('adapters.get', null, instanceId, this.getPasskey(key));
+    const api = this.getApi();
+    const fn = api?.adapters?.get || api?.getCustomAdapter;
+    if (typeof fn === 'function') {
+      return fn.call(api?.adapters || api, instanceId, this.getPasskey(key));
+    }
+    return null;
   }
 
   list(key) {
-    return this._callOptional('instances.list', [], this.getPasskey(key));
+    const api = this.getApi();
+    const fn = api?.instances?.list || api?.list;
+    if (typeof fn === 'function') {
+      return fn.call(api?.instances || api, this.getPasskey(key)) || [];
+    }
+    return [];
   }
 
   status(instanceId, key) {
@@ -180,19 +205,45 @@ export class UserscriptDriver extends BaseDriver {
   }
 
   setMultiMode(mode, key) {
-    return this._callOptional('instances.setMultiMode', undefined, mode, this.getPasskey(key));
+    const api = this.getApi();
+    const fn = api?.instances?.setMultiMode || api?.setMultiMode;
+    if (typeof fn === 'function') {
+      return fn.call(api?.instances || api, mode, this.getPasskey(key));
+    }
   }
 
   isMultiMode(key) {
-    return this._callOptional('instances.isMultiMode', false, this.getPasskey(key));
+    const api = this.getApi();
+    const fn = api?.instances?.isMultiMode || api?.isMultiMode;
+    if (typeof fn === 'function') {
+      return Boolean(fn.call(api?.instances || api, this.getPasskey(key)));
+    }
+    return false;
   }
 
   setExclusive(mode, key) {
-    return this._callOptional('instances.setExclusive', undefined, mode, this.getPasskey(key));
+    const api = this.getApi();
+    const fn = api?.instances?.setExclusive || api?.setExclusive;
+    if (typeof fn === 'function') {
+      return fn.call(api?.instances || api, mode, this.getPasskey(key));
+    }
   }
 
   query(key) {
-    return this._callOptional('instances.query', [], this.getPasskey(key));
+    const api = this.getApi();
+    const fn = api?.instances?.query || api?.query;
+    if (typeof fn === 'function') {
+      return fn.call(api?.instances || api, this.getPasskey(key)) || [];
+    }
+    return [];
+  }
+
+  note(dict, key) {
+    const api = this.getApi();
+    const fn = api?.instances?.note || api?.note;
+    if (typeof fn === 'function') {
+      return fn.call(api?.instances || api, dict, this.getPasskey(key));
+    }
   }
 
   call(action, params, instanceId, key) {

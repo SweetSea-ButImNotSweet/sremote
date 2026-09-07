@@ -1,5 +1,6 @@
 import { BaseDriver } from './base.js';
 import { createInstanceManager, extractMediaState, createEventPayload, evaluateCapabilities, bindMediaEvents } from '@sremote/shared';
+import { resolveMediaElement, HtmlMediaController } from './dom-media.js';
 
 export class DomDriver extends BaseDriver {
   constructor(options = {}) {
@@ -139,98 +140,79 @@ export class DomDriver extends BaseDriver {
     return this.instanceManager.getCustomAdapter(instanceId);
   }
 
+  /**
+   * Helper to find a connected adapter, prioritizing an active ID if connected,
+   * otherwise falling back to the latest connected adapter in the registry.
+   * @private
+   */
+  _findConnectedAdapter(preferredId = null) {
+    const map = this.instanceManager.parentAdaptersMap;
+    if (map.size === 0) return null;
+
+    if (preferredId && map.has(preferredId)) {
+      const ad = map.get(preferredId);
+      const el = ad?.mediaElement || ad?.element;
+      if (!el || typeof el.isConnected === 'undefined' || el.isConnected) {
+        return { type: 'adapter', instance: ad, instanceId: preferredId };
+      }
+    }
+
+    const entries = Array.from(map.entries());
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const [id, ad] = entries[i];
+      const el = ad?.mediaElement || ad?.element;
+      if (!el || typeof el.isConnected === 'undefined' || el.isConnected) {
+        return { type: 'adapter', instance: ad, instanceId: id };
+      }
+    }
+
+    const latestEntry = entries[entries.length - 1];
+    return { type: 'adapter', instance: latestEntry[1], instanceId: latestEntry[0] };
+  }
+
   resolveTarget(target) {
-    if (typeof target === 'string' && this.instanceManager.parentAdaptersMap.has(target)) {
-      return { type: 'adapter', instance: this.instanceManager.parentAdaptersMap.get(target), instanceId: target };
+    const map = this.instanceManager.parentAdaptersMap;
+
+    // Explicit adapter instance ID match
+    if (typeof target === 'string' && map.has(target)) {
+      return { type: 'adapter', instance: map.get(target), instanceId: target };
     }
-    if (!target && this.instanceManager.parentAdaptersMap.size > 0) {
-      // Prioritize active instance if available and still exists
+
+    // Default target: Prioritize active/latest connected adapter
+    if (!target && map.size > 0) {
       const activeId = this.instanceManager.getLatestActiveInstanceId?.() || this.instanceManager.currentActiveInstanceId;
-      if (activeId && this.instanceManager.parentAdaptersMap.has(activeId)) {
-        const ad = this.instanceManager.parentAdaptersMap.get(activeId);
-        // Verify adapter element is not detached/stale if it has an element reference
-        const el = ad?.mediaElement || ad?.element;
-        if (!el || typeof el.isConnected === 'undefined' || el.isConnected) {
-          return { type: 'adapter', instance: ad, instanceId: activeId };
-        }
-      }
-
-      // If activeId is stale/detached or not found, find the most recently added connected adapter
-      const entries = Array.from(this.instanceManager.parentAdaptersMap.entries());
-      for (let i = entries.length - 1; i >= 0; i--) {
-        const [id, ad] = entries[i];
-        const el = ad?.mediaElement || ad?.element;
-        if (!el || typeof el.isConnected === 'undefined' || el.isConnected) {
-          return { type: 'adapter', instance: ad, instanceId: id };
-        }
-      }
-
-      // Fallback to the latest added entry if no element connectivity could be verified
-      const latestEntry = entries[entries.length - 1];
-      return { type: 'adapter', instance: latestEntry[1], instanceId: latestEntry[0] };
+      return this._findConnectedAdapter(activeId);
     }
+
+    // Direct DOM media match
     const el = this.resolveMediaElement(target);
     if (el) return { type: 'element', instance: el };
-    if (this.instanceManager.parentAdaptersMap.size > 0) {
+
+    // Fallback to adapter registry if selector didn't match DOM element
+    if (map.size > 0) {
       const activeId = this.instanceManager.getLatestActiveInstanceId?.() || this.instanceManager.currentActiveInstanceId;
-      if (activeId && this.instanceManager.parentAdaptersMap.has(activeId)) {
-        return { type: 'adapter', instance: this.instanceManager.parentAdaptersMap.get(activeId), instanceId: activeId };
-      }
-      const entries = Array.from(this.instanceManager.parentAdaptersMap.entries());
-      const latestEntry = entries[entries.length - 1];
-      return { type: 'adapter', instance: latestEntry[1], instanceId: latestEntry[0] };
+      return this._findConnectedAdapter(activeId);
     }
+
     return null;
   }
 
   resolveMediaElement(target) {
-    if (typeof document === 'undefined') return null;
-
-    if (!target) {
-      return document.querySelector('video, audio');
-    }
-
-    if (typeof target === 'string') {
-      const el = document.querySelector(target);
-      if (!el) return null;
-      if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') return el;
-      if (el.tagName === 'IFRAME') {
-        try {
-          return el.contentDocument?.querySelector('video, audio') || null;
-        } catch {
-          return null;
-        }
-      }
-      return el.querySelector('video, audio');
-    }
-
-    if (target.nodeType === 1) {
-      if (target.tagName === 'VIDEO' || target.tagName === 'AUDIO') return target;
-      if (target.tagName === 'IFRAME') {
-        try {
-          return target.contentDocument?.querySelector('video, audio') || null;
-        } catch {
-          return null;
-        }
-      }
-      return target.querySelector('video, audio');
-    }
-
-    return null;
+    return resolveMediaElement(target);
   }
 
   async play(target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') return resolved.instance.play?.();
-    return resolved.instance.play();
+    return HtmlMediaController.play(resolved.instance);
   }
 
   async pause(target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') return resolved.instance.pause?.();
-    resolved.instance.pause();
+    HtmlMediaController.pause(resolved.instance);
   }
 
   async toggle(target) {
@@ -241,18 +223,14 @@ export class DomDriver extends BaseDriver {
       const isPaused = typeof resolved.instance.paused === 'function' ? resolved.instance.paused() : resolved.instance.paused;
       return isPaused ? resolved.instance.play?.() : resolved.instance.pause?.();
     }
-    const el = resolved.instance;
-    if (el.paused) return el.play();
-    el.pause();
+    return HtmlMediaController.toggle(resolved.instance);
   }
 
   async stop(target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') return resolved.instance.stop?.();
-    const el = resolved.instance;
-    el.pause();
-    el.currentTime = 0;
+    HtmlMediaController.stop(resolved.instance);
   }
 
   async seek(offset, target) {
@@ -263,8 +241,7 @@ export class DomDriver extends BaseDriver {
       const cur = resolved.instance.getCurrentTime?.() || 0;
       return resolved.instance.setCurrentTime?.(cur + offset);
     }
-    const el = resolved.instance;
-    el.currentTime = Math.max(0, Math.min(el.duration || 0, el.currentTime + offset));
+    HtmlMediaController.seek(resolved.instance, offset);
   }
 
   async seekTo(time, target) {
@@ -274,46 +251,35 @@ export class DomDriver extends BaseDriver {
       if (typeof resolved.instance.seekTo === 'function') return resolved.instance.seekTo(time);
       return resolved.instance.setCurrentTime?.(time);
     }
-    const el = resolved.instance;
-    el.currentTime = Math.max(0, Math.min(el.duration || 0, time));
+    HtmlMediaController.seekTo(resolved.instance, time);
   }
 
   async volume(vol, target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') return resolved.instance.setVolume?.(vol);
-    const el = resolved.instance;
-    el.volume = Math.max(0, Math.min(1, vol));
-    el.muted = false;
+    HtmlMediaController.volume(resolved.instance, vol);
   }
 
   async mute(muted, target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') return resolved.instance.setMuted?.(muted);
-    const el = resolved.instance;
-    el.muted = typeof muted === 'boolean' ? muted : !el.muted;
+    HtmlMediaController.mute(resolved.instance, muted);
   }
 
   async speed(rate, target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') return resolved.instance.setPlaybackRate?.(rate);
-    resolved.instance.playbackRate = rate;
+    HtmlMediaController.speed(resolved.instance, rate);
   }
 
   async pip(enable, target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') return resolved.instance.requestPip?.(enable);
-    const el = resolved.instance;
-    if (!el || el.tagName !== 'VIDEO') throw new Error('[SRemote:DomDriver] Video element not found');
-    if (enable === true || (enable === undefined && document.pictureInPictureElement !== el)) {
-      return el.requestPictureInPicture?.();
-    }
-    if (document.pictureInPictureElement === el) {
-      return document.exitPictureInPicture?.();
-    }
+    return HtmlMediaController.pip(resolved.instance, enable);
   }
 
   async load(source, target) {
@@ -326,15 +292,7 @@ export class DomDriver extends BaseDriver {
       console.warn('[SRemote] load() is primarily designed for custom adapters and is not implemented by default. Implement it via sremote.useAdapter().');
       return;
     }
-    const el = resolved.instance;
-    if (typeof source === 'string' && source) {
-      el.src = source;
-      if (typeof el.load === 'function') {
-        el.load();
-      }
-    } else {
-      console.warn('[SRemote] load() is primarily designed for custom adapters and is not implemented by default. Implement it via sremote.useAdapter().');
-    }
+    HtmlMediaController.load(resolved.instance, source);
   }
 
   async quality(level, target) {
@@ -354,36 +312,14 @@ export class DomDriver extends BaseDriver {
     const resolved = this.resolveTarget(target);
     if (!resolved) return;
     if (resolved.type === 'adapter') return resolved.instance.setSubtitle?.(track);
-    const el = resolved.instance;
-    if (el?.textTracks) {
-      const targetLang = track === null || track === 'off' || track === false ? null : String(track).toLowerCase();
-      for (let i = 0; i < el.textTracks.length; i++) {
-        const t = el.textTracks[i];
-        if (!targetLang) {
-          t.mode = 'disabled';
-        } else if (t.id === targetLang || (t.language && t.language.toLowerCase() === targetLang) || (t.label && t.label.toLowerCase() === targetLang)) {
-          t.mode = 'showing';
-        } else {
-          t.mode = 'disabled';
-        }
-      }
-    }
+    HtmlMediaController.subtitle(resolved.instance, track);
   }
 
   async getSubtitles(target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) return [];
     if (resolved.type === 'adapter') return resolved.instance.getSubtitles?.() || [];
-    const el = resolved.instance;
-    if (el?.textTracks) {
-      const tracks = [];
-      for (let i = 0; i < el.textTracks.length; i++) {
-        const t = el.textTracks[i];
-        tracks.push({ id: t.id || String(i), label: t.label || t.language || `Track ${i + 1}`, language: t.language });
-      }
-      return tracks;
-    }
-    return [];
+    return HtmlMediaController.getSubtitles(resolved.instance);
   }
 
   async shuffle(enable, target) {
@@ -396,16 +332,7 @@ export class DomDriver extends BaseDriver {
     const resolved = this.resolveTarget(target);
     if (!resolved) return;
     if (resolved.type === 'adapter') return resolved.instance.setRepeat?.(mode);
-    const el = resolved.instance;
-    if (el) {
-      if (typeof mode === 'string') {
-        el.loop = mode === 'one' || mode === 'all';
-      } else if (typeof mode === 'boolean') {
-        el.loop = mode;
-      } else {
-        el.loop = !el.loop;
-      }
-    }
+    HtmlMediaController.repeat(resolved.instance, mode);
   }
 
   async next(target) {

@@ -28,8 +28,7 @@ export class SRemoteClient {
     this.instances = {
       list: key => {
         if (this.userscriptDriver.isAvailable()) {
-          const api = this.userscriptDriver.getApi();
-          return api?.instances?.list ? api.instances.list(key || this.options.passkey) : api?.list?.(key || this.options.passkey) || [];
+          return this.userscriptDriver.list(key || this.options.passkey);
         }
         return this.domDriver.list();
       },
@@ -37,8 +36,7 @@ export class SRemoteClient {
       capabilities: (instanceId, key) => this.capabilities(instanceId, key),
       getIframe: (instanceId, key) => {
         if (this.userscriptDriver.isAvailable()) {
-          const api = this.userscriptDriver.getApi();
-          return api?.instances?.getIframe ? api.instances.getIframe(instanceId, key || this.options.passkey) : api?.getIframe?.(instanceId, key || this.options.passkey) || null;
+          return this.userscriptDriver.getIframe(instanceId, key || this.options.passkey);
         }
         return null;
       },
@@ -46,38 +44,30 @@ export class SRemoteClient {
       setMultiMode: (mode, key) => {
         this.domDriver.setMultiMode(mode);
         if (this.userscriptDriver.isAvailable()) {
-          const api = this.userscriptDriver.getApi();
-          if (api?.instances?.setMultiMode) api.instances.setMultiMode(mode, key || this.options.passkey);
-          else if (api?.setMultiMode) api.setMultiMode(mode, key || this.options.passkey);
+          this.userscriptDriver.setMultiMode(mode, key || this.options.passkey);
         }
       },
       isMultiMode: key => {
         if (this.userscriptDriver.isAvailable()) {
-          const api = this.userscriptDriver.getApi();
-          return api?.instances?.isMultiMode ? api.instances.isMultiMode(key || this.options.passkey) : Boolean(api?.isMultiMode?.(key || this.options.passkey));
+          return this.userscriptDriver.isMultiMode(key || this.options.passkey);
         }
         return this.domDriver.isMultiMode();
       },
       setExclusive: (mode, key) => {
         this.domDriver.setExclusive(mode);
         if (this.userscriptDriver.isAvailable()) {
-          const api = this.userscriptDriver.getApi();
-          if (api?.instances?.setExclusive) api.instances.setExclusive(mode, key || this.options.passkey);
-          else if (api?.setExclusive) api.setExclusive(mode, key || this.options.passkey);
+          this.userscriptDriver.setExclusive(mode, key || this.options.passkey);
         }
       },
       query: key => {
         if (this.userscriptDriver.isAvailable()) {
-          const api = this.userscriptDriver.getApi();
-          return api?.instances?.query ? api.instances.query(key || this.options.passkey) : api?.query?.(key || this.options.passkey) || [];
+          return this.userscriptDriver.query(key || this.options.passkey);
         }
         return this.domDriver.list();
       },
       note: (dict, key) => {
         if (this.userscriptDriver.isAvailable()) {
-          const api = this.userscriptDriver.getApi();
-          if (api?.instances?.note) api.instances.note(dict, key || this.options.passkey);
-          else if (api?.note) api.note(dict, key || this.options.passkey);
+          this.userscriptDriver.note(dict, key || this.options.passkey);
         }
       },
     };
@@ -87,9 +77,8 @@ export class SRemoteClient {
         this.logger.log(`Registering custom adapter${adapter?.name ? ` [${adapter.name}]` : ''}`, { instanceId });
         const domId = this.domDriver.useAdapter(adapter, instanceId);
         if (this.userscriptDriver.isAvailable()) {
-          const api = this.userscriptDriver.getApi();
-          if (api?.adapters?.register) return api.adapters.register(adapter, instanceId, key || this.options.passkey);
-          return this.userscriptDriver.useAdapter(adapter, instanceId, key);
+          const registered = this.userscriptDriver.useAdapter(adapter, instanceId, key || this.options.passkey);
+          return registered || domId;
         }
         return domId;
       },
@@ -97,17 +86,13 @@ export class SRemoteClient {
         this.logger.log(`Unregistering adapter for instance: ${instanceId}`);
         const domResult = this.domDriver.removeAdapter(instanceId);
         if (this.userscriptDriver.isAvailable()) {
-          const api = this.userscriptDriver.getApi();
-          if (api?.adapters?.unregister) return api.adapters.unregister(instanceId, key || this.options.passkey);
-          return this.userscriptDriver.removeAdapter(instanceId, key);
+          return this.userscriptDriver.removeAdapter(instanceId, key || this.options.passkey);
         }
         return domResult;
       },
       get: (instanceId, key) => {
         if (this.userscriptDriver.isAvailable()) {
-          const api = this.userscriptDriver.getApi();
-          if (api?.adapters?.get) return api.adapters.get(instanceId, key || this.options.passkey);
-          return this.userscriptDriver.getCustomAdapter(instanceId, key);
+          return this.userscriptDriver.getCustomAdapter(instanceId, key || this.options.passkey);
         }
         return this.domDriver.getCustomAdapter(instanceId);
       },
@@ -132,17 +117,12 @@ export class SRemoteClient {
 
   syncAdaptersToUserscript() {
     if (this.userscriptDriver.isAvailable()) {
-      const api = this.userscriptDriver.getApi();
       const count = this.domDriver.adaptersMap.size;
       if (count > 0) {
         this.logger.debug(`Syncing ${count} adapter(s) to userscript`);
       }
       for (const [id, adapter] of this.domDriver.adaptersMap.entries()) {
-        if (api?.adapters?.register) {
-          api.adapters.register(adapter, id, this.options.passkey);
-        } else {
-          this.userscriptDriver.useAdapter(adapter, id, this.options.passkey);
-        }
+        this.userscriptDriver.useAdapter(adapter, id, this.options.passkey);
       }
     }
   }
