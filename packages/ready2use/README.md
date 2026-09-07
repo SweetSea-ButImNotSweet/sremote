@@ -73,6 +73,8 @@ await yt.remote.play();
 
 ### 2. Create Elements Without Mounting (React / Vue)
 
+`provider.create()` creates the player instance, iframe/element, and SRemote adapter. By default, it automatically registers the adapter with SRemote:
+
 ```javascript
 import { dailymotion } from '@sremote/ready2use';
 import { createSRemote } from '@sremote/wrapper';
@@ -81,18 +83,39 @@ const myRemote = createSRemote();
 const { iframe, adapter, instanceId } = await dailymotion.create({
   video: 'x7tgad0',
   width: 640,
-  height: 360
+  height: 360,
+  // register: true (default: automatically registers to active SRemote)
 });
 
-// Append to custom container and register adapter
+// Append to custom container in your React/Vue component
 document.getElementById('my-wrapper').appendChild(iframe);
-myRemote.adapters.register(adapter, instanceId);
 await myRemote.play(instanceId);
 ```
 
+> **Automatic Event Deduplication & Ownership Claiming**:
+> Elements created via `.create()` and `.mount()` are automatically tagged with `data-sremote-claimed="true"` and `data-sremote-ignore-events="true"`. Both the Userscript top-media tracker and Wrapper DOM driver respect these tags, completely preventing duplicate event emission between the DOM and Adapter layers.
+
 ---
 
-### 3. Standalone Adapter Usage
+### 3. Supported Events Matrix
+
+All major providers emit standardized events via `adapter.emit(eventName, payload)`:
+
+| Provider | Standard Events Supported | Notes |
+| :--- | :--- | :--- |
+| **YouTube** | `play`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `ratechange`, `buffering`, `volumechange` | IFrame API + Native Scrubbing detection |
+| **Vimeo** | `play`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `ratechange`, `buffering`, `buffered`, `volumechange` | Official Player SDK events |
+| **SoundCloud** | `play`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `volumechange` | SoundCloud Widget Events |
+| **Spotify** | `play`, `pause`, `timeupdate`, `seeking`, `seeked` | Spotify EmbedController |
+| **Dailymotion** | `play`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `buffering`, `volumechange` | Dailymotion Player Events |
+| **Twitch** | `play`, `pause`, `ended`, `seeking`, `seeked`, `volumechange` | Twitch Interactive SDK |
+| **Apple MusicKit** | `play`, `pause`, `timeupdate`, `seeking`, `seeked`, `volumechange` | Official MusicKit JS v3 |
+| **PeerTube** | `play`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `ratechange`, `volumechange` | PeerTube Embed API |
+| **Facebook** | `play`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `buffering`, `buffered`, `volumechange` | Facebook Video SDK |
+
+---
+
+### 4. Standalone Adapter Usage
 
 ```javascript
 import { twitch } from '@sremote/ready2use';

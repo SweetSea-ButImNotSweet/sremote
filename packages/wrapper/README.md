@@ -102,6 +102,9 @@ remote.on('timeupdate', (data) => {
 });
 ```
 
+> **Automatic Event Deduplication**:
+> If a media element is controlled or created by an adapter (e.g. `@sremote/ready2use` or custom adapters marked with `data-sremote-claimed="true"` / `data-sremote-ignore-events="true"`), `@sremote/wrapper`'s `DomDriver` and the companion userscript automatically skip native DOM event binding. Events are cleanly dispatched solely through the adapter layer without duplicates.
+
 ---
 
 ### 4. Userscript Installation Modal

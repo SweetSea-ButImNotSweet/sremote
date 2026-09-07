@@ -28,6 +28,18 @@ export interface BaseProviderOptions {
    */
   sremote?: SRemoteClient;
 
+  /**
+   * Automatically register the created adapter with SRemote if available.
+   * @default true
+   */
+  register?: boolean;
+
+  /**
+   * Alias for register option.
+   * @default true
+   */
+  autoRegister?: boolean;
+
   [key: string]: any;
 }
 
