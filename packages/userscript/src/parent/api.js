@@ -203,7 +203,17 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       console_error('[SRemote:auth] Blocked adapters.register()! Valid Passkey is required.');
       return null;
     }
-    return handleUseAdapter(adapter, instanceId);
+    const registeredId = handleUseAdapter(adapter, instanceId);
+    if (registeredId && topMediaTracker) {
+      topMediaTracker.suppressMediaElement?.(registeredId);
+      if (adapter?.element) {
+        topMediaTracker.suppressMediaElement?.(adapter.element);
+      }
+      if (adapter?.iframe) {
+        topMediaTracker.suppressMediaElement?.(adapter.iframe);
+      }
+    }
+    return registeredId;
   };
 
   const unregisterAdapter = (instanceId, key) => {

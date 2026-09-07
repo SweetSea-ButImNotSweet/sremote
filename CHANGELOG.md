@@ -9,9 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.0] - 2026-09-05
 
-SRemote v3.0.0 is a major architecture overhaul, unification, and feature release. This release introduces a unified API schema and factory builder across the entire monorepo (`@sremote/shared`), massively expands platform compatibility in `@sremote/ready2use` up to **22 supported platforms**, transitions completely to modern Pure ESM, revamps the Facebook/Instagram/Threads/Apple Music pipelines, and delivers critical runtime fixes.
+SRemote v3.0.0 is a major architecture overhaul, unification, and feature release. This release introduces a unified API schema and factory builder across the entire monorepo (`@sremote/shared`), massively expands platform compatibility in `@sremote/ready2use` up to **22 supported platforms**, transitions completely to modern Pure ESM, revamps the Facebook/Instagram/Threads/Apple Music pipelines, provides full seeking/seeked event coverage, introduces robust DOM ownership claiming for event deduplication, and delivers critical runtime fixes.
 
 ### 🚀 Added
+
+- **Event Seeking & Seeked Ecosystem (`@sremote/ready2use`)**:
+  - **YouTube Provider**: Added complete support for `seeking` and `seeked` events across both programmatic seek calls (`seek()`, `seekTo()`) and native player UI scrubbing (automatic scrubber jump detection `> 1.5s`).
+  - Added missing lifecycle and state change events to YouTube provider: `buffering` (`onStateChange === 3`), `ratechange` (`onPlaybackRateChange`), and `volumechange` (`setVolume()`, `setMuted()`).
+  - **Vimeo Provider**: Added `player.on('seeking')` event forwarding, `playbackratechange` (`ratechange`), and `bufferstart`/`bufferend` (`buffering`/`buffered`).
+  - **SoundCloud Provider**: Added `seeking` event emission on `seek()`/`seekTo()` and `volumechange` on volume/mute adjustments.
+  - **Dailymotion Provider**: Added `seeking` event emission, support for `events.PLAYER_SEEKING`, and `events.PLAYER_BUFFERING` (`buffering`).
+  - **Spotify Provider**: Added seek tracking with `seeking` and `seeked` emission on playback position updates.
+  - **Twitch Provider**: Added `seeking`, `seeked`, and `volumechange` event emissions.
+  - **Apple MusicKit JS & PeerTube Providers**: Added `seeking`, `seeked`, `volumechange`, and `ratechange` event emissions.
+- **Event Deduplication & DOM Ownership Claiming (`@sremote/ready2use`, `@sremote/userscript`, `@sremote/wrapper`)**:
+  - **Ownership Claim on Creation (`BaseProvider`)**: `_instantiate()` and `applyElementAttributes()` now automatically mark player DOM elements (`targetElement`, `iframe`) with ownership attributes: `data-sremote-claimed="true"`, `data-sremote-ignore-events="true"`, `data-sremote-id`, and internal Symbols (`__sremote_claimed__`, `__sremote_ignore_events__`, `__sremote_adapter__`).
+  - **Auto-Registration in `create()`**: `BaseProvider.create()` now automatically resolves and registers newly instantiated adapters with SRemote (`remote.adapters.register`) unless explicitly disabled via `opts.register = false` / `opts.autoRegister = false`.
+  - **DOM Tracker Event Deduplication (`@sremote/userscript`)**: Updated `top-media.js` to skip tracking elements claimed by adapters (`isElementClaimed`). Added runtime suppression (`suppressMediaElement`) and auto-untracking when adapters are registered via `adapters.register()`.
+  - **DOM Driver Event Deduplication (`@sremote/wrapper`)**: Updated `DomDriver.trackMediaElement` to ignore elements marked with `data-sremote-claimed` or `data-sremote-ignore-events`.
+  - **Shared Event Binder Protection (`@sremote/shared`)**: `bindMediaEvents` automatically skips binding if elements specify `data-sremote-ignore-events="true"`.
 
 - **Unified API Architecture (`@sremote/shared`)**:
   - **`API_SPEC` (`packages/shared/src/api/schema.js`)**: Single source of truth for all root playback methods, argument schemas, action dispatch mappings, and sub-namespaces (`instances`, `adapters`, `rpc`, `css`).

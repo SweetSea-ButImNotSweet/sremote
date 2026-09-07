@@ -284,6 +284,19 @@ export class BaseProvider {
     const adapter = this._setupAdapter(rawAdapter);
     const capabilities = adapter.capabilities;
 
+    // 4. Mark ownership on DOM nodes so TopMedia / DomDriver won't track duplicate events
+    if (targetElement) {
+      targetElement.setAttribute('data-sremote-id', instanceId);
+      targetElement.setAttribute('data-sremote-provider', this.name);
+      targetElement.setAttribute('data-sremote-claimed', 'true');
+      targetElement.setAttribute('data-sremote-ignore-events', 'true');
+      try {
+        targetElement[Symbol.for('__sremote_claimed__')] = instanceId;
+        targetElement[Symbol.for('__sremote_ignore_events__')] = true;
+        targetElement[Symbol.for('__sremote_adapter__')] = adapter;
+      } catch {}
+    }
+
     return { player, element: targetElement, iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null), adapter, instanceId, capabilities, customDestroy };
   }
 
@@ -297,7 +310,22 @@ export class BaseProvider {
     const opts = this._normalizeOptions(options);
     const result = await this._instantiate(opts);
 
-    const destroy = this._buildDestroyHandler({ adapter: result.adapter, customDestroy: result.customDestroy, player: result.player, targetElement: result.element });
+    let remote = null;
+    if (opts.register !== false && opts.autoRegister !== false) {
+      remote = await resolveSRemote(opts);
+      if (remote?.adapters) {
+        remote.adapters.register(result.adapter, result.instanceId);
+      }
+    }
+
+    const destroy = this._buildDestroyHandler({
+      adapter: result.adapter,
+      customDestroy: result.customDestroy,
+      player: result.player,
+      targetElement: result.element,
+      remote,
+      instanceId: result.instanceId,
+    });
 
     return {
       element: result.element,

@@ -62,6 +62,12 @@ export function applyElementAttributes(el, width = '100%', height = '100%', inst
   if (!el) return;
   if (instanceId) {
     el.setAttribute('data-sremote-id', instanceId);
+    el.setAttribute('data-sremote-claimed', 'true');
+    el.setAttribute('data-sremote-ignore-events', 'true');
+    try {
+      el[Symbol.for('__sremote_claimed__')] = instanceId;
+      el[Symbol.for('__sremote_ignore_events__')] = true;
+    } catch {}
   }
   if (width !== undefined) {
     el.style.width = typeof width === 'number' ? `${width}px` : width;

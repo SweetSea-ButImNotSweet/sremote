@@ -20,8 +20,29 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
   const unbindFns = new Map(); // instanceId -> unbindFunction
   const topMediaElementsMap = new Map(); // instanceId -> HTMLMediaElement
 
+  function isElementClaimed(mediaEl) {
+    if (!mediaEl) return false;
+    try {
+      if (
+        mediaEl.getAttribute?.('data-sremote-ignore-events') === 'true' ||
+        mediaEl.hasAttribute?.('data-sremote-claimed') ||
+        mediaEl[Symbol.for('__sremote_claimed__')] ||
+        mediaEl[Symbol.for('__sremote_ignore_events__')] ||
+        mediaEl[Symbol.for('__sremote_adapter__')]
+      ) {
+        return true;
+      }
+      // Check parent container or iframe wrapper
+      if (typeof mediaEl.closest === 'function') {
+        const parentClaimed = mediaEl.closest('[data-sremote-claimed="true"], [data-sremote-ignore-events="true"]');
+        if (parentClaimed) return true;
+      }
+    } catch {}
+    return false;
+  }
+
   function trackElement(mediaEl, trackOpts = {}) {
-    if (!isValidMediaElement(mediaEl) || trackedElements.has(mediaEl)) return;
+    if (!isValidMediaElement(mediaEl) || trackedElements.has(mediaEl) || isElementClaimed(mediaEl)) return;
     trackedElements.add(mediaEl);
 
     const customId = mediaEl.id || mediaEl.getAttribute('data-sremote-id') || generateInstanceId('top_media');
@@ -57,6 +78,12 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
     const unbind = bindMediaEvents(
       mediaEl,
       (evtName, payload) => {
+        // Late check in case element was claimed by an adapter after initial tracking
+        if (isElementClaimed(mediaEl)) {
+          untrackElement(customId);
+          return;
+        }
+
         const now = Date.now();
         instanceInfo.lastSeen = now;
 
@@ -104,6 +131,19 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
     topMediaElementsMap.delete(customId);
     if (instances.has(customId)) {
       instanceManager.removeInstance(customId, 'dom-removed');
+    }
+  }
+
+  function suppressMediaElement(mediaElOrId) {
+    if (!mediaElOrId) return;
+    if (typeof mediaElOrId === 'string') {
+      untrackElement(mediaElOrId);
+      return;
+    }
+    for (const [id, el] of topMediaElementsMap.entries()) {
+      if (el === mediaElOrId || (mediaElOrId.contains && mediaElOrId.contains(el))) {
+        untrackElement(id);
+      }
     }
   }
 
@@ -220,6 +260,8 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
     start,
     stop,
     destroy,
+    untrackElement,
+    suppressMediaElement,
     get isTracking() {
       return isTracking;
     },

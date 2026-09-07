@@ -65,6 +65,23 @@ export class DomDriver extends BaseDriver {
 
   trackMediaElement(mediaEl) {
     if (!mediaEl || this.trackedMediaElements.has(mediaEl)) return;
+
+    try {
+      if (
+        mediaEl.getAttribute?.('data-sremote-ignore-events') === 'true' ||
+        mediaEl.hasAttribute?.('data-sremote-claimed') ||
+        mediaEl[Symbol.for('__sremote_claimed__')] ||
+        mediaEl[Symbol.for('__sremote_ignore_events__')] ||
+        mediaEl[Symbol.for('__sremote_adapter__')]
+      ) {
+        return;
+      }
+      if (typeof mediaEl.closest === 'function') {
+        const parentClaimed = mediaEl.closest('[data-sremote-claimed="true"], [data-sremote-ignore-events="true"]');
+        if (parentClaimed) return;
+      }
+    } catch {}
+
     this.trackedMediaElements.add(mediaEl);
 
     bindMediaEvents(

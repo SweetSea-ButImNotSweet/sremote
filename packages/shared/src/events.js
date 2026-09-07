@@ -231,6 +231,13 @@ export function bindMediaEvents(media, onEvent, options = {}) {
     return () => {};
   }
 
+  // If the media element has been claimed or explicitly configured to suppress DOM events
+  try {
+    if (media.getAttribute?.('data-sremote-ignore-events') === 'true' || media[Symbol.for('__sremote_ignore_events__')]) {
+      return () => {};
+    }
+  } catch {}
+
   const { instanceId = 'dom-media', source = 'dom', treatAlmostEndAsEnd = false, events = MEDIA_EVENTS } = options;
 
   let hasEmittedAlmostEnd = false;
