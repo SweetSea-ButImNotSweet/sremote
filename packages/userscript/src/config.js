@@ -11,10 +11,6 @@ import { LOG_LEVELS, createLogger } from '@sremote/shared';
 // Create unified logger for userscript with dynamic level checking
 export const logger = createLogger({ prefix: 'userscript', level: LOG_LEVEL, defaultLevel: LOG_LEVELS.INFO });
 
-export const actionLogger = createLogger({ prefix: 'action', getLevel: () => logger.level, defaultLevel: LOG_LEVELS.INFO });
-export const mediaSessionLogger = createLogger({ prefix: 'mediaSession', getLevel: () => logger.level, defaultLevel: LOG_LEVELS.INFO });
-export const eventLogger = createLogger({ prefix: 'event', getLevel: () => logger.level, defaultLevel: LOG_LEVELS.INFO });
-
 export const console_log = (...args) => logger.log(...args);
 export const console_debug = (...args) => logger.debug(...args);
 export const console_warn = (...args) => logger.warn(...args);

@@ -194,6 +194,7 @@ export interface Logger {
   debug: (...args: any[]) => void;
   warn: (...args: any[]) => void;
   error: (...args: any[]) => void;
+  scope: (prefix: string) => { log: (...args: any[]) => void; debug: (...args: any[]) => void; warn: (...args: any[]) => void; error: (...args: any[]) => void };
 }
 
 export declare function getGlobalLogLevelOverride(): number | null;

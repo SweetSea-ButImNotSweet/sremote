@@ -1,4 +1,4 @@
-import { VERSION, NS, ENABLE_DEBUG_API, actionLogger, console_log, console_warn, console_error, pageWindow } from '../config.js';
+import { VERSION, NS, ENABLE_DEBUG_API, logger, console_log, console_warn, console_error, pageWindow } from '../config.js';
 import { Storage, GM } from '../core/storage.js';
 import { getOriginStorageKeys } from '../core/utils.js';
 import { executeAdapterAction } from '../core/adapter-runner.js';
@@ -110,7 +110,7 @@ export function initParentController() {
     if (!mediaEl) return false;
     const hasSource = hasMediaSource(mediaEl);
     const norm = String(action || '').toLowerCase();
-    actionLogger.log(`Top DOM executing -> ${action}`, { action, value });
+    logger.scope('action').log(`Top DOM executing -> ${action}`, { action, value });
     try {
       switch (norm) {
         case 'play':
@@ -208,11 +208,7 @@ export function initParentController() {
       target = instances.get(targetId);
     }
 
-    console_log(`%c[SRemote:command] Parent dispatching -> ${action}`, 'color: #3b82f6; font-weight: bold;', {
-      action,
-      value,
-      targetInstanceId: targetId || targetInstanceId || 'auto',
-    });
+    logger.scope('action').log(`(Wrapper) Dispatching -> ${action}`, { action, value, targetInstanceId: targetId || targetInstanceId || 'auto' });
 
     if (parentAdaptersMap.size > 0) {
       const handled = executeParentAdapterAction(action, value, targetId || targetInstanceId);

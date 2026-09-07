@@ -235,7 +235,7 @@ export class SRemoteClient {
       this.logger.error(`No active driver available to execute ${method}()`);
       throw new Error(`[SRemote:Wrapper] No active driver available to execute ${method}()`);
     }
-    this.logger.debug(`Executing command: ${method}`, ...args);
+    this.logger.scope('action').log(`(Wrapper) Executing -> ${method}`, ...args);
     return driver[method](...args);
   }
 

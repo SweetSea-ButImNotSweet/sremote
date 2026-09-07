@@ -153,6 +153,34 @@ export function createLogger(options = {}) {
         }
       }
     },
+
+    scope(scopePrefix) {
+      const scopeTag = `[SRemote:${scopePrefix}]`;
+      const scopeColor = PREFIX_COLORS[scopePrefix.toLowerCase()] || color;
+      const scopeStyle = `color: ${scopeColor}; font-weight: bold;`;
+      return {
+        log: (...args) => {
+          if (getEffectiveLevel() >= LOG_LEVELS.INFO) {
+            console.log(`%c${scopeTag}`, scopeStyle, ...args);
+          }
+        },
+        debug: (...args) => {
+          if (getEffectiveLevel() >= LOG_LEVELS.DEBUG) {
+            console.debug(`%c${scopeTag}`, scopeStyle, ...args);
+          }
+        },
+        warn: (...args) => {
+          if (getEffectiveLevel() >= LOG_LEVELS.ERROR) {
+            console.warn(`%c${scopeTag}`, 'color: #f59e0b; font-weight: bold;', ...args);
+          }
+        },
+        error: (...args) => {
+          if (getEffectiveLevel() >= LOG_LEVELS.ERROR) {
+            console.error(`%c${scopeTag}`, 'color: #ef4444; font-weight: bold;', ...args);
+          }
+        },
+      };
+    },
   };
 }
 

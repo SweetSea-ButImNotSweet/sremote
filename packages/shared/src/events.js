@@ -1,6 +1,4 @@
-import { createLogger, LOG_LEVELS } from './logger.js';
-
-const eventLogger = createLogger({ prefix: 'event', defaultLevel: LOG_LEVELS.ERROR });
+import { defaultLogger } from './logger.js';
 
 /**
  * Extracts standardized media state snapshot from a HTMLMediaElement or adapter.
@@ -340,7 +338,7 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
       ...(typeof payload === 'object' && payload !== null ? payload : { value: payload }),
     });
 
-    eventLogger.debug(`Adapter emit -> ${ev}`, fullPayload);
+    defaultLogger.scope('event').debug(`Adapter emit -> ${ev}`, fullPayload);
 
     if (typeof onEmit === 'function') {
       try {
@@ -380,7 +378,7 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
         if (!handledEvents.has(evtName.toLowerCase())) {
           const state = extractMediaState(adapter) || payload.state;
           const forwarded = { ...payload, source: 'adapter-dom-fallback', instanceId, state };
-          eventLogger.debug(`Adapter fallback emit -> ${evtName}`, forwarded);
+          defaultLogger.scope('event').debug(`Adapter fallback emit -> ${evtName}`, forwarded);
           if (typeof onEmit === 'function') {
             try {
               onEmit(evtName, forwarded);

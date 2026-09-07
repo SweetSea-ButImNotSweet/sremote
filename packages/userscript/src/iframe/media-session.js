@@ -1,4 +1,4 @@
-import { mediaSessionLogger, console_warn, pageWindow } from '../config.js';
+import { logger, console_warn, pageWindow } from '../config.js';
 
 export class MockMediaMetadata {
   constructor(init = {}) {
@@ -49,7 +49,7 @@ export class MockMediaSession {
   }
 
   async invoke(action, details = {}) {
-    mediaSessionLogger.log(`Action invoked -> ${action}`, details);
+    logger.scope('mediaSession').log(`(MediaSession) Invoked -> ${action}`, details);
     const handler = this._handlers.get(action);
     if (typeof handler === 'function') {
       try {
