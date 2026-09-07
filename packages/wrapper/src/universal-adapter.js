@@ -69,6 +69,7 @@ export function createUniversalAdapter(options = {}) {
 
   const adapter = {
     name,
+    mediaElement: hasMediaEl ? mediaElement : null,
     capabilities: calculatedCapabilities,
 
     async play() {

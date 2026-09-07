@@ -231,19 +231,26 @@ export function bindMediaEvents(media, onEvent, options = {}) {
     return () => {};
   }
 
+  const { instanceId = 'dom-media', source = 'dom', treatAlmostEndAsEnd = false, events = MEDIA_EVENTS, excludedEvents = null, allowFallback = false } = options;
+
   // If the media element has been claimed or explicitly configured to suppress DOM events
   try {
-    if (media.getAttribute?.('data-sremote-ignore-events') === 'true' || media[Symbol.for('__sremote_ignore_events__')]) {
+    if (!allowFallback && (media.getAttribute?.('data-sremote-ignore-events') === 'true' || media[Symbol.for('__sremote_ignore_events__')])) {
       return () => {};
     }
   } catch {}
 
-  const { instanceId = 'dom-media', source = 'dom', treatAlmostEndAsEnd = false, events = MEDIA_EVENTS } = options;
+  const excludedSet = excludedEvents ? (excludedEvents instanceof Set ? excludedEvents : new Set(Array.from(excludedEvents).map(e => String(e).toLowerCase()))) : null;
+  const targetEvents = excludedSet && excludedSet.size > 0 ? events.filter(evt => !excludedSet.has(evt.toLowerCase())) : events;
+
+  if (targetEvents.length === 0) {
+    return () => {};
+  }
 
   let hasEmittedAlmostEnd = false;
   const boundListeners = [];
 
-  for (const evtName of events) {
+  for (const evtName of targetEvents) {
     const listener = eventObj => {
       const state = extractMediaState(media);
 
@@ -305,14 +312,21 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
   const adapter = Object.create(rawAdapter);
   const originalEmit = typeof rawAdapter.emit === 'function' ? rawAdapter.emit.bind(rawAdapter) : null;
 
+  // Track events handled explicitly by adapter to avoid duplicating fallback events
+  const handledEvents = new Set(Array.isArray(rawAdapter.handledEvents) ? rawAdapter.handledEvents.map(e => String(e).toLowerCase()) : []);
+
+  let unbindFallback = null;
+
   adapter.emit = (event, payload = {}) => {
+    const ev = String(event || '').toLowerCase();
+    handledEvents.add(ev);
+
     if (originalEmit) {
       try {
         originalEmit(event, payload);
       } catch {}
     }
 
-    const ev = String(event || '').toLowerCase();
     const state = extractMediaState(adapter);
     const fullPayload = createEventPayload(ev, {
       source,
@@ -343,6 +357,48 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
   if (!adapter.capabilities) {
     adapter.capabilities = evaluateCapabilities(adapter);
   }
+
+  // Setup Selective DOM Fallback if a native HTMLMediaElement is attached to the adapter
+  const targetMediaEl =
+    rawAdapter.mediaElement && (rawAdapter.mediaElement.tagName === 'VIDEO' || rawAdapter.mediaElement.tagName === 'AUDIO')
+      ? rawAdapter.mediaElement
+      : rawAdapter.element && (rawAdapter.element.tagName === 'VIDEO' || rawAdapter.element.tagName === 'AUDIO')
+        ? rawAdapter.element
+        : null;
+
+  if (targetMediaEl && rawAdapter.fallbackEvents !== false) {
+    unbindFallback = bindMediaEvents(
+      targetMediaEl,
+      (evtName, payload) => {
+        // Only forward if the adapter has not explicitly emitted this event itself
+        if (!handledEvents.has(evtName.toLowerCase())) {
+          const state = extractMediaState(adapter) || payload.state;
+          const forwarded = { ...payload, source: 'adapter-dom-fallback', instanceId, state };
+          if (typeof onEmit === 'function') {
+            try {
+              onEmit(evtName, forwarded);
+            } catch {}
+          }
+        }
+      },
+      { instanceId, source: 'adapter-dom-fallback', allowFallback: true, excludedEvents: handledEvents },
+    );
+  }
+
+  const origDestroy = typeof adapter.destroy === 'function' ? adapter.destroy.bind(adapter) : null;
+  adapter.destroy = function () {
+    if (unbindFallback) {
+      try {
+        unbindFallback();
+      } catch {}
+      unbindFallback = null;
+    }
+    if (origDestroy) {
+      try {
+        origDestroy();
+      } catch {}
+    }
+  };
 
   return adapter;
 }

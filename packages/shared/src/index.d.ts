@@ -122,7 +122,14 @@ export declare function evaluateCapabilities(target: any): SRemoteCapabilities;
 export declare function bindMediaEvents(
   media: any,
   onEvent: (event: string, payload: any) => void,
-  options?: { instanceId?: string; source?: string; treatAlmostEndAsEnd?: boolean; events?: readonly string[] | string[] },
+  options?: {
+    instanceId?: string;
+    source?: string;
+    treatAlmostEndAsEnd?: boolean;
+    events?: readonly string[] | string[];
+    excludedEvents?: readonly string[] | string[] | Set<string> | null;
+    allowFallback?: boolean;
+  },
 ): () => void;
 export declare function wrapCustomAdapter(rawAdapter: any, options?: { instanceId?: string; onEmit?: (event: string, payload: any) => void; source?: string }): any;
 

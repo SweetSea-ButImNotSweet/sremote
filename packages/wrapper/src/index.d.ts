@@ -95,6 +95,9 @@ export interface SRemoteCustomAdapter {
   load?: (source: any) => void | Promise<void>;
   getState?: () => SRemoteMediaState | Promise<SRemoteMediaState>;
   emit?: (event: string, payload?: any) => void;
+  mediaElement?: HTMLMediaElement | null;
+  handledEvents?: string[];
+  fallbackEvents?: boolean;
   [key: string]: any;
 }
 

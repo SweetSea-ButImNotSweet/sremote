@@ -29,6 +29,13 @@ SRemote v3.0.0 is a major architecture overhaul, unification, and feature releas
   - **DOM Driver Event Deduplication (`@sremote/wrapper`)**: Updated `DomDriver.trackMediaElement` to ignore elements marked with `data-sremote-claimed` or `data-sremote-ignore-events`.
   - **Shared Event Binder Protection (`@sremote/shared`)**: `bindMediaEvents` automatically skips binding if elements specify `data-sremote-ignore-events="true"`.
 
+- **Selective Event Fallback for Custom Adapters (`@sremote/shared`, `@sremote/wrapper`)**:
+  - `wrapCustomAdapter` now automatically inspects if the adapter wraps a native `HTMLMediaElement` (`mediaElement` or `element`).
+  - Automatically binds a non-intrusive fallback DOM listener (`allowFallback: true`) only for events that the adapter does not explicitly handle or emit (`handledEvents`).
+  - Automatically detects when an adapter dynamically calls `adapter.emit()` and suppresses the corresponding fallback listener to guarantee 0% duplicate event emission.
+  - Enhanced `bindMediaEvents` to accept `excludedEvents` and `allowFallback` options.
+  - Attached `mediaElement` reference in `createUniversalAdapter` to natively benefit from selective fallback.
+
 - **Unified API Architecture (`@sremote/shared`)**:
   - **`API_SPEC` (`packages/shared/src/api/schema.js`)**: Single source of truth for all root playback methods, argument schemas, action dispatch mappings, and sub-namespaces (`instances`, `adapters`, `rpc`, `css`).
   - **`buildSRemoteApi` (`packages/shared/src/api/builder.js`)**: Universal API factory generating standardized, immutable (`Object.freeze`) SRemote API objects with automated argument parsing, action forwarding, event manager hookup, and lifecycle binding.
