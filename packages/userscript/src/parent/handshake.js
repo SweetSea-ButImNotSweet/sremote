@@ -26,7 +26,17 @@ export function findIframeElementBySource(sourceWindow, root = document) {
 }
 
 export function setupParentHandshake(instanceManager) {
-  const { instances, parentAdaptersMap, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, removeInstance, notifyMediaCountChange, emitGlobalEvent, pauseOthersExcept } = instanceManager;
+  const {
+    instances,
+    parentAdaptersMap,
+    assignedIframeIdMap,
+    iframeToAssignedIdMap,
+    isMultiModeActive,
+    removeInstance,
+    notifyMediaCountChange,
+    emitGlobalEvent,
+    pauseOthersExcept,
+  } = instanceManager;
 
   async function cloneBlobFromParent(blobUrl, instanceId) {
     try {

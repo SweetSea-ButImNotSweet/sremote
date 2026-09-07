@@ -1,4 +1,4 @@
-import { VERSION, NS, ENABLE_DEBUG_API, logger, console_log, console_warn, console_error, pageWindow } from '../config.js';
+import { VERSION, NS, ENABLE_DEBUG_API, logger, console_log, console_warn, console_error } from '../config.js';
 import { Storage, GM } from '../core/storage.js';
 import { getOriginStorageKeys } from '../core/utils.js';
 import { executeAdapterAction } from '../core/adapter-runner.js';
@@ -46,14 +46,13 @@ export function initParentController() {
   Storage.set('sremote:hello_seq', 0);
   Storage.set('sremote:parent_origin', location.origin);
 
-  // Sync log level from storage to window override if configured
+  // Sync log level from storage to logger if configured
   try {
     const storedLogLevel = Storage.get('sremote:log_level', null);
     if (storedLogLevel !== null && storedLogLevel !== undefined && storedLogLevel !== '') {
       const parsedLevel = Number(storedLogLevel);
       if (!Number.isNaN(parsedLevel) && parsedLevel >= -1) {
-        window.__sremote_log_level__ = parsedLevel;
-        if (typeof pageWindow !== 'undefined') pageWindow.__sremote_log_level__ = parsedLevel;
+        logger.setLevel(parsedLevel);
       }
     }
   } catch {}
@@ -216,7 +215,7 @@ export function initParentController() {
     logger.scope('action').log(`(Wrapper) Dispatching -> ${action}`, { action, value, targetInstanceId: targetId || targetInstanceId || 'auto' });
 
     if (parentAdaptersMap.size > 0) {
-      const adapterTargetId = (!targetInstanceId && !isMultiModeActive()) ? Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1] : (targetId || targetInstanceId);
+      const adapterTargetId = !targetInstanceId && !isMultiModeActive() ? Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1] : targetId || targetInstanceId;
       const handled = executeParentAdapterAction(action, value, adapterTargetId);
       if (handled) return Promise.resolve({ success: true, instanceId: adapterTargetId || targetId || targetInstanceId, source: 'adapter', action });
     }

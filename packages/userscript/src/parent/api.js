@@ -1,4 +1,4 @@
-import { NS, ENABLE_DEBUG_API, LOG_LEVEL, console_log, console_warn, console_error, pageWindow } from '../config.js';
+import { NS, ENABLE_DEBUG_API, logger, console_log, console_warn, console_error, pageWindow } from '../config.js';
 import { Storage, setHandshakeSecret } from '../core/storage.js';
 import { generateInstanceId } from '../core/utils.js';
 import { pendingRpcRequests } from './queue.js';
@@ -539,10 +539,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       isSremoteNative: true,
       [Symbol.for('__sremote_native__')]: true,
       get logLevel() {
-        if (typeof pageWindow !== 'undefined' && typeof pageWindow.__sremote_log_level__ === 'number') {
-          return pageWindow.__sremote_log_level__;
-        }
-        return typeof LOG_LEVEL === 'number' ? LOG_LEVEL : 3;
+        return logger.level;
       },
     },
   });

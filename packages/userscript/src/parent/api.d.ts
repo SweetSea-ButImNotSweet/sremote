@@ -221,6 +221,7 @@ export interface SRemoteDebugNamespace {
   injectWhiteNoise(duration?: number, instanceId?: string | null): Promise<any>;
   injectSampleVideo(instanceId?: string | null): Promise<any>;
   restoreOriginal(instanceId?: string | null): Promise<any>;
+  logLevel(newLevel?: number): number;
   simulateStall(instanceId?: string | null): Promise<any>;
 }
 

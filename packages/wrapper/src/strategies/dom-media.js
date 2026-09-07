@@ -8,7 +8,7 @@
  * @param {Document} [doc=document]
  * @returns {HTMLMediaElement|null}
  */
-export function resolveMediaElement(target, doc = (typeof document !== 'undefined' ? document : null)) {
+export function resolveMediaElement(target, doc = typeof document !== 'undefined' ? document : null) {
   if (!doc) return null;
 
   if (!target) {

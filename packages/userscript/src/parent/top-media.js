@@ -1,6 +1,6 @@
 import { bindMediaEvents, extractMediaState, evaluateCapabilities, isValidMediaElement, hasMediaSource } from '@sremote/shared';
 import { generateInstanceId } from '../core/utils.js';
-import { console_log } from '../config.js';
+import { console_log, logger } from '../config.js';
 
 /**
  * Sets up lightweight auto-tracking of <video> and <audio> elements on the Top DOM.
@@ -111,6 +111,7 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
           }
         }
 
+        logger.scope('dom').debug(`Top DOM media event -> ${evtName}`, payload);
         emitGlobalEvent(evtName, payload);
       },
       { instanceId: customId, source: 'top-dom', mediaType },

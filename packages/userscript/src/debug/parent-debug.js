@@ -1,4 +1,6 @@
 import { SRemoteDebugUtils } from '../debug/audio-generator.js';
+import { logger } from '../config.js';
+import { Storage } from '../core/storage.js';
 
 export function createParentDebugApi({ instances, currentActiveInstanceIdGetter, assignedIframeIdMap, iframeToAssignedIdMap, dispatchCommand, exportedApi }) {
   return Object.freeze({
@@ -147,7 +149,15 @@ export function createParentDebugApi({ instances, currentActiveInstanceIdGetter,
     injectSampleVideo: async (instanceId = null) =>
       exportedApi.call('debug_setSource', { src: SRemoteDebugUtils.SAMPLE_VIDEO_URL, title: 'Mozilla Flower Sample (MP4)' }, instanceId),
 
-    restoreOriginal: async (instanceId = null) => exportedApi.call('debug_restoreOriginal', {}, instanceId),
+    // Thay đổi / Xem log level động
+    logLevel: (newLevel = undefined) => {
+      if (typeof newLevel === 'number') {
+        logger.setLevel(newLevel);
+        Storage.set('sremote:log_level', newLevel);
+        console.log(`%c[sremote.debug] Log level set to: ${newLevel}`, 'color: #10b981; font-weight: bold;');
+      }
+      return logger.level;
+    },
 
     simulateStall: async (instanceId = null) => exportedApi.call('debug_simulateStall', {}, instanceId),
   });

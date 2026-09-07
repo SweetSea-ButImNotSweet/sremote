@@ -17,11 +17,8 @@ export const LOG_LEVELS = { INHERIT: -1, SILENT: 0, ERROR: 1, INFO: 2, DEBUG: 3 
  */
 export function getGlobalLogLevelOverride() {
   try {
-    // 1. Check window property override (often set by Userscript or developer in console)
+    // 1. Check window.sremote property override (often set by Userscript or developer in console)
     if (typeof window !== 'undefined') {
-      if (typeof window.__sremote_log_level__ === 'number' && window.__sremote_log_level__ >= -1) {
-        return window.__sremote_log_level__;
-      }
       if (typeof window.sremote?.logLevel === 'number' && window.sremote.logLevel >= -1) {
         return window.sremote.logLevel;
       }
@@ -34,10 +31,6 @@ export function getGlobalLogLevelOverride() {
         }
       }
     }
-    // 3. Check globalThis symbol
-    if (typeof globalThis !== 'undefined' && typeof globalThis[Symbol.for('__sremote_log_level__')] === 'number') {
-      return globalThis[Symbol.for('__sremote_log_level__')];
-    }
   } catch {}
   return null;
 }
@@ -49,12 +42,16 @@ export function getGlobalLogLevelOverride() {
  * @returns {number}
  */
 export function resolveLogLevel(localLevel = undefined, defaultLevel = LOG_LEVELS.ERROR) {
+  if (typeof localLevel === 'number' && localLevel >= 0) {
+    const override = getGlobalLogLevelOverride();
+    if (override !== null && override !== undefined && override !== LOG_LEVELS.INHERIT) {
+      return override;
+    }
+    return localLevel;
+  }
   const override = getGlobalLogLevelOverride();
   if (override !== null && override !== undefined && override !== LOG_LEVELS.INHERIT) {
     return override;
-  }
-  if (typeof localLevel === 'number' && localLevel >= 0) {
-    return localLevel;
   }
   return defaultLevel;
 }

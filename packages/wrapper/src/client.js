@@ -128,10 +128,6 @@ export class SRemoteClient {
   }
 
   syncLogLevelFromUserscript() {
-    if (typeof window !== 'undefined' && typeof window.__sremote_log_level__ === 'number' && window.__sremote_log_level__ >= 0) {
-      this.logger.setLevel(window.__sremote_log_level__);
-      return;
-    }
     if (this.userscriptDriver?.isAvailable()) {
       const api = this.userscriptDriver.getApi();
       if (api && typeof api.logLevel === 'number' && api.logLevel >= 0) {
