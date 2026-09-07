@@ -90,11 +90,20 @@ export class TwitchProvider extends BaseProvider {
       },
       seek(offset) {
         if (player && typeof player.getCurrentTime === 'function' && typeof player.seek === 'function') {
-          player.seek(Math.max(0, (player.getCurrentTime() || 0) + Number(offset)));
+          const cur = player.getCurrentTime() || 0;
+          const target = Math.max(0, cur + Number(offset));
+          const state = { ...adapter.getState(), currentTime: target };
+          adapter.emit?.('seeking', { state });
+          player.seek(target);
+          adapter.emit?.('seeked', { state });
         }
       },
       seekTo(seconds) {
-        player?.seek?.(Number(seconds));
+        const target = Number(seconds);
+        const state = { ...adapter.getState(), currentTime: target };
+        adapter.emit?.('seeking', { state });
+        player?.seek?.(target);
+        adapter.emit?.('seeked', { state });
       },
       getCurrentTime() {
         return player?.getCurrentTime ? player.getCurrentTime() : 0;
@@ -106,13 +115,17 @@ export class TwitchProvider extends BaseProvider {
         return player?.getVolume ? player.getVolume() : 1;
       },
       setVolume(vol) {
-        player?.setVolume?.(Math.min(1, Math.max(0, Number(vol))));
+        const v = Math.min(1, Math.max(0, Number(vol)));
+        player?.setVolume?.(v);
+        adapter.emit?.('volumechange', { state: { ...adapter.getState(), volume: v } });
       },
       getMuted() {
         return player?.getMuted ? player.getMuted() : false;
       },
       setMuted(muted) {
-        player?.setMuted?.(Boolean(muted));
+        const m = Boolean(muted);
+        player?.setMuted?.(m);
+        adapter.emit?.('volumechange', { state: { ...adapter.getState(), muted: m } });
       },
       paused() {
         return player?.isPaused ? player.isPaused() : true;

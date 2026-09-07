@@ -97,14 +97,17 @@ export class SoundCloudProvider extends BaseProvider {
       seek(offset) {
         if (widget && typeof widget.getPosition === 'function' && typeof widget.seekTo === 'function') {
           widget.getPosition(pos => {
-            const targetMs = Math.max(0, (pos || 0) + Number(offset) * 1000);
-            widget.seekTo(targetMs);
+            const targetSec = Math.max(0, (pos || 0) / 1000 + Number(offset));
+            adapter.emit?.('seeking', { state: { paused: !isPlaying, currentTime: targetSec, duration, volume, muted: isMuted } });
+            widget.seekTo(targetSec * 1000);
           });
         }
       },
       seekTo(seconds) {
         if (widget && typeof widget.seekTo === 'function') {
-          widget.seekTo(Number(seconds) * 1000);
+          const targetSec = Number(seconds);
+          adapter.emit?.('seeking', { state: { paused: !isPlaying, currentTime: targetSec, duration, volume, muted: isMuted } });
+          widget.seekTo(targetSec * 1000);
         }
       },
       getCurrentTime() {
@@ -120,6 +123,7 @@ export class SoundCloudProvider extends BaseProvider {
         volume = Number(vol);
         if (widget && typeof widget.setVolume === 'function') {
           widget.setVolume(Math.min(100, Math.max(0, volume * 100)));
+          adapter.emit?.('volumechange', { state: { volume, muted: isMuted } });
         }
       },
       getMuted() {
@@ -129,6 +133,7 @@ export class SoundCloudProvider extends BaseProvider {
         isMuted = Boolean(muted);
         if (widget && typeof widget.setVolume === 'function') {
           widget.setVolume(isMuted ? 0 : volume * 100);
+          adapter.emit?.('volumechange', { state: { volume, muted: isMuted } });
         }
       },
       paused() {

@@ -211,6 +211,12 @@ export class VimeoProvider extends BaseProvider {
         adapter.emit?.('timeupdate', { state: { paused: isPaused, currentTime, duration } });
       });
 
+      player.on('seeking', data => {
+        currentTime = data.seconds || 0;
+        duration = data.duration || duration;
+        adapter.emit?.('seeking', { state: { paused: isPaused, currentTime, duration } });
+      });
+
       player.on('seeked', data => {
         currentTime = data.seconds || 0;
         adapter.emit?.('seeked', { state: { paused: isPaused, currentTime, duration } });
@@ -226,6 +232,19 @@ export class VimeoProvider extends BaseProvider {
         if (typeof data.volume === 'number') volume = data.volume;
         if (typeof data.muted === 'boolean') isMuted = data.muted;
         adapter.emit?.('volumechange', { state: { volume, muted: isMuted } });
+      });
+
+      player.on('playbackratechange', data => {
+        if (typeof data?.playbackRate === 'number') playbackRate = data.playbackRate;
+        adapter.emit?.('ratechange', { state: { playbackRate } });
+      });
+
+      player.on('bufferstart', () => {
+        adapter.emit?.('buffering', { state: { paused: isPaused, currentTime, duration, isBuffering: true } });
+      });
+
+      player.on('bufferend', () => {
+        adapter.emit?.('buffered', { state: { paused: isPaused, currentTime, duration, isBuffering: false } });
       });
     }
 

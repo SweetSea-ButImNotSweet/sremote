@@ -105,11 +105,18 @@ export class AppleMusicKitProvider extends BaseProvider {
         if (mk) {
           const cur = Number(mk.currentPlaybackTime) || 0;
           const target = Math.max(0, cur + Number(offset));
-          return mk.seekToTime?.(target);
+          adapter.emit?.('seeking', { state: { ...updateSnapshot(), currentTime: target } });
+          const res = await mk.seekToTime?.(target);
+          adapter.emit?.('seeked', { state: { ...updateSnapshot(), currentTime: target } });
+          return res;
         }
       },
       async seekTo(seconds) {
-        return mk?.seekToTime?.(Number(seconds));
+        const target = Number(seconds);
+        adapter.emit?.('seeking', { state: { ...updateSnapshot(), currentTime: target } });
+        const res = await mk?.seekToTime?.(target);
+        adapter.emit?.('seeked', { state: { ...updateSnapshot(), currentTime: target } });
+        return res;
       },
       getCurrentTime() {
         return Number(mk?.currentPlaybackTime) || currentTime;
@@ -125,6 +132,7 @@ export class AppleMusicKitProvider extends BaseProvider {
         if (mk) {
           mk.volume = volume;
         }
+        adapter.emit?.('volumechange', { state: { ...updateSnapshot(), volume } });
       },
       getMuted() {
         return isMuted;
@@ -134,6 +142,7 @@ export class AppleMusicKitProvider extends BaseProvider {
         if (mk) {
           mk.volume = isMuted ? 0 : volume || 1;
         }
+        adapter.emit?.('volumechange', { state: { ...updateSnapshot(), muted: isMuted } });
       },
       async next() {
         return mk?.skipToNextItem?.();

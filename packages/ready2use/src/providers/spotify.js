@@ -87,6 +87,15 @@ export class SpotifyProvider extends BaseProvider {
     let isPaused = true;
     let position = 0;
     let duration = 0;
+    let isSeeking = false;
+    let lastReportedPosition = 0;
+
+    const notifySeeked = state => {
+      if (isSeeking) {
+        isSeeking = false;
+        adapter.emit?.('seeked', { state });
+      }
+    };
 
     const adapter = {
       play() {
@@ -113,10 +122,16 @@ export class SpotifyProvider extends BaseProvider {
         }
       },
       seek(offset) {
-        EmbedController?.seek?.(Math.max(0, position + Number(offset)));
+        const target = Math.max(0, position + Number(offset));
+        isSeeking = true;
+        adapter.emit?.('seeking', { state: { paused: isPaused, currentTime: target, duration } });
+        EmbedController?.seek?.(target);
       },
       seekTo(seconds) {
-        EmbedController?.seek?.(Number(seconds));
+        const target = Number(seconds);
+        isSeeking = true;
+        adapter.emit?.('seeking', { state: { paused: isPaused, currentTime: target, duration } });
+        EmbedController?.seek?.(target);
       },
       getCurrentTime() {
         return position;
@@ -140,17 +155,30 @@ export class SpotifyProvider extends BaseProvider {
         isPaused = false;
         position = (e?.data?.position || 0) / 1000;
         duration = (e?.data?.duration || 0) / 1000;
-        adapter.emit?.('play', { state: { paused: false, currentTime: position, duration } });
-        adapter.emit?.('timeupdate', { state: { paused: false, currentTime: position, duration } });
+        const state = { paused: false, currentTime: position, duration };
+        notifySeeked(state);
+        adapter.emit?.('play', { state });
+        adapter.emit?.('timeupdate', { state });
       });
 
       EmbedController.addListener('playback_update', e => {
         isPaused = Boolean(e?.data?.isPaused);
         position = (e?.data?.position || 0) / 1000;
         duration = (e?.data?.duration || 0) / 1000;
-        adapter.emit?.('timeupdate', { state: { paused: isPaused, currentTime: position, duration } });
+        const state = { paused: isPaused, currentTime: position, duration };
+
+        // Detect seek via scrub or after programmatic seek
+        if (Math.abs(position - lastReportedPosition) > 2 && !isSeeking) {
+          adapter.emit?.('seeking', { state });
+          adapter.emit?.('seeked', { state });
+        } else if (isSeeking) {
+          notifySeeked(state);
+        }
+
+        lastReportedPosition = position;
+        adapter.emit?.('timeupdate', { state });
         if (isPaused) {
-          adapter.emit?.('pause', { state: { paused: true, currentTime: position, duration } });
+          adapter.emit?.('pause', { state });
         }
       });
     }

@@ -94,10 +94,14 @@ export class DailymotionProvider extends BaseProvider {
         }
       },
       seek(offset) {
-        player?.seek?.(Math.max(0, currentTime + Number(offset)));
+        const target = Math.max(0, currentTime + Number(offset));
+        adapter.emit?.('seeking', { state: { paused: isPaused, currentTime: target, duration } });
+        player?.seek?.(target);
       },
       seekTo(seconds) {
-        player?.seek?.(Number(seconds));
+        const target = Number(seconds);
+        adapter.emit?.('seeking', { state: { paused: isPaused, currentTime: target, duration } });
+        player?.seek?.(target);
       },
       getCurrentTime() {
         return currentTime;
@@ -183,11 +187,24 @@ export class DailymotionProvider extends BaseProvider {
         });
       }
 
+      if (events.PLAYER_SEEKING) {
+        player.on(events.PLAYER_SEEKING, state => {
+          currentTime = state?.videoTime ?? state?.time ?? currentTime;
+          adapter.emit?.('seeking', { state: { paused: isPaused, currentTime, duration } });
+        });
+      }
+
       if (events.PLAYER_SEEKED) {
         player.on(events.PLAYER_SEEKED, state => {
           currentTime = state?.videoTime ?? state?.time ?? currentTime;
           adapter.emit?.('seeked', { state: { paused: isPaused, currentTime, duration } });
           adapter.emit?.('timeupdate', { state: { paused: isPaused, currentTime, duration } });
+        });
+      }
+
+      if (events.PLAYER_BUFFERING) {
+        player.on(events.PLAYER_BUFFERING, () => {
+          adapter.emit?.('buffering', { state: { paused: isPaused, currentTime, duration } });
         });
       }
 

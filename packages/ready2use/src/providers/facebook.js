@@ -176,11 +176,18 @@ export class FacebookProvider extends BaseProvider {
         if (player && typeof player.seek === 'function') {
           const cur = typeof player.getCurrentPosition === 'function' ? player.getCurrentPosition() : currentTime;
           const target = Math.max(0, (cur || 0) + Number(offset));
+          const state = { ...updateSnapshot(), currentTime: target };
+          adapter.emit?.('seeking', { state });
           player.seek(target);
+          adapter.emit?.('seeked', { state });
         }
       },
       seekTo(seconds) {
-        player?.seek?.(Number(seconds));
+        const target = Number(seconds);
+        const state = { ...updateSnapshot(), currentTime: target };
+        adapter.emit?.('seeking', { state });
+        player?.seek?.(target);
+        adapter.emit?.('seeked', { state });
       },
       getCurrentTime() {
         return typeof player?.getCurrentPosition === 'function' ? player.getCurrentPosition() : currentTime;
@@ -194,6 +201,7 @@ export class FacebookProvider extends BaseProvider {
       setVolume(vol) {
         volume = Number(vol);
         player?.setVolume?.(Math.min(1, Math.max(0, volume)));
+        adapter.emit?.('volumechange', { state: { ...updateSnapshot(), volume } });
       },
       getMuted() {
         return typeof player?.isMuted === 'function' ? player.isMuted() : isMuted;
@@ -207,6 +215,7 @@ export class FacebookProvider extends BaseProvider {
             player.unmute?.();
           }
         }
+        adapter.emit?.('volumechange', { state: { ...updateSnapshot(), muted: isMuted } });
       },
       paused() {
         if (player && typeof player.isPlaying === 'function') {

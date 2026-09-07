@@ -124,13 +124,29 @@ export class PeerTubeProvider extends BaseProvider {
           player
             .getCurrentPosition?.()
             .then(pos => {
-              player.seek?.(Math.max(0, (pos || 0) + Number(offset))).catch(() => {});
+              const target = Math.max(0, (pos || 0) + Number(offset));
+              adapter.emit?.('seeking', { state: { paused: !isPlaying, currentTime: target, duration, volume, playbackRate } });
+              player
+                .seek?.(target)
+                .then(() => {
+                  currentTime = target;
+                  adapter.emit?.('seeked', { state: { paused: !isPlaying, currentTime: target, duration, volume, playbackRate } });
+                })
+                .catch(() => {});
             })
             .catch(() => {});
         }
       },
       seekTo(seconds) {
-        player?.seek?.(Number(seconds)).catch(() => {});
+        const target = Number(seconds);
+        adapter.emit?.('seeking', { state: { paused: !isPlaying, currentTime: target, duration, volume, playbackRate } });
+        player
+          ?.seek?.(target)
+          .then(() => {
+            currentTime = target;
+            adapter.emit?.('seeked', { state: { paused: !isPlaying, currentTime: target, duration, volume, playbackRate } });
+          })
+          .catch(() => {});
       },
       getCurrentTime() {
         return currentTime;
@@ -144,6 +160,7 @@ export class PeerTubeProvider extends BaseProvider {
       setVolume(vol) {
         volume = Number(vol);
         player?.setVolume?.(Math.min(1, Math.max(0, volume))).catch(() => {});
+        adapter.emit?.('volumechange', { state: { volume } });
       },
       getMuted() {
         return volume === 0;
@@ -151,8 +168,11 @@ export class PeerTubeProvider extends BaseProvider {
       setMuted(muted) {
         if (muted) {
           player?.setVolume?.(0).catch(() => {});
+          adapter.emit?.('volumechange', { state: { volume: 0, muted: true } });
         } else {
-          player?.setVolume?.(volume || 1).catch(() => {});
+          const v = volume || 1;
+          player?.setVolume?.(v).catch(() => {});
+          adapter.emit?.('volumechange', { state: { volume: v, muted: false } });
         }
       },
       getPlaybackRate() {
@@ -161,6 +181,7 @@ export class PeerTubeProvider extends BaseProvider {
       setPlaybackRate(rate) {
         playbackRate = Number(rate);
         player?.setPlaybackRate?.(playbackRate).catch(() => {});
+        adapter.emit?.('ratechange', { state: { playbackRate } });
       },
       paused() {
         return !isPlaying;
