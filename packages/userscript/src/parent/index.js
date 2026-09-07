@@ -1,4 +1,4 @@
-import { VERSION, NS, ENABLE_DEBUG_API, console_log, console_warn, console_error, pageWindow } from '../config.js';
+import { VERSION, NS, ENABLE_DEBUG_API, actionLogger, console_log, console_warn, console_error, pageWindow } from '../config.js';
 import { Storage, GM } from '../core/storage.js';
 import { getOriginStorageKeys } from '../core/utils.js';
 import { executeAdapterAction } from '../core/adapter-runner.js';
@@ -110,6 +110,7 @@ export function initParentController() {
     if (!mediaEl) return false;
     const hasSource = hasMediaSource(mediaEl);
     const norm = String(action || '').toLowerCase();
+    actionLogger.log(`Top DOM executing -> ${action}`, { action, value });
     try {
       switch (norm) {
         case 'play':

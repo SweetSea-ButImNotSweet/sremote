@@ -1,4 +1,5 @@
 import { wrapCustomAdapter } from './events.js';
+import { createLogger, LOG_LEVELS } from './logger.js';
 
 /**
  * Generates a unique instance identifier.
@@ -25,6 +26,8 @@ export function createInstanceManager(options = {}) {
   const log = typeof logger.log === 'function' ? logger.log : () => {};
   const debug = typeof logger.debug === 'function' ? logger.debug : () => {};
   const warn = typeof logger.warn === 'function' ? logger.warn : typeof console !== 'undefined' ? console.warn.bind(console) : () => {};
+
+  const eventLogger = createLogger({ prefix: 'event', getLevel: typeof logger.level === 'number' ? () => logger.level : undefined, defaultLevel: LOG_LEVELS.ERROR });
 
   const instances = new Map(); // instanceId -> { port, location, origin, note, state, mediaType, lastSeen, status, iframeEl, authenticated }
   const parentAdaptersMap = new Map(); // adapterKey -> adapterObject
@@ -109,6 +112,8 @@ export function createInstanceManager(options = {}) {
     const rawEv = String(event || '').toLowerCase();
     const ev = rawEv.replace(/^sremote:/, '');
     const fullEv = `sremote:${ev}`;
+
+    eventLogger.debug(`Dispatched -> ${ev}`, payload);
 
     if ((ev === 'accept' || rawEv === 'accept') && payload?.instanceId) {
       lastAcceptedData = payload;

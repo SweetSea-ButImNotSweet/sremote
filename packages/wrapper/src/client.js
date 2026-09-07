@@ -16,6 +16,9 @@ export class SRemoteClient {
 
     this.logger = createLogger({ prefix: 'wrapper', level: initialLogLevel, defaultLevel: LOG_LEVELS.ERROR });
 
+    // If userscript already ran before client creation, sync log level immediately
+    this.syncLogLevelFromUserscript();
+
     const driverOptions = { ...this.options, logger: this.logger };
     this.userscriptDriver = new UserscriptDriver(driverOptions);
     this.domDriver = new DomDriver(driverOptions);
@@ -144,7 +147,11 @@ export class SRemoteClient {
   }
 
   syncLogLevelFromUserscript() {
-    if (this.userscriptDriver.isAvailable()) {
+    if (typeof window !== 'undefined' && typeof window.__sremote_log_level__ === 'number' && window.__sremote_log_level__ >= 0) {
+      this.logger.setLevel(window.__sremote_log_level__);
+      return;
+    }
+    if (this.userscriptDriver?.isAvailable()) {
       const api = this.userscriptDriver.getApi();
       if (api && typeof api.logLevel === 'number' && api.logLevel >= 0) {
         this.logger.setLevel(api.logLevel);

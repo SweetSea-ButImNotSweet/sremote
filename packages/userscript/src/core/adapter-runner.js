@@ -1,4 +1,4 @@
-import { console_warn } from '../config.js';
+import { actionLogger, console_warn } from '../config.js';
 
 const adapterPreviousVolumeMap = new WeakMap();
 
@@ -14,6 +14,10 @@ const adapterPreviousVolumeMap = new WeakMap();
 export async function executeAdapterAction(adapter, action, value = undefined, isPureGet = false) {
   if (!adapter || typeof adapter !== 'object') return false;
   const norm = String(action || '').toLowerCase();
+
+  if (!isPureGet) {
+    actionLogger.log(`Adapter executing -> ${action}`, { action, value });
+  }
 
   try {
     switch (norm) {

@@ -3,13 +3,17 @@ import { unsafeWindow } from '$';
 export const VERSION = '3.0.0';
 export const NS = 'sremote:';
 
-import { LOG_LEVELS, createLogger } from '@sremote/shared';
-
 export const LOG_LEVEL = 3; // 0: None, 1: Error/Warn, 2: Debug, 3: Full Log
 export const ENABLE_DEBUG_API = true;
 
+import { LOG_LEVELS, createLogger } from '@sremote/shared';
+
 // Create unified logger for userscript with dynamic level checking
 export const logger = createLogger({ prefix: 'userscript', level: LOG_LEVEL, defaultLevel: LOG_LEVELS.INFO });
+
+export const actionLogger = createLogger({ prefix: 'action', getLevel: () => logger.level, defaultLevel: LOG_LEVELS.INFO });
+export const mediaSessionLogger = createLogger({ prefix: 'mediaSession', getLevel: () => logger.level, defaultLevel: LOG_LEVELS.INFO });
+export const eventLogger = createLogger({ prefix: 'event', getLevel: () => logger.level, defaultLevel: LOG_LEVELS.INFO });
 
 export const console_log = (...args) => logger.log(...args);
 export const console_debug = (...args) => logger.debug(...args);
@@ -18,13 +22,11 @@ export const console_error = (...args) => logger.error(...args);
 
 export const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
-// Expose userscript LOG_LEVEL to page window so web apps (wrapper) inherit log level
+// Expose userscript LOG_LEVEL to page window if explicitly configured (other than INHERIT / -1)
 try {
-  if (typeof pageWindow !== 'undefined' && typeof LOG_LEVEL === 'number' && LOG_LEVEL >= 0) {
-    pageWindow.__sremote_log_level__ = LOG_LEVEL;
-  }
-  if (typeof window !== 'undefined' && typeof LOG_LEVEL === 'number' && LOG_LEVEL >= 0) {
-    window.__sremote_log_level__ = LOG_LEVEL;
+  if (typeof LOG_LEVEL === 'number' && LOG_LEVEL !== LOG_LEVELS.INHERIT && LOG_LEVEL >= 0) {
+    if (typeof pageWindow !== 'undefined') pageWindow.__sremote_log_level__ = LOG_LEVEL;
+    if (typeof window !== 'undefined') window.__sremote_log_level__ = LOG_LEVEL;
   }
 } catch {}
 

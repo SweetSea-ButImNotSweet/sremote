@@ -1,6 +1,6 @@
 import { safeGetProp, safeSetProp } from '../core/utils.js';
 import { executeAdapterAction } from '../core/adapter-runner.js';
-import { descriptors, console_warn } from '../config.js';
+import { descriptors, actionLogger, mediaSessionLogger, console_warn } from '../config.js';
 import { mockMediaSessionInstance } from './media-session.js';
 import { findAllMedia } from './media-hunter.js';
 
@@ -162,6 +162,7 @@ export function handleBindMetadata({ metadata, instanceId, emitToParent, sendMed
 
   try {
     const metaObj = { title: metadata.title, artist: metadata.artist, album: metadata.album, artwork: safeArtworks };
+    mediaSessionLogger.log('Bind metadata:', metaObj);
     if (typeof MediaMetadata !== 'undefined') {
       navigator.mediaSession.metadata = new MediaMetadata(metaObj);
     }
@@ -208,6 +209,9 @@ export function createMediaController({
 
     // 2. HTML5 Video/Audio Execution
     if ((mediaType === 'video' || mediaType === 'audio') && activeMedia) {
+      if (!isPureGet) {
+        actionLogger.log(`DOM media executing -> ${action}`, { action, value });
+      }
       let resVal;
       const getPaused = () => Boolean(safeGetProp(activeMedia, descriptors.paused, 'paused') ?? activeMedia.paused);
 
