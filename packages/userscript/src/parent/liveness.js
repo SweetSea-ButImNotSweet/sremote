@@ -44,19 +44,67 @@ export function setupLivenessReaper(instances, removeInstance, iframeToAssignedI
     }
   }, 1500);
 
-  // 2. Parent DOM MutationObserver for removed iframes (Instant Cleanup)
+  // 2. Parent DOM MutationObserver with Grace Period for React Strict Mode & Rapid Remounts
+  const pendingReapTimers = new Map(); // instanceId -> timerId
+  const GRACE_PERIOD_MS = 300;
+
+  function scheduleReapInstance(assignedId) {
+    if (!assignedId || !instances.has(assignedId)) return;
+    if (pendingReapTimers.has(assignedId)) {
+      clearTimeout(pendingReapTimers.get(assignedId));
+    }
+
+    const timer = setTimeout(() => {
+      pendingReapTimers.delete(assignedId);
+      const inst = instances.get(assignedId);
+      // Only reap if still disconnected from DOM
+      if (inst?.iframeEl && !inst.iframeEl.isConnected) {
+        console_log(`%c[SRemote:lifecycle] Iframe node confirmed removed after grace period: ${assignedId}`, 'color: #ef4444;');
+        removeInstance(assignedId, 'dom_removed');
+      }
+    }, GRACE_PERIOD_MS);
+
+    pendingReapTimers.set(assignedId, timer);
+  }
+
+  function cancelReapInstance(assignedId) {
+    if (pendingReapTimers.has(assignedId)) {
+      clearTimeout(pendingReapTimers.get(assignedId));
+      pendingReapTimers.delete(assignedId);
+      console_log(`%c[SRemote:lifecycle] Iframe re-attached to DOM within grace period: ${assignedId}. Preserving instance.`, 'color: #10b981;');
+    }
+  }
+
   const parentIframeObserver = new MutationObserver(mutations => {
     for (const m of mutations) {
+      // If node is re-added, cancel any pending reap (Strict Mode remount)
+      if (m.addedNodes.length > 0) {
+        for (let i = 0; i < m.addedNodes.length; i++) {
+          const node = m.addedNodes[i];
+          if (node.nodeType === 1) {
+            if (node.tagName === 'IFRAME') {
+              const assignedId = iframeToAssignedIdMap.get(node) || node.getAttribute?.('data-sremote-id');
+              if (assignedId) cancelReapInstance(assignedId);
+            } else if (node.querySelectorAll) {
+              const subIframes = node.querySelectorAll('iframe');
+              for (let j = 0; j < subIframes.length; j++) {
+                const assignedId = iframeToAssignedIdMap.get(subIframes[j]) || subIframes[j].getAttribute?.('data-sremote-id');
+                if (assignedId) cancelReapInstance(assignedId);
+              }
+            }
+          }
+        }
+      }
+
+      // If node is removed, schedule grace period reap instead of instant kill
       if (m.removedNodes.length > 0) {
         for (let i = 0; i < m.removedNodes.length; i++) {
           const node = m.removedNodes[i];
           if (node.nodeType === 1) {
-            // Direct iframe removal
             if (node.tagName === 'IFRAME') {
               const assignedId = iframeToAssignedIdMap.get(node) || node.getAttribute?.('data-sremote-id');
               if (assignedId && instances.has(assignedId)) {
-                console_log(`%c[SRemote:lifecycle] Iframe node removed from DOM: ${assignedId}`, 'color: #ef4444;');
-                removeInstance(assignedId, 'dom_removed');
+                scheduleReapInstance(assignedId);
               }
             } else if (node.querySelectorAll) {
               const subIframes = node.querySelectorAll('iframe');
@@ -64,7 +112,7 @@ export function setupLivenessReaper(instances, removeInstance, iframeToAssignedI
                 const subIfr = subIframes[j];
                 const assignedId = iframeToAssignedIdMap.get(subIfr) || subIfr.getAttribute?.('data-sremote-id');
                 if (assignedId && instances.has(assignedId)) {
-                  removeInstance(assignedId, 'dom_removed');
+                  scheduleReapInstance(assignedId);
                 }
               }
             }
@@ -82,6 +130,8 @@ export function setupLivenessReaper(instances, removeInstance, iframeToAssignedI
   return {
     destroy: () => {
       clearInterval(reaperInterval);
+      for (const t of pendingReapTimers.values()) clearTimeout(t);
+      pendingReapTimers.clear();
       parentIframeObserver.disconnect();
     },
   };

@@ -36,6 +36,8 @@ export function createIframeHandshake({
     resolver.resolveActiveMedia();
 
     const hasActiveMedia = Boolean(resolver.getActiveMedia());
+    const hasToken = Boolean(hsInfo.handshakeId && hsInfo.handshakeToken);
+
     const payload = {
       type: `${NS}accept`,
       event: 'accept',
@@ -50,6 +52,7 @@ export function createIframeHandshake({
       state: getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
       ...(hsInfo.handshakeId ? { handshakeId: hsInfo.handshakeId } : {}),
       ...(hsInfo.handshakeToken ? { handshakeToken: hsInfo.handshakeToken } : {}),
+      needsToken: !hasToken,
     };
 
     console_log(`%c[SRemote:handshake] Iframe sending 'accept' to parent ->`, 'color: #10b981; font-weight: bold;', {
@@ -57,6 +60,7 @@ export function createIframeHandshake({
       instanceId: instanceIdGetter(),
       hasPort: Boolean(transferredPort),
       hasMedia: hasActiveMedia,
+      needsToken: !hasToken,
       payload,
     });
 
@@ -117,6 +121,8 @@ export function createIframeHandshake({
     });
   }
 
+  let lastGrantTimestamp = 0;
+
   function handleHelloMessage(event, data) {
     const callerOrigin = event.origin || 'unknown_parent';
     if (event.source === window) return;
@@ -138,8 +144,10 @@ export function createIframeHandshake({
       bindPort(event.ports[0]);
     }
 
+    let hasNewCredentials = false;
     if (data.handshakeId && data.handshakeToken) {
       currentHandshakeSetter(data.handshakeId, data.handshakeToken);
+      hasNewCredentials = true;
     }
 
     if (sessionDeniedOrigins.has(callerOrigin)) return;
@@ -148,13 +156,21 @@ export function createIframeHandshake({
     if (allowKey && Storage.get(denyKey) === '1') return;
 
     const isAlreadyAccepted = authorizedOrigins.has(callerOrigin);
+    const now = Date.now();
     if (isAlreadyAccepted) {
-      grantAccess(callerOrigin);
+      // If parent gave us fresh challenge credentials, immediately respond with grantAccess
+      if (hasNewCredentials || now - lastGrantTimestamp >= 200) {
+        lastGrantTimestamp = now;
+        grantAccess(callerOrigin);
+      }
       return;
     }
 
     if (allowKey && Storage.get(allowKey) === '1') {
-      grantAccess(callerOrigin);
+      if (hasNewCredentials || now - lastGrantTimestamp >= 200) {
+        lastGrantTimestamp = now;
+        grantAccess(callerOrigin);
+      }
       return;
     }
 

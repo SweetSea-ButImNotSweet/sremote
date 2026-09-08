@@ -418,11 +418,12 @@ export class SRemoteClient {
   capabilities(targetOrId?: string | HTMLElement, key?: string | null): SRemoteCapabilities | null;
 
   // --- Global Lifecycle & Events ---
-  hello(options?: SRemoteHelloOptions, key?: string): void;
+  hello(options?: SRemoteHelloOptions, key?: string): Promise<boolean | void>;
   bindMetadata(meta: any, instanceId?: string, key?: string): void;
   emit(event: string, payload?: any): void;
   on(event: string, handler: (data: any) => void, key?: string): () => void;
   off(event: string, handler: (data: any) => void): void;
+  destroy(): void;
 
   showInstallModal(options?: SRemoteInstallModalOptions): SRemoteInstallModalHandle;
 }

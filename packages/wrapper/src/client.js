@@ -327,13 +327,15 @@ export class SRemoteClient {
   }
 
   // --- Global Lifecycle & Events ---
-  hello(options, key) {
+  async hello(options, key) {
+    await this.ready();
     if (this.userscriptDriver.isAvailable()) {
       const api = this.userscriptDriver.getApi();
       if (api && typeof api.hello === 'function') {
         return api.hello(options, key || this.options.passkey);
       }
     }
+    return false;
   }
 
   bindMetadata(meta, instanceId, key) {
@@ -399,6 +401,30 @@ export class SRemoteClient {
         this._listeners.delete(entry);
       }
     }
+  }
+
+  destroy() {
+    this.logger.debug('Destroying SRemoteClient instance...');
+    for (const entry of Array.from(this._listeners)) {
+      if (typeof entry.unbindDom === 'function') {
+        try {
+          entry.unbindDom();
+        } catch {}
+      }
+      if (typeof entry.unbindUserscript === 'function') {
+        try {
+          entry.unbindUserscript();
+        } catch {}
+      }
+    }
+    this._listeners.clear();
+
+    if (this.domDriver && typeof this.domDriver.destroy === 'function') {
+      try {
+        this.domDriver.destroy();
+      } catch {}
+    }
+    this._readyPromise = null;
   }
 
   showInstallModal(options) {

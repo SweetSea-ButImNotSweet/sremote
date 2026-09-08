@@ -50,7 +50,7 @@ export class DomDriver extends BaseDriver {
 
       // Observe DOM mutations to auto-bind dynamically added media
       if (typeof MutationObserver !== 'undefined') {
-        const observer = new MutationObserver(mutations => {
+        this._domObserver = new MutationObserver(mutations => {
           for (const m of mutations) {
             for (const node of m.addedNodes) {
               if (node.nodeType === 1) {
@@ -64,7 +64,7 @@ export class DomDriver extends BaseDriver {
             }
           }
         });
-        observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
+        this._domObserver.observe(document.documentElement || document.body, { childList: true, subtree: true });
       }
     } catch {}
   }
@@ -412,5 +412,15 @@ export class DomDriver extends BaseDriver {
 
   off(event, handler) {
     this.instanceManager.off(event, handler);
+  }
+
+  destroy() {
+    if (this._domObserver) {
+      try {
+        this._domObserver.disconnect();
+      } catch {}
+      this._domObserver = null;
+    }
+    this.instanceManager.handleRemoveAdapter();
   }
 }

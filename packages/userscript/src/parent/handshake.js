@@ -1,5 +1,5 @@
 import { NS, console_log, console_debug, console_warn } from '../config.js';
-import { Storage, checkHandshakeSecret, consumeHandshakeSecret } from '../core/storage.js';
+import { Storage, setHandshakeSecret, checkHandshakeSecret, consumeHandshakeSecret } from '../core/storage.js';
 import { getOriginStorageKeys, generateInstanceId } from '../core/utils.js';
 import { createPermissionDialog } from '../ui/permission-dialog.js';
 import { flushPendingCommands, pendingRpcRequests } from './queue.js';
@@ -37,6 +37,10 @@ export function setupParentHandshake(instanceManager) {
     emitGlobalEvent,
     pauseOthersExcept,
   } = instanceManager;
+
+  const blacklistedIframes = new WeakSet();
+  const blacklistedSources = new WeakSet();
+  const retryChallengeAttempts = new WeakMap();
 
   async function cloneBlobFromParent(blobUrl, instanceId) {
     try {
@@ -236,6 +240,16 @@ export function setupParentHandshake(instanceManager) {
         iframeToAssignedIdMap.set(iframeEl, instanceId);
       }
 
+      // Check blacklist
+      if (iframeEl && blacklistedIframes.has(iframeEl)) {
+        console_warn(`[sremote] Dropped accept from blacklisted iframe element: ${instanceId}`);
+        return;
+      }
+      if (event.source && blacklistedSources.has(event.source)) {
+        console_warn(`[sremote] Dropped accept from blacklisted window source: ${instanceId}`);
+        return;
+      }
+
       let isValidSecret = false;
       let pendingConsumeHandshakeId = null;
       if (data.handshakeId && data.handshakeToken) {
@@ -262,10 +276,56 @@ export function setupParentHandshake(instanceManager) {
         }
       }
 
+      // If token is missing or invalid: challenge the iframe once by generating a fresh token and sending hello
       if (!isValidSecret) {
-        console_warn(`[sremote] Dropped unverified accept for instance: ${instanceId}`);
+        const targetRef = iframeEl || event.source;
+        const attempts = (targetRef ? retryChallengeAttempts.get(targetRef) : 0) || 0;
+
+        if (attempts >= 1) {
+          // Iframe has already been challenged once and still failed -> Blacklist!
+          console_warn(`[sremote:security] Handshake challenge failed for iframe '${instanceId}'. Blacklisting to prevent further abuse.`);
+          if (iframeEl) blacklistedIframes.add(iframeEl);
+          if (event.source) blacklistedSources.add(event.source);
+          return;
+        }
+
+        // Record attempt (allow 1 retry challenge)
+        if (targetRef) retryChallengeAttempts.set(targetRef, attempts + 1);
+
+        console_log(`%c[SRemote:handshake] Accept received without valid token from '${instanceId}'. Issuing one-time hello challenge...`, 'color: #f59e0b; font-weight: bold;');
+
+        // Generate dedicated handshake credentials for this iframe
+        const challengeHandshakeId = generateInstanceId('hs');
+        const challengeHandshakeToken = generateInstanceId('tok');
+        setHandshakeSecret(challengeHandshakeId, challengeHandshakeToken);
+
+        const currentSeq = Number(Storage.get('sremote:hello_seq', 0)) || 0;
+        const latestHandshake = Storage.get('sremote:latest_handshake') || {};
+
+        const helloPayload = {
+          type: `${NS}hello`,
+          source: 'parent',
+          handshakeId: challengeHandshakeId,
+          handshakeToken: challengeHandshakeToken,
+          seq: currentSeq,
+          hasParentAdapter: parentAdaptersMap.size > 0,
+          adapterIds: Array.from(parentAdaptersMap.keys()),
+          ...(latestHandshake.css ? { css: latestHandshake.css } : {}),
+          ...(typeof latestHandshake.treatAlmostEndAsEnd === 'boolean' ? { treatAlmostEndAsEnd: latestHandshake.treatAlmostEndAsEnd } : {}),
+          assignedInstanceId: instanceId,
+        };
+
+        try {
+          event.source.postMessage(helloPayload, '*');
+        } catch (err) {
+          console_warn('[sremote] Failed to send hello challenge to iframe:', err);
+        }
         return;
       }
+
+      // Successful verification: clear any retry attempts
+      if (iframeEl) retryChallengeAttempts.delete(iframeEl);
+      if (event.source) retryChallengeAttempts.delete(event.source);
 
       if (event.ports && event.ports.length > 0) {
         const port = event.ports[0];

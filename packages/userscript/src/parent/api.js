@@ -377,6 +377,10 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     return true;
   };
 
+  let lastHelloTimestamp = 0;
+  let activeHandshakeId = null;
+  let activeHandshakeToken = null;
+
   const broadcastHello = (options = {}, target = null) => {
     let targetIframeWindow = target;
     let providedKey = null;
@@ -416,13 +420,32 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
     console_log(`%c[SRemote:auth] Access authorized for domain '${location.hostname}'`, 'color: #10b981; font-weight: bold;');
 
-    const handshakeId = generateInstanceId('hs');
-    const handshakeToken = generateInstanceId('tok');
-    setHandshakeSecret(handshakeId, handshakeToken);
+    const now = Date.now();
+    // React Strict Mode & Rapid Call Coalescing:
+    // If hello() is called repeatedly within 150ms without target change, reuse the active handshake secrets
+    const isRapidRepeat = now - lastHelloTimestamp < 150 && activeHandshakeId && activeHandshakeToken && !targetIframeWindow;
+    lastHelloTimestamp = now;
+
+    let handshakeId;
+    let handshakeToken;
+
+    if (isRapidRepeat) {
+      handshakeId = activeHandshakeId;
+      handshakeToken = activeHandshakeToken;
+      console_log(`%c[SRemote:hello] Coalescing rapid hello call (Strict Mode safe)`, 'color: #8b5cf6; font-weight: bold;');
+    } else {
+      handshakeId = generateInstanceId('hs');
+      handshakeToken = generateInstanceId('tok');
+      activeHandshakeId = handshakeId;
+      activeHandshakeToken = handshakeToken;
+      setHandshakeSecret(handshakeId, handshakeToken);
+    }
 
     const currentSeq = Number(Storage.get('sremote:hello_seq', 0)) || 0;
-    const nextSeq = currentSeq + 1;
-    Storage.set('sremote:hello_seq', nextSeq);
+    const nextSeq = isRapidRepeat ? currentSeq : currentSeq + 1;
+    if (!isRapidRepeat) {
+      Storage.set('sremote:hello_seq', nextSeq);
+    }
     const hasParentAdapter = parentAdaptersMap.size > 0;
     const adapterIds = hasParentAdapter ? Array.from(parentAdaptersMap.keys()) : [];
 
@@ -475,7 +498,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       } catch (err) {
         console_warn('[sremote] Error posting hello to target iframe:', err);
       }
-      return;
+      return true;
     }
 
     try {
@@ -496,6 +519,8 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
         } catch {}
       }
     } catch {}
+
+    return true;
   };
 
   // --- 2. Build Unified API Object via buildSRemoteApi ---
@@ -556,6 +581,18 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     Object.defineProperty(pageWindow, 'sremote', { value: exportedApi, writable: false, configurable: false, enumerable: true });
   } catch {
     pageWindow.sremote = exportedApi;
+  }
+
+  // Proactively dispatch 'sremote:ready' on pageWindow for instant wrapper binding (0ms latency)
+  try {
+    if (typeof pageWindow.dispatchEvent === 'function') {
+      const readyDetail = { version: VERSION, isSremoteNative: true, api: exportedApi };
+      const readyEvent = typeof CustomEvent === 'function' ? new CustomEvent('sremote:ready', { detail: readyDetail }) : new Event('sremote:ready');
+      readyEvent.detail = readyDetail;
+      pageWindow.dispatchEvent(readyEvent);
+    }
+  } catch (err) {
+    console_warn('[sremote] Failed to dispatch sremote:ready event:', err);
   }
 
   console_log(`%c[sremote] window.sremote is ready with unified builder`, 'background: #065f46; color: #34d399; font-weight: bold;');
