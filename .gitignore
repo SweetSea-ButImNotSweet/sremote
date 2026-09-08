@@ -5,3 +5,4 @@ tarballs/
 **/dist/*
 .antigravity
 .gemini
+.agents
