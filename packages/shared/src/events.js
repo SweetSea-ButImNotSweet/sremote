@@ -337,6 +337,22 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
       try {
         onEmit(ev, fullPayload);
       } catch {}
+
+      // Automatically trigger unified 'state' event for state-changing events
+      const stateChangingEvents = ['play', 'pause', 'playing', 'ended', 'volumechange', 'ratechange', 'seeked', 'loadedmetadata'];
+      if (ev !== 'state' && stateChangingEvents.includes(ev)) {
+        try {
+          const statePayload = createEventPayload('state', {
+            source,
+            instanceId,
+            mediaType: 'adapter',
+            action: ev,
+            state,
+            ...(typeof payload === 'object' && payload !== null ? payload : {}),
+          });
+          onEmit('state', statePayload);
+        } catch {}
+      }
     }
   };
 

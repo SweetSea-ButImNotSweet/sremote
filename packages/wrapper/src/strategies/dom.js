@@ -204,14 +204,22 @@ export class DomDriver extends BaseDriver {
   async play(target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') return resolved.instance.play?.();
+    if (resolved.type === 'adapter') {
+      const res = await resolved.instance.play?.();
+      resolved.instance.emit?.('play', { programmatic: true });
+      return res;
+    }
     return HtmlMediaController.play(resolved.instance);
   }
 
   async pause(target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') return resolved.instance.pause?.();
+    if (resolved.type === 'adapter') {
+      const res = await resolved.instance.pause?.();
+      resolved.instance.emit?.('pause', { programmatic: true });
+      return res;
+    }
     HtmlMediaController.pause(resolved.instance);
   }
 
@@ -219,9 +227,20 @@ export class DomDriver extends BaseDriver {
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') {
-      if (typeof resolved.instance.toggle === 'function') return resolved.instance.toggle();
-      const isPaused = typeof resolved.instance.paused === 'function' ? resolved.instance.paused() : resolved.instance.paused;
-      return isPaused ? resolved.instance.play?.() : resolved.instance.pause?.();
+      let res;
+      if (typeof resolved.instance.toggle === 'function') {
+        res = await resolved.instance.toggle();
+      } else {
+        const isPaused = typeof resolved.instance.paused === 'function' ? resolved.instance.paused() : resolved.instance.paused;
+        res = isPaused ? await resolved.instance.play?.() : await resolved.instance.pause?.();
+      }
+      const isPausedAfter = typeof resolved.instance.paused === 'function' ? resolved.instance.paused() : resolved.instance.paused;
+      if (typeof isPausedAfter === 'boolean') {
+        resolved.instance.emit?.(isPausedAfter ? 'pause' : 'play', { programmatic: true });
+      } else {
+        resolved.instance.emit?.('toggle', { programmatic: true });
+      }
+      return res;
     }
     return HtmlMediaController.toggle(resolved.instance);
   }
@@ -229,7 +248,12 @@ export class DomDriver extends BaseDriver {
   async stop(target) {
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') return resolved.instance.stop?.();
+    if (resolved.type === 'adapter') {
+      const res = await resolved.instance.stop?.();
+      resolved.instance.emit?.('pause', { programmatic: true });
+      resolved.instance.emit?.('stop', { programmatic: true });
+      return res;
+    }
     HtmlMediaController.stop(resolved.instance);
   }
 

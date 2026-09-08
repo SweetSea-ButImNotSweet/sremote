@@ -202,7 +202,7 @@ export function initParentController() {
     }
   }
 
-  function dispatchCommand(action, value, targetInstanceId = null, key = null) {
+  async function dispatchCommand(action, value, targetInstanceId = null, key = null) {
     if (!validateDomainAccess(key)) {
       const errMsg = `[SRemote:auth] Blocked command '${action}'! Valid Passkey is required.`;
       console_error(`%c${errMsg}`, 'color: #ef4444; font-weight: bold;');
@@ -227,7 +227,7 @@ export function initParentController() {
 
     if (parentAdaptersMap.size > 0) {
       const adapterTargetId = !targetInstanceId && !isMultiModeActive() ? Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1] : targetId || targetInstanceId;
-      const handled = executeParentAdapterAction(action, value, adapterTargetId);
+      const handled = await executeParentAdapterAction(action, value, adapterTargetId);
       if (handled) return Promise.resolve({ success: true, instanceId: adapterTargetId || targetId || targetInstanceId, source: 'adapter', action });
     }
 

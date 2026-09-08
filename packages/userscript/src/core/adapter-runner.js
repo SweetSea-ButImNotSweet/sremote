@@ -19,24 +19,49 @@ export async function executeAdapterAction(adapter, action, value = undefined, i
     logger.scope('action').log(`Adapter executing -> ${action}`, { action, value });
   }
 
+  let emittedDuringAction = false;
+  const autoEmit = (eventName, payload = {}) => {
+    if (!isPureGet && typeof adapter.emit === 'function' && !emittedDuringAction) {
+      try {
+        adapter.emit(eventName, { programmatic: true, ...payload });
+      } catch (err) {
+        console_warn(`[sremote] Error in auto-emit for '${eventName}':`, err);
+      }
+    }
+  };
+
   try {
     switch (norm) {
       case 'play':
-        if (!isPureGet && typeof adapter.play === 'function') await adapter.play();
+        if (!isPureGet && typeof adapter.play === 'function') {
+          await adapter.play();
+          autoEmit('play');
+        }
         return true;
 
       case 'pause':
-        if (!isPureGet && typeof adapter.pause === 'function') await adapter.pause();
+        if (!isPureGet && typeof adapter.pause === 'function') {
+          await adapter.pause();
+          autoEmit('pause');
+        }
         return true;
 
       case 'toggle':
         if (!isPureGet) {
           if (typeof adapter.toggle === 'function') {
             await adapter.toggle();
+            const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : typeof adapter.paused === 'boolean' ? adapter.paused : null;
+            if (isPaused !== null) autoEmit(isPaused ? 'pause' : 'play');
+            else autoEmit('toggle');
           } else if (typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
             const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : typeof adapter.paused === 'boolean' ? adapter.paused : true;
-            if (isPaused) await adapter.play();
-            else await adapter.pause();
+            if (isPaused) {
+              await adapter.play();
+              autoEmit('play');
+            } else {
+              await adapter.pause();
+              autoEmit('pause');
+            }
           }
         }
         return true;
@@ -49,6 +74,8 @@ export async function executeAdapterAction(adapter, action, value = undefined, i
             if (typeof adapter.pause === 'function') await adapter.pause();
             if (typeof adapter.seekTo === 'function') await adapter.seekTo(0);
           }
+          autoEmit('pause');
+          autoEmit('stop');
         }
         return true;
 
@@ -60,6 +87,8 @@ export async function executeAdapterAction(adapter, action, value = undefined, i
             const cur = Number((await adapter.getCurrentTime()) || 0);
             await adapter.seekTo(Math.max(0, cur + Number(value)));
           }
+          autoEmit('seeking');
+          autoEmit('seeked');
         }
         return true;
 
@@ -67,6 +96,8 @@ export async function executeAdapterAction(adapter, action, value = undefined, i
       case 'seekto':
         if (!isPureGet && typeof adapter.seekTo === 'function') {
           await adapter.seekTo(Number(value));
+          autoEmit('seeking');
+          autoEmit('seeked');
         }
         return true;
 
@@ -88,6 +119,7 @@ export async function executeAdapterAction(adapter, action, value = undefined, i
             adapter.mediaElement.volume = targetVol;
             adapter.mediaElement.muted = false;
           }
+          autoEmit('volumechange', { volume: targetVol, muted: false });
         }
         return true;
 
@@ -129,12 +161,15 @@ export async function executeAdapterAction(adapter, action, value = undefined, i
               adapter.mediaElement.volume = prevVol;
             }
           }
+          autoEmit('volumechange', { muted: isMuted });
         }
         return true;
 
       case 'speed':
         if (!isPureGet && typeof adapter.setPlaybackRate === 'function') {
-          await adapter.setPlaybackRate(Number(value) || 1);
+          const newRate = Number(value) || 1;
+          await adapter.setPlaybackRate(newRate);
+          autoEmit('ratechange', { playbackRate: newRate });
         }
         return true;
 
