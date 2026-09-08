@@ -61,6 +61,17 @@ export function initParentController() {
   const { instances, parentAdaptersMap, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts, removeInstance } =
     instanceManager;
 
+  let broadcastHelloRef = null;
+
+  // Wakeup: Khi có lệnh dispatch mà chưa có instance hoặc đang pending, lập tức đánh thức iframe
+  const triggerPendingWakeup = () => {
+    try {
+      if (typeof broadcastHelloRef === 'function') {
+        broadcastHelloRef();
+      }
+    } catch {}
+  };
+
   // Setup Top DOM Media Tracker (video/audio on top window)
   const topMediaTracker = setupTopMediaTracker(instanceManager);
 
@@ -249,6 +260,16 @@ export function initParentController() {
         return Promise.resolve({ success: true, instanceId: targetId, action });
       } catch (err) {
         console_warn(`[sremote] Error posting command '${action}' to port for '${targetId}':`, err);
+        const ifr = target.iframeEl || (targetId ? assignedIframeIdMap.get(targetId) : null);
+        if (ifr?.contentWindow && typeof ifr.contentWindow.postMessage === 'function') {
+          try {
+            ifr.contentWindow.postMessage({ type: `${NS}${action}`, source: 'parent', value }, '*');
+            console_log(`%c[SRemote:command] Fallback command '${action}' sent via contentWindow.postMessage to '${targetId}'`, 'color: #10b981;');
+            return Promise.resolve({ success: true, instanceId: targetId, action, fallback: 'window' });
+          } catch (winErr) {
+            console_warn(`[sremote] Fallback contentWindow.postMessage failed for '${targetId}':`, winErr);
+          }
+        }
         return Promise.resolve({ success: false, error: 'PORT_DISCONNECTED', message: String(err), instanceId: targetId });
       }
     }
@@ -259,6 +280,7 @@ export function initParentController() {
     }
 
     console_log(`%c[SRemote:queue] Instance '${targetId || 'pending'}' is connecting or pending port. Queueing '${action}'...`, 'color: #f59e0b;');
+    triggerPendingWakeup();
     return new Promise(resolve => {
       pendingCommandQueue.push({ action, value, targetInstanceId: targetId, timestamp: Date.now(), resolve });
     });
@@ -291,6 +313,37 @@ export function initParentController() {
   // Setup Liveness Reaper
   setupLivenessReaper(instances, removeInstance, iframeToAssignedIdMap);
 
+  // Auto-Heal: Theo dõi các thẻ <iframe> được chèn động (React remount, dynamic route, v.v.)
+  try {
+    if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+      const iframeObserver = new MutationObserver(mutations => {
+        let hasNewIframe = false;
+        for (const m of mutations) {
+          for (const node of m.addedNodes) {
+            if (node.nodeType === 1) {
+              if (node.tagName === 'IFRAME') {
+                hasNewIframe = true;
+              } else if (node.querySelector && node.querySelector('iframe')) {
+                hasNewIframe = true;
+              }
+            }
+          }
+        }
+        if (hasNewIframe) {
+          console_log(`%c[SRemote:autoheal] New iframe detected in DOM. Auto-negotiating hello...`, 'color: #06b6d4; font-weight: bold;');
+          triggerPendingWakeup();
+        }
+      });
+      const targetMount = document.documentElement || document.body || document;
+      if (targetMount) {
+        iframeObserver.observe(targetMount, { childList: true, subtree: true });
+      }
+    }
+  } catch {}
+
   // Initialize and Export window.sremote
-  createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker });
+  const api = createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker });
+  if (api && typeof api.hello === 'function') {
+    broadcastHelloRef = api.hello;
+  }
 }

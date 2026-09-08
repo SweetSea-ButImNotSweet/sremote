@@ -24,6 +24,7 @@ export class SRemoteClient {
     this.domDriver = new DomDriver(driverOptions);
     this.mode = 'detecting'; // 'userscript' | 'dom-direct' | 'unsupported'
     this._readyPromise = null;
+    this._listeners = new Set(); // { event, handler, key, unbindDom, unbindUserscript }
 
     this.instances = {
       list: key => {
@@ -127,6 +128,20 @@ export class SRemoteClient {
     }
   }
 
+  syncListenersToUserscript() {
+    if (this.userscriptDriver.isAvailable()) {
+      for (const entry of this._listeners) {
+        if (!entry.unbindUserscript) {
+          try {
+            entry.unbindUserscript = this.userscriptDriver.on(entry.event, entry.handler, entry.key || this.options.passkey);
+          } catch (err) {
+            this.logger.warn(`Failed to sync listener for '${entry.event}' to userscript:`, err);
+          }
+        }
+      }
+    }
+  }
+
   syncLogLevelFromUserscript() {
     if (this.userscriptDriver?.isAvailable()) {
       const api = this.userscriptDriver.getApi();
@@ -145,6 +160,7 @@ export class SRemoteClient {
         this.syncLogLevelFromUserscript();
         this.logger.log(reason);
         this.syncAdaptersToUserscript();
+        this.syncListenersToUserscript();
         resolve(this);
       };
 
@@ -339,18 +355,50 @@ export class SRemoteClient {
 
   on(event, handler, key) {
     this.logger.debug(`Listening to event: ${event}`);
-    if (this.userscriptDriver.isAvailable()) {
-      return this.userscriptDriver.on(event, handler, key);
+    const entry = { event, handler, key, unbindDom: null, unbindUserscript: null };
+
+    // Always bind to DomDriver as immediate fallback or direct listener
+    if (this.domDriver && typeof this.domDriver.on === 'function') {
+      try {
+        entry.unbindDom = this.domDriver.on(event, handler);
+      } catch {}
     }
-    return this.domDriver.on(event, handler);
+
+    // If userscript is already available, bind immediately
+    if (this.userscriptDriver.isAvailable()) {
+      try {
+        entry.unbindUserscript = this.userscriptDriver.on(event, handler, key || this.options.passkey);
+      } catch {}
+    }
+
+    this._listeners.add(entry);
+
+    return () => this.off(event, handler);
   }
 
   off(event, handler) {
     this.logger.debug(`Unlistening event: ${event}`);
-    if (this.userscriptDriver.isAvailable()) {
-      return this.userscriptDriver.off(event, handler);
+    for (const entry of Array.from(this._listeners)) {
+      if (entry.event === event && (!handler || entry.handler === handler)) {
+        if (typeof entry.unbindDom === 'function') {
+          try {
+            entry.unbindDom();
+          } catch {}
+        } else if (this.domDriver) {
+          this.domDriver.off(entry.event, entry.handler);
+        }
+
+        if (typeof entry.unbindUserscript === 'function') {
+          try {
+            entry.unbindUserscript();
+          } catch {}
+        } else if (this.userscriptDriver.isAvailable()) {
+          this.userscriptDriver.off(entry.event, entry.handler);
+        }
+
+        this._listeners.delete(entry);
+      }
     }
-    return this.domDriver.off(event, handler);
   }
 
   showInstallModal(options) {

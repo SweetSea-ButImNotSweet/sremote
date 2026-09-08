@@ -423,12 +423,17 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     const currentSeq = Number(Storage.get('sremote:hello_seq', 0)) || 0;
     const nextSeq = currentSeq + 1;
     Storage.set('sremote:hello_seq', nextSeq);
+    const hasParentAdapter = parentAdaptersMap.size > 0;
+    const adapterIds = hasParentAdapter ? Array.from(parentAdaptersMap.keys()) : [];
+
     Storage.set('sremote:latest_handshake', {
       seq: nextSeq,
       handshakeId,
       handshakeToken,
       parentOrigin: location.origin,
       css: customCss,
+      hasParentAdapter,
+      adapterIds,
       ...(treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {}),
       timestamp: Date.now(),
     });
@@ -439,6 +444,8 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       handshakeId,
       handshakeToken,
       seq: nextSeq,
+      hasParentAdapter,
+      adapterIds,
       ...(customCss ? { css: customCss } : {}),
       ...(treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {}),
       ...(assignedInstanceId ? { assignedInstanceId } : {}),
@@ -448,6 +455,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       hasTarget: !!targetIframeWindow,
       handshakeId,
       seq: nextSeq,
+      hasParentAdapter,
       hasCss: Boolean(customCss),
     });
 

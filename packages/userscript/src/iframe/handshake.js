@@ -23,11 +23,6 @@ export function createIframeHandshake({
   const sessionDeniedOrigins = new Set();
 
   function grantAccess(origin) {
-    // Only grant access and handshake if media is present or mediaSession is active
-    if (!resolver.resolveActiveMedia()) {
-      return;
-    }
-
     primaryAuthorizedOrigin = origin;
     if (origin) authorizedOrigins.add(origin);
 
@@ -38,7 +33,9 @@ export function createIframeHandshake({
     const transferredPort = channel.port2;
 
     const hsInfo = typeof currentHandshakeGetter === 'function' ? currentHandshakeGetter() : {};
+    resolver.resolveActiveMedia();
 
+    const hasActiveMedia = Boolean(resolver.getActiveMedia());
     const payload = {
       type: `${NS}accept`,
       event: 'accept',
@@ -47,7 +44,8 @@ export function createIframeHandshake({
       location: location.href,
       origin: location.origin,
       version: VERSION,
-      mediaType: resolver.getMediaType(),
+      hasMedia: hasActiveMedia,
+      mediaType: resolver.getMediaType() || (hasActiveMedia ? 'video' : 'idle'),
       capabilities: getIframeCapabilities(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
       state: getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
       ...(hsInfo.handshakeId ? { handshakeId: hsInfo.handshakeId } : {}),
@@ -58,6 +56,7 @@ export function createIframeHandshake({
       origin,
       instanceId: instanceIdGetter(),
       hasPort: Boolean(transferredPort),
+      hasMedia: hasActiveMedia,
       payload,
     });
 

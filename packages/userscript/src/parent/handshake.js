@@ -49,7 +49,7 @@ export function setupParentHandshake(instanceManager) {
     }
   }
 
-  function setupPortForInstance(instanceId, port, initialLocation, initialOrigin, iframeEl = null) {
+  function setupPortForInstance(instanceId, port, initialLocation, initialOrigin, iframeEl = null, initialStatus = 'ready') {
     if (!isMultiModeActive() && instances.size > 0) {
       for (const oldId of Array.from(instances.keys())) {
         if (oldId !== instanceId) {
@@ -70,11 +70,13 @@ export function setupParentHandshake(instanceManager) {
       mediaType: null,
       capabilities: null,
       lastSeen: Date.now(),
-      status: 'ready',
+      status: initialStatus,
       iframeEl: iframeEl || assignedIframeIdMap.get(instanceId) || null,
     };
     instances.set(instanceId, item);
-    flushPendingCommands(instanceId, port, isMultiModeActive);
+    if (initialStatus === 'ready') {
+      flushPendingCommands(instanceId, port, isMultiModeActive);
+    }
 
     port.onmessage = e => {
       const data = e.data;
@@ -115,6 +117,10 @@ export function setupParentHandshake(instanceManager) {
           console_log(`%c[SRemote:handshake] Mutual Ping-Pong confirmed on port for '${instanceId}'. Consuming token '${item.pendingConsumeHandshakeId}'.`, 'color: #10b981;');
           consumeHandshakeSecret(item.pendingConsumeHandshakeId);
           item.pendingConsumeHandshakeId = null;
+        }
+        if (item.status === 'connecting') {
+          item.status = 'ready';
+          flushPendingCommands(instanceId, port, isMultiModeActive);
         }
         if (data.state) item.state = data.state;
         if (data.mediaType) item.mediaType = data.mediaType;
@@ -286,7 +292,7 @@ export function setupParentHandshake(instanceManager) {
       } else if (event.source) {
         console_log(`%c[SRemote:port] Accept received without port for '${instanceId}'. Proactively renegotiating MessagePort...`, 'color: #f59e0b; font-weight: bold;');
         const channel = new MessageChannel();
-        setupPortForInstance(instanceId, channel.port1, iframeLoc, iframeOrigin, iframeEl);
+        setupPortForInstance(instanceId, channel.port1, iframeLoc, iframeOrigin, iframeEl, 'connecting');
         const inst = instances.get(instanceId);
         if (inst) {
           inst.authenticated = true;
@@ -303,6 +309,7 @@ export function setupParentHandshake(instanceManager) {
 
         try {
           event.source.postMessage({ type: `${NS}handshake_port`, source: 'parent', instanceId }, iframeOrigin && iframeOrigin !== 'null' ? iframeOrigin : '*', [channel.port2]);
+          channel.port1.postMessage({ type: `${NS}ping`, source: 'parent', handshakeVerify: true });
         } catch (err) {
           console_warn('[sremote] Failed to transfer proactive MessagePort to iframe:', err);
         }

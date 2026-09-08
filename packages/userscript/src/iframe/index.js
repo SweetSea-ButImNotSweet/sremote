@@ -460,6 +460,24 @@ export function initIframeAgent() {
       handshake.handleHelloMessage(event, data);
       return;
     }
+
+    // Direct Window PostMessage Command Fallback (if port is not ready or failed)
+    if (
+      lowerAction === 'play' ||
+      lowerAction === 'pause' ||
+      lowerAction === 'toggle' ||
+      lowerAction === 'stop' ||
+      lowerAction === 'seek' ||
+      lowerAction === 'seekto' ||
+      lowerAction === 'currenttime' ||
+      lowerAction === 'volume' ||
+      lowerAction === 'muted' ||
+      lowerAction === 'speed' ||
+      lowerAction === 'rate'
+    ) {
+      await executeControl(action, data.value);
+      return;
+    }
   });
 
   function boot() {
