@@ -189,7 +189,11 @@ export function setupParentHandshake(instanceManager) {
         return;
       }
 
-      emitGlobalEvent(action, typeof data === 'object' && data !== null ? { instanceId, ...data } : { instanceId, value: data });
+      const forwardedPayload =
+        typeof data === 'object' && data !== null
+          ? { instanceId, source: data.source || 'iframe', mediaType: data.mediaType || item.mediaType, ...data }
+          : { instanceId, source: 'iframe', mediaType: item.mediaType, value: data };
+      emitGlobalEvent(action, forwardedPayload);
     };
 
     notifyMediaCountChange();

@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [3.0.0] - 2026-09-05
+## [3.0.0] - Unreleased
 
-SRemote v3.0.0 is a major architecture overhaul, unification, and feature release. This release introduces a unified API schema and factory builder across the entire monorepo (`@sremote/shared`), massively expands platform compatibility in `@sremote/ready2use` up to **22 supported platforms**, transitions completely to modern Pure ESM, revamps the Facebook/Instagram/Threads/Apple Music pipelines, provides full seeking/seeked event coverage, introduces robust DOM ownership claiming for event deduplication, and delivers critical runtime fixes.
+SRemote v3.0.0 is a major architecture overhaul, unification, and feature release. This release introduces a unified API schema and factory builder across the entire monorepo (`@sremote/shared`), massively expands platform compatibility in `@sremote/ready2use` up to **22 supported platforms**, transitions completely to modern Pure ESM, revamps the Facebook/Instagram/Threads/Apple Music pipelines, provides full seeking/seeked event coverage, replaces crude DOM ownership claiming with selective handled events fallback for 100% reliable event emission without duplicates, and delivers centralized parent adapter logging along with critical runtime fixes.
 
-### 🚀 Added
+### 🚀 Added & Enhanced
+
+- **Unified Adapter Event Logging to Parent / Top Window (`@sremote/shared`, `@sremote/userscript`)**:
+  - **Parent Context Event Visibility**: Shifted adapter event debug logging from isolated iframe contexts directly to the `parent` (`top`) window. Developers can now view all incoming adapter events directly in the main browser console under `[SRemote:event]` (`Adapter emit [instanceId] (source) -> <event>`) when log level is set to `3` (`DEBUG`).
+  - **Enhanced Message Relay**: Enriched handshake port relay (`packages/userscript/src/parent/handshake.js`) to attach `source` and `mediaType` metadata on all forwarded adapter events.
+
+- **Selective Handled Events Fallback & Deduplication (`@sremote/ready2use`, `@sremote/shared`, `@sremote/wrapper`, `@sremote/userscript`)**:
+  - **Replaced Hard Claiming**: Completely eliminated crude blocking attributes `data-sremote-claimed`, `data-sremote-ignore-events`, and internal symbols `__sremote_claimed__` & `__sremote_ignore_events__`.
+  - **Selective Deduplication via `handledEvents`**: Player elements created by `@sremote/ready2use` or custom adapters no longer suppress all DOM events. Instead, SRemote intelligently checks `handledEvents` and dynamic adapter emissions (`adapter.emit`), allowing natural media events (such as `timeupdate`, `volumechange`, `seeking`) to fall through seamlessly without ever emitting duplicate events.
+  - **Cleaned Up DOM Listeners**: Removed hard-block guards from `bindMediaEvents` (`@sremote/shared`), `DomDriver.trackMediaElement` (`@sremote/wrapper`), and `isElementClaimed` (`@sremote/userscript`).
 
 - **Unified Hierarchical Logging System (`@sremote/shared`, `@sremote/wrapper`, `@sremote/userscript`)**:
   - **Logger Factory & Scoped Channels (`createLogger`)**: Standardized scoped loggers with colored namespace headers (`[SRemote:wrapper]`, `[SRemote:userscript]`, etc.) and zero runtime performance cost via short-circuited no-op functions when logging levels are not met.

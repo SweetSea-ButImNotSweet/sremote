@@ -102,8 +102,8 @@ remote.on('timeupdate', (data) => {
 });
 ```
 
-> **Automatic Event Deduplication**:
-> If a media element is controlled or created by an adapter (e.g. `@sremote/ready2use` or custom adapters marked with `data-sremote-claimed="true"` / `data-sremote-ignore-events="true"`), `@sremote/wrapper`'s `DomDriver` and the companion userscript automatically skip native DOM event binding. Events are cleanly dispatched solely through the adapter layer without duplicates.
+> **Automatic Event Deduplication & Selective Fallback**:
+> When a media element is managed by an adapter (e.g. via `@sremote/ready2use` or custom adapters), `@sremote/wrapper` coordinates via SRemote's **Selective Handled Events Fallback**. Events handled natively by the adapter are suppressed on the DOM listener, while unhandled natural events (such as `timeupdate`) are safely forwarded without duplicates.
 
 ---
 

@@ -284,15 +284,11 @@ export class BaseProvider {
     const adapter = this._setupAdapter(rawAdapter);
     const capabilities = adapter.capabilities;
 
-    // 4. Mark ownership on DOM nodes so TopMedia / DomDriver won't track duplicate events
+    // 4. Mark identity and adapter reference on DOM nodes so adapter lookup is seamless
     if (targetElement) {
       targetElement.setAttribute('data-sremote-id', instanceId);
       targetElement.setAttribute('data-sremote-provider', this.name);
-      targetElement.setAttribute('data-sremote-claimed', 'true');
-      targetElement.setAttribute('data-sremote-ignore-events', 'true');
       try {
-        targetElement[Symbol.for('__sremote_claimed__')] = instanceId;
-        targetElement[Symbol.for('__sremote_ignore_events__')] = true;
         targetElement[Symbol.for('__sremote_adapter__')] = adapter;
       } catch {}
     }

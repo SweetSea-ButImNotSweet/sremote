@@ -92,8 +92,8 @@ document.getElementById('my-wrapper').appendChild(iframe);
 await myRemote.play(instanceId);
 ```
 
-> **Automatic Event Deduplication & Ownership Claiming**:
-> Elements created via `.create()` and `.mount()` are automatically tagged with `data-sremote-claimed="true"` and `data-sremote-ignore-events="true"`. Both the Userscript top-media tracker and Wrapper DOM driver respect these tags, completely preventing duplicate event emission between the DOM and Adapter layers.
+> **Automatic Event Deduplication & Selective Fallback**:
+> Elements created via `.create()` and `.mount()` leverage SRemote's **Selective Handled Events Fallback**. Adapters report or emit the events they natively handle, while any missing events (such as `timeupdate`) automatically fall back to the underlying media element without duplicating events.
 
 ---
 

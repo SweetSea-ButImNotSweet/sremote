@@ -130,7 +130,13 @@ export function createInstanceManager(options = {}) {
     const ev = rawEv.replace(/^sremote:/, '');
     const fullEv = `sremote:${ev}`;
 
-    eventLogger.debug(`Dispatched -> ${ev}`, payload);
+    if (payload?.mediaType === 'adapter' || payload?.source === 'adapter' || payload?.source === 'adapter-dom-fallback') {
+      const srcTag = payload.source || 'adapter';
+      const instTag = payload.instanceId ? ` [${payload.instanceId}]` : '';
+      eventLogger.debug(`Adapter emit${instTag} (${srcTag}) -> ${ev}`, payload);
+    } else {
+      eventLogger.debug(`Dispatched -> ${ev}`, payload);
+    }
 
     if ((ev === 'accept' || rawEv === 'accept') && payload?.instanceId) {
       lastAcceptedData = payload;

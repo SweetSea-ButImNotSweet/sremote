@@ -128,7 +128,6 @@ export declare function bindMediaEvents(
     treatAlmostEndAsEnd?: boolean;
     events?: readonly string[] | string[];
     excludedEvents?: readonly string[] | string[] | Set<string> | null;
-    allowFallback?: boolean;
   },
 ): () => void;
 export declare function wrapCustomAdapter(rawAdapter: any, options?: { instanceId?: string; onEmit?: (event: string, payload: any) => void; source?: string }): any;

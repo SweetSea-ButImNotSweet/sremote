@@ -23,19 +23,8 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
   function isElementClaimed(mediaEl) {
     if (!mediaEl) return false;
     try {
-      if (
-        mediaEl.getAttribute?.('data-sremote-ignore-events') === 'true' ||
-        mediaEl.hasAttribute?.('data-sremote-claimed') ||
-        mediaEl[Symbol.for('__sremote_claimed__')] ||
-        mediaEl[Symbol.for('__sremote_ignore_events__')] ||
-        mediaEl[Symbol.for('__sremote_adapter__')]
-      ) {
+      if (mediaEl[Symbol.for('__sremote_adapter__')]) {
         return true;
-      }
-      // Check parent container or iframe wrapper
-      if (typeof mediaEl.closest === 'function') {
-        const parentClaimed = mediaEl.closest('[data-sremote-claimed="true"], [data-sremote-ignore-events="true"]');
-        if (parentClaimed) return true;
       }
     } catch {}
     return false;
