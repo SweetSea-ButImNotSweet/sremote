@@ -66,10 +66,20 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
       mediaElement: mediaEl,
     };
 
+    if (!instanceManager.isMultiModeActive() && instances.size > 0) {
+      for (const oldId of Array.from(instances.keys())) {
+        if (oldId !== customId) {
+          console_log(`%c[SRemote:lifecycle] Replacing stale instance in Single Mode: ${oldId} -> ${customId}`, 'color: #f59e0b;');
+          instanceManager.removeInstance(oldId, 'replaced_by_new_instance');
+        }
+      }
+    }
+
     instances.set(customId, instanceInfo);
     topMediaElementsMap.set(customId, mediaEl);
-
-    console_log(`%c[SRemote:top-dom] Registered top-level <${mediaType}> instance: ${customId}`, 'color: #10b981; font-weight: bold;');
+    if (!instanceManager.isMultiModeActive() || !instanceManager.currentActiveInstanceId) {
+      instanceManager.setCurrentActiveInstanceId(customId);
+    }
 
     let lastTimeupdate = 0;
     const TIMEUPDATE_THROTTLE_MS = 250;

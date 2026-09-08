@@ -65,6 +65,11 @@ export function createInstanceManager(options = {}) {
       return currentActiveInstanceId;
     }
 
+    if (isSingle && instances.size > 0) {
+      currentActiveInstanceId = Array.from(instances.keys())[instances.size - 1];
+      return currentActiveInstanceId;
+    }
+
     if (currentActiveInstanceId && (instances.has(currentActiveInstanceId) || parentAdaptersMap.has(currentActiveInstanceId))) {
       return currentActiveInstanceId;
     }

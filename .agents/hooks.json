@@ -1,0 +1,17 @@
+{
+  "enforce-controlled-readers": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "view_file|grep_search",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ../.antigravity/hooks/block-reader.js",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
