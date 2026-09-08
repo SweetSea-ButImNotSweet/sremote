@@ -11,6 +11,139 @@
 
 ---
 
+## 💡 Tại sao bạn cần SRemote? (Vấn đề & Giải pháp)
+
+### 1. Quá nhiều SDK rời rạc vs Một API duy nhất
+Nhúng nhiều nguồn phát khác nhau đồng nghĩa với việc phải nạp cả tá SDK nặng nề, kèm theo ác mộng nhớ tên hàm của từng bên (`pauseVideo` hay `pause`?).
+
+<table width="100%">
+<tr>
+<th width="50%">❌ Khi tự xử lý thủ công</th>
+<th width="50%">✅ Khi dùng SRemote</th>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+```javascript
+// Đau đầu ghép 4 SDK với đủ thứ API
+if (type === 'youtube') {
+  ytPlayer.pauseVideo();
+  ytPlayer.seekTo(
+    ytPlayer.getCurrentTime() + 10
+  );
+} else if (type === 'vimeo') {
+  await vimeoPlayer.pause();
+  const t = await vimeoPlayer.getCurrentTime();
+  await vimeoPlayer.setCurrentTime(t + 10);
+} else if (type === 'spotify') {
+  spotifyEmbed.togglePlay();
+} else if (type === 'html5') {
+  videoElement.pause();
+  videoElement.currentTime += 10;
+}
+```
+
+</td>
+<td width="50%" valign="top">
+
+```javascript
+import { createSRemote } from '@sremote/wrapper';
+
+const remote = createSRemote();
+await remote.ready();
+
+// 1 cú gọi duy nhất, áp dụng cho TẤT CẢ:
+await remote.pause();
+await remote.seek(10);
+```
+
+</td>
+</tr>
+</table>
+
+### 2. Bức tường Same-Origin Policy (Iframe bị chặn hoàn toàn)
+Với các nền tảng không có JS API mở (như Bilibili, Kick, Bandcamp...), iframe biến thành một "hộp đen" bất khả xâm phạm.
+
+<table width="100%">
+<tr>
+<th width="50%">❌ Bất lực trước iframe ngoài</th>
+<th width="50%">✅ Cầu nối qua Userscript</th>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+```javascript
+// Thử chọc vào iframe khác domain:
+const iframe = document.querySelector('iframe');
+iframe.contentWindow.document... 
+// 💥 Trình duyệt chặn thẳng tay:
+// "Blocked a frame with origin...
+// from accessing a cross-origin frame"
+// Không thể bắt sự kiện hay tua bài!
+```
+
+</td>
+<td width="50%" valign="top">
+
+```javascript
+// Userscript đóng vai trò "nội gián" an toàn:
+remote.on('timeupdate', ({ state }) => {
+  if (state.currentTime >= state.duration) {
+    playNextTrack();
+  }
+});
+
+// Điều khiển mượt mà dù khác domain:
+await remote.seek(15);
+```
+
+</td>
+</tr>
+</table>
+
+### 3. Đồng bộ trạng thái (Phòng xem chung / Thanh điều khiển nổi)
+Làm tính năng Watch Party (xem chung) hoặc thanh mini-player toàn trang đòi hỏi dữ liệu phát phải được quy về cùng một chuẩn.
+
+<table width="100%">
+<tr>
+<th width="50%">❌ Mỗi bên trả data một kiểu</th>
+<th width="50%">✅ Dữ liệu quy về một mối</th>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+```javascript
+// Phải tự normalize sự kiện từng bên:
+ytPlayer.addEventListener('onStateChange', (e) => {
+  if (e.data === 1) {
+    socket.emit('play', ytPlayer.getCurrentTime());
+  }
+});
+vimeoPlayer.on('play', (d) => {
+  socket.emit('play', d.seconds);
+});
+spotify.addListener('playback_update', ...);
+```
+
+</td>
+<td width="50%" valign="top">
+
+```javascript
+// SRemote tự chuẩn hóa event cho toàn bộ player:
+remote.on('play', ({ state, instanceId }) => {
+  socket.emit('sync_play', {
+    currentTime: state.currentTime,
+    instanceId
+  });
+});
+```
+
+</td>
+</tr>
+</table>
+
+---
+
 ## 📦 Các gói trong Monorepo
 
 | Gói | Mục đích | Tài liệu |

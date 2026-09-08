@@ -11,6 +11,139 @@
 
 ---
 
+## 💡 Why SRemote? (Situations & Comparison)
+
+### 1. Incompatible SDKs vs Unified API
+Managing multiple players usually requires loading heavy proprietary SDKs and juggling conflicting method names.
+
+<table width="100%">
+<tr>
+<th width="50%">❌ Without SRemote</th>
+<th width="50%">✅ With SRemote</th>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+```javascript
+// Juggling 4 different SDKs & APIs
+if (type === 'youtube') {
+  ytPlayer.pauseVideo();
+  ytPlayer.seekTo(
+    ytPlayer.getCurrentTime() + 10
+  );
+} else if (type === 'vimeo') {
+  await vimeoPlayer.pause();
+  const t = await vimeoPlayer.getCurrentTime();
+  await vimeoPlayer.setCurrentTime(t + 10);
+} else if (type === 'spotify') {
+  spotifyEmbed.togglePlay();
+} else if (type === 'html5') {
+  videoElement.pause();
+  videoElement.currentTime += 10;
+}
+```
+
+</td>
+<td width="50%" valign="top">
+
+```javascript
+import { createSRemote } from '@sremote/wrapper';
+
+const remote = createSRemote();
+await remote.ready();
+
+// Unified API for ALL players:
+await remote.pause();
+await remote.seek(10);
+```
+
+</td>
+</tr>
+</table>
+
+### 2. The Cross-Origin (Same-Origin Policy) Dead End
+Embedding platforms without official JS APIs (Bilibili, Kick, Bandcamp) makes the iframe a completely unreadable "black box".
+
+<table width="100%">
+<tr>
+<th width="50%">❌ Without SRemote</th>
+<th width="50%">✅ With SRemote</th>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+```javascript
+// Accessing cross-origin iframe:
+const iframe = document.querySelector('iframe');
+iframe.contentWindow.document... 
+// 💥 DOMException: Blocked a frame
+// with origin "..." from accessing
+// a cross-origin frame.
+// Cannot detect 'ended' or trigger seek!
+```
+
+</td>
+<td width="50%" valign="top">
+
+```javascript
+// Companion Userscript bridges iframe:
+remote.on('timeupdate', ({ state }) => {
+  if (state.currentTime >= state.duration) {
+    playNextTrack();
+  }
+});
+
+// Control third-party iframes seamlessly:
+await remote.seek(15);
+```
+
+</td>
+</tr>
+</table>
+
+### 3. State Synchronization (Watch Party / Global Media Bar)
+Co-watching rooms and dashboard widgets require standardized playback events across heterogeneous sources.
+
+<table width="100%">
+<tr>
+<th width="50%">❌ Without SRemote</th>
+<th width="50%">✅ With SRemote</th>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+```javascript
+// Normalizing events manually:
+ytPlayer.addEventListener('onStateChange', (e) => {
+  if (e.data === 1) {
+    socket.emit('play', ytPlayer.getCurrentTime());
+  }
+});
+vimeoPlayer.on('play', (d) => {
+  socket.emit('play', d.seconds);
+});
+spotify.addListener('playback_update', ...);
+```
+
+</td>
+<td width="50%" valign="top">
+
+```javascript
+// Unified schema across all providers:
+remote.on('play', ({ state, instanceId }) => {
+  socket.emit('sync_play', {
+    currentTime: state.currentTime,
+    instanceId
+  });
+});
+```
+
+</td>
+</tr>
+</table>
+
+---
+
 ## 📦 Packages in this Monorepo
 
 | Package | Purpose | Documentation |

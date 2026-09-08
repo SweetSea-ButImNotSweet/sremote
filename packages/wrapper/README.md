@@ -129,42 +129,25 @@ if (!remote.isUserscriptAvailable()) {
 
 ---
 
-## 🛠️ API Reference
+## 🛠️ API Overview
 
-### `createSRemote(options?)`
-Creates a new `SRemoteClient` instance.
+### Core Functions
 
-#### Options:
-- `timeout` (`number`, default `2000`): Maximum milliseconds to wait for userscript detection.
-- `fallbackToDom` (`boolean`, default `true`): Whether to fall back to direct DOM query for same-origin media elements.
-- `passkey` (`string | null`, default `null`): Authentication passkey if domain access is locked.
+- **`createSRemote(options?)`**: Initializes a new `SRemoteClient` instance (supports `timeout`, `fallbackToDom`, `passkey`).
+- **`showInstallModal(options?)` / `promptUserscript(options?)`**: Displays the interactive companion userscript installer guide modal.
 
-### Methods:
-- `remote.ready(): Promise<this>`: Resolves when SRemote handshake is ready.
-- `remote.isUserscriptAvailable(): boolean`: Returns `true` if SRemote Userscript is active in the current page.
-- `remote.showInstallModal(options?): { host, close }`: Displays the userscript installation guide modal.
-- `remote.promptUserscript(options?): { host, close }`: Alias for `showInstallModal()`.
-- `remote.play(instanceId?): Promise<any>`
-- `remote.pause(instanceId?): Promise<any>`
-- `remote.toggle(instanceId?): Promise<any>`
-- `remote.stop(instanceId?): Promise<any>`
-- `remote.seek(offsetSeconds, instanceId?): Promise<any>`
-- `remote.seekTo(targetSeconds, instanceId?): Promise<any>`
-- `remote.volume(valueBetween0And1, instanceId?): Promise<any>`
-- `remote.mute(isMuted?, instanceId?): Promise<any>`
-- `remote.playbackRate(speed, instanceId?): Promise<any>`
-- `remote.pip(enable?, instanceId?): Promise<any>`
-- `remote.adapters.set(adapterConfig, instanceId?): string`
-- `remote.getCustomAdapter(instanceId?): object | null`
-- `remote.removeAdapter(instanceId?): boolean`
-- `remote.on(event, handler): () => void`
-- `remote.off(event, handler): void`
-- `remote.list(): any[]`
-- `remote.status(instanceId?): any`
+### Client Methods Summary
 
-### Standalone Functions:
-- `showInstallModal(options?): { host, close }`
-- `promptUserscript(options?): { host, close }`
+| Category | Key Methods |
+| :--- | :--- |
+| **Lifecycle & Status** | `.ready()`, `.isUserscriptAvailable()`, `.status(id?)`, `.list()` |
+| **Playback Controls** | `.play(id?)`, `.pause(id?)`, `.toggle(id?)`, `.stop(id?)` |
+| **Track & Audio** | `.seek(offset, id?)`, `.seekTo(time, id?)`, `.volume(val, id?)`, `.mute(state?, id?)`, `.playbackRate(speed, id?)` |
+| **Adapters & Custom Drivers** | `.adapters.set(adapter, id?)`, `.getCustomAdapter(id?)`, `.removeAdapter(id?)` |
+| **Events** | `.on(event, handler)`, `.off(event, handler)` |
+
+> 📖 **Full API Reference & TypeScript Definitions:**  
+> For detailed parameters, return types, payload schemas, and advanced configuration options, see the [SRemote Technical Documentation](../../docs/content/api/en/README.md) or explore the [Cookbook Recipes](https://sweetsea-butimnotsweet.github.io/sremote/docs/recipes.html).
 
 ---
 

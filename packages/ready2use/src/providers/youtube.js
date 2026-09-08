@@ -119,7 +119,7 @@ export class YouTubeProvider extends BaseProvider {
   createAdapter(player) {
     const YT = typeof window !== 'undefined' ? window.YT : null;
 
-    let lastKnownState = { paused: true, currentTime: 0, duration: 0, volume: 1, muted: false, playbackRate: 1 };
+    let lastKnownState = { paused: true, ended: false, currentTime: 0, duration: 0, volume: 1, muted: false, playbackRate: 1 };
     let timeupdateTimer = null;
     let isSeeking = false;
     let lastReportedTime = 0;
@@ -132,7 +132,9 @@ export class YouTubeProvider extends BaseProvider {
     const updateStateSnapshot = () => {
       try {
         if (player && typeof player.getPlayerState === 'function') {
+          const pState = player.getPlayerState();
           lastKnownState.paused = !isPlaying();
+          lastKnownState.ended = pState === 0;
           lastKnownState.currentTime = player.getCurrentTime ? player.getCurrentTime() : 0;
           lastKnownState.duration = player.getDuration ? player.getDuration() : 0;
           lastKnownState.volume = player.getVolume ? player.getVolume() / 100 : 1;
