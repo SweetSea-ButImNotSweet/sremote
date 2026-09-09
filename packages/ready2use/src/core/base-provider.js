@@ -350,9 +350,12 @@ export class BaseProvider {
     const opts = this._normalizeOptions(options);
     const result = await this._instantiate(opts, targetContainer);
 
-    const remote = await resolveSRemote(opts);
-    if (remote?.adapters) {
-      remote.adapters.register(result.adapter, result.instanceId);
+    let remote = null;
+    if (opts.register !== false && opts.autoRegister !== false) {
+      remote = await resolveSRemote(opts);
+      if (remote?.adapters) {
+        remote.adapters.register(result.adapter, result.instanceId);
+      }
     }
 
     const destroy = this._buildDestroyHandler({

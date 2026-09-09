@@ -19,17 +19,7 @@ export const TRANSPORT_STATE = Object.freeze({ DISCONNECTED: 'DISCONNECTED', CON
  * 5. Ping/Pong Heartbeat Sweeper
  */
 export function createParentTransportManager({ instanceManager, onMediaMessage = () => {}, onMediaStateChange = () => {}, onBridgeMessage = () => {} }) {
-  const {
-    instances,
-    parentAdaptersMap,
-    assignedIframeIdMap,
-    iframeToAssignedIdMap,
-    isMultiModeActive,
-    removeInstance,
-    notifyMediaCountChange,
-    emitGlobalEvent,
-    pauseOthersExcept,
-  } = instanceManager;
+  const { instances, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, removeInstance, notifyMediaCountChange, emitGlobalEvent, pauseOthersExcept } = instanceManager;
 
   const blacklistedIframes = new WeakSet();
   const blacklistedSources = new WeakSet();
@@ -70,9 +60,7 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
       }
     }
 
-    if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
-      instanceManager.setCurrentActiveInstanceId(instanceId);
-    }
+    instanceManager.setCurrentActiveInstanceId(instanceId);
 
     const item = {
       port,
@@ -191,9 +179,7 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
       if (data.capabilities) item.capabilities = data.capabilities;
 
       if (lowerAction === 'play' || lowerAction === 'playing') {
-        if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
-          instanceManager.setCurrentActiveInstanceId(instanceId);
-        }
+        instanceManager.setCurrentActiveInstanceId(instanceId);
         const exclusiveMode = instanceManager.exclusiveMode;
         if (exclusiveMode === 'auto' || exclusiveMode === true) {
           pauseOthersExcept(instanceId);
@@ -329,8 +315,6 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
           handshakeId: challengeHandshakeId,
           handshakeToken: challengeHandshakeToken,
           seq: currentSeq,
-          hasParentAdapter: parentAdaptersMap.size > 0,
-          adapterIds: Array.from(parentAdaptersMap.keys()),
           ...(latestHandshake.css ? { css: latestHandshake.css } : {}),
           ...(typeof latestHandshake.treatAlmostEndAsEnd === 'boolean' ? { treatAlmostEndAsEnd: latestHandshake.treatAlmostEndAsEnd } : {}),
           assignedInstanceId: instanceId,
@@ -356,9 +340,7 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
         if (inst) {
           inst.authenticated = true;
           if (pendingConsumeHandshakeId) inst.pendingConsumeHandshakeId = pendingConsumeHandshakeId;
-          if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
-            instanceManager.setCurrentActiveInstanceId(instanceId);
-          }
+          instanceManager.setCurrentActiveInstanceId(instanceId);
           inst.hasMedia = Boolean(data.hasMedia);
           if (data.state) inst.state = data.state;
           if (data.mediaType) inst.mediaType = data.mediaType;
@@ -381,9 +363,7 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
         if (inst) {
           inst.authenticated = true;
           if (pendingConsumeHandshakeId) inst.pendingConsumeHandshakeId = pendingConsumeHandshakeId;
-          if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
-            instanceManager.setCurrentActiveInstanceId(instanceId);
-          }
+          instanceManager.setCurrentActiveInstanceId(instanceId);
           inst.hasMedia = Boolean(data.hasMedia);
           if (data.state) inst.state = data.state;
           if (data.mediaType) inst.mediaType = data.mediaType;

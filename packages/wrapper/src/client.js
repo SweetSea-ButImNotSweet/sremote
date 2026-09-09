@@ -28,10 +28,39 @@ export class SRemoteClient {
 
     this.instances = {
       list: key => {
-        if (this.userscriptDriver.isAvailable()) {
-          return this.userscriptDriver.list(key || this.options.passkey);
+        const result = [];
+        const seenIds = new Set();
+
+        // 1. First Priority: Local Adapters in Wrapper
+        if (this.domDriver?.adaptersMap) {
+          for (const [id, adapter] of this.domDriver.adaptersMap.entries()) {
+            seenIds.add(id);
+            result.push({ instanceId: id, mediaType: 'adapter', name: adapter?.name || id, adapter, source: 'adapter' });
+          }
         }
-        return this.domDriver.list();
+
+        // 2. Second Priority: Userscript Iframe / Native instances
+        if (this.userscriptDriver.isAvailable()) {
+          const userList = this.userscriptDriver.list(key || this.options.passkey) || [];
+          for (const item of userList) {
+            const id = typeof item === 'string' ? item : item.instanceId;
+            if (id && !seenIds.has(id)) {
+              seenIds.add(id);
+              result.push(item);
+            }
+          }
+        } else if (this.domDriver) {
+          const domList = this.domDriver.list() || [];
+          for (const item of domList) {
+            const id = typeof item === 'string' ? item : item.instanceId;
+            if (id && !seenIds.has(id)) {
+              seenIds.add(id);
+              result.push(item);
+            }
+          }
+        }
+
+        return result;
       },
       get: (instanceId, key) => this.status(instanceId, key),
       capabilities: (instanceId, key) => this.capabilities(instanceId, key),
@@ -64,7 +93,7 @@ export class SRemoteClient {
         if (this.userscriptDriver.isAvailable()) {
           return this.userscriptDriver.query(key || this.options.passkey);
         }
-        return this.domDriver.list();
+        return [];
       },
       note: (dict, key) => {
         if (this.userscriptDriver.isAvailable()) {
@@ -74,30 +103,24 @@ export class SRemoteClient {
     };
 
     this.adapters = {
-      register: (adapter, instanceId, key) => {
+      register: (adapter, instanceId) => {
         this.logger.log(`Registering custom adapter${adapter?.name ? ` [${adapter.name}]` : ''}`, { instanceId });
-        const domId = this.domDriver.useAdapter(adapter, instanceId);
-        if (this.userscriptDriver.isAvailable()) {
-          const registered = this.userscriptDriver.useAdapter(adapter, instanceId, key || this.options.passkey);
-          return registered || domId;
-        }
-        return domId;
+        const registeredId = this.domDriver.useAdapter(adapter, instanceId);
+        this.syncGlobalAdapters();
+        return registeredId;
       },
-      unregister: (instanceId, key) => {
+      unregister: instanceId => {
         this.logger.log(`Unregistering adapter for instance: ${instanceId}`);
         const domResult = this.domDriver.removeAdapter(instanceId);
-        if (this.userscriptDriver.isAvailable()) {
-          return this.userscriptDriver.removeAdapter(instanceId, key || this.options.passkey);
-        }
         return domResult;
       },
-      get: (instanceId, key) => {
-        if (this.userscriptDriver.isAvailable()) {
-          return this.userscriptDriver.getCustomAdapter(instanceId, key || this.options.passkey);
-        }
+      get: instanceId => {
         return this.domDriver.getCustomAdapter(instanceId);
       },
     };
+
+    // Attach/override window.sremote.adapters to guarantee Single Source of Truth
+    this.syncGlobalAdapters();
 
     this.rpc = {
       call: (action, params, instanceId, key) => this.userscriptDriver.call(action, params, instanceId, key),
@@ -112,20 +135,27 @@ export class SRemoteClient {
     };
   }
 
-  isUserscriptAvailable() {
-    return this.userscriptDriver.isAvailable();
+  syncGlobalAdapters() {
+    try {
+      if (typeof window !== 'undefined') {
+        if (window.sremote && typeof window.sremote === 'object') {
+          try {
+            window.sremote.adapters = this.adapters;
+          } catch {
+            try {
+              Object.defineProperty(window.sremote, 'adapters', { value: this.adapters, writable: true, configurable: true });
+            } catch {}
+          }
+        }
+        if (typeof globalThis !== 'undefined') {
+          globalThis[Symbol.for('__sremote_client__')] = this;
+        }
+      }
+    } catch {}
   }
 
-  syncAdaptersToUserscript() {
-    if (this.userscriptDriver.isAvailable()) {
-      const count = this.domDriver.adaptersMap.size;
-      if (count > 0) {
-        this.logger.debug(`Syncing ${count} adapter(s) to userscript`);
-      }
-      for (const [id, adapter] of this.domDriver.adaptersMap.entries()) {
-        this.userscriptDriver.useAdapter(adapter, id, this.options.passkey);
-      }
-    }
+  isUserscriptAvailable() {
+    return this.userscriptDriver.isAvailable();
   }
 
   syncListenersToUserscript() {
@@ -169,7 +199,7 @@ export class SRemoteClient {
         this.mode = 'userscript';
         this.syncLogLevelFromUserscript();
         this.logger.log(reason);
-        this.syncAdaptersToUserscript();
+        this.syncGlobalAdapters();
         this.syncListenersToUserscript();
         resolve(this);
       };
@@ -364,13 +394,38 @@ export class SRemoteClient {
   }
 
   status(instanceId, key) {
+    // 1. Check local adapters first
+    if (this.domDriver?.adaptersMap) {
+      if (instanceId && this.domDriver.adaptersMap.has(instanceId)) {
+        return this.domDriver.getStatus(instanceId);
+      }
+      if (!instanceId && !this.domDriver.isMultiMode() && this.domDriver.adaptersMap.size > 0) {
+        return this.domDriver.getStatus();
+      }
+    }
+
+    // 2. Query userscriptDriver
     if (this.userscriptDriver.isAvailable()) {
       return this.userscriptDriver.status(instanceId, key);
+    }
+    if (this.domDriver) {
+      return this.domDriver.getStatus(instanceId);
     }
     return null;
   }
 
   capabilities(targetOrId, key) {
+    // 1. Check local adapters first
+    if (this.domDriver?.adaptersMap) {
+      if (typeof targetOrId === 'string' && this.domDriver.adaptersMap.has(targetOrId)) {
+        return this.domDriver.getCapabilities(targetOrId);
+      }
+      if (!targetOrId && !this.domDriver.isMultiMode() && this.domDriver.adaptersMap.size > 0) {
+        return this.domDriver.getCapabilities();
+      }
+    }
+
+    // 2. Query userscriptDriver
     if (this.userscriptDriver.isAvailable()) {
       return this.userscriptDriver.capabilities(targetOrId, key);
     }

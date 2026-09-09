@@ -102,10 +102,7 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
 
         if (evtName === 'play' || evtName === 'playing') {
           if (hasMediaSource(mediaEl)) {
-            // Only take over active ID from top-dom media when no parent adapter is registered
-            if (instanceManager.parentAdaptersMap.size === 0 || instanceManager.isMultiModeActive()) {
-              instanceManager.setCurrentActiveInstanceId(customId);
-            }
+            instanceManager.setCurrentActiveInstanceId(customId);
             if (instanceManager.exclusiveMode === 'auto') {
               pauseOthersExcept(customId);
             }

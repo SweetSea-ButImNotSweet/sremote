@@ -34,7 +34,7 @@ export function isNativeSRemoteInstance(target) {
     if (target[Symbol.for('__sremote_native__')] === true) return true;
   } catch {}
   // Also check signature shape if functions match expected userscript API
-  return typeof target.play === 'function' && typeof target.useAdapter === 'function' && typeof target.assignId === 'function';
+  return typeof target.play === 'function' && (typeof target.assignId === 'function' || target.instances?.assign);
 }
 
 /**
@@ -71,7 +71,7 @@ export function lockGlobalSRemoteIfAbsent() {
           currentGlobalInstance = newVal;
           // Lock down permanently once genuine userscript is injected
           try {
-            Object.defineProperty(window, 'sremote', { value: newVal, writable: false, configurable: false, enumerable: true });
+            Object.defineProperty(window, 'sremote', { value: newVal, writable: true, configurable: true, enumerable: true });
           } catch {}
         } else {
           console.warn('[SRemote:Wrapper] Blocked unauthorized attempt to overwrite window.sremote by external script.');

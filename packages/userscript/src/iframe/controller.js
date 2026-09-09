@@ -1,7 +1,7 @@
 import { safeGetProp } from '../core/utils.js';
 import { descriptors, logger, console_warn } from '../config.js';
 import { mockMediaSessionInstance } from './media-session.js';
-import { executeMediaAction, safePlayMedia, safePauseMedia, getGlobalTransactionTracker } from '@sremote/shared';
+import { executeMediaAction, getGlobalTransactionTracker } from '@sremote/shared';
 
 export function getVideoState(targetMedia, activeMedia, resolveActiveMedia) {
   const media = targetMedia || activeMedia || (resolveActiveMedia() ? activeMedia : null);
@@ -81,8 +81,6 @@ export function getIframeCapabilities(targetMedia, activeMedia, resolveActiveMed
     hasMediaSession,
   };
 }
-
-export { safePlayMedia, safePauseMedia };
 
 export function handleBindMetadata({ metadata, instanceId, emitToParent, sendMediaSessionState }) {
   if (!metadata || typeof metadata !== 'object') return;

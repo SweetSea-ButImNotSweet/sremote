@@ -55,7 +55,7 @@ export function initParentController() {
   } catch {}
 
   const instanceManager = createInstanceManager();
-  const { instances, parentAdaptersMap, assignedIframeIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts } = instanceManager;
+  const { instances, assignedIframeIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts } = instanceManager;
 
   let broadcastHelloRef = null;
 
@@ -97,26 +97,6 @@ export function initParentController() {
     window.postMessage(payload, '*');
   }
 
-  function executeParentAdapterAction(action, value, targetInstanceId = null) {
-    let targetId = targetInstanceId;
-    if (!targetId) {
-      if (parentAdaptersMap.size === 1 || !isMultiModeActive()) {
-        targetId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
-      } else if (parentAdaptersMap.has(instanceManager.currentActiveInstanceId)) {
-        targetId = instanceManager.currentActiveInstanceId;
-      }
-    }
-    // If targetId was resolved to an iframe/other instance not in parentAdaptersMap, but we are in Single Mode with an adapter:
-    if ((!targetId || !parentAdaptersMap.has(targetId)) && !isMultiModeActive() && parentAdaptersMap.size > 0) {
-      targetId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
-    }
-
-    if (!targetId || !parentAdaptersMap.has(targetId)) return false;
-
-    const adapter = parentAdaptersMap.get(targetId);
-    return executeMediaAction(adapter, action, value, { instanceId: targetId, transactionTracker: getGlobalTransactionTracker(), logger });
-  }
-
   async function executeTopMediaAction(mediaEl, action, value) {
     if (!mediaEl) return false;
     const hasSource = hasMediaSource(mediaEl);
@@ -153,26 +133,9 @@ export function initParentController() {
       target = instances.get(targetId);
     }
 
-    logger.scope('action').log(`(Wrapper) Dispatching -> ${action}`, { action, value, targetInstanceId: targetId || targetInstanceId || 'auto' });
+    logger.scope('action').log(`(Userscript) Dispatching -> ${action}`, { action, value, targetInstanceId: targetId || targetInstanceId || 'auto' });
 
-    // 1. TOP PRIORITY: Custom Adapters (Adapter > DOM Media > MediaSession > Iframe Port)
-    if (parentAdaptersMap.size > 0) {
-      // In Single Mode or if targetInstanceId is not specified, always direct to the registered adapter
-      let adapterTargetId = targetInstanceId;
-      if (!adapterTargetId) {
-        adapterTargetId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
-      } else if (!parentAdaptersMap.has(adapterTargetId) && !isMultiModeActive()) {
-        adapterTargetId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
-      }
-
-      if (adapterTargetId && parentAdaptersMap.has(adapterTargetId)) {
-        const handled = await executeParentAdapterAction(action, value, adapterTargetId);
-        // If an adapter is registered for this target, always resolve as handled by adapter (never fall through to wait for port)
-        return Promise.resolve({ success: Boolean(handled !== false), instanceId: adapterTargetId, source: 'adapter', action });
-      }
-    }
-
-    // 2. SECOND PRIORITY: Direct execution on Top DOM Media Elements
+    // 1. FIRST PRIORITY: Direct execution on Top DOM Media Elements
     if (target?.isTopMedia && target.mediaElement) {
       return executeTopMediaAction(target.mediaElement, action, value).then(ok => ({ success: ok, instanceId: targetId, source: 'top-dom', action }));
     }

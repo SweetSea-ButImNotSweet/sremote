@@ -1,4 +1,3 @@
-import { wrapCustomAdapter } from './events.js';
 import { createLogger, LOG_LEVELS } from './logger.js';
 
 /**
@@ -34,7 +33,6 @@ export function createInstanceManager(options = {}) {
   });
 
   const instances = new Map(); // instanceId -> { port, location, origin, note, state, mediaType, lastSeen, status, iframeEl, authenticated }
-  const parentAdaptersMap = new Map(); // adapterKey -> adapterObject
   const assignedIframeIdMap = new Map(); // instanceId -> HTMLIFrameElement
   const iframeToAssignedIdMap = new WeakMap(); // HTMLIFrameElement -> instanceId
   const globalEventListeners = new Map();
@@ -59,22 +57,12 @@ export function createInstanceManager(options = {}) {
   function getLatestActiveInstanceId() {
     const isSingle = !isMultiModeActive();
 
-    // In Single Mode, if parent page registered a custom adapter, it MUST always take top priority
-    if (isSingle && parentAdaptersMap.size > 0) {
-      currentActiveInstanceId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
-      return currentActiveInstanceId;
-    }
-
     if (isSingle && instances.size > 0) {
       currentActiveInstanceId = Array.from(instances.keys())[instances.size - 1];
       return currentActiveInstanceId;
     }
 
-    if (currentActiveInstanceId && (instances.has(currentActiveInstanceId) || parentAdaptersMap.has(currentActiveInstanceId))) {
-      return currentActiveInstanceId;
-    }
-    if (parentAdaptersMap.size > 0) {
-      currentActiveInstanceId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
+    if (currentActiveInstanceId && instances.has(currentActiveInstanceId)) {
       return currentActiveInstanceId;
     }
     let latestId = null;
@@ -201,7 +189,7 @@ export function createInstanceManager(options = {}) {
     }
 
     // Sticky replay for accept / wildcard
-    if ((ev === 'accept' || ev === '*') && lastAcceptedData && (instances.has(lastAcceptedData.instanceId) || parentAdaptersMap.has(lastAcceptedData.instanceId))) {
+    if ((ev === 'accept' || ev === '*') && lastAcceptedData && instances.has(lastAcceptedData.instanceId)) {
       try {
         const replayPayload = ev === '*' ? { action: 'accept', ...lastAcceptedData } : lastAcceptedData;
         setTimeout(() => {
@@ -244,13 +232,6 @@ export function createInstanceManager(options = {}) {
         } catch {}
       }
     }
-    for (const [id, ad] of parentAdaptersMap.entries()) {
-      if (id !== activeInstanceId) {
-        try {
-          ad.pause?.();
-        } catch {}
-      }
-    }
   }
 
   function removeInstance(instanceId, reason = 'disconnected') {
@@ -268,68 +249,8 @@ export function createInstanceManager(options = {}) {
     emitGlobalEvent('disconnect', { instanceId, reason });
   }
 
-  function handleUseAdapter(adapterVal, instanceId = null) {
-    if (!adapterVal || typeof adapterVal !== 'object') return null;
-    const targetId = instanceId || generateInstanceId('adapter');
-
-    if (!isMultiModeActive() && parentAdaptersMap.size > 0) {
-      for (const oldId of Array.from(parentAdaptersMap.keys())) {
-        if (oldId !== targetId) {
-          log(`%c[SRemote:adapter] Replacing stale adapter in Single Mode: ${oldId} -> ${targetId}`, 'color: #f59e0b;');
-          parentAdaptersMap.delete(oldId);
-        }
-      }
-    }
-
-    // Create a non-mutating adapter wrapper inheriting from the user's object
-    const adapter = wrapCustomAdapter(adapterVal, {
-      instanceId: targetId,
-      source: 'adapter',
-      onEmit: (ev, fullPayload) => {
-        if (ev === 'play' || ev === 'playing') {
-          currentActiveInstanceId = targetId;
-          if (exclusiveMode === 'auto' || exclusiveMode === true) {
-            pauseOthersExcept(targetId);
-          }
-        }
-        emitGlobalEvent(ev, fullPayload);
-      },
-    });
-
-    parentAdaptersMap.set(targetId, adapter);
-    currentActiveInstanceId = targetId;
-    log(`%c[SRemote:adapter] Registered custom adapter for instance '${targetId}'`, 'color: #06b6d4; font-weight: bold;');
-
-    const currentLoc = typeof location !== 'undefined' ? location.href : '';
-    const currentOrigin = typeof location !== 'undefined' ? location.origin : '';
-    const acceptPayload = { source: 'adapter', instanceId: targetId, mediaType: 'adapter', location: currentLoc, origin: currentOrigin };
-    emitGlobalEvent('accept', acceptPayload);
-
-    return targetId;
-  }
-
-  function handleRemoveAdapter(instanceId = null) {
-    if (instanceId) {
-      const deleted = parentAdaptersMap.delete(instanceId);
-      if (deleted && currentActiveInstanceId === instanceId) {
-        currentActiveInstanceId = null;
-      }
-      return deleted;
-    }
-    parentAdaptersMap.clear();
-    currentActiveInstanceId = null;
-    return true;
-  }
-
-  function getCustomAdapter(instanceId = null) {
-    if (instanceId) return parentAdaptersMap.get(instanceId) || null;
-    if (parentAdaptersMap.size === 1) return Array.from(parentAdaptersMap.values())[0] || null;
-    return parentAdaptersMap.get(currentActiveInstanceId) || Array.from(parentAdaptersMap.values())[0] || null;
-  }
-
   return {
     instances,
-    parentAdaptersMap,
     assignedIframeIdMap,
     iframeToAssignedIdMap,
     globalEventListeners,
@@ -375,8 +296,5 @@ export function createInstanceManager(options = {}) {
     off,
     pauseOthersExcept,
     removeInstance,
-    handleUseAdapter,
-    handleRemoveAdapter,
-    getCustomAdapter,
   };
 }

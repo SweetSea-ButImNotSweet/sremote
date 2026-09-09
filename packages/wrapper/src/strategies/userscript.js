@@ -182,16 +182,16 @@ export class UserscriptDriver {
     return this._callOptional('instances.note', undefined, dict, this.getPasskey(key));
   }
 
-  useAdapter(adapter, instanceId, key) {
-    return this._callOptional('adapters.register', null, adapter, instanceId, this.getPasskey(key));
+  useAdapter() {
+    return null;
   }
 
-  removeAdapter(instanceId, key) {
-    return this._callOptional('adapters.unregister', false, instanceId, this.getPasskey(key));
+  removeAdapter() {
+    return false;
   }
 
-  getCustomAdapter(instanceId, key) {
-    return this._callOptional('adapters.get', null, instanceId, this.getPasskey(key));
+  getCustomAdapter() {
+    return null;
   }
 
   call(action, params, instanceId, key) {

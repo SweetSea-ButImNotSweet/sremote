@@ -70,11 +70,13 @@ export class YouTubeProvider extends BaseProvider {
     if (options.container) {
       targetNode = document.createElement('div');
       targetNode.id = `sremote-youtube-${instanceId}`;
+      targetNode.setAttribute('name', `sremote_id=${instanceId}`);
       applyElementAttributes(targetNode, width, height, instanceId);
       options.container.appendChild(targetNode);
     } else {
       const temp = createTempNode(instanceId, width, height);
       targetNode = temp.tempNode;
+      targetNode.setAttribute('name', `sremote_id=${instanceId}`);
       cleanupTemp = temp.cleanup;
     }
 
@@ -91,9 +93,12 @@ export class YouTubeProvider extends BaseProvider {
             const iframe = player.getIFrame ? player.getIFrame() : document.getElementById(targetNode.id);
             if (iframe) {
               applyElementAttributes(iframe, width, height, instanceId);
+              try {
+                iframe.name = `sremote_id=${instanceId}`;
+              } catch {}
             }
 
-            resolve({
+            const buildResult = () => ({
               player,
               element: iframe || targetNode,
               iframe: iframe || (targetNode?.tagName === 'IFRAME' ? targetNode : null),
@@ -106,6 +111,43 @@ export class YouTubeProvider extends BaseProvider {
                 cleanupTemp();
               },
             });
+
+            // If player already has duration/metadata ready, resolve immediately
+            try {
+              if (player.getDuration && player.getDuration() > 0) {
+                resolve(buildResult());
+                return;
+              }
+            } catch {}
+
+            let isResolved = false;
+            const completeResolve = () => {
+              if (isResolved) return;
+              isResolved = true;
+              clearTimeout(timeoutTimer);
+              resolve(buildResult());
+            };
+
+            // Fallback timeout to prevent hanging if live stream or slow network
+            const timeoutTimer = setTimeout(completeResolve, 1500);
+
+            // Wait for video metadata/state to be cued or playable
+            const onStateChange = ev => {
+              const s = ev.data;
+              // 1: PLAYING, 2: PAUSED, 3: BUFFERING, 5: CUED
+              if ([1, 2, 3, 5].includes(s)) {
+                try {
+                  player.removeEventListener('onStateChange', onStateChange);
+                } catch {}
+                completeResolve();
+              }
+            };
+
+            try {
+              player.addEventListener('onStateChange', onStateChange);
+            } catch {
+              completeResolve();
+            }
           },
           onError: err => {
             cleanupTemp();

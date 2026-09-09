@@ -154,7 +154,6 @@ export interface InstanceManagerOptions {
 
 export interface InstanceManager {
   instances: Map<string, any>;
-  parentAdaptersMap: Map<string, any>;
   assignedIframeIdMap: Map<string, any>;
   iframeToAssignedIdMap: WeakMap<any, string>;
   globalEventListeners: Map<string, Set<Function>>;
@@ -178,9 +177,6 @@ export interface InstanceManager {
   off: (event: string, handler?: (payload: any) => void) => void;
   pauseOthersExcept: (activeInstanceId: string) => void;
   removeInstance: (instanceId: string, reason?: string) => void;
-  handleUseAdapter: (adapterVal: any, instanceId?: string | null) => string | null;
-  handleRemoveAdapter: (instanceId?: string | null) => boolean;
-  getCustomAdapter: (instanceId?: string | null) => any;
 }
 
 export declare function createInstanceManager(options?: InstanceManagerOptions): InstanceManager;

@@ -6,6 +6,8 @@ import {
   executeMediaAction,
   resolveMediaElement,
   getGlobalTransactionTracker,
+  wrapCustomAdapter,
+  generateInstanceId,
 } from '@sremote/shared';
 
 export class DomDriver {
@@ -30,6 +32,7 @@ export class DomDriver {
       });
     }
 
+    this.adaptersMap = new Map();
     this.trackedMediaElements = new WeakSet();
     this.treatAlmostEndAsEnd = Boolean(options.treatAlmostEndAsEnd);
     this._listeners = new Map();
@@ -42,10 +45,6 @@ export class DomDriver {
 
   getPasskey(key) {
     return key || this.options.passkey || null;
-  }
-
-  get adaptersMap() {
-    return this.instanceManager.parentAdaptersMap;
   }
 
   get multiMode() {
@@ -129,7 +128,7 @@ export class DomDriver {
 
   list() {
     const list = [];
-    for (const [id, ad] of this.instanceManager.parentAdaptersMap.entries()) {
+    for (const [id, ad] of this.adaptersMap.entries()) {
       const state = extractMediaState(ad);
       list.push({ instanceId: id, mediaType: 'adapter', capabilities: this.getCapabilities(id), status: 'ready', state });
     }
@@ -137,23 +136,61 @@ export class DomDriver {
   }
 
   useAdapter(rawAdapter, customInstanceId = null) {
-    return this.instanceManager.handleUseAdapter(rawAdapter, customInstanceId);
+    if (!rawAdapter || typeof rawAdapter !== 'object') return null;
+    const targetId = customInstanceId || generateInstanceId('adapter');
+
+    if (!this.isMultiMode() && this.adaptersMap.size > 0) {
+      for (const oldId of Array.from(this.adaptersMap.keys())) {
+        if (oldId !== targetId) {
+          this.adaptersMap.delete(oldId);
+        }
+      }
+    }
+
+    const adapter = wrapCustomAdapter(rawAdapter, {
+      instanceId: targetId,
+      source: 'adapter',
+      onEmit: (ev, fullPayload) => {
+        this.emit(ev, fullPayload);
+      },
+    });
+
+    this.adaptersMap.set(targetId, adapter);
+
+    const currentLoc = typeof location !== 'undefined' ? location.href : '';
+    const currentOrigin = typeof location !== 'undefined' ? location.origin : '';
+    this.emit('accept', { source: 'adapter', instanceId: targetId, mediaType: 'adapter', location: currentLoc, origin: currentOrigin });
+
+    return targetId;
   }
 
   pauseOthersExcept(activeInstanceId) {
     this.instanceManager.pauseOthersExcept(activeInstanceId);
+    for (const [id, ad] of this.adaptersMap.entries()) {
+      if (id !== activeInstanceId) {
+        try {
+          ad.pause?.();
+        } catch {}
+      }
+    }
   }
 
   removeAdapter(instanceId) {
-    return this.instanceManager.handleRemoveAdapter(instanceId);
+    if (instanceId) {
+      return this.adaptersMap.delete(instanceId);
+    }
+    this.adaptersMap.clear();
+    return true;
   }
 
   getCustomAdapter(instanceId) {
-    return this.instanceManager.getCustomAdapter(instanceId);
+    if (instanceId) return this.adaptersMap.get(instanceId) || null;
+    if (this.adaptersMap.size === 1) return Array.from(this.adaptersMap.values())[0] || null;
+    return Array.from(this.adaptersMap.values())[this.adaptersMap.size - 1] || null;
   }
 
   _findConnectedAdapter(preferredId = null) {
-    const map = this.instanceManager.parentAdaptersMap;
+    const map = this.adaptersMap;
     if (map.size === 0) return null;
 
     const isSingle = !this.isMultiMode();
@@ -185,7 +222,7 @@ export class DomDriver {
   }
 
   resolveTarget(target) {
-    const map = this.instanceManager.parentAdaptersMap;
+    const map = this.adaptersMap;
 
     if (typeof target === 'string' && map.has(target)) {
       return { type: 'adapter', instance: map.get(target), instanceId: target };
@@ -293,6 +330,12 @@ export class DomDriver {
 
   async previous(target) {
     return this._execAction('previous', target);
+  }
+
+  getStatus(target) {
+    const resolved = this.resolveTarget(target);
+    if (!resolved) return null;
+    return extractMediaState(resolved.instance);
   }
 
   getCapabilities(target) {

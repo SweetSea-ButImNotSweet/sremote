@@ -6,18 +6,7 @@ import { createParentDebugApi } from '../debug/parent-debug.js';
 import { extractMediaState, evaluateCapabilities, buildSRemoteApi } from '@sremote/shared';
 
 export function createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker = null, transportManager = null }) {
-  const {
-    instances,
-    parentAdaptersMap,
-    assignedIframeIdMap,
-    iframeToAssignedIdMap,
-    globalEventListeners,
-    isMultiModeActive,
-    getLatestActiveInstanceId,
-    pauseOthersExcept,
-    handleUseAdapter,
-    handleRemoveAdapter,
-  } = instanceManager;
+  const { instances, assignedIframeIdMap, iframeToAssignedIdMap, globalEventListeners, isMultiModeActive, getLatestActiveInstanceId, pauseOthersExcept } = instanceManager;
 
   // --- 1. Internal Helpers ---
   const assignIframeId = (iframeOrSelector, customId) => {
@@ -53,20 +42,11 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       logger.scope('auth').error('Blocked status()! Valid Passkey is required.');
       return null;
     }
-    const isSingle = !isMultiModeActive();
     let targetId = instanceId;
     if (!targetId) {
-      if (isSingle && parentAdaptersMap.size > 0) {
-        targetId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
-      } else {
-        targetId = instanceManager.currentActiveInstanceId || (instances.size === 1 ? Array.from(instances.keys())[0] : null);
-      }
+      targetId = instanceManager.currentActiveInstanceId || (instances.size === 1 ? Array.from(instances.keys())[0] : null);
     }
 
-    if (targetId && parentAdaptersMap.has(targetId)) {
-      const adapter = parentAdaptersMap.get(targetId);
-      return extractMediaState(adapter);
-    }
     if (targetId && instances.has(targetId)) {
       const inst = instances.get(targetId);
       if (inst.isTopMedia && inst.mediaElement) {
@@ -74,15 +54,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       }
       return inst.state || null;
     }
-    if (!targetId && parentAdaptersMap.size > 0) {
-      return extractMediaState(Array.from(parentAdaptersMap.values())[parentAdaptersMap.size - 1]);
-    }
     return null;
-  };
-
-  const resolveAdapterCapabilities = adapter => {
-    if (!adapter) return null;
-    return evaluateCapabilities(adapter);
   };
 
   const getCapabilities = (instanceId, key) => {
@@ -90,24 +62,15 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       logger.scope('auth').error('Blocked capabilities()! Valid Passkey is required.');
       return null;
     }
-    const isSingle = !isMultiModeActive();
     let targetId = instanceId;
     if (!targetId) {
-      if (isSingle && parentAdaptersMap.size > 0) {
-        targetId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
-      } else {
-        targetId = instanceManager.currentActiveInstanceId || (instances.size === 1 ? Array.from(instances.keys())[0] : null);
-      }
-    }
-
-    if (targetId && parentAdaptersMap.has(targetId)) {
-      return resolveAdapterCapabilities(parentAdaptersMap.get(targetId));
-    }
-    if (!targetId && parentAdaptersMap.size > 0) {
-      return resolveAdapterCapabilities(Array.from(parentAdaptersMap.values())[parentAdaptersMap.size - 1]);
+      targetId = instanceManager.currentActiveInstanceId || (instances.size === 1 ? Array.from(instances.keys())[0] : null);
     }
     if (targetId && instances.has(targetId)) {
       const inst = instances.get(targetId);
+      if (inst.isTopMedia && inst.mediaElement) {
+        return evaluateCapabilities(inst.mediaElement);
+      }
       return (
         inst.capabilities || {
           play: true,
@@ -151,18 +114,6 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       state: info.state,
       status: info.status || 'ready',
     }));
-    for (const [id, adapter] of parentAdaptersMap.entries()) {
-      result.push({
-        instanceId: id,
-        location: location.href,
-        origin: location.origin,
-        note: 'Parent Custom Adapter',
-        mediaType: 'adapter',
-        capabilities: resolveAdapterCapabilities(adapter),
-        status: 'ready',
-        state: extractMediaState(adapter),
-      });
-    }
     return result;
   };
 
@@ -214,43 +165,6 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       return [];
     }
     return queryMediaInstancesViaGM();
-  };
-
-  const registerAdapter = (adapter, instanceId, key) => {
-    if (!validateDomainAccess(key)) {
-      logger.scope('auth').error('Blocked adapters.register()! Valid Passkey is required.');
-      return null;
-    }
-    const registeredId = handleUseAdapter(adapter, instanceId);
-    if (registeredId && topMediaTracker) {
-      topMediaTracker.suppressMediaElement?.(registeredId);
-      if (adapter?.element) {
-        topMediaTracker.suppressMediaElement?.(adapter.element);
-      }
-      if (adapter?.iframe) {
-        topMediaTracker.suppressMediaElement?.(adapter.iframe);
-      }
-    }
-    return registeredId;
-  };
-
-  const unregisterAdapter = (instanceId, key) => {
-    if (!validateDomainAccess(key)) {
-      logger.scope('auth').error('Blocked adapters.unregister()! Valid Passkey is required.');
-      return false;
-    }
-    return handleRemoveAdapter(instanceId);
-  };
-
-  const getCustomAdapter = (instanceId, key) => {
-    if (!validateDomainAccess(key)) {
-      logger.scope('auth').error('Blocked adapters.get()! Valid Passkey is required.');
-      return null;
-    }
-    if (instanceId) return parentAdaptersMap.get(instanceId) || null;
-    if (parentAdaptersMap.size === 1) return Array.from(parentAdaptersMap.values())[0] || null;
-    // Prefer currentActiveInstanceId if it points to an adapter, otherwise return the latest adapter
-    return parentAdaptersMap.get(instanceManager.currentActiveInstanceId) || Array.from(parentAdaptersMap.values())[parentAdaptersMap.size - 1] || null;
   };
 
   const rpcCall = (action, params, instanceId, key) => {
@@ -331,14 +245,14 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
   const getIframeCSS = (instanceId, key) => rpcCall('getIframeCSS', {}, instanceId, key);
   const removeIframeCSS = (instanceId, key) => rpcCall('removeIframeCSS', {}, instanceId, key);
 
-  const getQualities = (instanceId, key) => {
-    const adapter = getCustomAdapter(instanceId, key);
-    return adapter && typeof adapter.getQualities === 'function' ? adapter.getQualities() : [];
+  const getQualities = instanceId => {
+    const inst = instanceId ? instances.get(instanceId) : null;
+    return inst?.capabilities?.qualities || [];
   };
 
-  const getSubtitles = (instanceId, key) => {
-    const adapter = getCustomAdapter(instanceId, key);
-    return adapter && typeof adapter.getSubtitles === 'function' ? adapter.getSubtitles() : [];
+  const getSubtitles = instanceId => {
+    const inst = instanceId ? instances.get(instanceId) : null;
+    return inst?.capabilities?.subtitles || [];
   };
 
   const onEvent = (event, handler, key) => {
@@ -352,7 +266,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
     // Sticky replay
     const lastAcceptedData = instanceManager.lastAcceptedData;
-    if ((ev === 'accept' || ev === '*') && lastAcceptedData && (instances.has(lastAcceptedData.instanceId) || parentAdaptersMap.has(lastAcceptedData.instanceId))) {
+    if ((ev === 'accept' || ev === '*') && lastAcceptedData && instances.has(lastAcceptedData.instanceId)) {
       try {
         const payload = ev === '*' ? { action: 'accept', ...lastAcceptedData } : lastAcceptedData;
         setTimeout(() => {
@@ -446,8 +360,6 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     if (!isRapidRepeat) {
       Storage.set('sremote:hello_seq', nextSeq);
     }
-    const hasParentAdapter = parentAdaptersMap.size > 0;
-    const adapterIds = hasParentAdapter ? Array.from(parentAdaptersMap.keys()) : [];
 
     Storage.set('sremote:latest_handshake', {
       seq: nextSeq,
@@ -455,8 +367,6 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       handshakeToken,
       parentOrigin: location.origin,
       css: customCss,
-      hasParentAdapter,
-      adapterIds,
       ...(treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {}),
       timestamp: Date.now(),
     });
@@ -467,16 +377,12 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       handshakeId,
       handshakeToken,
       seq: nextSeq,
-      hasParentAdapter,
-      adapterIds,
       ...(customCss ? { css: customCss } : {}),
       ...(treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {}),
       ...(assignedInstanceId ? { assignedInstanceId } : {}),
     });
 
-    logger
-      .scope('hello')
-      .log(`Parent sending hello (seq: ${nextSeq}) ->`, { hasTarget: !!targetIframeWindow, handshakeId, seq: nextSeq, hasParentAdapter, hasCss: Boolean(customCss) });
+    logger.scope('hello').log(`Parent sending hello (seq: ${nextSeq}) ->`, { hasTarget: !!targetIframeWindow, handshakeId, seq: nextSeq, hasCss: Boolean(customCss) });
 
     if (targetIframeWindow && typeof targetIframeWindow.postMessage === 'function') {
       try {
@@ -550,9 +456,6 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       setExclusive,
       queryInstances,
       annotateInstances,
-      registerAdapter,
-      unregisterAdapter,
-      getCustomAdapter,
       rpcCall,
       postWindowMessage,
       onRpcMessage: (handler, key) => exportedApi.on('iframe:message', handler, key),
@@ -570,6 +473,25 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       get logLevel() {
         return logger.level;
       },
+      // Dynamic getter to forward any window.sremote.adapters calls directly to Wrapper client
+      get adapters() {
+        const client = typeof globalThis !== 'undefined' ? globalThis[Symbol.for('__sremote_client__')] : null;
+        if (client?.adapters) return client.adapters;
+        return {
+          register: (adapter, instanceId) => {
+            if (client?.adapters) return client.adapters.register(adapter, instanceId);
+            return null;
+          },
+          unregister: instanceId => {
+            if (client?.adapters) return client.adapters.unregister(instanceId);
+            return false;
+          },
+          get: instanceId => {
+            if (client?.adapters) return client.adapters.get(instanceId);
+            return null;
+          },
+        };
+      },
       destroy() {
         if (transportManager && typeof transportManager.destroy === 'function') {
           transportManager.destroy();
@@ -582,7 +504,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
   });
 
   try {
-    Object.defineProperty(pageWindow, 'sremote', { value: exportedApi, writable: false, configurable: false, enumerable: true });
+    Object.defineProperty(pageWindow, 'sremote', { value: exportedApi, writable: true, configurable: true, enumerable: true });
   } catch {
     pageWindow.sremote = exportedApi;
   }
@@ -592,9 +514,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     if (typeof pageWindow.dispatchEvent === 'function') {
       const readyDetail = { version: VERSION, isSremoteNative: true, api: exportedApi };
       const readyEvent =
-        typeof CustomEvent === 'function'
-          ? new CustomEvent('sremote:ready', { detail: readyDetail })
-          : Object.assign(new Event('sremote:ready'), { detail: readyDetail });
+        typeof CustomEvent === 'function' ? new CustomEvent('sremote:ready', { detail: readyDetail }) : Object.assign(new Event('sremote:ready'), { detail: readyDetail });
       pageWindow.dispatchEvent(readyEvent);
     }
   } catch (err) {
