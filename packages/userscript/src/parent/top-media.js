@@ -56,8 +56,12 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
     };
 
     if (!instanceManager.isMultiModeActive() && instances.size > 0) {
-      for (const oldId of Array.from(instances.keys())) {
+      for (const [oldId, oldInst] of Array.from(instances.entries())) {
         if (oldId !== customId) {
+          const oldEl = oldInst?.mediaElement || oldInst?.iframeEl;
+          if (mediaEl && oldEl && (oldEl === mediaEl || oldEl.contains?.(mediaEl) || mediaEl.contains?.(oldEl))) {
+            continue;
+          }
           console_log(`%c[SRemote:lifecycle] Replacing stale instance in Single Mode: ${oldId} -> ${customId}`, 'color: #f59e0b;');
           instanceManager.removeInstance(oldId, 'replaced_by_new_instance');
         }

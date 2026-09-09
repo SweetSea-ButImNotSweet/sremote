@@ -114,9 +114,7 @@ export class SRemoteClient {
         const domResult = this.domDriver.removeAdapter(instanceId);
         return domResult;
       },
-      get: instanceId => {
-        return this.domDriver.getCustomAdapter(instanceId);
-      },
+      get: instanceId => this.domDriver.getCustomAdapter(instanceId),
     };
 
     // Attach/override window.sremote.adapters to guarantee Single Source of Truth

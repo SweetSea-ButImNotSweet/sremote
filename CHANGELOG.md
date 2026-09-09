@@ -59,6 +59,17 @@ SRemote v3.0.0 is a major architecture overhaul, unification, and feature releas
 - **Unified API Architecture (`@sremote/shared`)**:
   - **`API_SPEC` (`packages/shared/src/api/schema.js`)**: Single source of truth for all root playback methods, argument schemas, action dispatch mappings, and sub-namespaces (`instances`, `adapters`, `rpc`, `css`).
   - **`buildSRemoteApi` (`packages/shared/src/api/builder.js`)**: Universal API factory generating standardized, immutable (`Object.freeze`) SRemote API objects with automated argument parsing, action forwarding, event manager hookup, and lifecycle binding.
+- **Consolidated Action Engine & Execution Pipeline (`@sremote/shared`)**:
+  - Extracted and centralized playback action execution logic across all adapter environments into `executeAdapterAction` (`packages/shared/src/adapter/action-engine.js`).
+  - Standardized action dispatching, argument validation, capability verification, and normalized returns across both DOM, Userscript, and custom SDK adapters.
+- **Transaction Tracking & State Synchronization (`@sremote/shared`, `@sremote/wrapper`)**:
+  - Introduced transaction tracking (`pendingTransactions`) to associate asynchronous dispatch commands with incoming adapter state transitions and events.
+  - Mitigates race conditions between rapid external control invocations and asynchronous underlying media state updates.
+- **Centralized Custom Adapter Management in Wrapper (`@sremote/wrapper`, `@sremote/userscript`, `@sremote/shared`)**:
+  - **Single Source of Truth in Wrapper**: Relocated all custom adapter management (`adaptersMap`, `register`, `unregister`, `get`) exclusively to `@sremote/wrapper` (`DomDriver`). Userscript now acts strictly as an Iframe Cross-Origin SOP Bridge without retaining duplicate adapter state.
+  - **Purged `parentAdaptersMap` Architecture**: Completely eliminated `parentAdaptersMap` from `@sremote/userscript` and `@sremote/shared`. Userscript's `window.sremote.adapters` now acts as a dynamic forwarding proxy to the wrapper instance via `globalThis[Symbol.for('__sremote_client__')]`.
+  - **Implemented `domDriver.getStatus()`**: Added missing `getStatus()` implementation to `DomDriver` to resolve runtime `TypeError: this.domDriver.getStatus is not a function` during playback queries.
+  - **YouTube Provider Readiness Deferred**: Refactored `initPlayer()` in `@sremote/ready2use`'s YouTube provider to return an awaitable Promise that only resolves when the video is cued / duration is loaded, keeping the adapter contract clean without exposing arbitrary properties.
 - **Shared Instance Manager Architecture (`@sremote/shared`)**:
   - Extracted core instance management and lifecycle tracking into `@sremote/shared` via `createInstanceManager`.
   - Enables unified instance state tracking, adapter registration (`wrapCustomAdapter`), active instance detection, exclusivity management (`exclusiveMode: 'auto'`), and custom signal notifications across both `@sremote/userscript` and `@sremote/wrapper`.
@@ -141,12 +152,16 @@ SRemote v3.0.0 is a major architecture overhaul, unification, and feature releas
   - Fixed exclusive mode (`exclusiveMode: 'auto'`) to properly pause top-level media elements without ports via `mediaElement.pause()`.
   - Filtered detached and miniature tracking/beacon elements (`< 32x32`), and guarded against commands dispatched to elements without media sources attached.
 - **Single Mode Active Instance Routing & Custom Adapter Dispatching**:
-  - **Prioritized Parent Custom Adapters in Single Mode (`@sremote/shared`)**: Refactored `getLatestActiveInstanceId()` in `instance-manager.js` so that when Single Mode is active (`multiMode = false`), registered parent custom adapters (`parentAdaptersMap`) strictly take precedence over `currentActiveInstanceId`.
-  - **Iframe Message Port Active Instance Hijacking Protection (`@sremote/userscript`)**: Prevented incoming iframe heartbeat and message-channel events (`ping`, `timeupdate`, etc.) in `handshake.js` from continuously overwriting `currentActiveInstanceId` when a parent custom adapter is registered.
-  - **Top DOM Media Event Hijacking Protection (`@sremote/userscript`)**: Prevented `play` / `playing` events from top-level `<video>` / `<audio>` elements in `top-media.js` from stealing the active instance ID away from registered parent adapters in Single Mode.
-  - **Command Dispatch & Action Fallback (`@sremote/userscript`)**: Hardened `dispatchCommand()` and `executeParentAdapterAction()` in `parent/index.js` to reliably route to the parent adapter when no explicit `instanceId` is supplied in Single Mode, preventing lost or misrouted playback commands.
-  - **State & Capability Queries Resolution (`@sremote/userscript`)**: Updated `getStatus()`, `getCapabilities()`, and `getCustomAdapter()` in `parent/api.js` to immediately query and return state from registered custom adapters in Single Mode rather than querying empty or wrong iframe instances.
-  - **DOM Driver Adapter Connectivity Detection (`@sremote/wrapper`)**: Enhanced `_findConnectedAdapter()` in `strategies/dom.js` to return the active custom adapter in Single Mode even if it does not wrap a native DOM element (e.g. YouTube IFrame API and SDK-driven players).
+  - **Prioritized Custom Adapters in Single Mode (`@sremote/wrapper`)**: Ensured that when Single Mode is active (`multiMode = false`), registered custom adapters in wrapper strictly take precedence over other instances and background DOM media.
+  - **Iframe Message Port & Top Media Active Instance Hijacking Protection**: Prevented incoming iframe heartbeat/message events and top-level DOM media elements from stealing the active instance ID away when a custom adapter is actively registered and controlled.
+  - **Command Dispatch & Action Fallback**: Hardened command dispatching to reliably route to the active custom adapter when no explicit `instanceId` is supplied in Single Mode, preventing lost or misrouted playback commands.
+  - **State & Capability Queries Resolution**: Updated status and capability queries to immediately prioritize registered custom adapters in Single Mode rather than querying empty or wrong iframe instances.
+- **Single Mode Instance Identity Preservation & Conflict Prevention (`@sremote/userscript`)**:
+  - **Shared Element/Container Protection**: Guarded Single Mode cleanup in `setupPortForInstance` (`transport.js`) and `setupTopMediaTracker` (`top-media.js`) against prematurely destroying older instances when the incoming iframe or media element shares or is contained within the same DOM container. Eliminates the critical bug where incoming iframe handshake `accept` destroyed the active Custom Adapter instance.
+  - **DOM Container Hierarchy Pre-Assignment**: Enhanced `findIframeElementBySource` and `preAssignedId` resolution in `transport.js` to inspect `iframe.closest('[data-sremote-id]')` and check `window.frames`. Ensures that dynamically rendered iframes without explicit IDs seamlessly inherit the parent container's pre-assigned instance ID.
+- **Provider Readiness & Wrapper Registration Resiliency (`@sremote/ready2use`)**:
+  - **Eliminated `window.name` ID Pollution**: Removed intrusive `window.name` / `iframe.name` assignments in YouTube provider, relying exclusively on standardized `data-sremote-id` attributes and DOM hierarchy.
+  - **Retry-Resilient Wrapper Resolution**: Added a microtask retry loop in `resolveSRemote()` (`base-provider.js`) to guarantee resolving wrapper client with `.adapters` even during rapid initialization races between userscript injection and client instantiation.
 - **Custom Container Mounting**: Fixed element detachment and duplication issues when providing custom `container` targets in **YouTube**, **Dailymotion**, and **Spotify** providers.
 
 ### ⚠️ Removed & Breaking API Cleanups

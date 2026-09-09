@@ -70,13 +70,11 @@ export class YouTubeProvider extends BaseProvider {
     if (options.container) {
       targetNode = document.createElement('div');
       targetNode.id = `sremote-youtube-${instanceId}`;
-      targetNode.setAttribute('name', `sremote_id=${instanceId}`);
       applyElementAttributes(targetNode, width, height, instanceId);
       options.container.appendChild(targetNode);
     } else {
       const temp = createTempNode(instanceId, width, height);
       targetNode = temp.tempNode;
-      targetNode.setAttribute('name', `sremote_id=${instanceId}`);
       cleanupTemp = temp.cleanup;
     }
 
@@ -93,9 +91,6 @@ export class YouTubeProvider extends BaseProvider {
             const iframe = player.getIFrame ? player.getIFrame() : document.getElementById(targetNode.id);
             if (iframe) {
               applyElementAttributes(iframe, width, height, instanceId);
-              try {
-                iframe.name = `sremote_id=${instanceId}`;
-              } catch {}
             }
 
             const buildResult = () => ({

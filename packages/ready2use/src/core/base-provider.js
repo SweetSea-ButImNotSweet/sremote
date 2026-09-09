@@ -10,18 +10,32 @@ let cachedSRemote = null;
  * @returns {Promise<any>}
  */
 async function resolveSRemote(opts = {}) {
-  if (opts.sremote && typeof opts.sremote === 'object' && opts.sremote.adapters) {
-    return opts.sremote;
+  const getClient = () => {
+    if (opts.sremote && typeof opts.sremote === 'object' && opts.sremote.adapters) {
+      return opts.sremote;
+    }
+    if (typeof globalThis !== 'undefined' && globalThis[Symbol.for('__sremote_client__')]) {
+      return globalThis[Symbol.for('__sremote_client__')];
+    }
+    if (typeof window !== 'undefined' && window.sremote && !window.sremote.isDummy && window.sremote.adapters) {
+      return window.sremote;
+    }
+    if (typeof globalThis !== 'undefined' && globalThis.sremote && !globalThis.sremote.isDummy && globalThis.sremote.adapters) {
+      return globalThis.sremote;
+    }
+    return null;
+  };
+
+  let client = getClient();
+  if (client) return client;
+
+  // If wrapper client is in the middle of being created, wait a brief tick
+  for (let i = 0; i < 3; i++) {
+    await new Promise(r => setTimeout(r, 50));
+    client = getClient();
+    if (client) return client;
   }
-  if (typeof globalThis !== 'undefined' && globalThis[Symbol.for('__sremote_client__')]) {
-    return globalThis[Symbol.for('__sremote_client__')];
-  }
-  if (typeof window !== 'undefined' && window.sremote && !window.sremote.isDummy && window.sremote.adapters) {
-    return window.sremote;
-  }
-  if (typeof globalThis !== 'undefined' && globalThis.sremote && !globalThis.sremote.isDummy && globalThis.sremote.adapters) {
-    return globalThis.sremote;
-  }
+
   if (cachedSRemote) {
     return cachedSRemote;
   }

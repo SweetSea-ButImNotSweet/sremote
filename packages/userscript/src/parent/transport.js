@@ -31,7 +31,7 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
   function findIframeElementBySource(sourceWindow, root = document) {
     if (!sourceWindow || !root) return null;
     try {
-      const iframes = root.querySelectorAll('iframe');
+      const iframes = root.querySelectorAll ? root.querySelectorAll('iframe') : [];
       for (let i = 0; i < iframes.length; i++) {
         if (iframes[i].contentWindow === sourceWindow) {
           return iframes[i];
@@ -44,16 +44,29 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
           }
         } catch {}
       }
+
+      // Check window.frames index if available
+      if (root === document && typeof window !== 'undefined' && window.frames) {
+        for (let i = 0; i < window.frames.length; i++) {
+          if (window.frames[i] === sourceWindow) {
+            if (iframes[i]) return iframes[i];
+          }
+        }
+      }
     } catch {}
     return null;
   }
 
   // --- 1. Port Setup & Channel Management ---
   function setupPortForInstance(instanceId, port, initialLocation, initialOrigin, iframeEl = null, initialTransportState = TRANSPORT_STATE.CONNECTED) {
-    // Single Mode: cleanup older instance safely
+    // Single Mode: cleanup older instance safely, EXCEPT if it belongs to the same iframe or container
     if (!isMultiModeActive() && instances.size > 0) {
-      for (const oldId of Array.from(instances.keys())) {
+      for (const [oldId, oldInst] of Array.from(instances.entries())) {
         if (oldId !== instanceId) {
+          const oldIframe = oldInst?.iframeEl || assignedIframeIdMap.get(oldId);
+          if (iframeEl && oldIframe && (oldIframe === iframeEl || oldIframe.contains?.(iframeEl) || iframeEl.contains?.(oldIframe))) {
+            continue;
+          }
           console_log(`%c[SRemote:transport] Single mode: replacing older instance ${oldId} -> ${instanceId}`, 'color: #f59e0b;');
           removeInstance(oldId, 'replaced_by_new_instance');
         }
@@ -234,7 +247,13 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
 
     if (lowerAction === 'accept') {
       const iframeEl = findIframeElementBySource(event.source);
-      const preAssignedId = (iframeEl && (iframeEl.getAttribute('data-sremote-id') || iframeToAssignedIdMap.get(iframeEl))) || null;
+      let preAssignedId = (iframeEl && (iframeEl.getAttribute('data-sremote-id') || iframeToAssignedIdMap.get(iframeEl))) || null;
+      if (!preAssignedId && iframeEl?.closest) {
+        const closestParentWithId = iframeEl.closest('[data-sremote-id]');
+        if (closestParentWithId) {
+          preAssignedId = closestParentWithId.getAttribute('data-sremote-id');
+        }
+      }
       const instanceId = preAssignedId || data.instanceId || generateInstanceId();
       const iframeLoc = data.location || '';
       const iframeOrigin = event.origin && event.origin !== 'null' ? event.origin : data.origin || '*';
