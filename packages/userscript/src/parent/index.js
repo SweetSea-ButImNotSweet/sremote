@@ -225,13 +225,29 @@ export function initParentController() {
 
     logger.scope('action').log(`(Wrapper) Dispatching -> ${action}`, { action, value, targetInstanceId: targetId || targetInstanceId || 'auto' });
 
+    // 1. TOP PRIORITY: Custom Adapters (Adapter > DOM Media > MediaSession > Iframe Port)
     if (parentAdaptersMap.size > 0) {
-      const adapterTargetId = !targetInstanceId && !isMultiModeActive() ? Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1] : targetId || targetInstanceId;
-      const handled = await executeParentAdapterAction(action, value, adapterTargetId);
-      if (handled) return Promise.resolve({ success: true, instanceId: adapterTargetId || targetId || targetInstanceId, source: 'adapter', action });
+      // In Single Mode or if targetInstanceId is not specified, always direct to the registered adapter
+      let adapterTargetId = targetInstanceId;
+      if (!adapterTargetId) {
+        adapterTargetId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
+      } else if (!parentAdaptersMap.has(adapterTargetId) && !isMultiModeActive()) {
+        adapterTargetId = Array.from(parentAdaptersMap.keys())[parentAdaptersMap.size - 1];
+      }
+
+      if (adapterTargetId && parentAdaptersMap.has(adapterTargetId)) {
+        const handled = await executeParentAdapterAction(action, value, adapterTargetId);
+        // If an adapter is registered for this target, always resolve as handled by adapter (never fall through to wait for port)
+        return Promise.resolve({
+          success: Boolean(handled !== false),
+          instanceId: adapterTargetId,
+          source: 'adapter',
+          action,
+        });
+      }
     }
 
-    // Direct execution on Top DOM Media Elements
+    // 2. SECOND PRIORITY: Direct execution on Top DOM Media Elements
     if (target?.isTopMedia && target.mediaElement) {
       return executeTopMediaAction(target.mediaElement, action, value).then(ok => ({ success: ok, instanceId: targetId, source: 'top-dom', action }));
     }

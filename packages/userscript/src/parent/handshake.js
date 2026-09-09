@@ -336,7 +336,9 @@ export function setupParentHandshake(instanceManager) {
           if (pendingConsumeHandshakeId) {
             inst.pendingConsumeHandshakeId = pendingConsumeHandshakeId;
           }
-          instanceManager.setCurrentActiveInstanceId(instanceId);
+          if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
+            instanceManager.setCurrentActiveInstanceId(instanceId);
+          }
           if (data.state) inst.state = data.state;
           if (data.mediaType) inst.mediaType = data.mediaType;
           if (data.capabilities) inst.capabilities = data.capabilities;
@@ -359,7 +361,9 @@ export function setupParentHandshake(instanceManager) {
           if (pendingConsumeHandshakeId) {
             inst.pendingConsumeHandshakeId = pendingConsumeHandshakeId;
           }
-          instanceManager.setCurrentActiveInstanceId(instanceId);
+          if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
+            instanceManager.setCurrentActiveInstanceId(instanceId);
+          }
           if (data.state) inst.state = data.state;
           if (data.mediaType) inst.mediaType = data.mediaType;
           if (data.capabilities) inst.capabilities = data.capabilities;
