@@ -408,6 +408,9 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
     }
   }
 
+  let lastTimeupdateAdapterLog = 0;
+  const TIMEUPDATE_LOG_THROTTLE_MS = 2000;
+
   adapter.emit = (event, payload = {}) => {
     const ev = String(event || '').toLowerCase();
     handledEvents.add(ev);
@@ -437,7 +440,15 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
     const state = extractMediaState(adapter);
     const fullPayload = createEventPayload(ev, { source, instanceId, mediaType: 'adapter', isProgrammatic, ...(state ? { state } : {}), ...payloadObj });
 
-    defaultLogger.scope('event').debug(`Adapter emit -> ${ev}`, fullPayload);
+    const now = Date.now();
+    const shouldLogAdapterEvent = ev !== 'timeupdate' || now - lastTimeupdateAdapterLog >= TIMEUPDATE_LOG_THROTTLE_MS;
+    if (ev === 'timeupdate' && shouldLogAdapterEvent) {
+      lastTimeupdateAdapterLog = now;
+    }
+
+    if (shouldLogAdapterEvent) {
+      defaultLogger.scope('event').debug(`Adapter emit -> ${ev}`, fullPayload);
+    }
 
     if (typeof onEmit === 'function') {
       try {

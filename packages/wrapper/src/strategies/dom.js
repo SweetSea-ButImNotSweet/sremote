@@ -20,6 +20,16 @@ export class DomDriver {
       getIframeCount: () => (typeof document !== 'undefined' ? document.querySelectorAll('iframe').length : 0),
     });
 
+    // Forward events emitted by instanceManager (e.g. from registered adapters) to DomDriver listeners
+    if (this.instanceManager?.on) {
+      this.instanceManager.on('*', payload => {
+        const action = payload?.action;
+        if (action) {
+          this.emit(action, payload);
+        }
+      });
+    }
+
     this.trackedMediaElements = new WeakSet();
     this.treatAlmostEndAsEnd = Boolean(options.treatAlmostEndAsEnd);
     this._listeners = new Map();

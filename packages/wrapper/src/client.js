@@ -157,6 +157,11 @@ export class SRemoteClient {
   }
 
   async ready() {
+    // If local custom adapters are already registered, local DOM driver is immediately ready
+    if (this.domDriver && this.domDriver.adaptersMap.size > 0 && this.mode === 'detecting') {
+      this.mode = 'dom-direct';
+    }
+
     if (this._readyPromise) return this._readyPromise;
 
     this._readyPromise = new Promise(resolve => {
@@ -171,6 +176,13 @@ export class SRemoteClient {
 
       if (this.userscriptDriver.isAvailable()) {
         onConnected('Userscript detected immediately. Mode: userscript');
+        return;
+      }
+
+      // If already has local adapter or fallback is ready, resolve immediately
+      if (this.domDriver && this.domDriver.adaptersMap.size > 0) {
+        this.mode = 'dom-direct';
+        resolve(this);
         return;
       }
 
@@ -212,7 +224,24 @@ export class SRemoteClient {
     return this._readyPromise;
   }
 
-  get activeDriver() {
+  /**
+   * Resolves appropriate driver for a specific target.
+   * If target matches a locally registered adapter (or local adapters exist in single mode),
+   * local DomDriver is ALWAYS prioritized to avoid cross-boundary function serialization loss.
+   * @param {string|Object|null} targetOrId
+   * @returns {UserscriptDriver|DomDriver|null}
+   */
+  getDriverForTarget(targetOrId = null) {
+    const domAdapters = this.domDriver?.adaptersMap;
+    if (domAdapters && domAdapters.size > 0) {
+      if (typeof targetOrId === 'string' && domAdapters.has(targetOrId)) {
+        return this.domDriver;
+      }
+      if (!targetOrId && !this.domDriver.isMultiMode()) {
+        return this.domDriver;
+      }
+    }
+
     if (this.mode === 'userscript' || this.userscriptDriver.isAvailable()) {
       return this.userscriptDriver;
     }
@@ -222,13 +251,33 @@ export class SRemoteClient {
     return null;
   }
 
+  get activeDriver() {
+    return this.getDriverForTarget(null);
+  }
+
   /**
    * Helper to execute commands on the active driver after awaiting readiness
    * @private
    */
   async _exec(method, ...args) {
-    await this.ready();
-    const driver = this.activeDriver;
+    // Extract target identifier from args depending on action signature
+    // For seek/seekTo/volume/mute/speed/load/quality/subtitle/shuffle/repeat: targetOrId is args[1]
+    // For play/pause/toggle/stop/next/previous: targetOrId is args[0]
+    const valueActions = ['seek', 'seekTo', 'volume', 'mute', 'speed', 'load', 'quality', 'subtitle', 'shuffle', 'repeat'];
+    const targetOrId = valueActions.includes(method) ? args[1] : args[0];
+
+    const targetDriver = this.getDriverForTarget(targetOrId);
+    if (!targetDriver && (this.mode === 'userscript' || this.mode === 'dom-direct')) {
+      throw new Error(`[SRemote:Wrapper] No active driver available to execute ${method}()`);
+    }
+
+    // Only await ready() if not already resolved and no immediate local adapter driver available
+    const hasLocalAdapter = this.domDriver?.adaptersMap.size > 0;
+    if (!hasLocalAdapter) {
+      await this.ready();
+    }
+
+    const driver = this.getDriverForTarget(targetOrId) || this.activeDriver;
     if (!driver) {
       this.logger.error(`No active driver available to execute ${method}()`);
       throw new Error(`[SRemote:Wrapper] No active driver available to execute ${method}()`);

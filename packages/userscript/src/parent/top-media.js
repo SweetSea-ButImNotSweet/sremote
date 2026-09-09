@@ -72,6 +72,8 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
 
     let lastTimeupdate = 0;
     const TIMEUPDATE_THROTTLE_MS = 250;
+    let lastTimeupdateLog = 0;
+    const TIMEUPDATE_LOG_THROTTLE_MS = 2000;
 
     // Standard event listener binding without prototype hooking
     const unbind = bindMediaEvents(
@@ -110,7 +112,10 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
           }
         }
 
-        logger.scope('dom').debug(`Top DOM media event -> ${evtName}`, payload);
+        if (evtName !== 'timeupdate' || now - lastTimeupdateLog >= TIMEUPDATE_LOG_THROTTLE_MS) {
+          if (evtName === 'timeupdate') lastTimeupdateLog = now;
+          logger.scope('dom').debug(`Top DOM media event -> ${evtName}`, payload);
+        }
         emitGlobalEvent(evtName, payload);
       },
       { instanceId: customId, source: 'top-dom', mediaType },

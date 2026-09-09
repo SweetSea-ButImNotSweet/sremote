@@ -125,17 +125,28 @@ export function createInstanceManager(options = {}) {
     }
   }
 
+  let lastTimeupdateLogTime = 0;
+  const TIMEUPDATE_LOG_THROTTLE_MS = 2000;
+
   function emitGlobalEvent(event, payload = {}) {
     const rawEv = String(event || '').toLowerCase();
     const ev = rawEv.replace(/^sremote:/, '');
     const fullEv = `sremote:${ev}`;
 
-    if (payload?.mediaType === 'adapter' || payload?.source === 'adapter' || payload?.source === 'adapter-dom-fallback') {
-      const srcTag = payload.source || 'adapter';
-      const instTag = payload.instanceId ? ` [${payload.instanceId}]` : '';
-      eventLogger.debug(`Adapter emit${instTag} (${srcTag}) -> ${ev}`, payload);
-    } else {
-      eventLogger.debug(`Dispatched -> ${ev}`, payload);
+    const now = Date.now();
+    const shouldLogEvent = ev !== 'timeupdate' || now - lastTimeupdateLogTime >= TIMEUPDATE_LOG_THROTTLE_MS;
+    if (ev === 'timeupdate' && shouldLogEvent) {
+      lastTimeupdateLogTime = now;
+    }
+
+    if (shouldLogEvent) {
+      if (payload?.mediaType === 'adapter' || payload?.source === 'adapter' || payload?.source === 'adapter-dom-fallback') {
+        const srcTag = payload.source || 'adapter';
+        const instTag = payload.instanceId ? ` [${payload.instanceId}]` : '';
+        eventLogger.debug(`Adapter emit${instTag} (${srcTag}) -> ${ev}`, payload);
+      } else {
+        eventLogger.debug(`Dispatched -> ${ev}`, payload);
+      }
     }
 
     if ((ev === 'accept' || rawEv === 'accept') && payload?.instanceId) {

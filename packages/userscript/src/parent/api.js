@@ -591,8 +591,10 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
   try {
     if (typeof pageWindow.dispatchEvent === 'function') {
       const readyDetail = { version: VERSION, isSremoteNative: true, api: exportedApi };
-      const readyEvent = typeof CustomEvent === 'function' ? new CustomEvent('sremote:ready', { detail: readyDetail }) : new Event('sremote:ready');
-      readyEvent.detail = readyDetail;
+      const readyEvent =
+        typeof CustomEvent === 'function'
+          ? new CustomEvent('sremote:ready', { detail: readyDetail })
+          : Object.assign(new Event('sremote:ready'), { detail: readyDetail });
       pageWindow.dispatchEvent(readyEvent);
     }
   } catch (err) {

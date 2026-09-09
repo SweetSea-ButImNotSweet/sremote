@@ -177,7 +177,11 @@ export async function executeMediaAction(target, action, value = undefined, opti
             await target.stop();
           } else {
             if (typeof target.pause === 'function') await target.pause();
-            if (typeof target.seekTo === 'function') await target.seekTo(0);
+            if (typeof target.seekTo === 'function') {
+              await target.seekTo(0);
+            } else if (typeof target.setCurrentTime === 'function') {
+              await target.setCurrentTime(0);
+            }
           }
           autoEmit('pause');
           autoEmit('stop');
@@ -188,12 +192,17 @@ export async function executeMediaAction(target, action, value = undefined, opti
         if (!isPureGet) {
           if (typeof target.seek === 'function') {
             await target.seek(Number(value));
-          } else if (typeof target.seekTo === 'function') {
+          } else if (typeof target.seekTo === 'function' || typeof target.setCurrentTime === 'function') {
             let cur = 0;
             if (typeof target.getCurrentTime === 'function') {
               cur = Number((await target.getCurrentTime()) || 0);
             }
-            await target.seekTo(Math.max(0, cur + Number(value)));
+            const targetTime = Math.max(0, cur + Number(value));
+            if (typeof target.seekTo === 'function') {
+              await target.seekTo(targetTime);
+            } else {
+              await target.setCurrentTime(targetTime);
+            }
           }
           autoEmit('seeking');
           autoEmit('seeked');
@@ -202,8 +211,19 @@ export async function executeMediaAction(target, action, value = undefined, opti
 
       case 'currenttime':
       case 'seekto':
-        if (!isPureGet && typeof target.seekTo === 'function') {
-          await target.seekTo(Number(value));
+        if (!isPureGet) {
+          const targetTime = Number(value);
+          if (typeof target.seekTo === 'function') {
+            await target.seekTo(targetTime);
+          } else if (typeof target.setCurrentTime === 'function') {
+            await target.setCurrentTime(targetTime);
+          } else if (typeof target.seek === 'function') {
+            let cur = 0;
+            if (typeof target.getCurrentTime === 'function') {
+              cur = Number((await target.getCurrentTime()) || 0);
+            }
+            await target.seek(targetTime - cur);
+          }
           autoEmit('seeking');
           autoEmit('seeked');
         }
@@ -217,15 +237,23 @@ export async function executeMediaAction(target, action, value = undefined, opti
           }
           if (typeof target.setVolume === 'function') {
             await target.setVolume(targetVol);
-            if (typeof target.setMuted === 'function') {
-              try {
-                await target.setMuted(false);
-              } catch {}
-            }
+          } else if (typeof target.volume === 'function') {
+            await target.volume(targetVol);
           } else if (target.mediaElement) {
             target.mediaElement.volume = targetVol;
             target.mediaElement.muted = false;
           }
+
+          if (typeof target.setMuted === 'function') {
+            try {
+              await target.setMuted(false);
+            } catch {}
+          } else if (typeof target.mute === 'function') {
+            try {
+              await target.mute(false);
+            } catch {}
+          }
+
           autoEmit('volumechange', { volume: targetVol, muted: false });
         }
         return true;
@@ -248,17 +276,26 @@ export async function executeMediaAction(target, action, value = undefined, opti
 
             if (typeof target.setMuted === 'function') {
               await target.setMuted(true);
+            } else if (typeof target.mute === 'function') {
+              await target.mute(true);
             } else if (typeof target.setVolume === 'function') {
               await target.setVolume(0);
+            } else if (typeof target.volume === 'function') {
+              await target.volume(0);
             } else if (target.mediaElement) {
               target.mediaElement.muted = true;
             }
           } else {
             if (typeof target.setMuted === 'function') {
               await target.setMuted(false);
+            } else if (typeof target.mute === 'function') {
+              await target.mute(false);
             }
+
             if (typeof target.setVolume === 'function') {
               await target.setVolume(prevVol);
+            } else if (typeof target.volume === 'function') {
+              await target.volume(prevVol);
             } else if (target.mediaElement) {
               target.mediaElement.muted = false;
               target.mediaElement.volume = prevVol;
@@ -277,6 +314,8 @@ export async function executeMediaAction(target, action, value = undefined, opti
             await target.setPlaybackRate(rate);
           } else if (typeof target.setSpeed === 'function') {
             await target.setSpeed(rate);
+          } else if (typeof target.speed === 'function') {
+            await target.speed(rate);
           } else if (target.mediaElement) {
             target.mediaElement.playbackRate = rate;
           }
