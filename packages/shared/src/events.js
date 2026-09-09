@@ -254,7 +254,7 @@ export function bindMediaEvents(media, onEvent, options = {}) {
     return () => {};
   }
 
-  const { instanceId = 'dom-media', source = 'dom', treatAlmostEndAsEnd = false, events = MEDIA_EVENTS, excludedEvents = null } = options;
+  const { instanceId = 'dom-media', source = 'dom', treatAlmostEndAsEnd = false, events = MEDIA_EVENTS, excludedEvents = null, programmaticActionTimestampGetter = null } = options;
 
   const excludedSet = excludedEvents ? (excludedEvents instanceof Set ? excludedEvents : new Set(Array.from(excludedEvents).map(e => String(e).toLowerCase()))) : null;
   const targetEvents = excludedSet && excludedSet.size > 0 ? events.filter(evt => !excludedSet.has(evt.toLowerCase())) : events;
@@ -273,6 +273,8 @@ export function bindMediaEvents(media, onEvent, options = {}) {
   for (const evtName of targetEvents) {
     const listener = eventObj => {
       const now = Date.now();
+      const lastTs = typeof programmaticActionTimestampGetter === 'function' ? programmaticActionTimestampGetter() : 0;
+      const isProgrammatic = now - lastTs < 500;
 
       if (evtName === 'timeupdate') {
         if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) {
@@ -288,7 +290,13 @@ export function bindMediaEvents(media, onEvent, options = {}) {
             const state = extractMediaState(media);
             onEvent(
               treatAlmostEndAsEnd ? 'ended' : 'almostend',
-              createEventPayload(treatAlmostEndAsEnd ? 'ended' : 'almostend', { source, instanceId, mediaType: media.tagName ? media.tagName.toLowerCase() : 'video', state }),
+              createEventPayload(treatAlmostEndAsEnd ? 'ended' : 'almostend', {
+                source,
+                instanceId,
+                mediaType: media.tagName ? media.tagName.toLowerCase() : 'video',
+                state,
+                isProgrammatic,
+              }),
             );
           }
         } else if (dur && curTime < dur - 1.5) {
@@ -311,7 +319,10 @@ export function bindMediaEvents(media, onEvent, options = {}) {
       }
 
       const state = extractMediaState(media);
-      onEvent(evtName, createEventPayload(evtName, { source, instanceId, mediaType: media.tagName ? media.tagName.toLowerCase() : 'video', state, originalEvent: eventObj }));
+      onEvent(
+        evtName,
+        createEventPayload(evtName, { source, instanceId, mediaType: media.tagName ? media.tagName.toLowerCase() : 'video', state, isProgrammatic, originalEvent: eventObj }),
+      );
     };
 
     media.addEventListener(evtName, listener, true);
@@ -350,6 +361,36 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
   const handledEvents = new Set(Array.isArray(rawAdapter.handledEvents) ? rawAdapter.handledEvents.map(e => String(e).toLowerCase()) : []);
 
   let unbindFallback = null;
+  let programmaticActionTimestamp = 0;
+
+  // Intercept action methods to detect programmatic calls
+  const ACTION_METHODS = [
+    'play',
+    'pause',
+    'toggle',
+    'stop',
+    'seek',
+    'seekTo',
+    'setCurrentTime',
+    'setVolume',
+    'volume',
+    'setMuted',
+    'mute',
+    'setPlaybackRate',
+    'speed',
+    'requestPip',
+    'setLoop',
+    'load',
+  ];
+
+  for (const method of ACTION_METHODS) {
+    if (typeof rawAdapter[method] === 'function') {
+      adapter[method] = function (...args) {
+        programmaticActionTimestamp = Date.now();
+        return rawAdapter[method].apply(this, args);
+      };
+    }
+  }
 
   adapter.emit = (event, payload = {}) => {
     const ev = String(event || '').toLowerCase();
@@ -361,14 +402,16 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
       } catch {}
     }
 
+    const payloadObj = typeof payload === 'object' && payload !== null ? payload : { value: payload };
+    const isProgrammatic =
+      payloadObj.isProgrammatic !== undefined
+        ? payloadObj.isProgrammatic
+        : payloadObj.programmatic !== undefined
+          ? payloadObj.programmatic
+          : Date.now() - programmaticActionTimestamp < 500;
+
     const state = extractMediaState(adapter);
-    const fullPayload = createEventPayload(ev, {
-      source,
-      instanceId,
-      mediaType: 'adapter',
-      ...(state ? { state } : {}),
-      ...(typeof payload === 'object' && payload !== null ? payload : { value: payload }),
-    });
+    const fullPayload = createEventPayload(ev, { source, instanceId, mediaType: 'adapter', isProgrammatic, ...(state ? { state } : {}), ...payloadObj });
 
     defaultLogger.scope('event').debug(`Adapter emit -> ${ev}`, fullPayload);
 
@@ -386,6 +429,7 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
             instanceId,
             mediaType: 'adapter',
             action: ev,
+            isProgrammatic,
             state,
             ...(typeof payload === 'object' && payload !== null ? payload : {}),
           });
@@ -452,7 +496,13 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
             }
           }
         },
-        { instanceId, source: 'adapter-dom-fallback', events: allowedFallbackEvents, excludedEvents: handledEvents },
+        {
+          instanceId,
+          source: 'adapter-dom-fallback',
+          events: allowedFallbackEvents,
+          excludedEvents: handledEvents,
+          programmaticActionTimestampGetter: () => programmaticActionTimestamp,
+        },
       );
     }
   }

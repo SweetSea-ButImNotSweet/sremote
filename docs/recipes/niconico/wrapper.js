@@ -7,6 +7,7 @@ const playerId = 'niconico-player';
 let duration = 0;
 let currentTime = 0;
 let isPlaying = false;
+let volume = 1;
 
 function sendToNico(eventName, data = {}) {
   if (iframe?.contentWindow) {
@@ -29,7 +30,11 @@ const adapter = {
     sendToNico('seek', { time: seconds * 1000 });
   },
   setVolume(vol) {
+    volume = vol;
     sendToNico('volumeChange', { volume: vol });
+  },
+  getVolume() {
+    return volume;
   },
   getDuration() {
     return duration;
@@ -71,6 +76,11 @@ window.addEventListener('message', e => {
     } else if (data?.playerStatus === 4) {
       isPlaying = false;
       adapter.emit('ended', { state: { ended: true, currentTime, duration, duration } });
+    }
+  } else if (eventName === 'volumeChange') {
+    if (data?.volume !== undefined) {
+      volume = data.volume;
+      adapter.emit('volumechange', { state: { volume, paused: !isPlaying, currentTime, duration } });
     }
   }
 });

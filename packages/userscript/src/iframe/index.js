@@ -107,7 +107,8 @@ export function initIframeAgent() {
           if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
             if (!hasEmittedAlmostEnd) {
               hasEmittedAlmostEnd = true;
-              emitToParent(treatAlmostEndAsEnd ? 'ended' : 'almostend', { state: getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia) });
+              const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
+              emitToParent(treatAlmostEndAsEnd ? 'ended' : 'almostend', { isProgrammatic, state: getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia) });
             }
           } else if (dur && curTime < dur - 1.5) {
             hasEmittedAlmostEnd = false;
@@ -203,6 +204,9 @@ export function initIframeAgent() {
     };
     if (action) payload.action = action;
     if (specificValue !== undefined) payload.value = specificValue;
+
+    const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
+    payload.isProgrammatic = isProgrammatic;
 
     emitToParent(action || 'mediaSessionState', payload);
   }

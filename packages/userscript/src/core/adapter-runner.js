@@ -23,7 +23,7 @@ export async function executeAdapterAction(adapter, action, value = undefined, i
   const autoEmit = (eventName, payload = {}) => {
     if (!isPureGet && typeof adapter.emit === 'function' && !emittedDuringAction) {
       try {
-        adapter.emit(eventName, { programmatic: true, ...payload });
+        adapter.emit(eventName, { programmatic: true, isProgrammatic: true, ...payload });
       } catch (err) {
         console_warn(`[sremote] Error in auto-emit for '${eventName}':`, err);
       }

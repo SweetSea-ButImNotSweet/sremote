@@ -14,6 +14,7 @@ export class DomDriver extends BaseDriver {
 
     this.trackedMediaElements = new WeakSet();
     this.treatAlmostEndAsEnd = Boolean(options.treatAlmostEndAsEnd);
+    this._programmaticTimestamp = 0;
 
     // Auto-discover existing media in document
     if (typeof document !== 'undefined') {
@@ -90,7 +91,7 @@ export class DomDriver extends BaseDriver {
       (evtName, payload) => {
         this.emit(evtName, payload);
       },
-      { instanceId: instId, source: 'dom', treatAlmostEndAsEnd: this.treatAlmostEndAsEnd },
+      { instanceId: instId, source: 'dom', treatAlmostEndAsEnd: this.treatAlmostEndAsEnd, programmaticActionTimestampGetter: () => this._programmaticTimestamp },
     );
   }
 
@@ -202,28 +203,31 @@ export class DomDriver extends BaseDriver {
   }
 
   async play(target) {
+    this._programmaticTimestamp = Date.now();
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') {
       const res = await resolved.instance.play?.();
-      resolved.instance.emit?.('play', { programmatic: true });
+      resolved.instance.emit?.('play', { programmatic: true, isProgrammatic: true });
       return res;
     }
     return HtmlMediaController.play(resolved.instance);
   }
 
   async pause(target) {
+    this._programmaticTimestamp = Date.now();
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') {
       const res = await resolved.instance.pause?.();
-      resolved.instance.emit?.('pause', { programmatic: true });
+      resolved.instance.emit?.('pause', { programmatic: true, isProgrammatic: true });
       return res;
     }
     HtmlMediaController.pause(resolved.instance);
   }
 
   async toggle(target) {
+    this._programmaticTimestamp = Date.now();
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') {
@@ -236,9 +240,9 @@ export class DomDriver extends BaseDriver {
       }
       const isPausedAfter = typeof resolved.instance.paused === 'function' ? resolved.instance.paused() : resolved.instance.paused;
       if (typeof isPausedAfter === 'boolean') {
-        resolved.instance.emit?.(isPausedAfter ? 'pause' : 'play', { programmatic: true });
+        resolved.instance.emit?.(isPausedAfter ? 'pause' : 'play', { programmatic: true, isProgrammatic: true });
       } else {
-        resolved.instance.emit?.('toggle', { programmatic: true });
+        resolved.instance.emit?.('toggle', { programmatic: true, isProgrammatic: true });
       }
       return res;
     }
@@ -246,18 +250,20 @@ export class DomDriver extends BaseDriver {
   }
 
   async stop(target) {
+    this._programmaticTimestamp = Date.now();
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') {
       const res = await resolved.instance.stop?.();
-      resolved.instance.emit?.('pause', { programmatic: true });
-      resolved.instance.emit?.('stop', { programmatic: true });
+      resolved.instance.emit?.('pause', { programmatic: true, isProgrammatic: true });
+      resolved.instance.emit?.('stop', { programmatic: true, isProgrammatic: true });
       return res;
     }
     HtmlMediaController.stop(resolved.instance);
   }
 
   async seek(offset, target) {
+    this._programmaticTimestamp = Date.now();
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') {
@@ -269,6 +275,7 @@ export class DomDriver extends BaseDriver {
   }
 
   async seekTo(time, target) {
+    this._programmaticTimestamp = Date.now();
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') {
@@ -279,6 +286,7 @@ export class DomDriver extends BaseDriver {
   }
 
   async volume(vol, target) {
+    this._programmaticTimestamp = Date.now();
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') return resolved.instance.setVolume?.(vol);
@@ -286,6 +294,7 @@ export class DomDriver extends BaseDriver {
   }
 
   async mute(muted, target) {
+    this._programmaticTimestamp = Date.now();
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') return resolved.instance.setMuted?.(muted);
@@ -293,6 +302,7 @@ export class DomDriver extends BaseDriver {
   }
 
   async speed(rate, target) {
+    this._programmaticTimestamp = Date.now();
     const resolved = this.resolveTarget(target);
     if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
     if (resolved.type === 'adapter') return resolved.instance.setPlaybackRate?.(rate);
