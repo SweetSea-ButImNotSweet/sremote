@@ -31,12 +31,8 @@ SRemote v3.0.0 is a major architecture overhaul, unification, and feature releas
 
 - **Unified Adapter Event Logging to Parent / Top Window (`@sremote/shared`, `@sremote/userscript`)**:
   - **Parent Context Event Visibility**: Shifted adapter event debug logging from isolated iframe contexts directly to the `parent` (`top`) window. Developers can now view all incoming adapter events directly in the main browser console under `[SRemote:event]` (`Adapter emit [instanceId] (source) -> <event>`) when log level is set to `3` (`DEBUG`).
-  - **Enhanced Message Relay**: Enriched handshake port relay (`packages/userscript/src/parent/handshake.js`) to attach `source` and `mediaType` metadata on all forwarded adapter events.
+  - **Enhanced Message Relay**: Enriched transport port relay (`packages/userscript/src/parent/transport.js`) to attach `source` and `mediaType` metadata on all forwarded adapter events.
 
-- **Selective Handled Events Fallback & Deduplication (`@sremote/ready2use`, `@sremote/shared`, `@sremote/wrapper`, `@sremote/userscript`)**:
-  - **Replaced Hard Claiming**: Completely eliminated crude blocking attributes `data-sremote-claimed`, `data-sremote-ignore-events`, and internal symbols `__sremote_claimed__` & `__sremote_ignore_events__`.
-  - **Selective Deduplication via `handledEvents`**: Player elements created by `@sremote/ready2use` or custom adapters no longer suppress all DOM events. Instead, SRemote intelligently checks `handledEvents` and dynamic adapter emissions (`adapter.emit`), allowing natural media events (such as `timeupdate`, `volumechange`, `seeking`) to fall through seamlessly without ever emitting duplicate events.
-  - **Cleaned Up DOM Listeners**: Removed hard-block guards from `bindMediaEvents` (`@sremote/shared`), `DomDriver.trackMediaElement` (`@sremote/wrapper`), and `isElementClaimed` (`@sremote/userscript`).
 
 - **Unified Hierarchical Logging System (`@sremote/shared`, `@sremote/wrapper`, `@sremote/userscript`)**:
   - **Logger Factory & Scoped Channels (`createLogger`)**: Standardized scoped loggers with colored namespace headers (`[SRemote:wrapper]`, `[SRemote:userscript]`, etc.) and zero runtime performance cost via short-circuited no-op functions when logging levels are not met.
@@ -53,19 +49,12 @@ SRemote v3.0.0 is a major architecture overhaul, unification, and feature releas
   - **Spotify Provider**: Added seek tracking with `seeking` and `seeked` emission on playback position updates.
   - **Twitch Provider**: Added `seeking`, `seeked`, and `volumechange` event emissions.
   - **Apple MusicKit JS & PeerTube Providers**: Added `seeking`, `seeked`, `volumechange`, and `ratechange` event emissions.
-- **Event Deduplication & DOM Ownership Claiming (`@sremote/ready2use`, `@sremote/userscript`, `@sremote/wrapper`)**:
-  - **Ownership Claim on Creation (`BaseProvider`)**: `_instantiate()` and `applyElementAttributes()` now automatically mark player DOM elements (`targetElement`, `iframe`) with ownership attributes: `data-sremote-claimed="true"`, `data-sremote-ignore-events="true"`, `data-sremote-id`, and internal Symbols (`__sremote_claimed__`, `__sremote_ignore_events__`, `__sremote_adapter__`).
-  - **Auto-Registration in `create()`**: `BaseProvider.create()` now automatically resolves and registers newly instantiated adapters with SRemote (`remote.adapters.register`) unless explicitly disabled via `opts.register = false` / `opts.autoRegister = false`.
-  - **DOM Tracker Event Deduplication (`@sremote/userscript`)**: Updated `top-media.js` to skip tracking elements claimed by adapters (`isElementClaimed`). Added runtime suppression (`suppressMediaElement`) and auto-untracking when adapters are registered via `adapters.register()`.
-  - **DOM Driver Event Deduplication (`@sremote/wrapper`)**: Updated `DomDriver.trackMediaElement` to ignore elements marked with `data-sremote-claimed` or `data-sremote-ignore-events`.
-  - **Shared Event Binder Protection (`@sremote/shared`)**: `bindMediaEvents` automatically skips binding if elements specify `data-sremote-ignore-events="true"`.
-
-- **Selective Event Fallback for Custom Adapters (`@sremote/shared`, `@sremote/wrapper`)**:
-  - `wrapCustomAdapter` now automatically inspects if the adapter wraps a native `HTMLMediaElement` (`mediaElement` or `element`).
-  - Automatically binds a non-intrusive fallback DOM listener (`allowFallback: true`) only for events that the adapter does not explicitly handle or emit (`handledEvents`).
-  - Automatically detects when an adapter dynamically calls `adapter.emit()` and suppresses the corresponding fallback listener to guarantee 0% duplicate event emission.
-  - Enhanced `bindMediaEvents` to accept `excludedEvents` and `allowFallback` options.
+- **Selective Event Fallback & Handled Events Deduplication (`@sremote/ready2use`, `@sremote/shared`, `@sremote/wrapper`, `@sremote/userscript`)**:
+  - **Replaced Crude DOM Ownership Claiming**: Completely eliminated crude blocking attributes `data-sremote-claimed`, `data-sremote-ignore-events`, and internal symbols `__sremote_claimed__` & `__sremote_ignore_events__`. Removed hard-block guards from `bindMediaEvents` (`@sremote/shared`), `DomDriver.trackMediaElement` (`@sremote/wrapper`), and `isElementClaimed` (`@sremote/userscript`).
+  - **Selective Deduplication via `handledEvents`**: Player elements created by `@sremote/ready2use` or custom adapters no longer blindly suppress all DOM events. SRemote inspects `handledEvents` and dynamic adapter emissions (`adapter.emit`), allowing natural media events (such as `timeupdate`, `volumechange`, `seeking`) to fall through smoothly without duplicate emissions.
+  - **Selective Fallback for Native Media Wrappers**: `wrapCustomAdapter` automatically inspects if an adapter wraps a native `HTMLMediaElement` (`mediaElement` or `element`), binding a non-intrusive fallback DOM listener (`allowFallback: true`) only for events not explicitly handled by the adapter, and dynamically suppressing fallback when the adapter emits events.
   - Attached `mediaElement` reference in `createUniversalAdapter` to natively benefit from selective fallback.
+  - **Auto-Registration in `create()`**: `BaseProvider.create()` now automatically resolves and registers newly instantiated adapters with SRemote (`remote.adapters.register`) unless explicitly disabled via `opts.register = false` / `opts.autoRegister = false`.
 
 - **Unified API Architecture (`@sremote/shared`)**:
   - **`API_SPEC` (`packages/shared/src/api/schema.js`)**: Single source of truth for all root playback methods, argument schemas, action dispatch mappings, and sub-namespaces (`instances`, `adapters`, `rpc`, `css`).
