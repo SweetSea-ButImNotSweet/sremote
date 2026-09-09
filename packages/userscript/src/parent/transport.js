@@ -4,28 +4,31 @@ import { getOriginStorageKeys, generateInstanceId } from '../core/utils.js';
 import { createPermissionDialog } from '../ui/permission-dialog.js';
 import { flushPendingCommands, pendingRpcRequests } from './queue.js';
 
-export function findIframeElementBySource(sourceWindow, root = document) {
-  if (!sourceWindow || !root) return null;
-  try {
-    const iframes = root.querySelectorAll('iframe');
-    for (let i = 0; i < iframes.length; i++) {
-      if (iframes[i].contentWindow === sourceWindow) {
-        return iframes[i];
-      }
-      // Deep search into nested accessible iframes
-      try {
-        const childDoc = iframes[i].contentDocument || iframes[i].contentWindow?.document;
-        if (childDoc) {
-          const nested = findIframeElementBySource(sourceWindow, childDoc);
-          if (nested) return nested;
-        }
-      } catch {}
-    }
-  } catch {}
-  return null;
-}
+/**
+ * Transport Connection State Enum
+ */
+export const TRANSPORT_STATE = Object.freeze({
+  DISCONNECTED: 'DISCONNECTED',
+  CONNECTING: 'CONNECTING',
+  CONNECTED: 'CONNECTED',
+  TERMINATED: 'TERMINATED',
+});
 
-export function setupParentHandshake(instanceManager) {
+/**
+ * Clean & Resilient Parent Transport Manager.
+ * Handles:
+ * 1. Handshake Secret Verification
+ * 2. One-Time Challenge & Anti-Abuse Blacklist (WeakSet)
+ * 3. Dedicated MessagePort Lifecycle per Instance
+ * 4. DOM Detach Grace Period (300ms) for React Strict Mode / Remount
+ * 5. Ping/Pong Heartbeat Sweeper
+ */
+export function createParentTransportManager({
+  instanceManager,
+  onMediaMessage = () => {},
+  onMediaStateChange = () => {},
+  onBridgeMessage = () => {},
+}) {
   const {
     instances,
     parentAdaptersMap,
@@ -41,29 +44,45 @@ export function setupParentHandshake(instanceManager) {
   const blacklistedIframes = new WeakSet();
   const blacklistedSources = new WeakSet();
   const retryChallengeAttempts = new WeakMap();
+  const pendingReapTimers = new Map(); // instanceId -> timeoutId
+  const GRACE_PERIOD_MS = 300;
 
-  async function cloneBlobFromParent(blobUrl, instanceId) {
+  // --- Helper: Find Iframe Element from Window Source ---
+  function findIframeElementBySource(sourceWindow, root = document) {
+    if (!sourceWindow || !root) return null;
     try {
-      const response = await fetch(blobUrl);
-      const blob = await response.blob();
-      const item = instances.get(instanceId);
-      if (item?.port) item.port.postMessage({ type: `${NS}resendBlobObject`, originalUrl: blobUrl, blob });
-    } catch (err) {
-      console_warn(`[sremote] Failed to clone blob '${blobUrl}' for instance '${instanceId}':`, err);
-    }
+      const iframes = root.querySelectorAll('iframe');
+      for (let i = 0; i < iframes.length; i++) {
+        if (iframes[i].contentWindow === sourceWindow) {
+          return iframes[i];
+        }
+        try {
+          const childDoc = iframes[i].contentDocument || iframes[i].contentWindow?.document;
+          if (childDoc) {
+            const nested = findIframeElementBySource(sourceWindow, childDoc);
+            if (nested) return nested;
+          }
+        } catch {}
+      }
+    } catch {}
+    return null;
   }
 
-  function setupPortForInstance(instanceId, port, initialLocation, initialOrigin, iframeEl = null, initialStatus = 'ready') {
+  // --- 1. Port Setup & Channel Management ---
+  function setupPortForInstance(instanceId, port, initialLocation, initialOrigin, iframeEl = null, initialTransportState = TRANSPORT_STATE.CONNECTED) {
+    // Single Mode: cleanup older instance safely
     if (!isMultiModeActive() && instances.size > 0) {
       for (const oldId of Array.from(instances.keys())) {
         if (oldId !== instanceId) {
-          console_log(`%c[SRemote:lifecycle] Replacing stale instance in Single Mode: ${oldId} -> ${instanceId}`, 'color: #f59e0b;');
+          console_log(`%c[SRemote:transport] Single mode: replacing older instance ${oldId} -> ${instanceId}`, 'color: #f59e0b;');
           removeInstance(oldId, 'replaced_by_new_instance');
         }
       }
     }
 
-    instanceManager.setCurrentActiveInstanceId(instanceId);
+    if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
+      instanceManager.setCurrentActiveInstanceId(instanceId);
+    }
 
     const item = {
       port,
@@ -74,11 +93,15 @@ export function setupParentHandshake(instanceManager) {
       mediaType: null,
       capabilities: null,
       lastSeen: Date.now(),
-      status: initialStatus,
+      status: initialTransportState === TRANSPORT_STATE.CONNECTED ? 'ready' : 'connecting',
+      transportState: initialTransportState,
       iframeEl: iframeEl || assignedIframeIdMap.get(instanceId) || null,
+      authenticated: false,
+      hasMedia: false,
     };
     instances.set(instanceId, item);
-    if (initialStatus === 'ready') {
+
+    if (item.status === 'ready') {
       flushPendingCommands(instanceId, port, isMultiModeActive);
     }
 
@@ -89,19 +112,14 @@ export function setupParentHandshake(instanceManager) {
       if (!type.startsWith(NS)) return;
 
       item.lastSeen = Date.now();
-      // Only update active ID from iframe messages when there is no parent-registered adapter
-      // (adapter has higher priority in Single Mode to avoid being overwritten by iframe heartbeats)
-      if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
-        instanceManager.setCurrentActiveInstanceId(instanceId);
-      }
-
       const action = type.slice(NS.length);
       const lowerAction = action.toLowerCase();
 
       if (lowerAction !== 'ping' && lowerAction !== 'pong') {
-        console_debug(`%c[SRemote:signal] Parent received from iframe (port) -> ${action}`, 'color: #10b981;', { instanceId, data });
+        console_debug(`%c[SRemote:transport] Parent received (port) -> ${action}`, 'color: #10b981;', { instanceId, data });
       }
 
+      // RPC Handling
       if (lowerAction === 'rpc_response' && data.rpcId) {
         const req = pendingRpcRequests.get(data.rpcId);
         if (req) {
@@ -116,13 +134,14 @@ export function setupParentHandshake(instanceManager) {
         return;
       }
 
+      // Heartbeat Pong
       if (lowerAction === 'pong') {
         if (item.pendingConsumeHandshakeId) {
-          console_log(`%c[SRemote:handshake] Mutual Ping-Pong confirmed on port for '${instanceId}'. Consuming token '${item.pendingConsumeHandshakeId}'.`, 'color: #10b981;');
           consumeHandshakeSecret(item.pendingConsumeHandshakeId);
           item.pendingConsumeHandshakeId = null;
         }
-        if (item.status === 'connecting') {
+        if (item.transportState === TRANSPORT_STATE.CONNECTING) {
+          item.transportState = TRANSPORT_STATE.CONNECTED;
           item.status = 'ready';
           flushPendingCommands(instanceId, port, isMultiModeActive);
         }
@@ -132,14 +151,26 @@ export function setupParentHandshake(instanceManager) {
         return;
       }
 
-      if (lowerAction === 'disconnect' || lowerAction === 'mediadisconnected' || lowerAction === 'unload') {
-        removeInstance(instanceId, lowerAction);
+      // Terminal Transport Disconnect (Iframe completely unloaded)
+      if (lowerAction === 'disconnect' || lowerAction === 'unload') {
+        terminateInstance(instanceId, lowerAction);
         return;
       }
 
+      // MEDIA STATE CHANGE: When media drops or is detached, DO NOT terminate port!
+      if (lowerAction === 'nomedia' || lowerAction === 'mediadisconnected') {
+        console_log(`%c[SRemote:media] Instance '${instanceId}' has no active media. Port preserved.`, 'color: #f59e0b;');
+        item.hasMedia = false;
+        item.state = null;
+        onMediaStateChange({ instanceId, hasMedia: false, action: lowerAction });
+        emitGlobalEvent('noMedia', { instanceId, hasMedia: false, reason: data.reason || 'detached' });
+        notifyMediaCountChange();
+        return;
+      }
+
+      // Handshake Mutual Accept on Port
       if (lowerAction === 'accept') {
         if (item.authenticated) return;
-
         let isValid = false;
         if (data.handshakeId && data.handshakeToken) {
           isValid = checkHandshakeSecret(data.handshakeId, data.handshakeToken);
@@ -147,32 +178,34 @@ export function setupParentHandshake(instanceManager) {
           isValid = true;
         }
         if (!isValid) {
-          console_warn(`[sremote] SPOOF DETECTED on port for instance ${instanceId}! Closing port immediately.`);
-          removeInstance(instanceId, 'spoof_detected');
+          console_warn(`[sremote] Spoof detected on port for instance ${instanceId}! Closing port.`);
+          terminateInstance(instanceId, 'spoof_detected');
           return;
         }
         item.authenticated = true;
+        item.transportState = TRANSPORT_STATE.CONNECTED;
         item.status = 'ready';
-        // Only promote iframe to active instance if no parent adapter exists or multi-mode is active
-        if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
-          instanceManager.setCurrentActiveInstanceId(instanceId);
-        }
+        item.hasMedia = Boolean(data.hasMedia);
         if (data.state) item.state = data.state;
         if (data.mediaType) item.mediaType = data.mediaType;
         if (data.capabilities) item.capabilities = data.capabilities;
         notifyMediaCountChange();
-
         emitGlobalEvent('accept', data);
         return;
       }
 
+      // Media State Updates
+      if (typeof data.hasMedia === 'boolean') item.hasMedia = data.hasMedia;
       if (data.state) item.state = data.state;
       if (data.mediaType) item.mediaType = data.mediaType;
       if (data.capabilities) item.capabilities = data.capabilities;
 
       if (lowerAction === 'play' || lowerAction === 'playing') {
+        if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
+          instanceManager.setCurrentActiveInstanceId(instanceId);
+        }
         const exclusiveMode = instanceManager.exclusiveMode;
-        if (exclusiveMode === 'auto') {
+        if (exclusiveMode === 'auto' || exclusiveMode === true) {
           pauseOthersExcept(instanceId);
         } else if (exclusiveMode && exclusiveMode !== instanceId) {
           port.postMessage({ type: `${NS}pause`, source: 'parent' });
@@ -184,18 +217,7 @@ export function setupParentHandshake(instanceManager) {
         const bridgePayload = { source: 'iframe', instanceId, data: data.data, origin: data.origin, location: item.location };
         emitGlobalEvent('iframe:message', bridgePayload);
         emitGlobalEvent('message', bridgePayload);
-        return;
-      }
-
-      if (lowerAction === 'requestblobclone' && data.blobUrl) {
-        cloneBlobFromParent(data.blobUrl, instanceId);
-        return;
-      }
-
-      if (lowerAction === 'nomedia') {
-        console_warn(`[sremote] Iframe '${instanceId}' reported noMedia for action '${data.action || 'unknown'}':`, data.message || data.reason);
-        emitGlobalEvent('nomedia', { instanceId, ...data });
-        emitGlobalEvent('noMedia', { instanceId, ...data });
+        onBridgeMessage(bridgePayload);
         return;
       }
 
@@ -204,12 +226,24 @@ export function setupParentHandshake(instanceManager) {
           ? { instanceId, source: data.source || 'iframe', mediaType: data.mediaType || item.mediaType, ...data }
           : { instanceId, source: 'iframe', mediaType: item.mediaType, value: data };
       emitGlobalEvent(action, forwardedPayload);
+      onMediaMessage(action, forwardedPayload);
     };
 
     notifyMediaCountChange();
   }
 
-  // Cross-Frame Handshake Window Listener
+  // --- 2. Instance Termination with Cleanup ---
+  function terminateInstance(instanceId, reason = 'disconnected') {
+    const item = instances.get(instanceId);
+    if (!item) return;
+    item.transportState = TRANSPORT_STATE.TERMINATED;
+    try {
+      item.port?.close();
+    } catch {}
+    removeInstance(instanceId, reason);
+  }
+
+  // --- 3. Cross-Frame Window Message Listener ---
   const onWindowMessage = event => {
     if (event.source === window) return;
 
@@ -229,7 +263,7 @@ export function setupParentHandshake(instanceManager) {
       const iframeLoc = data.location || '';
       const iframeOrigin = event.origin && event.origin !== 'null' ? event.origin : data.origin || '*';
 
-      console_log(`%c[SRemote:signal] Parent received cross-frame signal -> ${action}`, 'color: #6366f1; font-weight: bold;', {
+      console_log(`%c[SRemote:transport] Parent received cross-frame signal -> ${action}`, 'color: #6366f1; font-weight: bold;', {
         origin: callerOrigin,
         instanceId,
         data: { ...data, instanceId },
@@ -240,7 +274,7 @@ export function setupParentHandshake(instanceManager) {
         iframeToAssignedIdMap.set(iframeEl, instanceId);
       }
 
-      // Check blacklist
+      // Check Blacklist
       if (iframeEl && blacklistedIframes.has(iframeEl)) {
         console_warn(`[sremote] Dropped accept from blacklisted iframe element: ${instanceId}`);
         return;
@@ -259,6 +293,7 @@ export function setupParentHandshake(instanceManager) {
         }
       }
 
+      // Origin Whitelist & Local Domain Fallback
       if (!isValidSecret && event.ports && event.ports.length > 0) {
         const { allowKey: parentAllowKey } = getOriginStorageKeys(location.origin);
         const { allowKey: iframeAllowKey } = getOriginStorageKeys(iframeOrigin);
@@ -276,25 +311,21 @@ export function setupParentHandshake(instanceManager) {
         }
       }
 
-      // If token is missing or invalid: challenge the iframe once by generating a fresh token and sending hello
+      // One-Time Challenge & Blacklist Routine
       if (!isValidSecret) {
         const targetRef = iframeEl || event.source;
         const attempts = (targetRef ? retryChallengeAttempts.get(targetRef) : 0) || 0;
 
         if (attempts >= 1) {
-          // Iframe has already been challenged once and still failed -> Blacklist!
-          console_warn(`[sremote:security] Handshake challenge failed for iframe '${instanceId}'. Blacklisting to prevent further abuse.`);
+          console_warn(`[sremote:security] Handshake challenge failed for iframe '${instanceId}'. Blacklisting to prevent abuse.`);
           if (iframeEl) blacklistedIframes.add(iframeEl);
           if (event.source) blacklistedSources.add(event.source);
           return;
         }
 
-        // Record attempt (allow 1 retry challenge)
         if (targetRef) retryChallengeAttempts.set(targetRef, attempts + 1);
+        console_log(`%c[SRemote:transport] Accept without valid token from '${instanceId}'. Issuing one-time hello challenge...`, 'color: #f59e0b; font-weight: bold;');
 
-        console_log(`%c[SRemote:handshake] Accept received without valid token from '${instanceId}'. Issuing one-time hello challenge...`, 'color: #f59e0b; font-weight: bold;');
-
-        // Generate dedicated handshake credentials for this iframe
         const challengeHandshakeId = generateInstanceId('hs');
         const challengeHandshakeToken = generateInstanceId('tok');
         setHandshakeSecret(challengeHandshakeId, challengeHandshakeToken);
@@ -323,22 +354,22 @@ export function setupParentHandshake(instanceManager) {
         return;
       }
 
-      // Successful verification: clear any retry attempts
+      // Verified: Clear challenge attempts
       if (iframeEl) retryChallengeAttempts.delete(iframeEl);
       if (event.source) retryChallengeAttempts.delete(event.source);
 
+      // Port established
       if (event.ports && event.ports.length > 0) {
         const port = event.ports[0];
-        setupPortForInstance(instanceId, port, iframeLoc, iframeOrigin, iframeEl);
+        setupPortForInstance(instanceId, port, iframeLoc, iframeOrigin, iframeEl, TRANSPORT_STATE.CONNECTED);
         const inst = instances.get(instanceId);
         if (inst) {
           inst.authenticated = true;
-          if (pendingConsumeHandshakeId) {
-            inst.pendingConsumeHandshakeId = pendingConsumeHandshakeId;
-          }
+          if (pendingConsumeHandshakeId) inst.pendingConsumeHandshakeId = pendingConsumeHandshakeId;
           if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
             instanceManager.setCurrentActiveInstanceId(instanceId);
           }
+          inst.hasMedia = Boolean(data.hasMedia);
           if (data.state) inst.state = data.state;
           if (data.mediaType) inst.mediaType = data.mediaType;
           if (data.capabilities) inst.capabilities = data.capabilities;
@@ -352,18 +383,18 @@ export function setupParentHandshake(instanceManager) {
 
         emitGlobalEvent('accept', { ...data, instanceId });
       } else if (event.source) {
-        console_log(`%c[SRemote:port] Accept received without port for '${instanceId}'. Proactively renegotiating MessagePort...`, 'color: #f59e0b; font-weight: bold;');
+        // Proactive port transfer
+        console_log(`%c[SRemote:transport] Accept without port for '${instanceId}'. Proactively establishing MessagePort...`, 'color: #f59e0b; font-weight: bold;');
         const channel = new MessageChannel();
-        setupPortForInstance(instanceId, channel.port1, iframeLoc, iframeOrigin, iframeEl, 'connecting');
+        setupPortForInstance(instanceId, channel.port1, iframeLoc, iframeOrigin, iframeEl, TRANSPORT_STATE.CONNECTING);
         const inst = instances.get(instanceId);
         if (inst) {
           inst.authenticated = true;
-          if (pendingConsumeHandshakeId) {
-            inst.pendingConsumeHandshakeId = pendingConsumeHandshakeId;
-          }
+          if (pendingConsumeHandshakeId) inst.pendingConsumeHandshakeId = pendingConsumeHandshakeId;
           if (parentAdaptersMap.size === 0 || isMultiModeActive()) {
             instanceManager.setCurrentActiveInstanceId(instanceId);
           }
+          inst.hasMedia = Boolean(data.hasMedia);
           if (data.state) inst.state = data.state;
           if (data.mediaType) inst.mediaType = data.mediaType;
           if (data.capabilities) inst.capabilities = data.capabilities;
@@ -398,9 +429,7 @@ export function setupParentHandshake(instanceManager) {
         origin: targetOrigin,
         isTop: true,
         onDecision: allowed => {
-          if (!allowed) {
-            instanceManager.setSessionDenied(true);
-          }
+          if (!allowed) instanceManager.setSessionDenied(true);
           if (event.source) {
             try {
               event.source.postMessage({ type: `${NS}permission_response`, source: 'parent', allowed: !!allowed, parentOrigin: location.origin }, '*');
@@ -408,16 +437,121 @@ export function setupParentHandshake(instanceManager) {
           }
         },
       });
-      return;
     }
   };
+
+  // --- 4. Grace Period Liveness & Heartbeat Sweeper ---
+  function scheduleReapInstance(assignedId) {
+    if (!assignedId || !instances.has(assignedId)) return;
+    if (pendingReapTimers.has(assignedId)) {
+      clearTimeout(pendingReapTimers.get(assignedId));
+    }
+    const timer = setTimeout(() => {
+      pendingReapTimers.delete(assignedId);
+      const inst = instances.get(assignedId);
+      if (inst?.iframeEl && !inst.iframeEl.isConnected) {
+        console_log(`%c[SRemote:lifecycle] Iframe confirmed removed after grace period: ${assignedId}`, 'color: #ef4444;');
+        terminateInstance(assignedId, 'dom_removed');
+      }
+    }, GRACE_PERIOD_MS);
+    pendingReapTimers.set(assignedId, timer);
+  }
+
+  function cancelReapInstance(assignedId) {
+    if (pendingReapTimers.has(assignedId)) {
+      clearTimeout(pendingReapTimers.get(assignedId));
+      pendingReapTimers.delete(assignedId);
+      console_log(`%c[SRemote:lifecycle] Iframe re-attached within grace period: ${assignedId}. Preserving connection.`, 'color: #10b981;');
+    }
+  }
+
+  const parentIframeObserver = new MutationObserver(mutations => {
+    for (const m of mutations) {
+      if (m.addedNodes.length > 0) {
+        for (let i = 0; i < m.addedNodes.length; i++) {
+          const node = m.addedNodes[i];
+          if (node.nodeType === 1) {
+            if (node.tagName === 'IFRAME') {
+              const assignedId = iframeToAssignedIdMap.get(node) || node.getAttribute?.('data-sremote-id');
+              if (assignedId) cancelReapInstance(assignedId);
+            } else if (node.querySelectorAll) {
+              const subIframes = node.querySelectorAll('iframe');
+              for (let j = 0; j < subIframes.length; j++) {
+                const assignedId = iframeToAssignedIdMap.get(subIframes[j]) || subIframes[j].getAttribute?.('data-sremote-id');
+                if (assignedId) cancelReapInstance(assignedId);
+              }
+            }
+          }
+        }
+      }
+
+      if (m.removedNodes.length > 0) {
+        for (let i = 0; i < m.removedNodes.length; i++) {
+          const node = m.removedNodes[i];
+          if (node.nodeType === 1) {
+            if (node.tagName === 'IFRAME') {
+              const assignedId = iframeToAssignedIdMap.get(node) || node.getAttribute?.('data-sremote-id');
+              if (assignedId && instances.has(assignedId)) {
+                scheduleReapInstance(assignedId);
+              }
+            } else if (node.querySelectorAll) {
+              const subIframes = node.querySelectorAll('iframe');
+              for (let j = 0; j < subIframes.length; j++) {
+                const subIfr = subIframes[j];
+                const assignedId = iframeToAssignedIdMap.get(subIfr) || subIfr.getAttribute?.('data-sremote-id');
+                if (assignedId && instances.has(assignedId)) {
+                  scheduleReapInstance(assignedId);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const mountTarget = document.documentElement || document;
+  if (mountTarget) {
+    try {
+      parentIframeObserver.observe(mountTarget, { childList: true, subtree: true });
+    } catch {}
+  }
+
+  const heartbeatInterval = setInterval(() => {
+    const now = Date.now();
+    const PING_THRESHOLD = 2000;
+    const DEAD_TIMEOUT = 5000;
+
+    for (const [id, item] of instances.entries()) {
+      if (item.iframeEl && !item.iframeEl.isConnected) {
+        scheduleReapInstance(id);
+        continue;
+      }
+      const elapsed = now - (item.lastSeen || 0);
+      if (elapsed > DEAD_TIMEOUT) {
+        console_warn(`[sremote] Transport instance '${id}' timed out (${elapsed}ms). Terminating...`);
+        terminateInstance(id, 'timeout');
+      } else if (elapsed > PING_THRESHOLD) {
+        try {
+          item.port?.postMessage({ type: `${NS}ping`, source: 'parent' });
+        } catch {
+          terminateInstance(id, 'port_error');
+        }
+      }
+    }
+  }, 1500);
 
   window.addEventListener('message', onWindowMessage);
 
   return {
     setupPortForInstance,
+    terminateInstance,
     destroy: () => {
       window.removeEventListener('message', onWindowMessage);
+      clearInterval(heartbeatInterval);
+      parentIframeObserver.disconnect();
+      for (const t of pendingReapTimers.values()) clearTimeout(t);
+      pendingReapTimers.clear();
     },
   };
 }

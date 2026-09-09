@@ -6,19 +6,38 @@ import { showConnectedIndicator } from '../ui/indicator-badge.js';
 import { IframeStyleEngine } from './style-engine.js';
 import { getVideoState, getIframeCapabilities } from './controller.js';
 
-export function createIframeHandshake({
+/**
+ * Transport Connection State for Iframe
+ */
+export const IFRAME_TRANSPORT_STATE = Object.freeze({
+  DISCONNECTED: 'DISCONNECTED',
+  CONNECTING: 'CONNECTING',
+  CONNECTED: 'CONNECTED',
+});
+
+/**
+ * Clean & Resilient Iframe Transport Manager.
+ * Handles:
+ * 1. MessageChannel & MessagePort establishment to Top Window
+ * 2. Handshake credentials & One-time Challenge response
+ * 3. Autonomous connection survival across media detachment / video reload
+ */
+export function createIframeTransportManager({
   instanceIdGetter,
   setInstanceId,
   resolver,
   bindPort,
-  notifyState,
   closeMediaPort,
+  notifyState,
   treatAlmostEndAsEndSetter,
   currentHandshakeSetter,
   currentHandshakeGetter,
 }) {
   let primaryAuthorizedOrigin = null;
   let permissionPopup = null;
+  let transportState = IFRAME_TRANSPORT_STATE.DISCONNECTED;
+  let lastGrantTimestamp = 0;
+
   const authorizedOrigins = new Set();
   const sessionDeniedOrigins = new Set();
 
@@ -55,7 +74,7 @@ export function createIframeHandshake({
       needsToken: !hasToken,
     };
 
-    console_log(`%c[SRemote:handshake] Iframe sending 'accept' to parent ->`, 'color: #10b981; font-weight: bold;', {
+    console_log(`%c[SRemote:transport] Iframe sending 'accept' to parent ->`, 'color: #10b981; font-weight: bold;', {
       origin,
       instanceId: instanceIdGetter(),
       hasPort: Boolean(transferredPort),
@@ -79,6 +98,7 @@ export function createIframeHandshake({
       }
     }
 
+    transportState = IFRAME_TRANSPORT_STATE.CONNECTED;
     notifyState();
     showConnectedIndicator(origin, primaryAuthorizedOrigin);
   }
@@ -121,8 +141,6 @@ export function createIframeHandshake({
     });
   }
 
-  let lastGrantTimestamp = 0;
-
   function handleHelloMessage(event, data) {
     const callerOrigin = event.origin || 'unknown_parent';
     if (event.source === window) return;
@@ -157,8 +175,8 @@ export function createIframeHandshake({
 
     const isAlreadyAccepted = authorizedOrigins.has(callerOrigin);
     const now = Date.now();
+
     if (isAlreadyAccepted) {
-      // If parent gave us fresh challenge credentials, immediately respond with grantAccess
       if (hasNewCredentials || now - lastGrantTimestamp >= 200) {
         lastGrantTimestamp = now;
         grantAccess(callerOrigin);
@@ -238,6 +256,7 @@ export function createIframeHandshake({
     bindPort(event.ports[0]);
     primaryAuthorizedOrigin = callerOrigin;
     authorizedOrigins.add(callerOrigin);
+    transportState = IFRAME_TRANSPORT_STATE.CONNECTED;
     notifyState();
     showConnectedIndicator(callerOrigin, primaryAuthorizedOrigin);
   }
@@ -245,6 +264,9 @@ export function createIframeHandshake({
   return {
     get primaryAuthorizedOrigin() {
       return primaryAuthorizedOrigin;
+    },
+    get transportState() {
+      return transportState;
     },
     grantAccess,
     handleHelloMessage,

@@ -5,10 +5,9 @@ import { executeAdapterAction } from '../core/adapter-runner.js';
 import { t } from '../core/i18n.js';
 import { registerMenuCommands } from './menu.js';
 import { pendingCommandQueue } from './queue.js';
-import { setupLivenessReaper } from './liveness.js';
 import { createExportedApi } from './api.js';
 import { createInstanceManager } from './instance-manager.js';
-import { setupParentHandshake } from './handshake.js';
+import { createParentTransportManager } from './transport.js';
 import { setupTopMediaTracker } from './top-media.js';
 import { hasMediaSource } from '@sremote/shared';
 
@@ -323,11 +322,8 @@ export function initParentController() {
     return found;
   }
 
-  // Setup Handshake Listener
-  setupParentHandshake(instanceManager);
-
-  // Setup Liveness Reaper
-  setupLivenessReaper(instances, removeInstance, iframeToAssignedIdMap);
+  // Initialize Clean Transport Manager (MessagePort, Handshake, Challenge, Heartbeat & Grace Period)
+  const transportManager = createParentTransportManager({ instanceManager });
 
   // Auto-Heal: Theo dõi các thẻ <iframe> được chèn động (React remount, dynamic route, v.v.)
   try {

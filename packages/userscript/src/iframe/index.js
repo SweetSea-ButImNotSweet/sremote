@@ -9,7 +9,7 @@ import { setupMediaHooks } from './hooks.js';
 import { getVideoState, getIframeCapabilities, createMediaController } from './controller.js';
 import { createIframeDebugApi } from '../debug/iframe-debug.js';
 import { createRpcRegistry } from './rpc.js';
-import { createIframeHandshake } from './handshake.js';
+import { createIframeTransportManager } from './transport.js';
 
 export function initIframeAgent() {
   let topOrigin = null;
@@ -149,11 +149,12 @@ export function initIframeAgent() {
 
     if (!isCurrentAttached || !resolver.resolveActiveMedia()) {
       if (had) {
-        console_log(`%c[SRemote:media] Active media detached / dropped in iframe`, 'color: #f59e0b;');
+        console_log(`%c[SRemote:media] Active media detached / changed in iframe. Preserving MessagePort.`, 'color: #f59e0b;');
         if (!resolver.resolveActiveMedia()) {
           resolver.setActiveMedia(null);
           resolver.setMediaType(null);
-          emitToParent('mediaDisconnected', { instanceId, hasMedia: false });
+          // Crucial: Only emit media state change (noMedia). DO NOT trigger transport termination!
+          emitToParent('noMedia', { instanceId, hasMedia: false, reason: 'media_detached' });
           return;
         }
       }
@@ -359,7 +360,7 @@ export function initIframeAgent() {
     };
   }
 
-  const handshake = createIframeHandshake({
+  const handshake = createIframeTransportManager({
     instanceIdGetter: () => instanceId,
     setInstanceId: id => {
       instanceId = id;

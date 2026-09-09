@@ -13,6 +13,22 @@ SRemote v3.0.0 is a major architecture overhaul, unification, and feature releas
 
 ### 🚀 Added & Enhanced
 
+- **Complete Transport Layer Overhaul & Handshake Resiliency (`@sremote/userscript`, `@sremote/wrapper`)**:
+  - **Clean Architectural Separation of Transport vs Media Layers**: Fully decoupled the physical communication channel (`MessagePort` transport connection) from media lifecycle events. Detaching a `<video>` element or changing a video stream (e.g., YouTube in-place video swaps) now emits a state change (`noMedia` / `hasMedia: false`) rather than killing the `MessagePort`.
+  - **Dedicated Independent Transport Modules**:
+    - Created `packages/userscript/src/parent/transport.js` (`createParentTransportManager`) to encapsulate FSM states (`DISCONNECTED`, `CONNECTING`, `CONNECTED`, `TERMINATED`), heartbeat sweepers, command queues, and channel teardown.
+    - Created `packages/userscript/src/iframe/transport.js` (`createIframeTransportManager`) to handle autonomous `MessageChannel` initialization, handshake negotiation, and transparent reconnects.
+    - Purged deprecated legacy files (`parent/handshake.js`, `iframe/handshake.js`, `parent/liveness.js`).
+  - **One-Time Challenge & Anti-Abuse Blacklist (WeakSet / WeakMap)**:
+    - If an authorized iframe submits an `accept` signal without credentials (e.g., cross-origin isolation or partitioned GM storage), Parent issues a one-time dynamic credentials challenge via targeted `hello`.
+    - If an iframe repeatedly fails authentication after challenge, it is immediately registered into a non-leaking memory `WeakSet` blacklist, dropping further spoofed signals with 0% runtime overhead.
+  - **React Strict Mode & Framework Remount Resiliency**:
+    - Introduced a 300ms **DOM Detach Grace Period** in Parent transport: Rapid unmount -> remount cycles (React Strict Mode, Suspense, or client-side tab routing) no longer kill active instances or drop MessagePorts.
+    - Added call coalescing to `sremote.hello()`: Successive rapid calls within 150ms safely reuse active handshake secrets instead of generating sequence churn.
+  - **Instant Userscript Discovery (`sremote:ready`)**: Userscript immediately dispatches a `sremote:ready` custom event upon injection, eliminating the previous 2-second polling timeout in `@sremote/wrapper`'s `ready()` promise.
+  - **Lifecycle Cleanup & Awaitable Hello**: Added `sremote.destroy()` and `domDriver.destroy()` in `@sremote/wrapper` to clean up event listeners and DOM MutationObservers when front-end components unmount. `sremote.hello()` now returns a Promise resolving after connection readiness.
+  - **Strict Control Priority Enforcement**: Hardened command dispatching to strictly guarantee: **Adapter > Top DOM Media > MediaSession > Iframe Port**. Prevents commands from mistakenly falling through to wait on iframe ports when a registered adapter is active.
+
 - **Unified Adapter Event Logging to Parent / Top Window (`@sremote/shared`, `@sremote/userscript`)**:
   - **Parent Context Event Visibility**: Shifted adapter event debug logging from isolated iframe contexts directly to the `parent` (`top`) window. Developers can now view all incoming adapter events directly in the main browser console under `[SRemote:event]` (`Adapter emit [instanceId] (source) -> <event>`) when log level is set to `3` (`DEBUG`).
   - **Enhanced Message Relay**: Enriched handshake port relay (`packages/userscript/src/parent/handshake.js`) to attach `source` and `mediaType` metadata on all forwarded adapter events.
