@@ -7,12 +7,7 @@ import { flushPendingCommands, pendingRpcRequests } from './queue.js';
 /**
  * Transport Connection State Enum
  */
-export const TRANSPORT_STATE = Object.freeze({
-  DISCONNECTED: 'DISCONNECTED',
-  CONNECTING: 'CONNECTING',
-  CONNECTED: 'CONNECTED',
-  TERMINATED: 'TERMINATED',
-});
+export const TRANSPORT_STATE = Object.freeze({ DISCONNECTED: 'DISCONNECTED', CONNECTING: 'CONNECTING', CONNECTED: 'CONNECTED', TERMINATED: 'TERMINATED' });
 
 /**
  * Clean & Resilient Parent Transport Manager.
@@ -23,12 +18,7 @@ export const TRANSPORT_STATE = Object.freeze({
  * 4. DOM Detach Grace Period (300ms) for React Strict Mode / Remount
  * 5. Ping/Pong Heartbeat Sweeper
  */
-export function createParentTransportManager({
-  instanceManager,
-  onMediaMessage = () => {},
-  onMediaStateChange = () => {},
-  onBridgeMessage = () => {},
-}) {
+export function createParentTransportManager({ instanceManager, onMediaMessage = () => {}, onMediaStateChange = () => {}, onBridgeMessage = () => {} }) {
   const {
     instances,
     parentAdaptersMap,
@@ -544,8 +534,6 @@ export function createParentTransportManager({
   window.addEventListener('message', onWindowMessage);
 
   return {
-    setupPortForInstance,
-    terminateInstance,
     destroy: () => {
       window.removeEventListener('message', onWindowMessage);
       clearInterval(heartbeatInterval);

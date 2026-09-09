@@ -9,11 +9,7 @@ import { getVideoState, getIframeCapabilities } from './controller.js';
 /**
  * Transport Connection State for Iframe
  */
-export const IFRAME_TRANSPORT_STATE = Object.freeze({
-  DISCONNECTED: 'DISCONNECTED',
-  CONNECTING: 'CONNECTING',
-  CONNECTED: 'CONNECTED',
-});
+export const IFRAME_TRANSPORT_STATE = Object.freeze({ DISCONNECTED: 'DISCONNECTED', CONNECTING: 'CONNECTING', CONNECTED: 'CONNECTED' });
 
 /**
  * Clean & Resilient Iframe Transport Manager.

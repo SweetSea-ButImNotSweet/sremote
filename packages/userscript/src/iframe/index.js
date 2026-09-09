@@ -83,13 +83,25 @@ export function initIframeAgent() {
     boundMediaElements.add(video);
 
     let hasEmittedAlmostEnd = false;
+    let lastTimeupdate = 0;
+    let lastProgress = 0;
+    const TIMEUPDATE_THROTTLE_MS = 250;
+    const PROGRESS_THROTTLE_MS = 500;
 
     for (const evtName of MEDIA_EVENTS) {
       video.addEventListener(evtName, () => {
         resolver.setActiveMedia(video);
         resolver.setMediaType(video.tagName ? video.tagName.toLowerCase() : 'video');
 
+        const now = Date.now();
+
         if (evtName === 'timeupdate') {
+          // Throttle timeupdate to avoid flooding the MessagePort & parent listeners
+          if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) {
+            return;
+          }
+          lastTimeupdate = now;
+
           const dur = Number.isFinite(video.duration) ? video.duration : null;
           const curTime = safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0;
           if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
@@ -100,6 +112,13 @@ export function initIframeAgent() {
           } else if (dur && curTime < dur - 1.5) {
             hasEmittedAlmostEnd = false;
           }
+        }
+
+        if (evtName === 'progress') {
+          if (now - lastProgress < PROGRESS_THROTTLE_MS) {
+            return;
+          }
+          lastProgress = now;
         }
 
         if (evtName === 'ended') {

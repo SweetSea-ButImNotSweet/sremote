@@ -57,8 +57,7 @@ export function initParentController() {
   } catch {}
 
   const instanceManager = createInstanceManager();
-  const { instances, parentAdaptersMap, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts, removeInstance } =
-    instanceManager;
+  const { instances, parentAdaptersMap, assignedIframeIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts } = instanceManager;
 
   let broadcastHelloRef = null;
 
@@ -237,12 +236,7 @@ export function initParentController() {
       if (adapterTargetId && parentAdaptersMap.has(adapterTargetId)) {
         const handled = await executeParentAdapterAction(action, value, adapterTargetId);
         // If an adapter is registered for this target, always resolve as handled by adapter (never fall through to wait for port)
-        return Promise.resolve({
-          success: Boolean(handled !== false),
-          instanceId: adapterTargetId,
-          source: 'adapter',
-          action,
-        });
+        return Promise.resolve({ success: Boolean(handled !== false), instanceId: adapterTargetId, source: 'adapter', action });
       }
     }
 
@@ -354,7 +348,7 @@ export function initParentController() {
   } catch {}
 
   // Initialize and Export window.sremote
-  const api = createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker });
+  const api = createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker, transportManager });
   if (api && typeof api.hello === 'function') {
     broadcastHelloRef = api.hello;
   }

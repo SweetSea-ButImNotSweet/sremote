@@ -222,6 +222,27 @@ export const MEDIA_EVENTS = [
 ];
 
 /**
+ * Standard list of Safe Passive Fallback Events for Custom Adapters.
+ * Excludes active lifecycle events (play, pause, ended) to prevent state conflicts when adapters manage their own playback.
+ */
+export const SAFE_FALLBACK_EVENTS = [
+  'timeupdate',
+  'volumechange',
+  'ratechange',
+  'seeking',
+  'seeked',
+  'progress',
+  'canplay',
+  'canplaythrough',
+  'waiting',
+  'stalled',
+  'durationchange',
+  'loadedmetadata',
+  'enterpictureinpicture',
+  'exitpictureinpicture',
+];
+
+/**
  * Binds standardized event listeners to an HTMLMediaElement with smart end/almostend handling.
  * @param {HTMLMediaElement} media
  * @param {(event: string, payload: Object) => void} onEvent
@@ -243,18 +264,28 @@ export function bindMediaEvents(media, onEvent, options = {}) {
   }
 
   let hasEmittedAlmostEnd = false;
+  let lastTimeupdate = 0;
+  let lastProgress = 0;
+  const TIMEUPDATE_THROTTLE_MS = 250;
+  const PROGRESS_THROTTLE_MS = 500;
   const boundListeners = [];
 
   for (const evtName of targetEvents) {
     const listener = eventObj => {
-      const state = extractMediaState(media);
+      const now = Date.now();
 
       if (evtName === 'timeupdate') {
+        if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) {
+          return;
+        }
+        lastTimeupdate = now;
+
         const dur = Number.isFinite(media.duration) ? media.duration : null;
         const curTime = media.currentTime || 0;
         if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
           if (!hasEmittedAlmostEnd) {
             hasEmittedAlmostEnd = true;
+            const state = extractMediaState(media);
             onEvent(
               treatAlmostEndAsEnd ? 'ended' : 'almostend',
               createEventPayload(treatAlmostEndAsEnd ? 'ended' : 'almostend', { source, instanceId, mediaType: media.tagName ? media.tagName.toLowerCase() : 'video', state }),
@@ -265,6 +296,13 @@ export function bindMediaEvents(media, onEvent, options = {}) {
         }
       }
 
+      if (evtName === 'progress') {
+        if (now - lastProgress < PROGRESS_THROTTLE_MS) {
+          return;
+        }
+        lastProgress = now;
+      }
+
       if (evtName === 'ended') {
         hasEmittedAlmostEnd = false;
         const dur = Number.isFinite(media.duration) ? media.duration : null;
@@ -272,6 +310,7 @@ export function bindMediaEvents(media, onEvent, options = {}) {
         if (dur && dur > 0 && Math.abs(dur - curTime) > 1.5) return;
       }
 
+      const state = extractMediaState(media);
       onEvent(evtName, createEventPayload(evtName, { source, instanceId, mediaType: media.tagName ? media.tagName.toLowerCase() : 'video', state, originalEvent: eventObj }));
     };
 
@@ -379,24 +418,43 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
         ? rawAdapter.element
         : null;
 
-  if (targetMediaEl && rawAdapter.fallbackEvents !== false) {
-    unbindFallback = bindMediaEvents(
-      targetMediaEl,
-      (evtName, payload) => {
-        // Only forward if the adapter has not explicitly emitted this event itself
-        if (!handledEvents.has(evtName.toLowerCase())) {
-          const state = extractMediaState(adapter) || payload.state;
-          const forwarded = { ...payload, source: 'adapter-dom-fallback', instanceId, state };
-          defaultLogger.scope('event').debug(`Adapter fallback emit -> ${evtName}`, forwarded);
-          if (typeof onEmit === 'function') {
-            try {
-              onEmit(evtName, forwarded);
-            } catch {}
+  if (targetMediaEl) {
+    try {
+      // Mark element as claimed by this adapter so auto-trackers don't duplicate it
+      targetMediaEl[Symbol.for('__sremote_adapter__')] = instanceId;
+    } catch {}
+
+    if (rawAdapter.fallbackEvents !== false) {
+      // Determine allowed fallback events:
+      // If user supplied explicit array, use that.
+      // Otherwise, default to SAFE_FALLBACK_EVENTS (or include lifecycle if fallbackLifecycle is true).
+      let allowedFallbackEvents;
+      if (Array.isArray(rawAdapter.fallbackEvents)) {
+        allowedFallbackEvents = rawAdapter.fallbackEvents.map(e => String(e).toLowerCase());
+      } else if (rawAdapter.fallbackLifecycle === true) {
+        allowedFallbackEvents = MEDIA_EVENTS;
+      } else {
+        allowedFallbackEvents = SAFE_FALLBACK_EVENTS;
+      }
+
+      unbindFallback = bindMediaEvents(
+        targetMediaEl,
+        (evtName, payload) => {
+          // Only forward if the adapter has not explicitly emitted this event itself
+          if (!handledEvents.has(evtName.toLowerCase())) {
+            const state = extractMediaState(adapter) || payload.state;
+            const forwarded = { ...payload, source: 'adapter-dom-fallback', instanceId, state };
+            defaultLogger.scope('event').debug(`Adapter fallback emit -> ${evtName}`, forwarded);
+            if (typeof onEmit === 'function') {
+              try {
+                onEmit(evtName, forwarded);
+              } catch {}
+            }
           }
-        }
-      },
-      { instanceId, source: 'adapter-dom-fallback', excludedEvents: handledEvents },
-    );
+        },
+        { instanceId, source: 'adapter-dom-fallback', events: allowedFallbackEvents, excludedEvents: handledEvents },
+      );
+    }
   }
 
   const origDestroy = typeof adapter.destroy === 'function' ? adapter.destroy.bind(adapter) : null;

@@ -134,6 +134,11 @@ export class SRemoteClient {
         if (!entry.unbindUserscript) {
           try {
             entry.unbindUserscript = this.userscriptDriver.on(entry.event, entry.handler, entry.key || this.options.passkey);
+            // Once userscript handles the event stream, detach fallback DOM listener to avoid duplicate event calls
+            if (typeof entry.unbindDom === 'function') {
+              entry.unbindDom();
+              entry.unbindDom = null;
+            }
           } catch (err) {
             this.logger.warn(`Failed to sync listener for '${entry.event}' to userscript:`, err);
           }
@@ -359,17 +364,15 @@ export class SRemoteClient {
     this.logger.debug(`Listening to event: ${event}`);
     const entry = { event, handler, key, unbindDom: null, unbindUserscript: null };
 
-    // Always bind to DomDriver as immediate fallback or direct listener
-    if (this.domDriver && typeof this.domDriver.on === 'function') {
-      try {
-        entry.unbindDom = this.domDriver.on(event, handler);
-      } catch {}
-    }
-
-    // If userscript is already available, bind immediately
+    // If userscript is available, bind directly to userscript
     if (this.userscriptDriver.isAvailable()) {
       try {
         entry.unbindUserscript = this.userscriptDriver.on(event, handler, key || this.options.passkey);
+      } catch {}
+    } else if (this.domDriver && typeof this.domDriver.on === 'function') {
+      // Only fallback to DomDriver when userscript is not yet available
+      try {
+        entry.unbindDom = this.domDriver.on(event, handler);
       } catch {}
     }
 

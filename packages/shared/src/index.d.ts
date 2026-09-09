@@ -113,6 +113,7 @@ export declare const SREMOTE_STORAGE_KEYS: {
 };
 
 export declare const MEDIA_EVENTS: readonly string[];
+export declare const SAFE_FALLBACK_EVENTS: readonly string[];
 
 export declare function hasMediaSource(media: any): boolean;
 export declare function isValidMediaElement(media: any, options?: { minSize?: number; requireConnected?: boolean }): boolean;

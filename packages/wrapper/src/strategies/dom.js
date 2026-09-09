@@ -376,38 +376,8 @@ export class DomDriver extends BaseDriver {
   }
 
   on(event, handler) {
-    if (typeof handler !== 'function') return () => {};
-    const unbindManager = this.instanceManager.on(event, handler);
-    const domEventName = String(event || '')
-      .toLowerCase()
-      .replace(/^sremote:/, '');
-
-    // Register native DOM listener (for direct HTML5 media tags on the page)
-    let domListener = null;
-    if (typeof document !== 'undefined') {
-      domListener = e => {
-        const mediaEl = e.target;
-        if (!mediaEl || (mediaEl.tagName !== 'VIDEO' && mediaEl.tagName !== 'AUDIO')) return;
-        const state = extractMediaState(mediaEl);
-        handler(
-          createEventPayload(domEventName, {
-            instanceId: mediaEl.id || mediaEl.getAttribute('data-sremote-id') || 'dom-media',
-            source: 'dom',
-            mediaType: mediaEl.tagName ? mediaEl.tagName.toLowerCase() : 'video',
-            state,
-            originalEvent: e,
-          }),
-        );
-      };
-      document.addEventListener(domEventName, domListener, true);
-    }
-
-    return () => {
-      unbindManager();
-      if (domListener && typeof document !== 'undefined') {
-        document.removeEventListener(domEventName, domListener, true);
-      }
-    };
+    // Only subscribe to instanceManager bus to prevent duplicating events already handled by auto-tracking or adapters
+    return this.instanceManager.on(event, handler);
   }
 
   off(event, handler) {

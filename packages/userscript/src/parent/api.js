@@ -1,11 +1,11 @@
-import { NS, ENABLE_DEBUG_API, logger, console_log, console_warn, console_error, pageWindow } from '../config.js';
+import { VERSION, NS, ENABLE_DEBUG_API, logger, pageWindow } from '../config.js';
 import { Storage, setHandshakeSecret } from '../core/storage.js';
 import { generateInstanceId } from '../core/utils.js';
 import { pendingRpcRequests } from './queue.js';
 import { createParentDebugApi } from '../debug/parent-debug.js';
 import { extractMediaState, evaluateCapabilities, buildSRemoteApi } from '@sremote/shared';
 
-export function createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker = null }) {
+export function createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker = null, transportManager = null }) {
   const {
     instances,
     parentAdaptersMap,
@@ -33,13 +33,13 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     el.setAttribute('data-sremote-id', cleanId);
     assignedIframeIdMap.set(cleanId, el);
     iframeToAssignedIdMap.set(el, cleanId);
-    console_log(`%c[SRemote:assignId] Pre-assigned instance ID '${cleanId}' to iframe element`, 'color: #10b981; font-weight: bold;', el);
+    logger.scope('assignId').log(`Pre-assigned instance ID '${cleanId}' to iframe element`, el);
     return true;
   };
 
   const getIframeElement = (instanceId, key) => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked getIframe()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked getIframe()! Valid Passkey is required.');
       return null;
     }
     if (!instanceId) return null;
@@ -50,7 +50,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const getStatus = (instanceId, key) => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked status()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked status()! Valid Passkey is required.');
       return null;
     }
     const isSingle = !isMultiModeActive();
@@ -87,7 +87,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const getCapabilities = (instanceId, key) => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked capabilities()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked capabilities()! Valid Passkey is required.');
       return null;
     }
     const isSingle = !isMultiModeActive();
@@ -138,7 +138,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const listInstances = key => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked list()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked list()! Valid Passkey is required.');
       return [];
     }
     const result = Array.from(instances.entries()).map(([id, info]) => ({
@@ -168,7 +168,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const setMultiMode = (mode, key) => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked setMultiMode()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked setMultiMode()! Valid Passkey is required.');
       return;
     }
     if (typeof mode === 'boolean' || mode === null) {
@@ -178,7 +178,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const isMultiMode = key => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked isMultiMode()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked isMultiMode()! Valid Passkey is required.');
       return false;
     }
     return isMultiModeActive();
@@ -186,7 +186,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const setExclusive = (mode, key) => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked setExclusive()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked setExclusive()! Valid Passkey is required.');
       return;
     }
     instanceManager.setExclusiveMode(mode);
@@ -197,7 +197,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const annotateInstances = (notesDict, key) => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked note()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked note()! Valid Passkey is required.');
       return;
     }
     if (typeof notesDict === 'object' && notesDict) {
@@ -210,7 +210,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const queryInstances = key => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked query()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked query()! Valid Passkey is required.');
       return [];
     }
     return queryMediaInstancesViaGM();
@@ -218,7 +218,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const registerAdapter = (adapter, instanceId, key) => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked adapters.register()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked adapters.register()! Valid Passkey is required.');
       return null;
     }
     const registeredId = handleUseAdapter(adapter, instanceId);
@@ -236,7 +236,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const unregisterAdapter = (instanceId, key) => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked adapters.unregister()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked adapters.unregister()! Valid Passkey is required.');
       return false;
     }
     return handleRemoveAdapter(instanceId);
@@ -244,7 +244,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const getCustomAdapter = (instanceId, key) => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked adapters.get()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked adapters.get()! Valid Passkey is required.');
       return null;
     }
     if (instanceId) return parentAdaptersMap.get(instanceId) || null;
@@ -293,7 +293,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const postWindowMessage = (message, targetOrigin = '*', instanceId = null, from = 'parent', key = null) => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked postWindowMessage()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked postWindowMessage()! Valid Passkey is required.');
       return false;
     }
     const targetId = instanceId || getLatestActiveInstanceId();
@@ -307,7 +307,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
           iframeEl.contentWindow.postMessage(message, origin);
           return true;
         } catch (err) {
-          console_warn('[sremote] Error posting message from parent to iframe window:', err);
+          logger.scope('rpc').warn('Error posting message from parent to iframe window:', err);
           return false;
         }
       }
@@ -315,14 +315,14 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
     const target = targetId ? instances.get(targetId) : null;
     if (!target || !target.port) {
-      console_warn(`[sremote] Cannot post message: No active connection for instance '${targetId || 'unknown'}'`);
+      logger.scope('rpc').warn(`Cannot post message: No active connection for instance '${targetId || 'unknown'}'`);
       return false;
     }
     try {
       target.port.postMessage({ type: `${NS}bridge_post`, source: 'parent', payload: message, targetOrigin: origin });
       return true;
     } catch (err) {
-      console_warn('[sremote] Error in postWindowMessage via MessagePort bridge:', err);
+      logger.scope('rpc').warn('Error in postWindowMessage via MessagePort bridge:', err);
       return false;
     }
   };
@@ -343,7 +343,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const onEvent = (event, handler, key) => {
     if (!validateDomainAccess(key)) {
-      console_error('[SRemote:auth] Blocked on()! Valid Passkey is required.');
+      logger.scope('auth').error('Blocked on()! Valid Passkey is required.');
       return () => {};
     }
     const ev = String(event || '').toLowerCase();
@@ -373,7 +373,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
   const lockSession = () => {
     instanceManager.setSessionLocked(true);
-    console_log(`%c[SRemote:lock] SRemote is now session-locked for this page`, 'background: #0f172a; color: #38bdf8; font-weight: bold;');
+    logger.scope('lock').log('SRemote is now session-locked for this page');
     return true;
   };
 
@@ -414,11 +414,11 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
 
     if (!validateDomainAccess(providedKey)) {
       const hostDomain = location.hostname || 'this_domain';
-      console_error(`%c[SRemote:auth] Blocked hello() on locked domain '${hostDomain}'! Valid Passkey is required in hello({ key: '...' }).`, 'color: #ef4444; font-weight: bold;');
+      logger.scope('auth').error(`Blocked hello() on locked domain '${hostDomain}'! Valid Passkey is required in hello({ key: '...' }).`);
       return false;
     }
 
-    console_log(`%c[SRemote:auth] Access authorized for domain '${location.hostname}'`, 'color: #10b981; font-weight: bold;');
+    logger.scope('auth').log(`Access authorized for domain '${location.hostname}'`);
 
     const now = Date.now();
     // React Strict Mode & Rapid Call Coalescing:
@@ -432,7 +432,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     if (isRapidRepeat) {
       handshakeId = activeHandshakeId;
       handshakeToken = activeHandshakeToken;
-      console_log(`%c[SRemote:hello] Coalescing rapid hello call (Strict Mode safe)`, 'color: #8b5cf6; font-weight: bold;');
+      logger.scope('hello').log('Coalescing rapid hello call (Strict Mode safe)');
     } else {
       handshakeId = generateInstanceId('hs');
       handshakeToken = generateInstanceId('tok');
@@ -474,13 +474,9 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       ...(assignedInstanceId ? { assignedInstanceId } : {}),
     });
 
-    console_log(`%c[SRemote:hello] Parent sending hello (seq: ${nextSeq}) ->`, 'color: #38bdf8; font-weight: bold;', {
-      hasTarget: !!targetIframeWindow,
-      handshakeId,
-      seq: nextSeq,
-      hasParentAdapter,
-      hasCss: Boolean(customCss),
-    });
+    logger
+      .scope('hello')
+      .log(`Parent sending hello (seq: ${nextSeq}) ->`, { hasTarget: !!targetIframeWindow, handshakeId, seq: nextSeq, hasParentAdapter, hasCss: Boolean(customCss) });
 
     if (targetIframeWindow && typeof targetIframeWindow.postMessage === 'function') {
       try {
@@ -496,7 +492,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
         } catch {}
         targetIframeWindow.postMessage(createHelloPayload(assignedId), '*');
       } catch (err) {
-        console_warn('[sremote] Error posting hello to target iframe:', err);
+        logger.scope('hello').warn('Error posting hello to target iframe:', err);
       }
       return true;
     }
@@ -574,6 +570,14 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       get logLevel() {
         return logger.level;
       },
+      destroy() {
+        if (transportManager && typeof transportManager.destroy === 'function') {
+          transportManager.destroy();
+        }
+        if (topMediaTracker && typeof topMediaTracker.destroy === 'function') {
+          topMediaTracker.destroy();
+        }
+      },
     },
   });
 
@@ -592,9 +596,9 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       pageWindow.dispatchEvent(readyEvent);
     }
   } catch (err) {
-    console_warn('[sremote] Failed to dispatch sremote:ready event:', err);
+    logger.scope('bootstrap').warn('Failed to dispatch sremote:ready event:', err);
   }
 
-  console_log(`%c[sremote] window.sremote is ready with unified builder`, 'background: #065f46; color: #34d399; font-weight: bold;');
+  logger.scope('bootstrap').log('window.sremote is ready with unified builder');
   return exportedApi;
 }
