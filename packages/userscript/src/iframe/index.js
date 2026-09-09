@@ -10,6 +10,7 @@ import { getVideoState, getIframeCapabilities, createMediaController } from './c
 import { createIframeDebugApi } from '../debug/iframe-debug.js';
 import { createRpcRegistry } from './rpc.js';
 import { createIframeTransportManager } from './transport.js';
+import { getGlobalTransactionTracker } from '@sremote/shared';
 
 export function initIframeAgent() {
   let topOrigin = null;
@@ -94,6 +95,14 @@ export function initIframeAgent() {
         resolver.setMediaType(video.tagName ? video.tagName.toLowerCase() : 'video');
 
         const now = Date.now();
+        let isProgrammatic = false;
+        const tracker = getGlobalTransactionTracker();
+        if (tracker && typeof tracker.matchAndConsume === 'function') {
+          isProgrammatic = tracker.matchAndConsume(evtName, { instanceId, video }).isProgrammatic;
+        }
+        if (!isProgrammatic) {
+          isProgrammatic = now - programmaticActionTimestamp < 500;
+        }
 
         if (evtName === 'timeupdate') {
           // Throttle timeupdate to avoid flooding the MessagePort & parent listeners
@@ -107,7 +116,6 @@ export function initIframeAgent() {
           if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
             if (!hasEmittedAlmostEnd) {
               hasEmittedAlmostEnd = true;
-              const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
               emitToParent(treatAlmostEndAsEnd ? 'ended' : 'almostend', { isProgrammatic, state: getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia) });
             }
           } else if (dur && curTime < dur - 1.5) {
@@ -129,7 +137,6 @@ export function initIframeAgent() {
           if (dur && dur > 0 && Math.abs(dur - curTime) > 1.5) return;
         }
 
-        const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
         emitToParent(evtName, { isProgrammatic, state: getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia) });
       });
     }

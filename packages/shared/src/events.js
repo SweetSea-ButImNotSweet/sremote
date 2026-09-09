@@ -1,4 +1,5 @@
 import { defaultLogger } from './logger.js';
+import { getGlobalTransactionTracker } from './pipeline/transaction-tracker.js';
 
 /**
  * Extracts standardized media state snapshot from a HTMLMediaElement or adapter.
@@ -254,7 +255,15 @@ export function bindMediaEvents(media, onEvent, options = {}) {
     return () => {};
   }
 
-  const { instanceId = 'dom-media', source = 'dom', treatAlmostEndAsEnd = false, events = MEDIA_EVENTS, excludedEvents = null, programmaticActionTimestampGetter = null } = options;
+  const {
+    instanceId = 'dom-media',
+    source = 'dom',
+    treatAlmostEndAsEnd = false,
+    events = MEDIA_EVENTS,
+    excludedEvents = null,
+    programmaticActionTimestampGetter = null,
+    transactionTracker = getGlobalTransactionTracker(),
+  } = options;
 
   const excludedSet = excludedEvents ? (excludedEvents instanceof Set ? excludedEvents : new Set(Array.from(excludedEvents).map(e => String(e).toLowerCase()))) : null;
   const targetEvents = excludedSet && excludedSet.size > 0 ? events.filter(evt => !excludedSet.has(evt.toLowerCase())) : events;
@@ -273,8 +282,15 @@ export function bindMediaEvents(media, onEvent, options = {}) {
   for (const evtName of targetEvents) {
     const listener = eventObj => {
       const now = Date.now();
-      const lastTs = typeof programmaticActionTimestampGetter === 'function' ? programmaticActionTimestampGetter() : 0;
-      const isProgrammatic = now - lastTs < 500;
+      let isProgrammatic = false;
+      if (transactionTracker && typeof transactionTracker.matchAndConsume === 'function') {
+        const matchResult = transactionTracker.matchAndConsume(evtName, { instanceId, media });
+        isProgrammatic = matchResult.isProgrammatic;
+      }
+      if (!isProgrammatic && typeof programmaticActionTimestampGetter === 'function') {
+        const lastTs = programmaticActionTimestampGetter();
+        isProgrammatic = now - lastTs < 500;
+      }
 
       if (evtName === 'timeupdate') {
         if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) {
@@ -403,12 +419,20 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
     }
 
     const payloadObj = typeof payload === 'object' && payload !== null ? payload : { value: payload };
-    const isProgrammatic =
-      payloadObj.isProgrammatic !== undefined
-        ? payloadObj.isProgrammatic
-        : payloadObj.programmatic !== undefined
-          ? payloadObj.programmatic
-          : Date.now() - programmaticActionTimestamp < 500;
+    let isProgrammatic = false;
+    if (payloadObj.isProgrammatic !== undefined) {
+      isProgrammatic = payloadObj.isProgrammatic;
+    } else if (payloadObj.programmatic !== undefined) {
+      isProgrammatic = payloadObj.programmatic;
+    } else {
+      const tracker = getGlobalTransactionTracker();
+      const match = tracker.matchAndConsume(ev, { instanceId, value: payloadObj.value });
+      if (match.isProgrammatic) {
+        isProgrammatic = true;
+      } else {
+        isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
+      }
+    }
 
     const state = extractMediaState(adapter);
     const fullPayload = createEventPayload(ev, { source, instanceId, mediaType: 'adapter', isProgrammatic, ...(state ? { state } : {}), ...payloadObj });

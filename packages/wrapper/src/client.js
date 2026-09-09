@@ -449,6 +449,20 @@ if (typeof globalThis !== 'undefined') {
   } catch {}
 }
 
+if (typeof window !== 'undefined') {
+  try {
+    sremote[Symbol.for('__sremote_source__')] = 'wrapper';
+    sremote[Symbol.for('__sremote_native__')] = true;
+    sremote.isSremoteNative = true;
+    sremote.isDummy = false;
+
+    // Define window.sremote if not existing or dummy
+    if (!window.sremote || window.sremote.isDummy) {
+      window.sremote = sremote;
+    }
+  } catch {}
+}
+
 export default sremote;
 
 export { showInstallModal };

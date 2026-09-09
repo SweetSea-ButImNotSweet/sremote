@@ -1,12 +1,22 @@
-import { BaseDriver } from './base.js';
 import { isNativeSRemoteInstance } from '../guard.js';
 
-export class UserscriptDriver extends BaseDriver {
+export class UserscriptDriver {
+  constructor(options = {}) {
+    this.options = { passkey: null, ...options };
+    this.logger = options.logger || null;
+  }
+
+  getPasskey(key) {
+    return key || this.options.passkey || null;
+  }
+
   isAvailable() {
     if (typeof window === 'undefined') return false;
-    // Must check for native userscript instance, not just any object
-    // (window.sremote may be a dummy proxy set by lockGlobalSRemoteIfAbsent)
     const api = window.SRemote || window.sremote;
+    // Do not treat wrapper itself as external userscript driver
+    if (api && api[Symbol.for('__sremote_source__')] === 'wrapper') {
+      return false;
+    }
     return isNativeSRemoteInstance(api);
   }
 
@@ -16,7 +26,9 @@ export class UserscriptDriver extends BaseDriver {
       return null;
     }
     const api = window.SRemote || window.sremote || null;
-    // Only return real native userscript API, not the dummy proxy
+    if (api && api[Symbol.for('__sremote_source__')] === 'wrapper') {
+      return null;
+    }
     const nativeApi = isNativeSRemoteInstance(api) ? api : null;
     if (required && !nativeApi) {
       throw new Error('[SRemote:Wrapper] SRemote Userscript not detected');
@@ -24,10 +36,6 @@ export class UserscriptDriver extends BaseDriver {
     return nativeApi;
   }
 
-  /**
-   * Helper to resolve a method by dot-path (e.g. 'adapters.register' or 'play')
-   * @private
-   */
   _resolveMethod(api, methodPath) {
     if (!api || !methodPath) return null;
     const parts = methodPath.split('.');
@@ -42,10 +50,6 @@ export class UserscriptDriver extends BaseDriver {
     return { fn: cur, context: parent };
   }
 
-  /**
-   * Helper to invoke a required API method with passkey
-   * @private
-   */
   _callRequired(method, ...args) {
     const api = this.getApi(true);
     const resolved = this._resolveMethod(api, method);
@@ -55,10 +59,6 @@ export class UserscriptDriver extends BaseDriver {
     return resolved.fn.call(resolved.context, ...args);
   }
 
-  /**
-   * Helper to invoke an optional API method with passkey fallback
-   * @private
-   */
   _callOptional(method, defaultVal, ...args) {
     const api = this.getApi();
     const resolved = this._resolveMethod(api, method);
@@ -142,54 +142,8 @@ export class UserscriptDriver extends BaseDriver {
     return this._callOptional('previous', undefined, instanceId, this.getPasskey(key));
   }
 
-  assignId(iframeOrSelector, customId) {
-    return this._callOptional('instances.assign', false, iframeOrSelector, customId);
-  }
-
-  getIframe(instanceId, key) {
-    const api = this.getApi();
-    const fn = api?.instances?.getIframe || api?.getIframe;
-    if (typeof fn === 'function') {
-      return fn.call(api?.instances || api, instanceId, this.getPasskey(key));
-    }
-    return null;
-  }
-
-  // --- Custom Adapter Management ---
-  useAdapter(adapter, instanceId, key) {
-    const api = this.getApi();
-    const fn = api?.adapters?.register || api?.adapters?.useAdapter || api?.useAdapter;
-    if (typeof fn === 'function') {
-      return fn.call(api?.adapters || api, adapter, instanceId, this.getPasskey(key));
-    }
-    return null;
-  }
-
-  removeAdapter(instanceId, key) {
-    const api = this.getApi();
-    const fn = api?.adapters?.unregister || api?.adapters?.removeAdapter || api?.removeAdapter;
-    if (typeof fn === 'function') {
-      return fn.call(api?.adapters || api, instanceId, this.getPasskey(key));
-    }
-    return false;
-  }
-
-  getCustomAdapter(instanceId, key) {
-    const api = this.getApi();
-    const fn = api?.adapters?.get || api?.getCustomAdapter;
-    if (typeof fn === 'function') {
-      return fn.call(api?.adapters || api, instanceId, this.getPasskey(key));
-    }
-    return null;
-  }
-
   list(key) {
-    const api = this.getApi();
-    const fn = api?.instances?.list || api?.list;
-    if (typeof fn === 'function') {
-      return fn.call(api?.instances || api, this.getPasskey(key)) || [];
-    }
-    return [];
+    return this._callOptional('instances.list', [], this.getPasskey(key));
   }
 
   status(instanceId, key) {
@@ -200,77 +154,63 @@ export class UserscriptDriver extends BaseDriver {
     return this._callOptional('capabilities', null, instanceId, this.getPasskey(key));
   }
 
-  bindMetadata(meta, instanceId, key) {
-    return this._callOptional('bindMetadata', undefined, meta, instanceId, this.getPasskey(key));
+  getIframe(instanceId, key) {
+    return this._callOptional('instances.getIframe', null, instanceId, this.getPasskey(key));
+  }
+
+  assignId(iframeOrSelector, customId) {
+    return this._callOptional('instances.assign', false, iframeOrSelector, customId);
   }
 
   setMultiMode(mode, key) {
-    const api = this.getApi();
-    const fn = api?.instances?.setMultiMode || api?.setMultiMode;
-    if (typeof fn === 'function') {
-      return fn.call(api?.instances || api, mode, this.getPasskey(key));
-    }
+    return this._callOptional('instances.setMultiMode', undefined, mode, this.getPasskey(key));
   }
 
   isMultiMode(key) {
-    const api = this.getApi();
-    const fn = api?.instances?.isMultiMode || api?.isMultiMode;
-    if (typeof fn === 'function') {
-      return Boolean(fn.call(api?.instances || api, this.getPasskey(key)));
-    }
-    return false;
+    return this._callOptional('instances.isMultiMode', false, this.getPasskey(key));
   }
 
   setExclusive(mode, key) {
-    const api = this.getApi();
-    const fn = api?.instances?.setExclusive || api?.setExclusive;
-    if (typeof fn === 'function') {
-      return fn.call(api?.instances || api, mode, this.getPasskey(key));
-    }
+    return this._callOptional('instances.setExclusive', undefined, mode, this.getPasskey(key));
   }
 
   query(key) {
-    const api = this.getApi();
-    const fn = api?.instances?.query || api?.query;
-    if (typeof fn === 'function') {
-      return fn.call(api?.instances || api, this.getPasskey(key)) || [];
-    }
-    return [];
+    return this._callOptional('instances.query', [], this.getPasskey(key));
   }
 
   note(dict, key) {
-    const api = this.getApi();
-    const fn = api?.instances?.note || api?.note;
-    if (typeof fn === 'function') {
-      return fn.call(api?.instances || api, dict, this.getPasskey(key));
-    }
+    return this._callOptional('instances.note', undefined, dict, this.getPasskey(key));
+  }
+
+  useAdapter(adapter, instanceId, key) {
+    return this._callOptional('adapters.register', null, adapter, instanceId, this.getPasskey(key));
+  }
+
+  removeAdapter(instanceId, key) {
+    return this._callOptional('adapters.unregister', false, instanceId, this.getPasskey(key));
+  }
+
+  getCustomAdapter(instanceId, key) {
+    return this._callOptional('adapters.get', null, instanceId, this.getPasskey(key));
   }
 
   call(action, params, instanceId, key) {
     return this._callRequired('rpc.call', action, params, instanceId, this.getPasskey(key));
   }
 
-  postWindowMessage(message, targetOrigin = '*', instanceId = null, from = 'parent', key = null) {
-    return this._callOptional('rpc.postMessage', false, message, targetOrigin, instanceId, from, this.getPasskey(key));
+  postWindowMessage(msg, origin, instanceId, from, key) {
+    return this._callOptional('rpc.postMessage', false, msg, origin, instanceId, from, this.getPasskey(key));
   }
 
   on(event, handler, key) {
-    const api = this.getApi();
-    if (api && typeof api.on === 'function') {
-      return api.on(event, handler, this.getPasskey(key));
-    }
-    const fullEvent = event.startsWith('sremote:') ? event : `sremote:${event}`;
-    const listener = e => handler(e.detail);
-    window.addEventListener(fullEvent, listener);
-    return () => window.removeEventListener(fullEvent, listener);
+    return this._callOptional('on', () => {}, event, handler, this.getPasskey(key));
   }
 
   off(event, handler) {
-    const api = this.getApi();
-    if (api && typeof api.off === 'function') {
-      return api.off(event, handler);
-    }
-    const fullEvent = event.startsWith('sremote:') ? event : `sremote:${event}`;
-    window.removeEventListener(fullEvent, handler);
+    return this._callOptional('off', undefined, event, handler);
+  }
+
+  bindMetadata(meta, instanceId, key) {
+    return this._callOptional('bindMetadata', false, meta, instanceId, this.getPasskey(key));
   }
 }

@@ -1,15 +1,13 @@
 import { VERSION, NS, ENABLE_DEBUG_API, logger, console_log, console_warn, console_error } from '../config.js';
 import { Storage, GM } from '../core/storage.js';
 import { getOriginStorageKeys } from '../core/utils.js';
-import { executeAdapterAction } from '../core/adapter-runner.js';
 import { t } from '../core/i18n.js';
 import { registerMenuCommands } from './menu.js';
 import { pendingCommandQueue } from './queue.js';
 import { createExportedApi } from './api.js';
-import { createInstanceManager } from './instance-manager.js';
 import { createParentTransportManager } from './transport.js';
 import { setupTopMediaTracker } from './top-media.js';
-import { hasMediaSource } from '@sremote/shared';
+import { createInstanceManager, executeMediaAction, hasMediaSource, getGlobalTransactionTracker } from '@sremote/shared';
 
 export function initParentController() {
   const currentOrigin = location.origin;
@@ -116,84 +114,18 @@ export function initParentController() {
     if (!targetId || !parentAdaptersMap.has(targetId)) return false;
 
     const adapter = parentAdaptersMap.get(targetId);
-    return executeAdapterAction(adapter, action, value);
+    return executeMediaAction(adapter, action, value, { instanceId: targetId, transactionTracker: getGlobalTransactionTracker(), logger });
   }
 
   async function executeTopMediaAction(mediaEl, action, value) {
     if (!mediaEl) return false;
     const hasSource = hasMediaSource(mediaEl);
     const norm = String(action || '').toLowerCase();
+    if (['play', 'seek', 'stop'].includes(norm) && !hasSource) return false;
+
     logger.scope('action').log(`Top DOM executing -> ${action}`, { action, value });
     try {
-      switch (norm) {
-        case 'play':
-          if (!hasSource) return false;
-          await mediaEl.play?.();
-          return true;
-        case 'pause':
-          mediaEl.pause?.();
-          return true;
-        case 'toggle':
-          if (!hasSource && mediaEl.paused) return false;
-          if (mediaEl.paused) await mediaEl.play?.();
-          else mediaEl.pause?.();
-          return true;
-        case 'stop':
-          mediaEl.pause?.();
-          if (hasSource) mediaEl.currentTime = 0;
-          return true;
-        case 'seek':
-          if (!hasSource) return false;
-          if (value !== undefined && value !== null) {
-            mediaEl.currentTime = Math.max(0, (mediaEl.currentTime || 0) + Number(value));
-          }
-          return true;
-        case 'currenttime':
-        case 'seekto':
-          if (value !== undefined && value !== null) {
-            mediaEl.currentTime = Math.max(0, Number(value));
-          }
-          return true;
-        case 'volume':
-          if (value !== undefined && value !== null) {
-            mediaEl.volume = Math.max(0, Math.min(1, Number(value)));
-            mediaEl.muted = false;
-          }
-          return true;
-        case 'muted':
-        case 'mute':
-          if (value !== undefined && value !== null) {
-            mediaEl.muted = Boolean(value);
-          }
-          return true;
-        case 'speed':
-          if (value !== undefined && value !== null) {
-            mediaEl.playbackRate = Number(value) || 1;
-          }
-          return true;
-        case 'repeat':
-          if (value !== undefined && value !== null) {
-            mediaEl.loop = value === true || value === 'one';
-          }
-          return true;
-        case 'pip':
-        case 'enterpip':
-          if (typeof document !== 'undefined') {
-            if (document.pictureInPictureElement === mediaEl) {
-              await document.exitPictureInPicture?.();
-            } else if (mediaEl.requestPictureInPicture) {
-              await mediaEl.requestPictureInPicture();
-            }
-          }
-          return true;
-        case 'exitpip':
-          if (typeof document !== 'undefined' && document.pictureInPictureElement) {
-            await document.exitPictureInPicture?.();
-          }
-          return true;
-        default:
-          return false;
-      }
+      return executeMediaAction(mediaEl, action, value, { instanceId: mediaEl.id || 'top-media', transactionTracker: getGlobalTransactionTracker(), logger });
     } catch (e) {
       console_warn(`[sremote] Error executing top media action '${action}':`, e);
       return false;

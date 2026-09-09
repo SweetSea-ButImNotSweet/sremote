@@ -1,11 +1,19 @@
-import { BaseDriver } from './base.js';
-import { createInstanceManager, extractMediaState, createEventPayload, evaluateCapabilities, bindMediaEvents } from '@sremote/shared';
-import { resolveMediaElement, HtmlMediaController } from './dom-media.js';
+import {
+  createInstanceManager,
+  extractMediaState,
+  evaluateCapabilities,
+  bindMediaEvents,
+  executeMediaAction,
+  resolveMediaElement,
+  getGlobalTransactionTracker,
+} from '@sremote/shared';
 
-export class DomDriver extends BaseDriver {
+export class DomDriver {
   constructor(options = {}) {
-    super(options);
+    this.options = { passkey: null, ...options };
     this.logger = options.logger || null;
+    this.transactionTracker = options.transactionTracker || getGlobalTransactionTracker();
+
     this.instanceManager = createInstanceManager({
       ns: 'sremote:',
       logger: this.logger,
@@ -14,12 +22,16 @@ export class DomDriver extends BaseDriver {
 
     this.trackedMediaElements = new WeakSet();
     this.treatAlmostEndAsEnd = Boolean(options.treatAlmostEndAsEnd);
-    this._programmaticTimestamp = 0;
+    this._listeners = new Map();
 
     // Auto-discover existing media in document
     if (typeof document !== 'undefined') {
       this.initDomAutoTracking();
     }
+  }
+
+  getPasskey(key) {
+    return key || this.options.passkey || null;
   }
 
   get adaptersMap() {
@@ -49,7 +61,6 @@ export class DomDriver extends BaseDriver {
         this.trackMediaElement(el);
       }
 
-      // Observe DOM mutations to auto-bind dynamically added media
       if (typeof MutationObserver !== 'undefined') {
         this._domObserver = new MutationObserver(mutations => {
           for (const m of mutations) {
@@ -74,7 +85,6 @@ export class DomDriver extends BaseDriver {
     if (!mediaEl || this.trackedMediaElements.has(mediaEl)) return;
 
     try {
-      // If the element is already managed by an adapter, let the adapter handle it via wrapCustomAdapter
       if (mediaEl[Symbol.for('__sremote_adapter__')]) {
         return;
       }
@@ -91,7 +101,7 @@ export class DomDriver extends BaseDriver {
       (evtName, payload) => {
         this.emit(evtName, payload);
       },
-      { instanceId: instId, source: 'dom', treatAlmostEndAsEnd: this.treatAlmostEndAsEnd, programmaticActionTimestampGetter: () => this._programmaticTimestamp },
+      { instanceId: instId, source: 'dom', treatAlmostEndAsEnd: this.treatAlmostEndAsEnd, transactionTracker: this.transactionTracker },
     );
   }
 
@@ -132,11 +142,6 @@ export class DomDriver extends BaseDriver {
     return this.instanceManager.getCustomAdapter(instanceId);
   }
 
-  /**
-   * Helper to find a connected adapter, prioritizing an active ID if connected,
-   * otherwise falling back to the latest connected adapter in the registry.
-   * @private
-   */
   _findConnectedAdapter(preferredId = null) {
     const map = this.instanceManager.parentAdaptersMap;
     if (map.size === 0) return null;
@@ -152,8 +157,6 @@ export class DomDriver extends BaseDriver {
     }
 
     const entries = Array.from(map.entries());
-
-    // In Single Mode, if an adapter was registered, prioritize the latest registered adapter
     if (isSingle && entries.length > 0) {
       const [latestId, latestAd] = entries[entries.length - 1];
       return { type: 'adapter', instance: latestAd, instanceId: latestId };
@@ -174,22 +177,18 @@ export class DomDriver extends BaseDriver {
   resolveTarget(target) {
     const map = this.instanceManager.parentAdaptersMap;
 
-    // Explicit adapter instance ID match
     if (typeof target === 'string' && map.has(target)) {
       return { type: 'adapter', instance: map.get(target), instanceId: target };
     }
 
-    // Default target: Prioritize active/latest connected adapter
     if (!target && map.size > 0) {
       const activeId = this.instanceManager.getLatestActiveInstanceId?.() || this.instanceManager.currentActiveInstanceId;
       return this._findConnectedAdapter(activeId);
     }
 
-    // Direct DOM media match
-    const el = this.resolveMediaElement(target);
+    const el = resolveMediaElement(target);
     if (el) return { type: 'element', instance: el };
 
-    // Fallback to adapter registry if selector didn't match DOM element
     if (map.size > 0) {
       const activeId = this.instanceManager.getLatestActiveInstanceId?.() || this.instanceManager.currentActiveInstanceId;
       return this._findConnectedAdapter(activeId);
@@ -202,177 +201,88 @@ export class DomDriver extends BaseDriver {
     return resolveMediaElement(target);
   }
 
-  async play(target) {
-    this._programmaticTimestamp = Date.now();
+  async _execAction(action, target, value) {
     const resolved = this.resolveTarget(target);
-    if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') {
-      const res = await resolved.instance.play?.();
-      resolved.instance.emit?.('play', { programmatic: true, isProgrammatic: true });
-      return res;
-    }
-    return HtmlMediaController.play(resolved.instance);
+    if (!resolved) throw new Error(`[SRemote:DomDriver] Media target not found for '${action}'`);
+    const instId = resolved.instanceId || resolved.instance?.id || 'dom-media';
+
+    return executeMediaAction(resolved.instance, action, value, { transactionTracker: this.transactionTracker, instanceId: instId, logger: this.logger });
+  }
+
+  async play(target) {
+    return this._execAction('play', target);
   }
 
   async pause(target) {
-    this._programmaticTimestamp = Date.now();
-    const resolved = this.resolveTarget(target);
-    if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') {
-      const res = await resolved.instance.pause?.();
-      resolved.instance.emit?.('pause', { programmatic: true, isProgrammatic: true });
-      return res;
-    }
-    HtmlMediaController.pause(resolved.instance);
+    return this._execAction('pause', target);
   }
 
   async toggle(target) {
-    this._programmaticTimestamp = Date.now();
-    const resolved = this.resolveTarget(target);
-    if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') {
-      let res;
-      if (typeof resolved.instance.toggle === 'function') {
-        res = await resolved.instance.toggle();
-      } else {
-        const isPaused = typeof resolved.instance.paused === 'function' ? resolved.instance.paused() : resolved.instance.paused;
-        res = isPaused ? await resolved.instance.play?.() : await resolved.instance.pause?.();
-      }
-      const isPausedAfter = typeof resolved.instance.paused === 'function' ? resolved.instance.paused() : resolved.instance.paused;
-      if (typeof isPausedAfter === 'boolean') {
-        resolved.instance.emit?.(isPausedAfter ? 'pause' : 'play', { programmatic: true, isProgrammatic: true });
-      } else {
-        resolved.instance.emit?.('toggle', { programmatic: true, isProgrammatic: true });
-      }
-      return res;
-    }
-    return HtmlMediaController.toggle(resolved.instance);
+    return this._execAction('toggle', target);
   }
 
   async stop(target) {
-    this._programmaticTimestamp = Date.now();
-    const resolved = this.resolveTarget(target);
-    if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') {
-      const res = await resolved.instance.stop?.();
-      resolved.instance.emit?.('pause', { programmatic: true, isProgrammatic: true });
-      resolved.instance.emit?.('stop', { programmatic: true, isProgrammatic: true });
-      return res;
-    }
-    HtmlMediaController.stop(resolved.instance);
+    return this._execAction('stop', target);
   }
 
   async seek(offset, target) {
-    this._programmaticTimestamp = Date.now();
-    const resolved = this.resolveTarget(target);
-    if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') {
-      if (typeof resolved.instance.seek === 'function') return resolved.instance.seek(offset);
-      const cur = resolved.instance.getCurrentTime?.() || 0;
-      return resolved.instance.setCurrentTime?.(cur + offset);
-    }
-    HtmlMediaController.seek(resolved.instance, offset);
+    return this._execAction('seek', target, offset);
   }
 
   async seekTo(time, target) {
-    this._programmaticTimestamp = Date.now();
-    const resolved = this.resolveTarget(target);
-    if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') {
-      if (typeof resolved.instance.seekTo === 'function') return resolved.instance.seekTo(time);
-      return resolved.instance.setCurrentTime?.(time);
-    }
-    HtmlMediaController.seekTo(resolved.instance, time);
+    return this._execAction('seekTo', target, time);
   }
 
   async volume(vol, target) {
-    this._programmaticTimestamp = Date.now();
-    const resolved = this.resolveTarget(target);
-    if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') return resolved.instance.setVolume?.(vol);
-    HtmlMediaController.volume(resolved.instance, vol);
+    return this._execAction('volume', target, vol);
   }
 
   async mute(muted, target) {
-    this._programmaticTimestamp = Date.now();
-    const resolved = this.resolveTarget(target);
-    if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') return resolved.instance.setMuted?.(muted);
-    HtmlMediaController.mute(resolved.instance, muted);
+    return this._execAction('mute', target, muted);
   }
 
   async speed(rate, target) {
-    this._programmaticTimestamp = Date.now();
-    const resolved = this.resolveTarget(target);
-    if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') return resolved.instance.setPlaybackRate?.(rate);
-    HtmlMediaController.speed(resolved.instance, rate);
+    return this._execAction('speed', target, rate);
   }
 
   async pip(enable, target) {
-    const resolved = this.resolveTarget(target);
-    if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') return resolved.instance.requestPip?.(enable);
-    return HtmlMediaController.pip(resolved.instance, enable);
+    return this._execAction('pip', target, enable);
   }
 
   async load(source, target) {
-    const resolved = this.resolveTarget(target);
-    if (!resolved) throw new Error('[SRemote:DomDriver] Media target not found');
-    if (resolved.type === 'adapter') {
-      if (typeof resolved.instance.load === 'function') {
-        return resolved.instance.load(source);
-      }
-      console.warn('[SRemote] load() is primarily designed for custom adapters and is not implemented by default. Implement it via sremote.useAdapter().');
-      return;
-    }
-    HtmlMediaController.load(resolved.instance, source);
+    return this._execAction('load', target, source);
   }
 
   async quality(level, target) {
-    const resolved = this.resolveTarget(target);
-    if (!resolved) return;
-    if (resolved.type === 'adapter') return resolved.instance.setQuality?.(level);
+    return this._execAction('quality', target, level);
   }
 
   async getQualities(target) {
-    const resolved = this.resolveTarget(target);
-    if (!resolved) return [];
-    if (resolved.type === 'adapter') return resolved.instance.getQualities?.() || [];
-    return [];
+    return this._execAction('getQualities', target);
   }
 
   async subtitle(track, target) {
-    const resolved = this.resolveTarget(target);
-    if (!resolved) return;
-    if (resolved.type === 'adapter') return resolved.instance.setSubtitle?.(track);
-    HtmlMediaController.subtitle(resolved.instance, track);
+    return this._execAction('subtitle', target, track);
   }
 
   async getSubtitles(target) {
-    const resolved = this.resolveTarget(target);
-    if (!resolved) return [];
-    if (resolved.type === 'adapter') return resolved.instance.getSubtitles?.() || [];
-    return HtmlMediaController.getSubtitles(resolved.instance);
+    return this._execAction('getSubtitles', target);
   }
 
   async shuffle(enable, target) {
-    const resolved = this.resolveTarget(target);
-    if (!resolved) return;
-    if (resolved.type === 'adapter') return resolved.instance.setShuffle?.(enable);
+    return this._execAction('shuffle', target, enable);
   }
 
   async repeat(mode, target) {
-    const resolved = this.resolveTarget(target);
-    if (!resolved) return;
-    if (resolved.type === 'adapter') return resolved.instance.setRepeat?.(mode);
-    HtmlMediaController.repeat(resolved.instance, mode);
+    return this._execAction('repeat', target, mode);
   }
 
   async next(target) {
-    const resolved = this.resolveTarget(target);
-    if (!resolved) return;
-    if (resolved.type === 'adapter') return resolved.instance.next?.();
+    return this._execAction('next', target);
+  }
+
+  async previous(target) {
+    return this._execAction('previous', target);
   }
 
   getCapabilities(target) {
@@ -381,26 +291,44 @@ export class DomDriver extends BaseDriver {
     return evaluateCapabilities(resolved.instance);
   }
 
-  emit(event, payload) {
-    this.instanceManager.emitGlobalEvent(event, payload);
-  }
-
   on(event, handler) {
-    // Only subscribe to instanceManager bus to prevent duplicating events already handled by auto-tracking or adapters
-    return this.instanceManager.on(event, handler);
+    const ev = String(event || '').toLowerCase();
+    if (!this._listeners.has(ev)) this._listeners.set(ev, new Set());
+    this._listeners.get(ev).add(handler);
+    return () => this.off(event, handler);
   }
 
   off(event, handler) {
-    this.instanceManager.off(event, handler);
+    const ev = String(event || '').toLowerCase();
+    this._listeners.get(ev)?.delete(handler);
+  }
+
+  emit(event, payload) {
+    const ev = String(event || '').toLowerCase();
+    const set = this._listeners.get(ev);
+    if (set) {
+      for (const h of set) {
+        try {
+          h(payload);
+        } catch {}
+      }
+    }
+    const wildcard = this._listeners.get('*');
+    if (wildcard) {
+      for (const h of wildcard) {
+        try {
+          h(payload);
+        } catch {}
+      }
+    }
   }
 
   destroy() {
+    this._listeners.clear();
     if (this._domObserver) {
       try {
         this._domObserver.disconnect();
       } catch {}
-      this._domObserver = null;
     }
-    this.instanceManager.handleRemoveAdapter();
   }
 }

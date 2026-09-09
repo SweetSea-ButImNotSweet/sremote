@@ -206,3 +206,18 @@ export declare const console_log: (...args: any[]) => void;
 export declare const console_debug: (...args: any[]) => void;
 export declare const console_warn: (...args: any[]) => void;
 export declare const console_error: (...args: any[]) => void;
+
+export declare function resolveMediaElement(target: string | HTMLElement | null, doc?: Document | null): HTMLMediaElement | null;
+export declare function safePlayMedia(el: HTMLMediaElement): Promise<any>;
+export declare function safePauseMedia(el: HTMLMediaElement): void;
+export declare function executeMediaAction(target: any, action: string, value?: any, options?: Record<string, any>): Promise<any>;
+
+export declare class ActionTransactionTracker {
+  constructor(options?: { defaultTtlMs?: number });
+  startTransaction(action: string, targetValue?: any, instanceId?: string, ttlMs?: number): string;
+  matchAndConsume(eventName: string, payload?: Record<string, any>): { isProgrammatic: boolean; token: string | null; shouldSuppressEcho: boolean };
+  isEcho(action: string, value: any, instanceId?: string): boolean;
+  clear(): void;
+}
+export declare function getGlobalTransactionTracker(): ActionTransactionTracker;
+export declare function createTransactionTracker(options?: { defaultTtlMs?: number }): ActionTransactionTracker;
