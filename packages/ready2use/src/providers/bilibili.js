@@ -89,20 +89,11 @@ export class BilibiliProvider extends BaseProvider {
     return { player: { iframe, options }, element: iframe, iframe, destroy: () => {} };
   }
 
-  createAdapter(playerInfo, context) {
-    const iframe = context?.iframe || playerInfo?.iframe;
-
-    return {
-      load(source, page = 1) {
-        if (iframe) {
-          if (typeof source === 'object' && source !== null) {
-            iframe.src = buildBilibiliUrl({ ...source, autoplay: true });
-          } else {
-            iframe.src = buildBilibiliUrl({ videoId: String(source), page, autoplay: true });
-          }
-        }
-      },
-    };
+  createAdapter(_playerInfo, _context) {
+    // Bilibili iframe is natively controlled via SRemote Userscript injected inside the iframe.
+    // Returning null ensures no fake DOM adapter is registered in DomDriver, allowing
+    // SRemote to operate 100% in Userscript signal mode.
+    return null;
   }
 }
 

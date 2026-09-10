@@ -193,12 +193,22 @@ export class DomDriver {
     const map = this.adaptersMap;
     if (map.size === 0) return null;
 
+    // Prune any stale adapters whose DOM node has been detached from the document
+    for (const [id, ad] of Array.from(map.entries())) {
+      const el = ad?.mediaElement || ad?.element;
+      if (typeof el?.isConnected !== 'undefined' && !el.isConnected) {
+        map.delete(id);
+      }
+    }
+
+    if (map.size === 0) return null;
+
     const isSingle = !this.isMultiMode();
 
     if (preferredId && map.has(preferredId)) {
       const ad = map.get(preferredId);
       const el = ad?.mediaElement || ad?.element;
-      if (!el || typeof el.isConnected === 'undefined' || el.isConnected) {
+      if (typeof el?.isConnected === 'undefined' || el.isConnected) {
         return { type: 'adapter', instance: ad, instanceId: preferredId };
       }
     }
@@ -206,13 +216,16 @@ export class DomDriver {
     const entries = Array.from(map.entries());
     if (isSingle && entries.length > 0) {
       const [latestId, latestAd] = entries[entries.length - 1];
-      return { type: 'adapter', instance: latestAd, instanceId: latestId };
+      const el = latestAd?.mediaElement || latestAd?.element;
+      if (typeof el?.isConnected === 'undefined' || el.isConnected) {
+        return { type: 'adapter', instance: latestAd, instanceId: latestId };
+      }
     }
 
     for (let i = entries.length - 1; i >= 0; i--) {
       const [id, ad] = entries[i];
       const el = ad?.mediaElement || ad?.element;
-      if (!el || typeof el.isConnected === 'undefined' || el.isConnected) {
+      if (typeof el?.isConnected === 'undefined' || el.isConnected) {
         return { type: 'adapter', instance: ad, instanceId: id };
       }
     }

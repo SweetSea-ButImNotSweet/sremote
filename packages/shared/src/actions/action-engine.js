@@ -156,14 +156,23 @@ export async function executeMediaAction(target, action, value = undefined, opti
   const { isPureGet = false, transactionTracker = null, instanceId = 'unknown', logger = null } = options;
   const norm = String(action || '').toLowerCase();
 
-  const isAdapter = typeof target.getState === 'function' || typeof target.useAdapter === 'function' || !target.tagName;
+  const isAdapter = Boolean(
+    target &&
+      (typeof target.getState === 'function' ||
+        typeof target.useAdapter === 'function' ||
+        target[Symbol.for('__sremote_adapter__')] ||
+        target.source === 'adapter' ||
+        target.isAdapter === true ||
+        target.capabilities?.hasAdapter ||
+        (!target.tagName && typeof target.play === 'function' && typeof target.pause === 'function')),
+  );
 
   if (!isPureGet && transactionTracker && typeof transactionTracker.startTransaction === 'function') {
     transactionTracker.startTransaction(norm, value, instanceId);
   }
 
   if (logger?.debug) {
-    logger.debug(`[ActionEngine] Executing '${norm}' on ${isAdapter ? 'Adapter' : target.tagName}`, { value, instanceId });
+    logger.debug(`[ActionEngine] Executing '${norm}' on ${isAdapter ? 'Adapter' : target.tagName || 'Object'}`, { value, instanceId });
   }
 
   // --- 1. Custom Adapter Execution ---
@@ -637,7 +646,7 @@ export async function executeMediaAction(target, action, value = undefined, opti
           const t = el.textTracks[i];
           if (!targetLang) {
             t.mode = 'disabled';
-          } else if (t.id === targetLang || (t.language && t.language.toLowerCase() === targetLang) || (t.label && t.label.toLowerCase() === targetLang)) {
+          } else if (t.id === targetLang || t.language?.toLowerCase() === targetLang || t.label?.toLowerCase() === targetLang) {
             t.mode = 'showing';
           } else {
             t.mode = 'disabled';

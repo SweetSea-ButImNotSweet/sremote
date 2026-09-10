@@ -13,7 +13,7 @@ export function resolveElement(target) {
   if (typeof target === 'string') {
     return document.querySelector(target);
   }
-  if (target && target.nodeType === 1) {
+  if (target?.nodeType === 1) {
     return target;
   }
   return null;
@@ -95,7 +95,7 @@ export function waitForIframeLoad(iframe, timeoutMs = 5000) {
 
     try {
       // If the iframe already has readyState complete in some browsers
-      if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+      if (iframe.contentDocument?.readyState === 'complete') {
         resolve();
         return;
       }

@@ -238,8 +238,12 @@ export class BaseProvider {
   _buildDestroyHandler({ adapter, customDestroy, player, targetElement, remote, instanceId }) {
     return () => {
       try {
-        if (remote?.adapters && instanceId) {
-          remote.adapters.unregister(instanceId);
+        const client =
+          (remote?.adapters ? remote : null) ||
+          (typeof globalThis !== 'undefined' && globalThis[Symbol.for('__sremote_client__')]) ||
+          (typeof window !== 'undefined' && window.sremote?.adapters ? window.sremote : null);
+        if (client?.adapters && instanceId) {
+          client.adapters.unregister(instanceId);
         }
       } catch {}
 
@@ -286,7 +290,7 @@ export class BaseProvider {
       container.appendChild(targetElement);
     }
 
-    // 3. Build SRemote Custom Adapter
+    // 3. Build SRemote Custom Adapter (if provider supplies one)
     const rawAdapter = this.createAdapter(player, {
       options: opts,
       instanceId,
@@ -294,16 +298,18 @@ export class BaseProvider {
       iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null),
     });
 
-    const adapter = this._setupAdapter(rawAdapter);
-    const capabilities = adapter.capabilities;
+    const adapter = rawAdapter ? this._setupAdapter(rawAdapter) : null;
+    const capabilities = adapter ? adapter.capabilities : this.getCapabilities(null);
 
     // 4. Mark identity and adapter reference on DOM nodes so adapter lookup is seamless
     if (targetElement) {
       targetElement.setAttribute('data-sremote-id', instanceId);
       targetElement.setAttribute('data-sremote-provider', this.name);
-      try {
-        targetElement[Symbol.for('__sremote_adapter__')] = adapter;
-      } catch {}
+      if (adapter) {
+        try {
+          targetElement[Symbol.for('__sremote_adapter__')] = adapter;
+        } catch {}
+      }
     }
 
     return { player, element: targetElement, iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null), adapter, instanceId, capabilities, customDestroy };
@@ -320,7 +326,7 @@ export class BaseProvider {
     const result = await this._instantiate(opts);
 
     let remote = null;
-    if (opts.register !== false && opts.autoRegister !== false) {
+    if (result.adapter && opts.register !== false && opts.autoRegister !== false) {
       remote = await resolveSRemote(opts);
       if (remote?.adapters) {
         remote.adapters.register(result.adapter, result.instanceId);
@@ -364,7 +370,7 @@ export class BaseProvider {
     const result = await this._instantiate(opts, targetContainer);
 
     let remote = null;
-    if (opts.register !== false && opts.autoRegister !== false) {
+    if (result.adapter && opts.register !== false && opts.autoRegister !== false) {
       remote = await resolveSRemote(opts);
       if (remote?.adapters) {
         remote.adapters.register(result.adapter, result.instanceId);

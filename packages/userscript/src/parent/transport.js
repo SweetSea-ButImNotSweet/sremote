@@ -57,17 +57,66 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
     return null;
   }
 
+  function getDomainOrOrigin(urlOrOrigin) {
+    if (!urlOrOrigin) return '';
+    try {
+      const parsed = new URL(urlOrOrigin, typeof location !== 'undefined' ? location.href : 'http://localhost');
+      return parsed.hostname.toLowerCase();
+    } catch {
+      return String(urlOrOrigin)
+        .replace(/^https?:\/\//i, '')
+        .split('/')[0]
+        .toLowerCase();
+    }
+  }
+
+  function isDifferentService(locA, locB) {
+    const hostA = getDomainOrOrigin(locA);
+    const hostB = getDomainOrOrigin(locB);
+    if (!hostA || !hostB) return false;
+    return hostA !== hostB;
+  }
+
   // --- 1. Port Setup & Channel Management ---
   function setupPortForInstance(instanceId, port, initialLocation, initialOrigin, iframeEl = null, initialTransportState = TRANSPORT_STATE.CONNECTED) {
-    // Single Mode: cleanup older instance safely, EXCEPT if it belongs to the same iframe or container
+    const newLocationOrOrigin = initialLocation || initialOrigin || '';
+
+    // Check for Service / Domain Switch: if domain changes, immediately evict older stale instance
+    if (instances.size > 0 && newLocationOrOrigin) {
+      for (const [oldId, oldInst] of Array.from(instances.entries())) {
+        if (oldId !== instanceId) {
+          const oldLocationOrOrigin = oldInst?.location || oldInst?.origin || '';
+          if (isDifferentService(oldLocationOrOrigin, newLocationOrOrigin)) {
+            console_log(
+              `%c[SRemote:transport] Service switch detected (${getDomainOrOrigin(oldLocationOrOrigin)} -> ${getDomainOrOrigin(newLocationOrOrigin)}): evicting old instance ${oldId}`,
+              'color: #f59e0b; font-weight: bold;',
+            );
+            try {
+              oldInst?.port?.close();
+            } catch {}
+            removeInstance(oldId, 'service_switched');
+          }
+        }
+      }
+    }
+
+    // Single Mode: cleanup older instance safely
     if (!isMultiModeActive() && instances.size > 0) {
       for (const [oldId, oldInst] of Array.from(instances.entries())) {
         if (oldId !== instanceId) {
           const oldIframe = oldInst?.iframeEl || assignedIframeIdMap.get(oldId);
-          if (iframeEl && oldIframe && (oldIframe === iframeEl || oldIframe.contains?.(iframeEl) || iframeEl.contains?.(oldIframe))) {
+          // If different service or iframe element is replaced/detached, evict old instance immediately
+          const isSameDomNode = iframeEl && oldIframe && (oldIframe === iframeEl || oldIframe.contains?.(iframeEl) || iframeEl.contains?.(oldIframe));
+          const isSameService = !isDifferentService(oldInst?.location || oldInst?.origin, newLocationOrOrigin);
+
+          if (isSameDomNode && isSameService) {
             continue;
           }
+
           console_log(`%c[SRemote:transport] Single mode: replacing older instance ${oldId} -> ${instanceId}`, 'color: #f59e0b;');
+          try {
+            oldInst?.port?.close();
+          } catch {}
           removeInstance(oldId, 'replaced_by_new_instance');
         }
       }

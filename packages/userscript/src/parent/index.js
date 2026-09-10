@@ -55,7 +55,7 @@ export function initParentController() {
   } catch {}
 
   const instanceManager = createInstanceManager();
-  const { instances, assignedIframeIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts } = instanceManager;
+  const { instances, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts } = instanceManager;
 
   let broadcastHelloRef = null;
 
@@ -179,7 +179,7 @@ export function initParentController() {
       return Promise.resolve({ success: true, instanceId: 'all', action });
     }
 
-    const isAssignedPending = targetId && (assignedIframeIdMap.has(targetId) || (target && target.status === 'connecting'));
+    const isAssignedPending = targetId && (assignedIframeIdMap.has(targetId) || target?.status === 'connecting');
 
     if (target?.port) {
       try {

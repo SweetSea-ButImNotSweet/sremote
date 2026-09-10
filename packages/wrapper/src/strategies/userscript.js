@@ -14,7 +14,7 @@ export class UserscriptDriver {
     if (typeof window === 'undefined') return false;
     const api = window.SRemote || window.sremote;
     // Do not treat wrapper itself as external userscript driver
-    if (api && api[Symbol.for('__sremote_source__')] === 'wrapper') {
+    if (api?.[Symbol.for('__sremote_source__')] === 'wrapper') {
       return false;
     }
     return isNativeSRemoteInstance(api);
@@ -26,7 +26,7 @@ export class UserscriptDriver {
       return null;
     }
     const api = window.SRemote || window.sremote || null;
-    if (api && api[Symbol.for('__sremote_source__')] === 'wrapper') {
+    if (api?.[Symbol.for('__sremote_source__')] === 'wrapper') {
       return null;
     }
     const nativeApi = isNativeSRemoteInstance(api) ? api : null;
