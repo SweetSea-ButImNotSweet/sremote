@@ -3,6 +3,8 @@ import { descriptors, logger, console_warn } from '../config.js';
 import { mockMediaSessionInstance } from './media-session.js';
 import { executeMediaAction, getGlobalTransactionTracker } from '@sremote/shared';
 
+const lastKnownDurationMap = new WeakMap();
+
 export function getVideoState(targetMedia, activeMedia, resolveActiveMedia) {
   const media = targetMedia || activeMedia || (resolveActiveMedia() ? activeMedia : null);
   if (!media) return null;
@@ -16,7 +18,13 @@ export function getVideoState(targetMedia, activeMedia, resolveActiveMedia) {
   const isEnded = safeGetProp(media, descriptors.ended, 'ended') ?? (media.ended !== undefined ? media.ended : false);
   const curReadyState = safeGetProp(media, descriptors.readyState, 'readyState') ?? (media.readyState !== undefined ? media.readyState : 0);
   const curSrc = safeGetProp(media, descriptors.currentSrc, 'currentSrc') || media.currentSrc || safeGetProp(media, descriptors.src, 'src') || media.src || '';
-  const dur = Number.isFinite(rawDur) ? rawDur : null;
+
+  let dur = Number.isFinite(rawDur) && rawDur > 0 ? rawDur : null;
+  if (dur) {
+    lastKnownDurationMap.set(media, dur);
+  } else {
+    dur = lastKnownDurationMap.get(media) || null;
+  }
 
   let bufferedEnd = 0;
   try {
@@ -130,8 +138,16 @@ export function createMediaController({
     const norm = action.toLowerCase();
 
     resolveActiveMedia();
-    const activeMedia = activeMediaGetter();
-    const mediaType = mediaTypeGetter();
+    let activeMedia = activeMediaGetter();
+    let mediaType = mediaTypeGetter();
+
+    // If media is momentarily unavailable (e.g. Bilibili switching video element/source), retry briefly
+    if (!activeMedia) {
+      await new Promise(r => setTimeout(r, 120));
+      resolveActiveMedia();
+      activeMedia = activeMediaGetter();
+      mediaType = mediaTypeGetter();
+    }
 
     // 1. Custom Adapter Execution
     if (mediaType === 'adapter' && activeMedia && typeof activeMedia === 'object') {

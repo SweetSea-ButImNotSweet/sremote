@@ -152,7 +152,9 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
       if (lowerAction === 'nomedia' || lowerAction === 'mediadisconnected') {
         console_log(`%c[SRemote:media] Instance '${instanceId}' has no active media. Port preserved.`, 'color: #f59e0b;');
         item.hasMedia = false;
-        item.state = null;
+        if (item.state && typeof item.state === 'object') {
+          item.state = { ...item.state, paused: true };
+        }
         onMediaStateChange({ instanceId, hasMedia: false, action: lowerAction });
         emitGlobalEvent('noMedia', { instanceId, hasMedia: false, reason: data.reason || 'detached' });
         notifyMediaCountChange();

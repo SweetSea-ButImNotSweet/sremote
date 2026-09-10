@@ -158,7 +158,7 @@ export function initParentController() {
 
     const isAssignedPending = targetId && (assignedIframeIdMap.has(targetId) || (target && target.status === 'connecting'));
 
-    if (target?.port && target.status !== 'connecting') {
+    if (target?.port) {
       try {
         target.port.postMessage({ type: `${NS}${action}`, source: 'parent', value });
         return Promise.resolve({ success: true, instanceId: targetId, action });
