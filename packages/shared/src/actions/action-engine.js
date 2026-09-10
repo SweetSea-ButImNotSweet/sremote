@@ -494,7 +494,7 @@ export async function executeMediaAction(target, action, value = undefined, opti
     case 'seek':
       if (!isPureGet && value !== undefined && value !== null) {
         const dur = el.duration || (nativeMediaDescriptors.duration?.get?.call(el) ?? 0) || 0;
-        const curTime = el.currentTime ?? (nativeMediaDescriptors.currentTime?.get?.call(el) ?? 0);
+        const curTime = el.currentTime ?? nativeMediaDescriptors.currentTime?.get?.call(el) ?? 0;
         const targetTime = Math.max(0, Math.min(dur || Infinity, curTime + Number(value)));
         try {
           if (nativeMediaDescriptors.currentTime?.set) {
@@ -560,7 +560,7 @@ export async function executeMediaAction(target, action, value = undefined, opti
     case 'muted':
     case 'mute':
       if (!isPureGet) {
-        const curMuted = el.muted ?? (nativeMediaDescriptors.muted?.get?.call(el) ?? false);
+        const curMuted = el.muted ?? nativeMediaDescriptors.muted?.get?.call(el) ?? false;
         const nextMuted = typeof value === 'boolean' ? value : !curMuted;
         try {
           if (nativeMediaDescriptors.muted?.set) {

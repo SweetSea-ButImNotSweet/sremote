@@ -20,15 +20,18 @@
   }
 
   // Proxy object ensuring sremoteApi.method() always dynamically targets the latest active API
-  const sremoteApi = new Proxy({}, {
-    get(target, prop) {
-      const api = getSRemoteApi();
-      if (!api) return undefined;
-      const val = api[prop];
-      if (typeof val === 'function') return val.bind(api);
-      return val;
-    }
-  });
+  const sremoteApi = new Proxy(
+    {},
+    {
+      get(target, prop) {
+        const api = getSRemoteApi();
+        if (!api) return undefined;
+        const val = api[prop];
+        if (typeof val === 'function') return val.bind(api);
+        return val;
+      },
+    },
+  );
 
   // Constants
   const TOTAL_SLOTS = 6;

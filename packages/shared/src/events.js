@@ -1,13 +1,23 @@
 import { defaultLogger } from './logger.js';
 import { getGlobalTransactionTracker } from './pipeline/transaction-tracker.js';
 
+// --- Constants & Configuration ---
+const TIMEUPDATE_THROTTLE_MS = 250;
+const PROGRESS_THROTTLE_MS = 500;
+const TIMEUPDATE_LOG_THROTTLE_MS = 2000;
+const PROGRAMMATIC_WINDOW_MS = 500;
+const ALMOST_END_THRESHOLD_SEC = 0.8;
+const ALMOST_END_MIN_DURATION_SEC = 3;
+const ALMOST_END_RESET_THRESHOLD_SEC = 1.5;
+const ENDED_DRIFT_TOLERANCE_SEC = 1.5;
+
+const sharedLastKnownDurationMap = new WeakMap();
+
 /**
  * Extracts standardized media state snapshot from a HTMLMediaElement or adapter.
  * @param {HTMLMediaElement|Object} media
  * @returns {import('./index.d.ts').SRemoteMediaState|null}
  */
-const sharedLastKnownDurationMap = new WeakMap();
-
 export function extractMediaState(media) {
   if (!media) return null;
 
@@ -18,30 +28,34 @@ export function extractMediaState(media) {
     } catch {}
   }
 
-  const curVol = media.volume !== undefined ? media.volume : 1;
-  const curMuted = media.muted !== undefined ? media.muted : false;
-  const curTime = media.currentTime !== undefined ? media.currentTime : 0;
+  const curVol = media.volume ?? 1;
+  const curMuted = media.muted ?? false;
+  const curTime = media.currentTime ?? 0;
   const rawDur = media.duration;
-  const curRate = media.playbackRate !== undefined ? media.playbackRate : 1;
-  const isPaused = media.paused !== undefined ? (typeof media.paused === 'function' ? media.paused() : Boolean(media.paused)) : true;
-  const isEnded = media.ended !== undefined ? Boolean(media.ended) : false;
-  const curReadyState = media.readyState !== undefined ? media.readyState : 0;
+  const curRate = media.playbackRate ?? 1;
+  const isPaused = typeof media.paused === 'function' ? media.paused() : Boolean(media.paused ?? true);
+  const isEnded = Boolean(media.ended);
+  const curReadyState = media.readyState ?? 0;
   const curSrc = media.currentSrc || media.src || '';
 
   let dur = Number.isFinite(rawDur) && rawDur > 0 ? rawDur : null;
-  if (dur && typeof media === 'object') {
-    sharedLastKnownDurationMap.set(media, dur);
-  } else if (typeof media === 'object') {
-    dur = sharedLastKnownDurationMap.get(media) || null;
+  if (typeof media === 'object') {
+    try {
+      if (dur) {
+        sharedLastKnownDurationMap.set(media, dur);
+      } else {
+        dur = sharedLastKnownDurationMap.get(media) ?? null;
+      }
+    } catch {}
   }
 
   let bufferedEnd = 0;
   try {
     const buf = media.buffered;
-    if (buf && buf.length > 0) bufferedEnd = buf.end(buf.length - 1);
+    if (buf?.length > 0) bufferedEnd = buf.end(buf.length - 1);
   } catch {}
 
-  const isLoop = media.loop !== undefined ? Boolean(media.loop) : false;
+  const isLoop = Boolean(media.loop);
   const isFullscreen =
     typeof document !== 'undefined' && Boolean(document.fullscreenElement && (document.fullscreenElement === media || document.fullscreenElement.contains(media)));
   const isPip = typeof document !== 'undefined' && document.pictureInPictureElement === media;
@@ -67,7 +81,7 @@ export function extractMediaState(media) {
 /**
  * Creates a standardized SRemote event payload.
  * @param {string} event
- * @param {Object} options
+ * @param {Object} [options={}]
  * @returns {Object}
  */
 export function createEventPayload(event, options = {}) {
@@ -120,11 +134,10 @@ export function evaluateCapabilities(target) {
     return { ...target.capabilities };
   }
 
-  const isVideo = Boolean(target.tagName === 'VIDEO');
-  const isAudio = Boolean(target.tagName === 'AUDIO');
+  const isVideo = target.tagName === 'VIDEO';
+  const isAudio = target.tagName === 'AUDIO';
   const hasNative = isVideo || isAudio;
-
-  const hasFn = fnName => Boolean(typeof target[fnName] === 'function');
+  const hasFn = fnName => typeof target[fnName] === 'function';
 
   return {
     play: hasNative || hasFn('play'),
@@ -138,7 +151,7 @@ export function evaluateCapabilities(target) {
     playbackRate: hasNative || hasFn('setPlaybackRate'),
     pip: (isVideo && typeof document !== 'undefined' && Boolean(document.pictureInPictureEnabled || target.requestPictureInPicture)) || hasFn('requestPip') || hasFn('pip'),
     quality: hasFn('setQuality'),
-    subtitles: Boolean(hasNative && target.textTracks && target.textTracks.length > 0) || hasFn('setSubtitle') || hasFn('getSubtitles'),
+    subtitles: Boolean(hasNative && target.textTracks?.length > 0) || hasFn('setSubtitle') || hasFn('getSubtitles'),
     shuffle: hasFn('setShuffle'),
     repeat: hasNative || hasFn('setRepeat'),
     next: hasFn('next'),
@@ -156,8 +169,7 @@ export function evaluateCapabilities(target) {
  * @returns {boolean}
  */
 export function hasMediaSource(media) {
-  if (!media) return false;
-  return Boolean(media.currentSrc || media.src || media.srcObject);
+  return Boolean(media?.currentSrc || media?.src || media?.srcObject);
 }
 
 /**
@@ -174,26 +186,21 @@ export function isValidMediaElement(media, options = {}) {
   if (!media) return false;
 
   const { minSize = 32, requireConnected = true } = options;
+  if (requireConnected && !media.isConnected) return false;
 
-  if (requireConnected && !media.isConnected) {
-    return false;
-  }
+  const tag = media.tagName?.toUpperCase() ?? '';
 
-  const tag = media.tagName ? media.tagName.toUpperCase() : '';
+  if (tag === 'VIDEO' && typeof media.getBoundingClientRect === 'function') {
+    try {
+      const rect = media.getBoundingClientRect();
+      const isTooSmall = (rect.width > 0 && rect.width < minSize) || (rect.height > 0 && rect.height < minSize);
+      const isHidden = rect.width === 0 && rect.height === 0 && !media.hasAttribute?.('controls');
 
-  if (tag === 'VIDEO') {
-    if (typeof media.getBoundingClientRect === 'function') {
-      try {
-        const rect = media.getBoundingClientRect();
-        const isTooSmall = (rect.width > 0 && rect.width < minSize) || (rect.height > 0 && rect.height < minSize);
-        const isHidden = rect.width === 0 && rect.height === 0 && !media.hasAttribute?.('controls');
-
-        // Reject tracking pixels or hidden videos without source/playback
-        if (isTooSmall || (isHidden && media.paused && !hasMediaSource(media))) {
-          return false;
-        }
-      } catch {}
-    }
+      // Reject tracking pixels or hidden videos without source/playback
+      if (isTooSmall || (isHidden && media.paused && !hasMediaSource(media))) {
+        return false;
+      }
+    } catch {}
   }
 
   return true;
@@ -252,6 +259,33 @@ export const SAFE_FALLBACK_EVENTS = [
 ];
 
 /**
+ * State-changing events that should automatically emit a unified 'state' event.
+ */
+const STATE_CHANGING_EVENTS = new Set(['play', 'pause', 'playing', 'ended', 'volumechange', 'ratechange', 'seeked', 'loadedmetadata']);
+
+/**
+ * Resolves whether an event was initiated programmatically.
+ * Combines transaction tracker match with timestamp fallback.
+ *
+ * @param {Object} params
+ * @param {string} params.eventName
+ * @param {string} params.instanceId
+ * @param {*} [params.media]
+ * @param {*} [params.value]
+ * @param {Object} [params.tracker]
+ * @param {Function} [params.timestampGetter]
+ * @returns {boolean}
+ */
+function resolveIsProgrammatic({ eventName, instanceId, media, value, tracker, timestampGetter }) {
+  if (tracker?.matchAndConsume?.(eventName, { instanceId, media, value })?.isProgrammatic) {
+    return true;
+  }
+
+  const lastTs = timestampGetter?.();
+  return typeof lastTs === 'number' && Date.now() - lastTs < PROGRAMMATIC_WINDOW_MS;
+}
+
+/**
  * Binds standardized event listeners to an HTMLMediaElement with smart end/almostend handling.
  * @param {HTMLMediaElement} media
  * @param {(event: string, payload: Object) => void} onEvent
@@ -274,7 +308,7 @@ export function bindMediaEvents(media, onEvent, options = {}) {
   } = options;
 
   const excludedSet = excludedEvents ? (excludedEvents instanceof Set ? excludedEvents : new Set(Array.from(excludedEvents).map(e => String(e).toLowerCase()))) : null;
-  const targetEvents = excludedSet && excludedSet.size > 0 ? events.filter(evt => !excludedSet.has(evt.toLowerCase())) : events;
+  const targetEvents = excludedSet?.size > 0 ? events.filter(evt => !excludedSet.has(evt.toLowerCase())) : events;
 
   if (targetEvents.length === 0) {
     return () => {};
@@ -283,55 +317,36 @@ export function bindMediaEvents(media, onEvent, options = {}) {
   let hasEmittedAlmostEnd = false;
   let lastTimeupdate = 0;
   let lastProgress = 0;
-  const TIMEUPDATE_THROTTLE_MS = 250;
-  const PROGRESS_THROTTLE_MS = 500;
   const boundListeners = [];
 
   for (const evtName of targetEvents) {
     const listener = eventObj => {
+      const isProgrammatic = resolveIsProgrammatic({ eventName: evtName, instanceId, media, tracker: transactionTracker, timestampGetter: programmaticActionTimestampGetter });
+
       const now = Date.now();
-      let isProgrammatic = false;
-      if (transactionTracker && typeof transactionTracker.matchAndConsume === 'function') {
-        const matchResult = transactionTracker.matchAndConsume(evtName, { instanceId, media });
-        isProgrammatic = matchResult.isProgrammatic;
-      }
-      if (!isProgrammatic && typeof programmaticActionTimestampGetter === 'function') {
-        const lastTs = programmaticActionTimestampGetter();
-        isProgrammatic = now - lastTs < 500;
-      }
 
       if (evtName === 'timeupdate') {
-        if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) {
-          return;
-        }
+        if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) return;
         lastTimeupdate = now;
 
         const dur = Number.isFinite(media.duration) ? media.duration : null;
         const curTime = media.currentTime || 0;
-        if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
+        if (dur && dur > ALMOST_END_MIN_DURATION_SEC && curTime >= dur - ALMOST_END_THRESHOLD_SEC && curTime <= dur) {
           if (!hasEmittedAlmostEnd) {
             hasEmittedAlmostEnd = true;
-            const state = extractMediaState(media);
+            const almostEndEvent = treatAlmostEndAsEnd ? 'ended' : 'almostend';
             onEvent(
-              treatAlmostEndAsEnd ? 'ended' : 'almostend',
-              createEventPayload(treatAlmostEndAsEnd ? 'ended' : 'almostend', {
-                source,
-                instanceId,
-                mediaType: media.tagName ? media.tagName.toLowerCase() : 'video',
-                state,
-                isProgrammatic,
-              }),
+              almostEndEvent,
+              createEventPayload(almostEndEvent, { source, instanceId, mediaType: media.tagName?.toLowerCase() ?? 'video', state: extractMediaState(media), isProgrammatic }),
             );
           }
-        } else if (dur && curTime < dur - 1.5) {
+        } else if (dur && curTime < dur - ALMOST_END_RESET_THRESHOLD_SEC) {
           hasEmittedAlmostEnd = false;
         }
       }
 
       if (evtName === 'progress') {
-        if (now - lastProgress < PROGRESS_THROTTLE_MS) {
-          return;
-        }
+        if (now - lastProgress < PROGRESS_THROTTLE_MS) return;
         lastProgress = now;
       }
 
@@ -339,13 +354,19 @@ export function bindMediaEvents(media, onEvent, options = {}) {
         hasEmittedAlmostEnd = false;
         const dur = Number.isFinite(media.duration) ? media.duration : null;
         const curTime = media.currentTime || 0;
-        if (dur && dur > 0 && Math.abs(dur - curTime) > 1.5) return;
+        if (dur && dur > 0 && Math.abs(dur - curTime) > ENDED_DRIFT_TOLERANCE_SEC) return;
       }
 
-      const state = extractMediaState(media);
       onEvent(
         evtName,
-        createEventPayload(evtName, { source, instanceId, mediaType: media.tagName ? media.tagName.toLowerCase() : 'video', state, isProgrammatic, originalEvent: eventObj }),
+        createEventPayload(evtName, {
+          source,
+          instanceId,
+          mediaType: media.tagName?.toLowerCase() ?? 'video',
+          state: extractMediaState(media),
+          isProgrammatic,
+          originalEvent: eventObj,
+        }),
       );
     };
 
@@ -362,6 +383,28 @@ export function bindMediaEvents(media, onEvent, options = {}) {
     boundListeners.length = 0;
   };
 }
+
+/**
+ * Methods intercepted on raw adapter to mark programmatic timestamp.
+ */
+const ACTION_METHODS = [
+  'play',
+  'pause',
+  'toggle',
+  'stop',
+  'seek',
+  'seekTo',
+  'setCurrentTime',
+  'setVolume',
+  'volume',
+  'setMuted',
+  'mute',
+  'setPlaybackRate',
+  'speed',
+  'requestPip',
+  'setLoop',
+  'load',
+];
 
 /**
  * Wraps a user-provided custom adapter without mutating the original object.
@@ -388,25 +431,6 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
   let programmaticActionTimestamp = 0;
 
   // Intercept action methods to detect programmatic calls
-  const ACTION_METHODS = [
-    'play',
-    'pause',
-    'toggle',
-    'stop',
-    'seek',
-    'seekTo',
-    'setCurrentTime',
-    'setVolume',
-    'volume',
-    'setMuted',
-    'mute',
-    'setPlaybackRate',
-    'speed',
-    'requestPip',
-    'setLoop',
-    'load',
-  ];
-
   for (const method of ACTION_METHODS) {
     if (typeof rawAdapter[method] === 'function') {
       adapter[method] = function (...args) {
@@ -417,33 +441,20 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
   }
 
   let lastTimeupdateAdapterLog = 0;
-  const TIMEUPDATE_LOG_THROTTLE_MS = 2000;
 
   adapter.emit = (event, payload = {}) => {
     const ev = String(event || '').toLowerCase();
     handledEvents.add(ev);
 
-    if (originalEmit) {
-      try {
-        originalEmit(event, payload);
-      } catch {}
-    }
+    try {
+      originalEmit?.(event, payload);
+    } catch {}
 
     const payloadObj = typeof payload === 'object' && payload !== null ? payload : { value: payload };
-    let isProgrammatic = false;
-    if (payloadObj.isProgrammatic !== undefined) {
-      isProgrammatic = payloadObj.isProgrammatic;
-    } else if (payloadObj.programmatic !== undefined) {
-      isProgrammatic = payloadObj.programmatic;
-    } else {
-      const tracker = getGlobalTransactionTracker();
-      const match = tracker.matchAndConsume(ev, { instanceId, value: payloadObj.value });
-      if (match.isProgrammatic) {
-        isProgrammatic = true;
-      } else {
-        isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
-      }
-    }
+    const isProgrammatic =
+      payloadObj.isProgrammatic ??
+      payloadObj.programmatic ??
+      resolveIsProgrammatic({ eventName: ev, instanceId, value: payloadObj.value, tracker: getGlobalTransactionTracker(), timestampGetter: () => programmaticActionTimestamp });
 
     const state = extractMediaState(adapter);
     const fullPayload = createEventPayload(ev, { source, instanceId, mediaType: 'adapter', isProgrammatic, ...(state ? { state } : {}), ...payloadObj });
@@ -464,8 +475,7 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
       } catch {}
 
       // Automatically trigger unified 'state' event for state-changing events
-      const stateChangingEvents = ['play', 'pause', 'playing', 'ended', 'volumechange', 'ratechange', 'seeked', 'loadedmetadata'];
-      if (ev !== 'state' && stateChangingEvents.includes(ev)) {
+      if (ev !== 'state' && STATE_CHANGING_EVENTS.has(ev)) {
         try {
           const statePayload = createEventPayload('state', {
             source,
@@ -484,18 +494,12 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
 
   if (typeof adapter.toggle !== 'function' && typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
     adapter.toggle = async function () {
-      const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : typeof adapter.paused === 'boolean' ? adapter.paused : true;
-      if (isPaused) {
-        return adapter.play();
-      } else {
-        return adapter.pause();
-      }
+      const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : Boolean(adapter.paused ?? true);
+      return isPaused ? adapter.play() : adapter.pause();
     };
   }
 
-  if (!adapter.capabilities) {
-    adapter.capabilities = evaluateCapabilities(adapter);
-  }
+  adapter.capabilities ??= evaluateCapabilities(adapter);
 
   // Setup Selective DOM Fallback if a native HTMLMediaElement is attached to the adapter
   const targetMediaEl =
@@ -512,17 +516,11 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
     } catch {}
 
     if (rawAdapter.fallbackEvents !== false) {
-      // Determine allowed fallback events:
-      // If user supplied explicit array, use that.
-      // Otherwise, default to SAFE_FALLBACK_EVENTS (or include lifecycle if fallbackLifecycle is true).
-      let allowedFallbackEvents;
-      if (Array.isArray(rawAdapter.fallbackEvents)) {
-        allowedFallbackEvents = rawAdapter.fallbackEvents.map(e => String(e).toLowerCase());
-      } else if (rawAdapter.fallbackLifecycle === true) {
-        allowedFallbackEvents = MEDIA_EVENTS;
-      } else {
-        allowedFallbackEvents = SAFE_FALLBACK_EVENTS;
-      }
+      const allowedFallbackEvents = Array.isArray(rawAdapter.fallbackEvents)
+        ? rawAdapter.fallbackEvents.map(e => String(e).toLowerCase())
+        : rawAdapter.fallbackLifecycle === true
+          ? MEDIA_EVENTS
+          : SAFE_FALLBACK_EVENTS;
 
       unbindFallback = bindMediaEvents(
         targetMediaEl,
@@ -532,11 +530,9 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
             const state = extractMediaState(adapter) || payload.state;
             const forwarded = { ...payload, source: 'adapter-dom-fallback', instanceId, state };
             defaultLogger.scope('event').debug(`Adapter fallback emit -> ${evtName}`, forwarded);
-            if (typeof onEmit === 'function') {
-              try {
-                onEmit(evtName, forwarded);
-              } catch {}
-            }
+            try {
+              onEmit?.(evtName, forwarded);
+            } catch {}
           }
         },
         {
@@ -558,11 +554,14 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
       } catch {}
       unbindFallback = null;
     }
-    if (origDestroy) {
-      try {
-        origDestroy();
-      } catch {}
-    }
+    // Clean up instance memory in global transaction tracker
+    try {
+      getGlobalTransactionTracker().removeInstance(instanceId);
+    } catch {}
+
+    try {
+      origDestroy?.();
+    } catch {}
   };
 
   return adapter;
