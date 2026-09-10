@@ -79,7 +79,7 @@ export function createMediaResolver(createdMediaPool, bindVideoEvents) {
       // Helper to evaluate visible render area of a media element
       const getMediaArea = el => {
         try {
-          if (!el || !el.isConnected) return 0;
+          if (!el?.isConnected) return 0;
           const rect = el.getBoundingClientRect();
           if (rect.width > 0 && rect.height > 0) {
             return rect.width * rect.height;
@@ -91,7 +91,7 @@ export function createMediaResolver(createdMediaPool, bindVideoEvents) {
       };
 
       // Filter connected media elements first
-      const connectedMedia = all.filter(el => el && el.isConnected);
+      const connectedMedia = all.filter(el => el?.isConnected);
       const pool = connectedMedia.length > 0 ? connectedMedia : all;
 
       // Sort candidate media:

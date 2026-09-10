@@ -12,7 +12,7 @@ export function showConnectedIndicator(origin, primaryAuthorizedOrigin) {
   const targetOrigin = origin || primaryAuthorizedOrigin || 'unknown_parent';
   const { hideBadgeKey } = getOriginStorageKeys(targetOrigin);
   if (Storage.get(hideBadgeKey) === '1') return;
-  if (indicatorHost && indicatorHost.isConnected) return;
+  if (indicatorHost?.isConnected) return;
 
   indicatorHost = document.createElement('div');
   indicatorHost.id = 'sremote-indicator-host';

@@ -130,7 +130,7 @@ export class TikTokProvider extends BaseProvider {
 
     const messageHandler = e => {
       if (e.origin !== 'https://www.tiktok.com') return;
-      if (!e.data || !e.data['x-tiktok-player']) return;
+      if (!e.data?.['x-tiktok-player']) return;
 
       const { type, value } = e.data;
 

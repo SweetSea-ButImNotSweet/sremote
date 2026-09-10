@@ -150,7 +150,7 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
       return;
     }
     for (const [id, el] of topMediaElementsMap.entries()) {
-      if (el === mediaElOrId || (mediaElOrId.contains && mediaElOrId.contains(el))) {
+      if (el === mediaElOrId || mediaElOrId.contains?.(el)) {
         untrackElement(id);
       }
     }
@@ -192,7 +192,7 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
         for (const node of m.removedNodes) {
           if (node.nodeType === 1) {
             for (const [id, el] of topMediaElementsMap.entries()) {
-              if (el === node || (node.contains && node.contains(el))) {
+              if (el === node || node.contains?.(el)) {
                 untrackElement(id);
               }
             }

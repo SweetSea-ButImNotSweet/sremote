@@ -220,11 +220,11 @@ export function initParentController() {
     const keys = Storage.list();
     const found = [];
     for (const k of keys) {
-      if (k && k.startsWith('sremote:report:')) {
+      if (k?.startsWith('sremote:report:')) {
         const raw = Storage.get(k);
         try {
           const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          if (data && data.hasMedia) {
+          if (data?.hasMedia) {
             found.push(data);
           }
         } catch {}
@@ -247,7 +247,7 @@ export function initParentController() {
             if (node.nodeType === 1) {
               if (node.tagName === 'IFRAME') {
                 hasNewIframe = true;
-              } else if (node.querySelector && node.querySelector('iframe')) {
+              } else if (node.querySelector?.('iframe')) {
                 hasNewIframe = true;
               }
             }

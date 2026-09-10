@@ -1,0 +1,4 @@
+{
+  "compilerOptions": { "target": "ESNext", "module": "ESNext", "moduleResolution": "bundler", "allowJs": true, "checkJs": false, "noEmit": true },
+  "include": ["packages/**/*", ".antigravity/**/*"]
+}

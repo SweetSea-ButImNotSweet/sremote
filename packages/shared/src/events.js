@@ -36,7 +36,7 @@ export function extractMediaState(media) {
   const isPaused = typeof media.paused === 'function' ? media.paused() : Boolean(media.paused ?? true);
   const isEnded = Boolean(media.ended);
   const curReadyState = media.readyState ?? 0;
-  const curSrc = media.currentSrc || media.src || '';
+  const curSrc = media.currentSrc ?? media.src ?? '';
 
   let dur = Number.isFinite(rawDur) && rawDur > 0 ? rawDur : null;
   if (typeof media === 'object') {
@@ -169,7 +169,7 @@ export function evaluateCapabilities(target) {
  * @returns {boolean}
  */
 export function hasMediaSource(media) {
-  return Boolean(media?.currentSrc || media?.src || media?.srcObject);
+  return Boolean(media?.currentSrc ?? media?.src ?? media?.srcObject);
 }
 
 /**

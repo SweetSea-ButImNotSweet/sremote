@@ -95,7 +95,7 @@ export class InstagramProvider extends BaseProvider {
         });
       };
 
-      if (instgrm && instgrm.Embeds && typeof instgrm.Embeds.process === 'function') {
+      if (instgrm?.Embeds && typeof instgrm.Embeds.process === 'function') {
         try {
           instgrm.Embeds.process(tempNode);
         } catch {}

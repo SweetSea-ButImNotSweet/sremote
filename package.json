@@ -30,10 +30,13 @@
   "license": "LGPL-3.0",
   "devDependencies": {
     "@biomejs/biome": "^2.5.10",
+    "@typescript-eslint/eslint-plugin": "^8.70.0",
+    "@typescript-eslint/parser": "^8.70.0",
     "clean-css": "^5.3.3",
     "cross-env": "^10.1.0",
     "eslint": "^10.9.1",
     "knip": "^6.32.3",
+    "typescript": "^6.0.3",
     "vite": "^8.2.2",
     "vite-plugin-monkey": "^8.1.0"
   },

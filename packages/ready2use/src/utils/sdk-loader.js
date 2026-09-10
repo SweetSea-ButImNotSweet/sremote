@@ -45,7 +45,7 @@ let ytSdkPromise = null;
  */
 export function loadYouTubeIframeApi() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.YT && window.YT.Player) {
+  if (window.YT?.Player) {
     return Promise.resolve(window.YT);
   }
 
@@ -79,7 +79,7 @@ let vimeoSdkPromise = null;
  */
 export function loadVimeoSdk() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.Vimeo && window.Vimeo.Player) {
+  if (window.Vimeo?.Player) {
     return Promise.resolve(window.Vimeo);
   }
 
@@ -102,7 +102,7 @@ let scSdkPromise = null;
  */
 export function loadSoundCloudSdk() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.SC && window.SC.Widget) {
+  if (window.SC?.Widget) {
     return Promise.resolve(window.SC);
   }
 
@@ -125,7 +125,7 @@ let dailymotionSdkPromise = null;
  */
 export function loadDailymotionSdk() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.dailymotion && window.dailymotion.createPlayer) {
+  if (window.dailymotion?.createPlayer) {
     return Promise.resolve(window.dailymotion);
   }
 
@@ -148,7 +148,7 @@ let twitchSdkPromise = null;
  */
 export function loadTwitchSdk() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.Twitch && window.Twitch.Player) {
+  if (window.Twitch?.Player) {
     return Promise.resolve(window.Twitch);
   }
 
@@ -171,7 +171,7 @@ let mixcloudSdkPromise = null;
  */
 export function loadMixcloudSdk() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.Mixcloud && window.Mixcloud.PlayerWidget) {
+  if (window.Mixcloud?.PlayerWidget) {
     return Promise.resolve(window.Mixcloud);
   }
 
@@ -271,7 +271,7 @@ let twitterSdkPromise = null;
  */
 export function loadTwitterSdk() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.twttr && window.twttr.widgets) {
+  if (window.twttr?.widgets) {
     return Promise.resolve(window.twttr);
   }
 
@@ -324,7 +324,7 @@ let instagramSdkPromise = null;
  */
 export function loadInstagramSdk() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.instgrm && window.instgrm.Embeds) {
+  if (window.instgrm?.Embeds) {
     return Promise.resolve(window.instgrm);
   }
 

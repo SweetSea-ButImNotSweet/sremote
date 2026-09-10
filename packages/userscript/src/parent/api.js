@@ -33,7 +33,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     }
     if (!instanceId) return null;
     const inst = instances.get(instanceId);
-    if (inst?.iframeEl && inst.iframeEl.isConnected) return inst.iframeEl;
+    if (inst?.iframeEl?.isConnected) return inst.iframeEl;
     return assignedIframeIdMap.get(instanceId) || null;
   };
 
@@ -179,7 +179,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     }
     const targetId = instanceId || getLatestActiveInstanceId();
     const target = targetId ? instances.get(targetId) : null;
-    if (!target || !target.port) {
+    if (!target?.port) {
       return Promise.resolve({
         success: false,
         error: 'INSTANCE_NOT_FOUND',
@@ -228,7 +228,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     }
 
     const target = targetId ? instances.get(targetId) : null;
-    if (!target || !target.port) {
+    if (!target?.port) {
       logger.scope('rpc').warn(`Cannot post message: No active connection for instance '${targetId || 'unknown'}'`);
       return false;
     }

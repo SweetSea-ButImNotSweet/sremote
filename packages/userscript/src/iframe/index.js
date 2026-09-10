@@ -72,7 +72,7 @@ export function initIframeAgent() {
   let initialBootstrapCss = '';
   try {
     const latestHandshake = Storage.get('sremote:latest_handshake');
-    if (latestHandshake && latestHandshake.css && typeof latestHandshake.css === 'string') {
+    if (latestHandshake?.css && typeof latestHandshake.css === 'string') {
       initialBootstrapCss = latestHandshake.css;
     }
   } catch {}

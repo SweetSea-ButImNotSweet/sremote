@@ -87,7 +87,7 @@ export class BaseProvider {
    * @param {string} instanceId Generated instance ID
    * @returns {Promise<{ player: any, element: HTMLElement, iframe?: HTMLIFrameElement, destroy?: () => void }>}
    */
-  /* eslint-disable no-unused-vars */
+
   async initPlayer(options, instanceId) {
     throw new Error(`[${this.constructor.name}] initPlayer() must be implemented by subclass`);
   }
@@ -104,7 +104,6 @@ export class BaseProvider {
   createAdapter(player, context) {
     throw new Error(`[${this.constructor.name}] createAdapter() must be implemented by subclass`);
   }
-  /* eslint-enable no-unused-vars */
 
   /**
    * Evaluates or retrieves the capabilities of the adapter created by this provider.
@@ -112,7 +111,7 @@ export class BaseProvider {
    * @returns {import('@sremote/shared').SRemoteCapabilities}
    */
   getCapabilities(adapter = null) {
-    if (adapter && adapter.capabilities && typeof adapter.capabilities === 'object') {
+    if (adapter?.capabilities && typeof adapter.capabilities === 'object') {
       return { ...adapter.capabilities };
     }
     const hasFn = fnName => Boolean(adapter && typeof adapter[fnName] === 'function');
@@ -259,7 +258,7 @@ export class BaseProvider {
       } catch {}
 
       try {
-        if (targetElement && targetElement.parentNode) {
+        if (targetElement?.parentNode) {
           targetElement.parentNode.removeChild(targetElement);
         }
       } catch {}

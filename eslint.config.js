@@ -1,3 +1,6 @@
+import tsParser from '@typescript-eslint/parser';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
+
 export default [
   // Global ignore patterns
   {
@@ -11,16 +14,19 @@ export default [
       'playwright-report/**',
       'tests-results/**',
       'songscript/**',
+      'scratch/**',
+      '*.config.js',
+      '*.config.mjs',
       '**/*.json',
       '**/*.md',
     ],
   },
   // JS Config (ESLint 9+ Flat Config)
   {
-    files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
+    files: ['packages/**/*.js', '.antigravity/**/*.js'],
     languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
+      parser: tsParser,
+      parserOptions: { ecmaVersion: 'latest', sourceType: 'module', project: './jsconfig.json' },
       globals: {
         // Browser globals
         window: 'readonly',
@@ -56,6 +62,7 @@ export default [
         HTMLMediaElement: 'readonly',
         MediaMetadata: 'readonly',
         MessageChannel: 'readonly',
+        MouseEvent: 'readonly',
         customElements: 'readonly',
         inspect: 'readonly',
 
@@ -66,6 +73,7 @@ export default [
         require: 'readonly',
         __dirname: 'readonly',
         __filename: 'readonly',
+        Buffer: 'readonly',
 
         // Userscript / Tampermonkey / Violentmonkey globals
         GM_setValue: 'readonly',
@@ -87,6 +95,20 @@ export default [
         unsafeWindow: 'readonly',
       },
     },
-    rules: { 'no-unused-vars': 'warn', 'no-console': 'off', 'no-alert': 'off', 'no-cond-assign': 'off', 'no-undef': 'warn', 'arrow-body-style': ['error', 'as-needed'] },
+    plugins: { '@typescript-eslint': tsPlugin },
+    rules: {
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      'no-console': 'off',
+      'no-alert': 'off',
+      'no-cond-assign': 'off',
+      'no-undef': 'warn',
+      'arrow-body-style': ['error', 'as-needed'],
+
+      // Rule tự động convert sang Optional Chaining (?.)
+      '@typescript-eslint/prefer-optional-chain': 'warn',
+      // Tạm tắt rule prefer-nullish-coalescing (??) theo yêu cầu
+      '@typescript-eslint/prefer-nullish-coalescing': 'off',
+    },
   },
 ];

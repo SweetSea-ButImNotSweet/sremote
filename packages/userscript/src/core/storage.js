@@ -103,7 +103,7 @@ export function purgeExpiredHandshakeSecrets(maxAgeMs = 60000) {
         }
         try {
           const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          if (!data || !data.created || now - data.created > maxAgeMs) {
+          if (!data?.created || now - data.created > maxAgeMs) {
             Storage.remove(k);
           }
         } catch {

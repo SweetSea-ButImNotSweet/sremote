@@ -25,7 +25,7 @@ export function resolveMediaElement(target, doc = typeof document !== 'undefined
     if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') return el;
     if (el.tagName === 'IFRAME') {
       try {
-        return el.contentDocument?.querySelector('video, audio') || null;
+        return el.contentDocument?.querySelector('video, audio') ?? null;
       } catch {
         return null;
       }

@@ -15,7 +15,7 @@ export const IframeStyleEngine = (function initIframeStyleEngine() {
     }
 
     try {
-      if (!dynamicStyleEl || !dynamicStyleEl.isConnected) {
+      if (!dynamicStyleEl?.isConnected) {
         dynamicStyleEl = document.createElement('style');
         dynamicStyleEl.id = 'sremote-dynamic-css';
         dynamicStyleEl.textContent = dynamicCssText;
@@ -30,7 +30,7 @@ export const IframeStyleEngine = (function initIframeStyleEngine() {
   }
 
   function maintainStyles() {
-    if (dynamicCssText && (!dynamicStyleEl || !dynamicStyleEl.isConnected)) {
+    if (dynamicCssText && !dynamicStyleEl?.isConnected) {
       applyDynamicCSS(dynamicCssText);
     }
   }
