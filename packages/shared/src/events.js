@@ -6,6 +6,8 @@ import { getGlobalTransactionTracker } from './pipeline/transaction-tracker.js';
  * @param {HTMLMediaElement|Object} media
  * @returns {import('./index.d.ts').SRemoteMediaState|null}
  */
+const sharedLastKnownDurationMap = new WeakMap();
+
 export function extractMediaState(media) {
   if (!media) return null;
 
@@ -25,7 +27,13 @@ export function extractMediaState(media) {
   const isEnded = media.ended !== undefined ? Boolean(media.ended) : false;
   const curReadyState = media.readyState !== undefined ? media.readyState : 0;
   const curSrc = media.currentSrc || media.src || '';
-  const dur = Number.isFinite(rawDur) ? rawDur : null;
+
+  let dur = Number.isFinite(rawDur) && rawDur > 0 ? rawDur : null;
+  if (dur && typeof media === 'object') {
+    sharedLastKnownDurationMap.set(media, dur);
+  } else if (typeof media === 'object') {
+    dur = sharedLastKnownDurationMap.get(media) || null;
+  }
 
   let bufferedEnd = 0;
   try {

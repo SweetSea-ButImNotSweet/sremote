@@ -503,19 +503,34 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     },
   });
 
+  // Explicitly bind to unsafeWindow.sremote and pageWindow.sremote
   try {
-    Object.defineProperty(pageWindow, 'sremote', { value: exportedApi, writable: true, configurable: true, enumerable: true });
-  } catch {
-    pageWindow.sremote = exportedApi;
+    if (typeof unsafeWindow !== 'undefined') {
+      try {
+        Object.defineProperty(unsafeWindow, 'sremote', { value: exportedApi, writable: true, configurable: true, enumerable: true });
+      } catch {
+        unsafeWindow.sremote = exportedApi;
+      }
+    }
+    if (typeof pageWindow !== 'undefined' && pageWindow !== (typeof unsafeWindow !== 'undefined' ? unsafeWindow : null)) {
+      try {
+        Object.defineProperty(pageWindow, 'sremote', { value: exportedApi, writable: true, configurable: true, enumerable: true });
+      } catch {
+        pageWindow.sremote = exportedApi;
+      }
+    }
+  } catch (err) {
+    logger.scope('bootstrap').warn('Error defining sremote on window:', err);
   }
 
-  // Proactively dispatch 'sremote:ready' on pageWindow for instant wrapper binding (0ms latency)
+  // Proactively dispatch 'sremote:ready' on pageWindow and unsafeWindow for instant wrapper binding (0ms latency)
   try {
-    if (typeof pageWindow.dispatchEvent === 'function') {
+    const targetWin = typeof unsafeWindow !== 'undefined' ? unsafeWindow : pageWindow;
+    if (typeof targetWin.dispatchEvent === 'function') {
       const readyDetail = { version: VERSION, isSremoteNative: true, api: exportedApi };
       const readyEvent =
         typeof CustomEvent === 'function' ? new CustomEvent('sremote:ready', { detail: readyDetail }) : Object.assign(new Event('sremote:ready'), { detail: readyDetail });
-      pageWindow.dispatchEvent(readyEvent);
+      targetWin.dispatchEvent(readyEvent);
     }
   } catch (err) {
     logger.scope('bootstrap').warn('Failed to dispatch sremote:ready event:', err);

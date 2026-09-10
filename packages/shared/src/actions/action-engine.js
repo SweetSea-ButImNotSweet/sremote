@@ -48,8 +48,21 @@ export function resolveMediaElement(target, doc = typeof document !== 'undefined
   return null;
 }
 
+const mediaProto = typeof HTMLMediaElement !== 'undefined' ? HTMLMediaElement.prototype : {};
+export const nativeMediaDescriptors = {
+  play: typeof mediaProto.play === 'function' ? mediaProto.play : null,
+  pause: typeof mediaProto.pause === 'function' ? mediaProto.pause : null,
+  currentTime: typeof Object.getOwnPropertyDescriptor === 'function' ? Object.getOwnPropertyDescriptor(mediaProto, 'currentTime') : null,
+  volume: typeof Object.getOwnPropertyDescriptor === 'function' ? Object.getOwnPropertyDescriptor(mediaProto, 'volume') : null,
+  muted: typeof Object.getOwnPropertyDescriptor === 'function' ? Object.getOwnPropertyDescriptor(mediaProto, 'muted') : null,
+  playbackRate: typeof Object.getOwnPropertyDescriptor === 'function' ? Object.getOwnPropertyDescriptor(mediaProto, 'playbackRate') : null,
+  paused: typeof Object.getOwnPropertyDescriptor === 'function' ? Object.getOwnPropertyDescriptor(mediaProto, 'paused') : null,
+  duration: typeof Object.getOwnPropertyDescriptor === 'function' ? Object.getOwnPropertyDescriptor(mediaProto, 'duration') : null,
+};
+
 /**
- * Safely plays a media element, recovering from ended state or unstarted videos.
+ * Safely plays a media element, recovering from ended state, unstarted videos,
+ * or prototype overrides by third-party players (e.g. Bilibili Nano/Dash).
  * @param {HTMLMediaElement} el
  * @returns {Promise<void>}
  */
@@ -61,15 +74,40 @@ export async function safePlayMedia(el) {
     const dur = el.duration ?? 0;
 
     if (isEnded || (dur > 0 && Math.abs(dur - curTime) <= 0.1)) {
-      el.currentTime = 0;
+      try {
+        if (nativeMediaDescriptors.currentTime?.set) {
+          nativeMediaDescriptors.currentTime.set.call(el, 0);
+        } else {
+          el.currentTime = 0;
+        }
+      } catch {}
     }
 
     let res;
+    // 1. Try instance play() first
     if (typeof el.play === 'function') {
-      res = el.play();
+      try {
+        res = el.play();
+      } catch {}
     }
+
+    // 2. If instance play() returned nothing or failed, try native prototype play
+    if (!res && nativeMediaDescriptors.play) {
+      try {
+        res = nativeMediaDescriptors.play.call(el);
+      } catch {}
+    }
+
     if (res && typeof res.then === 'function') {
-      await res;
+      try {
+        await res;
+      } catch (playErr) {
+        // If play was rejected (e.g. Autoplay without user interaction), attempt simulated click on player container
+        try {
+          const container = el.closest?.('.bpx-player-video-area, .bilibili-player-video, .player-container, video') || el;
+          container.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+        } catch {}
+      }
     }
     return res;
   } catch (err) {
@@ -80,7 +118,7 @@ export async function safePlayMedia(el) {
 }
 
 /**
- * Safely pauses a media element.
+ * Safely pauses a media element, recovering from prototype overrides.
  * @param {HTMLMediaElement} el
  */
 export function safePauseMedia(el) {
@@ -88,6 +126,11 @@ export function safePauseMedia(el) {
   try {
     if (typeof el.pause === 'function') {
       el.pause();
+    }
+  } catch {}
+  try {
+    if (nativeMediaDescriptors.pause) {
+      nativeMediaDescriptors.pause.call(el);
     }
   } catch (err) {
     if (typeof console !== 'undefined') {
@@ -427,7 +470,8 @@ export async function executeMediaAction(target, action, value = undefined, opti
 
     case 'toggle':
       if (!isPureGet) {
-        if (el.paused) await safePlayMedia(el);
+        const isPaused = el.paused !== undefined ? el.paused : (nativeMediaDescriptors.paused?.get?.call(el) ?? true);
+        if (isPaused) await safePlayMedia(el);
         else safePauseMedia(el);
       }
       return true;
@@ -435,36 +479,101 @@ export async function executeMediaAction(target, action, value = undefined, opti
     case 'stop':
       if (!isPureGet) {
         safePauseMedia(el);
-        el.currentTime = 0;
+        try {
+          if (nativeMediaDescriptors.currentTime?.set) {
+            nativeMediaDescriptors.currentTime.set.call(el, 0);
+          } else {
+            el.currentTime = 0;
+          }
+        } catch {
+          el.currentTime = 0;
+        }
       }
       return true;
 
     case 'seek':
       if (!isPureGet && value !== undefined && value !== null) {
-        const dur = el.duration || 0;
-        el.currentTime = Math.max(0, Math.min(dur || Infinity, (el.currentTime || 0) + Number(value)));
+        const dur = el.duration || (nativeMediaDescriptors.duration?.get?.call(el) ?? 0) || 0;
+        const curTime = el.currentTime ?? (nativeMediaDescriptors.currentTime?.get?.call(el) ?? 0);
+        const targetTime = Math.max(0, Math.min(dur || Infinity, curTime + Number(value)));
+        try {
+          if (nativeMediaDescriptors.currentTime?.set) {
+            nativeMediaDescriptors.currentTime.set.call(el, targetTime);
+          } else {
+            el.currentTime = targetTime;
+          }
+        } catch {
+          el.currentTime = targetTime;
+        }
+        try {
+          el.dispatchEvent(new Event('seeking'));
+          el.dispatchEvent(new Event('seeked'));
+        } catch {}
       }
       return true;
 
     case 'currenttime':
     case 'seekto':
       if (!isPureGet && value !== undefined && value !== null) {
-        const dur = el.duration || 0;
-        el.currentTime = Math.max(0, Math.min(dur || Infinity, Number(value)));
+        const dur = el.duration || (nativeMediaDescriptors.duration?.get?.call(el) ?? 0) || 0;
+        const targetTime = Math.max(0, Math.min(dur || Infinity, Number(value)));
+        try {
+          if (nativeMediaDescriptors.currentTime?.set) {
+            nativeMediaDescriptors.currentTime.set.call(el, targetTime);
+          } else {
+            el.currentTime = targetTime;
+          }
+        } catch {
+          el.currentTime = targetTime;
+        }
+        try {
+          el.dispatchEvent(new Event('seeking'));
+          el.dispatchEvent(new Event('seeked'));
+        } catch {}
       }
       return true;
 
     case 'volume':
       if (!isPureGet && value !== undefined && value !== null) {
-        el.volume = Math.max(0, Math.min(1, Number(value)));
-        el.muted = false;
+        const targetVol = Math.max(0, Math.min(1, Number(value)));
+        try {
+          if (nativeMediaDescriptors.volume?.set) {
+            nativeMediaDescriptors.volume.set.call(el, targetVol);
+          } else {
+            el.volume = targetVol;
+          }
+          if (nativeMediaDescriptors.muted?.set) {
+            nativeMediaDescriptors.muted.set.call(el, false);
+          } else {
+            el.muted = false;
+          }
+        } catch {
+          el.volume = targetVol;
+          el.muted = false;
+        }
+        try {
+          el.dispatchEvent(new Event('volumechange'));
+        } catch {}
       }
       return true;
 
     case 'muted':
     case 'mute':
       if (!isPureGet) {
-        el.muted = typeof value === 'boolean' ? value : !el.muted;
+        const curMuted = el.muted ?? (nativeMediaDescriptors.muted?.get?.call(el) ?? false);
+        const nextMuted = typeof value === 'boolean' ? value : !curMuted;
+        try {
+          if (nativeMediaDescriptors.muted?.set) {
+            nativeMediaDescriptors.muted.set.call(el, nextMuted);
+          } else {
+            el.muted = nextMuted;
+          }
+        } catch {
+          el.muted = nextMuted;
+        }
+        try {
+          el.dispatchEvent(new Event('volumechange'));
+        } catch {}
       }
       return true;
 
@@ -472,7 +581,19 @@ export async function executeMediaAction(target, action, value = undefined, opti
     case 'rate':
     case 'playbackrate':
       if (!isPureGet && value !== undefined && value !== null) {
-        el.playbackRate = Number(value) || 1;
+        const rate = Number(value) || 1;
+        try {
+          if (nativeMediaDescriptors.playbackRate?.set) {
+            nativeMediaDescriptors.playbackRate.set.call(el, rate);
+          } else {
+            el.playbackRate = rate;
+          }
+        } catch {
+          el.playbackRate = rate;
+        }
+        try {
+          el.dispatchEvent(new Event('ratechange'));
+        } catch {}
       }
       return true;
 

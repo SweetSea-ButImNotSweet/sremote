@@ -128,6 +128,29 @@ export function initParentController() {
     let targetId = targetInstanceId || getLatestActiveInstanceId();
     let target = targetId ? instances.get(targetId) : null;
 
+    // Smart fallback if target was not found by targetId:
+    if (!target && targetInstanceId) {
+      // 1. Check if the targetInstanceId was associated with an iframe element
+      const mappedIframe = assignedIframeIdMap.get(targetInstanceId);
+      if (mappedIframe) {
+        const liveId = iframeToAssignedIdMap.get(mappedIframe);
+        if (liveId && instances.has(liveId)) {
+          targetId = liveId;
+          target = instances.get(liveId);
+          logger.scope('action').log(`Smart-routed command '${action}' from stale id '${targetInstanceId}' -> live id '${liveId}'`);
+        }
+      }
+      // 2. In single-mode or if exactly 1 instance is registered, route to the only active instance
+      if (!target && (!isMultiModeActive() || instances.size === 1)) {
+        const onlyId = Array.from(instances.keys())[0];
+        if (onlyId && instances.has(onlyId)) {
+          targetId = onlyId;
+          target = instances.get(onlyId);
+          logger.scope('action').log(`Single-mode smart-routed command '${action}' from '${targetInstanceId}' -> active '${onlyId}'`);
+        }
+      }
+    }
+
     if (!target && !targetInstanceId && !isMultiModeActive() && instances.size === 1) {
       targetId = Array.from(instances.keys())[0];
       target = instances.get(targetId);

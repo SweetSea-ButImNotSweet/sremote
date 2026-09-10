@@ -76,11 +76,43 @@ export function createMediaResolver(createdMediaPool, bindVideoEvents) {
     // 2. Real HTML5 Media with valid duration, src, or active playback
     const all = findAllMedia();
     if (all.length > 0) {
-      const valid =
-        all.find(el => !el.paused && !el.ended && el.currentTime > 0) ||
-        all.find(el => !el.paused && hasMediaSource(el)) ||
-        all.find(el => (el.duration && el.duration > 0) || hasMediaSource(el)) ||
-        all[0];
+      // Helper to evaluate visible render area of a media element
+      const getMediaArea = el => {
+        try {
+          if (!el || !el.isConnected) return 0;
+          const rect = el.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            return rect.width * rect.height;
+          }
+          return (el.offsetWidth || 0) * (el.offsetHeight || 0);
+        } catch {
+          return 0;
+        }
+      };
+
+      // Filter connected media elements first
+      const connectedMedia = all.filter(el => el && el.isConnected);
+      const pool = connectedMedia.length > 0 ? connectedMedia : all;
+
+      // Sort candidate media:
+      // 1. Actively playing video (!paused && currentTime > 0)
+      // 2. Has media source and valid duration
+      // 3. Rendered display area (larger is main video, smaller like 160x90 is hover preview)
+      const sortedCandidates = [...pool].sort((a, b) => {
+        const aPlaying = !a.paused && !a.ended && (a.currentTime || 0) > 0 ? 1 : 0;
+        const bPlaying = !b.paused && !b.ended && (b.currentTime || 0) > 0 ? 1 : 0;
+        if (aPlaying !== bPlaying) return bPlaying - aPlaying;
+
+        const aArea = getMediaArea(a);
+        const bArea = getMediaArea(b);
+        if (Math.abs(aArea - bArea) > 500) return bArea - aArea;
+
+        const aHasSrc = hasMediaSource(a) || (a.duration && a.duration > 0) ? 1 : 0;
+        const bHasSrc = hasMediaSource(b) || (b.duration && b.duration > 0) ? 1 : 0;
+        return bHasSrc - aHasSrc;
+      });
+
+      const valid = sortedCandidates[0];
 
       activeMedia = valid;
       mediaType = valid.tagName ? valid.tagName.toLowerCase() : 'video';

@@ -104,6 +104,8 @@ export function initIframeAgent() {
           isProgrammatic = now - programmaticActionTimestamp < 500;
         }
 
+        const currentState = getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia);
+
         if (evtName === 'timeupdate') {
           // Throttle timeupdate to avoid flooding the MessagePort & parent listeners
           if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) {
@@ -111,12 +113,12 @@ export function initIframeAgent() {
           }
           lastTimeupdate = now;
 
-          const dur = Number.isFinite(video.duration) ? video.duration : null;
+          const dur = currentState?.duration || (Number.isFinite(video.duration) ? video.duration : null);
           const curTime = safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0;
           if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
             if (!hasEmittedAlmostEnd) {
               hasEmittedAlmostEnd = true;
-              emitToParent(treatAlmostEndAsEnd ? 'ended' : 'almostend', { isProgrammatic, state: getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia) });
+              emitToParent(treatAlmostEndAsEnd ? 'ended' : 'almostend', { isProgrammatic, state: currentState });
             }
           } else if (dur && curTime < dur - 1.5) {
             hasEmittedAlmostEnd = false;
@@ -132,12 +134,12 @@ export function initIframeAgent() {
 
         if (evtName === 'ended') {
           hasEmittedAlmostEnd = false;
-          const dur = Number.isFinite(video.duration) ? video.duration : null;
+          const dur = currentState?.duration || (Number.isFinite(video.duration) ? video.duration : null);
           const curTime = safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0;
           if (dur && dur > 0 && Math.abs(dur - curTime) > 1.5) return;
         }
 
-        emitToParent(evtName, { isProgrammatic, state: getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia) });
+        emitToParent(evtName, { isProgrammatic, state: currentState });
       });
     }
   }

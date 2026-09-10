@@ -10,9 +10,25 @@
 (function initSRemoteDemo() {
   'use strict';
 
-  // SRemote Client from SDK Wrapper (or fallback to window.sremote)
-  const client = window.SRemoteWrapper ? window.SRemoteWrapper.createSRemote() : window.sremote;
-  const sremoteApi = client || window.sremote;
+  // Dynamic resolver for SRemote API
+  function getSRemoteApi() {
+    if (typeof window === 'undefined') return null;
+    if (window.sremote && !window.sremote.isDummy) return window.sremote;
+    if (window.SRemoteWrapper?.sremote && !window.SRemoteWrapper.sremote.isDummy) return window.SRemoteWrapper.sremote;
+    if (window.SRemote && !window.SRemote.isDummy) return window.SRemote;
+    return window.sremote || null;
+  }
+
+  // Proxy object ensuring sremoteApi.method() always dynamically targets the latest active API
+  const sremoteApi = new Proxy({}, {
+    get(target, prop) {
+      const api = getSRemoteApi();
+      if (!api) return undefined;
+      const val = api[prop];
+      if (typeof val === 'function') return val.bind(api);
+      return val;
+    }
+  });
 
   // Constants
   const TOTAL_SLOTS = 6;
@@ -287,32 +303,37 @@
     }
 
     triggerHandshake() {
-      if (!sremoteApi || typeof sremoteApi.hello !== 'function') {
-        this.setConnectionStatus('error', this.t('status.conn_error_userscript'));
+      const api = getSRemoteApi();
+      if (!api || typeof api.hello !== 'function') {
+        this.setConnectionStatus('loading', this.t('status.conn_loading'));
         return;
       }
 
       try {
-        // Enforce multi-mode so commands require instanceId and don't conflict
-        if (sremoteApi?.instances?.setMultiMode) {
-          sremoteApi.instances.setMultiMode(true);
-        } else {
-          sremoteApi.setMultiMode?.(true);
+        if (api.instances?.setMultiMode) {
+          api.instances.setMultiMode(true);
+        } else if (typeof api.setMultiMode === 'function') {
+          api.setMultiMode(true);
         }
 
-        // Targeted hello to this specific iframe's contentWindow
+        // 1. Broad hello across all frames (ensures cross-origin iframes receive handshake)
+        api.hello({ multiMode: true });
+
+        // 2. Targeted hello directly to this iframe if accessible
         if (this.iframeEl?.contentWindow) {
-          sremoteApi.hello({ target: this.iframeEl.contentWindow, multiMode: true });
-        } else {
-          sremoteApi.hello({ multiMode: true });
+          try {
+            api.hello({ target: this.iframeEl.contentWindow, multiMode: true });
+          } catch {}
         }
+        console.log(`%c[Slot ${this.slotNumber}] Handshake hello dispatched`, 'color: #3b82f6;');
       } catch (err) {
         console.warn(`[Slot ${this.slotNumber}] Handshake trigger error:`, err);
       }
     }
 
     sendSRemoteCommand(action, value) {
-      if (!sremoteApi) {
+      const api = getSRemoteApi();
+      if (!api) {
         console.warn(`[Slot ${this.slotNumber}] sremote SDK not found.`);
         return;
       }
@@ -320,31 +341,40 @@
       try {
         switch (action) {
           case 'play':
-            sremoteApi.play(this.instanceId);
+            api.play(this.instanceId);
             break;
           case 'pause':
-            sremoteApi.pause(this.instanceId);
+            api.pause(this.instanceId);
             break;
           case 'toggle':
-            sremoteApi.toggle(this.instanceId);
+            api.toggle(this.instanceId);
             break;
           case 'seek':
-            sremoteApi.seek(value, this.instanceId);
+            api.seek(value, this.instanceId);
             break;
           case 'seekTo':
-            sremoteApi.seekTo(value, this.instanceId);
+            api.seekTo(value, this.instanceId);
             break;
           case 'volume':
-            sremoteApi.volume(value, this.instanceId);
+            api.volume(value, this.instanceId);
             break;
           case 'mute':
-            sremoteApi.mute(value, this.instanceId);
+            api.mute(value, this.instanceId);
             break;
           case 'playbackRate':
-            sremoteApi.playbackRate(value, this.instanceId);
+          case 'speed':
+            if (typeof api.speed === 'function') {
+              api.speed(value, this.instanceId);
+            } else if (typeof api.rate === 'function') {
+              api.rate(value, this.instanceId);
+            } else if (typeof api.playbackRate === 'function') {
+              api.playbackRate(value, this.instanceId);
+            }
             break;
           case 'pip':
-            sremoteApi.pip(undefined, this.instanceId);
+            if (typeof api.pip === 'function') {
+              api.pip(undefined, this.instanceId);
+            }
             break;
           default:
             console.warn(`[Slot ${this.slotNumber}] Unknown command action: ${action}`);
@@ -532,17 +562,18 @@
 
   // Setup Global SRemote Event Dispatcher
   function setupSRemoteListener() {
-    if (!sremoteApi || typeof sremoteApi.on !== 'function') {
+    const api = getSRemoteApi();
+    if (!api || typeof api.on !== 'function') {
       // Retry in case userscript or client initializes slightly after DOMContentLoaded
-      setTimeout(setupSRemoteListener, 200);
+      setTimeout(setupSRemoteListener, 150);
       return;
     }
 
     // Force multiMode across SRemote parent controller
-    sremoteApi.setMultiMode?.(true);
+    api.setMultiMode?.(true);
 
     // Register wildcard listener to capture all lifecycle & media events
-    sremoteApi.on('*', payload => {
+    api.on('*', payload => {
       const action = payload.action || payload.event;
       const instanceId = payload.instanceId;
 
@@ -554,10 +585,10 @@
           return;
         }
 
-        // 2. Match via sremoteApi.getIframe(instanceId)
-        if (typeof sremoteApi.getIframe === 'function') {
+        // 2. Match via api.getIframe(instanceId)
+        if (typeof api.getIframe === 'function') {
           try {
-            const ifr = sremoteApi.getIframe(instanceId);
+            const ifr = api.getIframe(instanceId);
             if (ifr) {
               const slotByIfr = slots.find(s => s.iframeEl === ifr);
               if (slotByIfr) {
@@ -581,11 +612,11 @@
       }
 
       // 4. Fallback for accept event without matched slot: check existing iframes in list()
-      if (action === 'accept' && typeof sremoteApi.list === 'function') {
+      if (action === 'accept' && typeof api.list === 'function') {
         try {
-          const list = sremoteApi.list();
+          const list = api.list();
           for (const item of list) {
-            const ifr = sremoteApi.getIframe?.(item.instanceId);
+            const ifr = api.getIframe?.(item.instanceId);
             if (ifr) {
               const s = slots.find(slot => slot.iframeEl === ifr);
               if (s) {
@@ -600,14 +631,14 @@
 
     // Periodic state synchronization check (re-enables controls if instance is already accepted/ready)
     setInterval(() => {
-      if (typeof sremoteApi?.list === 'function') {
+      if (typeof api?.list === 'function') {
         try {
-          const list = sremoteApi.list();
+          const list = api.list();
           for (const item of list) {
             if (!item.instanceId) continue;
             let targetSlot = slots.find(s => s.instanceId === item.instanceId);
-            if (!targetSlot && typeof sremoteApi.getIframe === 'function') {
-              const ifr = sremoteApi.getIframe(item.instanceId);
+            if (!targetSlot && typeof api.getIframe === 'function') {
+              const ifr = api.getIframe(item.instanceId);
               if (ifr) {
                 targetSlot = slots.find(s => s.iframeEl === ifr);
                 if (targetSlot) targetSlot.instanceId = item.instanceId;
@@ -796,14 +827,22 @@
     }
 
     // 2. Trigger independent standalone sremote.hello() handshake once DOM is fully ready
-    if (sremoteApi && typeof sremoteApi.hello === 'function') {
-      try {
-        sremoteApi.setMultiMode?.(true);
-        sremoteApi.hello({ multiMode: true });
-        console.log('%c[SRemote Demo] Broadcasted standalone sremote.hello() on DOMContentLoaded', 'color: #0366d6;');
-      } catch (err) {
-        console.warn('[SRemote Demo] Failed to broadcast sremote.hello() on DOMContentLoaded:', err);
+    const broadcastInitialHello = () => {
+      const api = getSRemoteApi();
+      if (api && typeof api.hello === 'function') {
+        try {
+          api.setMultiMode?.(true);
+          api.hello({ multiMode: true });
+          console.log('%c[SRemote Demo] Broadcasted standalone sremote.hello() successfully', 'color: #0366d6;');
+        } catch (err) {
+          console.warn('[SRemote Demo] Failed to broadcast sremote.hello():', err);
+        }
       }
-    }
+    };
+
+    broadcastInitialHello();
+    window.addEventListener('sremote:ready', broadcastInitialHello, { once: true });
+    // Also retry after 300ms in case userscript injects slightly after DOMContentLoaded
+    setTimeout(broadcastInitialHello, 300);
   });
 })();
