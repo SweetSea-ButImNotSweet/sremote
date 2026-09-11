@@ -92,22 +92,10 @@ export class TwitterProvider extends BaseProvider {
     });
   }
 
-  createAdapter(playerInfo, context) {
-    const element = context?.element || playerInfo?.element;
-    const iframe = context?.iframe || playerInfo?.iframe;
-
-    return {
-      load(tweetId) {
-        if (typeof window !== 'undefined' && window.twttr?.widgets && element) {
-          const id = extractTweetId(tweetId);
-          element.innerHTML = '';
-          window.twttr.widgets.createTweet(id, element);
-        }
-      },
-      getState() {
-        return { element, iframe, tweetId: playerInfo?.tweetId };
-      },
-    };
+  createAdapter(_playerInfo, _context) {
+    // Twitter embeds do not provide a 2-way playback API.
+    // Returning null prevents SRemote from registering a non-functional media adapter.
+    return null;
   }
 }
 

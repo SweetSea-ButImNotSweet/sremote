@@ -105,26 +105,10 @@ export class ThreadsProvider extends BaseProvider {
     });
   }
 
-  createAdapter(playerInfo, context) {
-    const element = context?.element || playerInfo?.element;
-    const iframe = context?.iframe || playerInfo?.iframe;
-
-    return {
-      load(newUrl) {
-        if (element) {
-          const url = normalizeThreadsUrl(newUrl);
-          element.innerHTML = `<blockquote class="text-post-media" data-text-post-permalink="${url}" data-text-post-version="0"><a href="${url}"></a></blockquote>`;
-          if (typeof window !== 'undefined' && window.threads?.embeds) {
-            try {
-              window.threads.embeds.process();
-            } catch {}
-          }
-        }
-      },
-      getState() {
-        return { element, iframe, postUrl: playerInfo?.postUrl, supportsDirectControl: false, note: 'Threads embed does not support direct play/pause controller API.' };
-      },
-    };
+  createAdapter(_playerInfo, _context) {
+    // Threads embeds do not offer a 2-way JavaScript playback controller API.
+    // Returning null prevents SRemote from registering a non-functional media adapter.
+    return null;
   }
 }
 

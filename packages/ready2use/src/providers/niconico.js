@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes, waitForIframeLoad } from '../core/dom-utils.js';
+import { toggle, seekTo, setCurrentTime, Volume } from '../core/polyfill.js';
 
 /**
  * Provider for NicoNico Player (postMessage protocol)
@@ -75,9 +76,6 @@ export class NicoNicoProvider extends BaseProvider {
       pause() {
         sendToNico('pause');
       },
-      toggle() {
-        isPlaying ? sendToNico('pause') : sendToNico('play');
-      },
       stop() {
         sendToNico('pause');
         sendToNico('seek', { time: 0 });
@@ -86,8 +84,11 @@ export class NicoNicoProvider extends BaseProvider {
         const target = Math.max(0, currentTime + Number(offset));
         sendToNico('seek', { time: target * 1000 });
       },
-      seekTo(seconds) {
+      setCurrentTime(seconds) {
         sendToNico('seek', { time: Number(seconds) * 1000 });
+      },
+      seekTo(seconds) {
+        this.setCurrentTime(seconds);
       },
       getVolume() {
         return volume;
@@ -153,6 +154,11 @@ export class NicoNicoProvider extends BaseProvider {
     if (typeof window !== 'undefined') {
       window.addEventListener('message', messageHandler);
     }
+
+    toggle(adapter);
+    setCurrentTime(adapter);
+    seekTo(adapter);
+    new Volume(volume).apply(adapter);
 
     return adapter;
   }

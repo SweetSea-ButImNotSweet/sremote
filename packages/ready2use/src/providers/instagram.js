@@ -116,22 +116,10 @@ export class InstagramProvider extends BaseProvider {
     });
   }
 
-  createAdapter(playerInfo, context) {
-    const element = context?.element || playerInfo?.element;
-    const iframe = context?.iframe || playerInfo?.iframe;
-
-    return {
-      load(newUrl) {
-        if (typeof window !== 'undefined' && window.instgrm?.Embeds && element) {
-          const url = normalizeInstagramUrl(newUrl);
-          element.innerHTML = `<blockquote class="instagram-media" data-instgrm-permalink="${url}" data-instgrm-version="14"><a href="${url}"></a></blockquote>`;
-          window.instgrm.Embeds.process(element);
-        }
-      },
-      getState() {
-        return { element, iframe, postUrl: playerInfo?.postUrl, supportsDirectControl: false, note: 'Instagram embed does not support direct play/pause controller API.' };
-      },
-    };
+  createAdapter(_playerInfo, _context) {
+    // Instagram embeds do not support direct 2-way playback controller API.
+    // Returning null prevents SRemote from registering a non-functional media adapter.
+    return null;
   }
 }
 

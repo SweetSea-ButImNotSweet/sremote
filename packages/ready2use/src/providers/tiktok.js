@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes, waitForIframeLoad } from '../core/dom-utils.js';
+import { toggle, seekTo, setCurrentTime } from '../core/polyfill.js';
 
 /**
  * Provider for TikTok Official Embed Player API (v1)
@@ -76,9 +77,6 @@ export class TikTokProvider extends BaseProvider {
       pause() {
         sendToTikTok('pause');
       },
-      toggle() {
-        isPlaying ? sendToTikTok('pause') : sendToTikTok('play');
-      },
       stop() {
         sendToTikTok('pause');
         sendToTikTok('seekTo', 0);
@@ -88,9 +86,12 @@ export class TikTokProvider extends BaseProvider {
         currentTime = target;
         sendToTikTok('seekTo', target);
       },
-      seekTo(seconds) {
+      setCurrentTime(seconds) {
         currentTime = Number(seconds);
         sendToTikTok('seekTo', currentTime);
+      },
+      seekTo(seconds) {
+        this.setCurrentTime(seconds);
       },
       getVolume() {
         return isMuted ? 0 : 1;
@@ -161,6 +162,10 @@ export class TikTokProvider extends BaseProvider {
     if (typeof window !== 'undefined') {
       window.addEventListener('message', messageHandler);
     }
+
+    toggle(adapter);
+    setCurrentTime(adapter);
+    seekTo(adapter);
 
     return adapter;
   }

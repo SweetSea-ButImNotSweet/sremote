@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes, createTempNode } from '../core/dom-utils.js';
+import { toggle, seekTo, setCurrentTime, Volume } from '../core/polyfill.js';
 import { loadFacebookSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -159,13 +160,6 @@ export class FacebookProvider extends BaseProvider {
       pause() {
         player?.pause?.();
       },
-      toggle() {
-        if (player && typeof player.isPlaying === 'function') {
-          player.isPlaying() ? player.pause?.() : player.play?.();
-        } else {
-          isPlaying ? adapter.pause() : adapter.play();
-        }
-      },
       stop() {
         if (player && typeof player.pause === 'function' && typeof player.seek === 'function') {
           player.pause();
@@ -182,12 +176,15 @@ export class FacebookProvider extends BaseProvider {
           adapter.emit?.('seeked', { state });
         }
       },
-      seekTo(seconds) {
+      setCurrentTime(seconds) {
         const target = Number(seconds);
         const state = { ...updateSnapshot(), currentTime: target };
         adapter.emit?.('seeking', { state });
         player?.seek?.(target);
         adapter.emit?.('seeked', { state });
+      },
+      seekTo(seconds) {
+        this.setCurrentTime(seconds);
       },
       getCurrentTime() {
         return typeof player?.getCurrentPosition === 'function' ? player.getCurrentPosition() : currentTime;
@@ -268,6 +265,11 @@ export class FacebookProvider extends BaseProvider {
         });
       } catch {}
     }
+
+    toggle(adapter);
+    setCurrentTime(adapter);
+    seekTo(adapter);
+    new Volume(volume).apply(adapter);
 
     return adapter;
   }
