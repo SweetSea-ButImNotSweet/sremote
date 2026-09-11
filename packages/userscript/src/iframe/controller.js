@@ -53,8 +53,8 @@ export function getVideoState(targetMedia, activeMedia, resolveActiveMedia) {
 }
 export function getIframeCapabilities(targetMedia, activeMedia, resolveActiveMedia) {
   const media = targetMedia || activeMedia || (resolveActiveMedia?.() ? activeMedia : null);
-  const hasNative = Boolean(media && (media.tagName === 'VIDEO' || media.tagName === 'AUDIO'));
-  const isVideo = Boolean(media && media.tagName === 'VIDEO');
+  const hasNative = Boolean(media?.tagName === 'VIDEO' || media?.tagName === 'AUDIO');
+  const isVideo = Boolean(media?.tagName === 'VIDEO');
 
   const msHandlers = mockMediaSessionInstance._handlers;
   const hasMsAction = action => Boolean(msHandlers.has(action));

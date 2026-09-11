@@ -48,28 +48,8 @@ export {
   applemusickit,
 };
 
-export default {
-  BaseProvider,
-  youtube,
-  vimeo,
-  soundcloud,
-  dailymotion,
-  twitch,
-  mixcloud,
-  spotify,
-  tiktok,
-  niconico,
-  bilibili,
-  facebook,
-  twitter,
-  peertube,
-  rumble,
-  kick,
-  streamable,
-  odysee,
-  bandcamp,
-  instagram,
-  threads,
-  applemusic,
-  applemusickit,
-};
+import { toggle, seek, seekTo, Volume } from './core/polyfill.js';
+const Polyfills = [toggle, seek, seekTo, Volume];
+
+export { Polyfills };
+export { createRemoteProxy } from './core/remote-proxy.js';

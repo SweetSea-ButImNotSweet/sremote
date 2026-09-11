@@ -14,7 +14,7 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
     let el = null;
     if (typeof iframeOrSelector === 'string') {
       el = document.querySelector(iframeOrSelector);
-    } else if (iframeOrSelector && iframeOrSelector.nodeType === 1 && iframeOrSelector.tagName === 'IFRAME') {
+    } else if (iframeOrSelector?.nodeType === 1 && iframeOrSelector?.tagName === 'IFRAME') {
       el = iframeOrSelector;
     }
     if (!el) return false;

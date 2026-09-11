@@ -44,6 +44,31 @@ export interface BaseProviderOptions {
 }
 
 /**
+ * Unified remote control interface for player instance.
+ */
+export interface PlayerRemoteControl {
+  readonly instanceId: string;
+  readonly adapter: SRemoteCustomAdapter;
+  readonly capabilities: SRemoteCapabilities;
+  play(): Promise<any>;
+  pause(): Promise<any>;
+  toggle(): Promise<any>;
+  stop(): Promise<any>;
+  seek(seconds: number): Promise<any>;
+  seekTo(seconds: number): Promise<any>;
+  setVolume(volume: number): Promise<any>;
+  getVolume(): Promise<number>;
+  setMuted(muted: boolean): Promise<any>;
+  isMuted(): Promise<boolean>;
+  setPlaybackRate(rate: number): Promise<any>;
+  getPlaybackRate(): Promise<number>;
+  next(): Promise<any>;
+  previous(): Promise<any>;
+  load(source: any): Promise<any>;
+  getState(): Promise<Record<string, any>>;
+}
+
+/**
  * Result returned from provider.create()
  */
 export interface ProviderCreateResult<TPlayer = any> {
@@ -61,6 +86,11 @@ export interface ProviderCreateResult<TPlayer = any> {
    * The SRemote-compatible custom adapter for this instance.
    */
   adapter: SRemoteCustomAdapter;
+
+  /**
+   * The unified remote controller for this instance.
+   */
+  remote: PlayerRemoteControl;
 
   /**
    * The underlying native SDK player instance.
@@ -87,6 +117,22 @@ export interface ProviderCreateResult<TPlayer = any> {
  * Result returned from provider.mount()
  */
 export interface ProviderMountResult<TPlayer = any> extends ProviderCreateResult<TPlayer> {}
+
+/**
+ * Polyfill helpers for provider custom adapters.
+ */
+export declare function toggle<T extends SRemoteCustomAdapter>(adapter: T): T;
+export declare function seek<T extends SRemoteCustomAdapter>(adapter: T): T;
+export declare function seekTo<T extends SRemoteCustomAdapter>(adapter: T): T;
+
+export declare class Volume {
+  previousVolume: number;
+  constructor(initialVolume?: number);
+  record(vol: number): void;
+  apply<T extends SRemoteCustomAdapter>(adapter: T): T;
+}
+
+export declare function createRemoteProxy(adapter: SRemoteCustomAdapter, sremoteClient?: any, instanceId?: string): PlayerRemoteControl;
 
 /**
  * Abstract BaseProvider class for creating provider implementations
