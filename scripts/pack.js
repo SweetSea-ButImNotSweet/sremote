@@ -27,7 +27,7 @@ if (!fs.existsSync(outputDir)) {
 
 // 3. Define packages to pack
 const packagesToPack = [
-  { name: '@sremote/wrapper', dir: path.resolve(rootDir, 'packages/wrapper') },
+  { name: '@sremote/sdk', dir: path.resolve(rootDir, 'packages/sdk') },
   { name: '@sremote/ready2use', dir: path.resolve(rootDir, 'packages/ready2use') },
 ];
 

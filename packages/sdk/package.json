@@ -1,7 +1,7 @@
 {
-  "name": "@sremote/wrapper",
+  "name": "@sremote/sdk",
   "version": "3.0.0",
-  "description": "SRemote - Wrapper and SDK client for controlling media inside iframes",
+  "description": "SRemote - Universal Client SDK for controlling media inside iframes",
   "type": "module",
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
@@ -11,9 +11,9 @@
   "files": ["dist", "src/index.d.ts", "README.md"],
   "publishConfig": { "access": "public" },
   "scripts": { "build": "vite build", "dev": "vite build --watch" },
-  "keywords": ["sremote", "iframe", "media", "video-controller", "sdk", "wrapper"],
+  "keywords": ["sremote", "iframe", "media", "video-controller", "sdk", "client"],
   "author": "sweetsea (https://github.com/SweetSea-ButImNotSweet)",
-  "repository": { "type": "git", "url": "https://github.com/SweetSea-ButImNotSweet/sremote.git", "directory": "packages/wrapper" },
+  "repository": { "type": "git", "url": "https://github.com/SweetSea-ButImNotSweet/sremote.git", "directory": "packages/sdk" },
   "homepage": "https://github.com/SweetSea-ButImNotSweet/sremote#readme",
   "bugs": { "url": "https://github.com/SweetSea-ButImNotSweet/sremote/issues" },
   "license": "LGPL-3.0"

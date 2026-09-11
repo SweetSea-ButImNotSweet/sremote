@@ -5,7 +5,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: path.resolve(import.meta.dirname, 'src/index.js'),
-      name: 'SRemoteWrapper',
+      name: 'SRemoteSDK',
       fileName: format => {
         if (format === 'es') return 'index.mjs';
         return 'index.global.js';

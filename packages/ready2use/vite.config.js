@@ -14,6 +14,15 @@ export default defineConfig({
     },
     outDir: 'dist',
     emptyOutDir: true,
-    rollupOptions: { external: ['@sremote/wrapper'], output: { exports: 'named', globals: { '@sremote/wrapper': 'SRemoteWrapper' } } },
+    rollupOptions: {
+      external: ['@sremote/sdk', '@sremote/wrapper'],
+      output: {
+        exports: 'named',
+        globals: {
+          '@sremote/sdk': 'SRemoteSDK',
+          '@sremote/wrapper': 'SRemoteSDK'
+        }
+      }
+    },
   },
 });

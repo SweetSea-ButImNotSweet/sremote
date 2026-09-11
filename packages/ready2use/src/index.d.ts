@@ -1,4 +1,4 @@
-import type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities } from '@sremote/wrapper';
+import type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities } from '@sremote/sdk';
 
 export type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities };
 
