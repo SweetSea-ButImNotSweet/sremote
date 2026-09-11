@@ -68,7 +68,7 @@ export class FacebookProvider extends BaseProvider {
         const iframe = tempNode.querySelector('iframe');
         const element = tempNode;
 
-        if (element && element.parentNode === hiddenWrapper) {
+        if (element?.parentNode === hiddenWrapper) {
           hiddenWrapper.removeChild(element);
         }
         cleanup();
@@ -88,7 +88,7 @@ export class FacebookProvider extends BaseProvider {
       // Subscribe to xfbml.ready event from Facebook SDK
       if (FB && typeof FB.Event?.subscribe === 'function') {
         const onXfbmlReady = msg => {
-          if (msg && msg.type === 'video' && msg.id === fbDomId) {
+          if (msg?.type === 'video' && msg?.id === fbDomId) {
             playerInstance = msg.instance;
             try {
               FB.Event?.unsubscribe?.('xfbml.ready', onXfbmlReady);

@@ -62,7 +62,7 @@ export class AppleMusicProvider extends BaseProvider {
 
         const element = iframe;
 
-        if (element && element.parentNode === hiddenWrapper) {
+        if (element?.parentNode === hiddenWrapper) {
           hiddenWrapper.removeChild(element);
         }
         cleanup();

@@ -1,38 +1,8 @@
 # @sremote/ready2use
 
-Pre-configured player providers and adapter helpers for [SRemote](https://github.com/SweetSea-ButImNotSweet/sremote).
+Pre-configured player presets, third-party embed integrations, and standardized player adapters for [SRemote](https://github.com/SweetSea-ButImNotSweet/sremote).
 
-Initializes third-party player SDKs, mounts iframe/DOM elements, and provides standardized player adapters. Can be used with SRemote or standalone directly in application code.
-
----
-
-## Supported Providers
-
-| Provider | SRemote Adapter | Exported Name |
-| :--- | :---: | :--- |
-| **YouTube** | Yes | `youtube` |
-| **Vimeo** | Yes | `vimeo` |
-| **SoundCloud** | Yes | `soundcloud` |
-| **Dailymotion** | Yes | `dailymotion` |
-| **Twitch** | Yes | `twitch` |
-| **Mixcloud** | Yes | `mixcloud` |
-| **Spotify** | Yes | `spotify` |
-| **Apple MusicKit** | Yes | `applemusickit` |
-| **TikTok** | Yes | `tiktok` |
-| **NicoNico** | Yes | `niconico` |
-| **Facebook (Video, Reels, Watch)** | Yes | `facebook` |
-| **PeerTube** | Yes | `peertube` |
-| **Twitter / X** | Yes *(View-only)* | `twitter` |
-| **Instagram (Post, Reel)** | No *(View-only)* | `instagram` |
-| **Threads** | No *(View-only)* | `threads` |
-| **Apple Music (Embed)** | No *(View-only)* | `applemusic` |
-| **Bilibili** | No *(HTML5 Discovery)* | `bilibili` |
-| **Rumble** | No *(HTML5 Discovery)* | `rumble` |
-| **Kick** | No *(HTML5 Discovery)* | `kick` |
-| **Streamable** | No *(HTML5 Discovery)* | `streamable` |
-| **Odysee / LBRY** | No *(HTML5 Discovery)* | `odysee` |
-| **Bandcamp** | No *(HTML5 Discovery)* | `bandcamp` |
-
+It automatically loads third-party SDKs, injects and sizes DOM/iframe elements, bridges third-party player APIs into **standard HTML5 Media Element compliant adapters**, and provides a unified standalone **`remote` controller**.
 
 ---
 
@@ -48,138 +18,227 @@ pnpm add @sremote/ready2use @sremote/wrapper
 
 ---
 
+## 🎯 Supported Providers (22 Platforms)
+
+All exported providers expose `.mount(container, options)` and `.create(options)`.
+
+| Provider | Export | SRemote Adapter | Mechanism & Integration |
+| :--- | :--- | :---: | :--- |
+| **YouTube** | `youtube` | ✅ Full | YouTube IFrame Player API (`YT.Player`) |
+| **Vimeo** | `vimeo` | ✅ Full | Vimeo Player SDK (`@vimeo/player`) |
+| **SoundCloud** | `soundcloud` | ✅ Full | SoundCloud Widget API (`SC.Widget`) |
+| **Dailymotion** | `dailymotion` | ✅ Full | Dailymotion Player SDK |
+| **Twitch** | `twitch` | ✅ Full | Twitch Interactive Player SDK |
+| **Mixcloud** | `mixcloud` | ✅ Full | Mixcloud Widget API |
+| **Spotify** | `spotify` | ✅ Full | Spotify IFrame API (`EmbedController`) |
+| **Apple MusicKit** | `applemusickit` | ✅ Full | Apple MusicKit JS v3 SDK |
+| **PeerTube** | `peertube` | ✅ Full | PeerTube Embed API |
+| **TikTok** | `tiktok` | ✅ Full | TikTok Official Embed Player (v1) via 2-way postMessage |
+| **NicoNico** | `niconico` | ✅ Full | NicoNico Player PostMessage Protocol |
+| **Facebook** | `facebook` | ✅ Full | Facebook Embedded Video SDK |
+| **Apple Music (Embed)** | `applemusic` | ⚠️ Fallback | Apple Music Web Player Embed |
+| **Rumble** | `rumble` | ⚠️ Fallback | Rumble Embed Player |
+| **Kick** | `kick` | ⚠️ Fallback | Kick Interactive Player Embed |
+| **Streamable** | `streamable` | ⚠️ Fallback | Streamable Embed Player |
+| **Odysee / LBRY** | `odysee` | ⚠️ Fallback | Odysee Embed Player |
+| **Bandcamp** | `bandcamp` | ⚠️ Fallback | Bandcamp Embed Widget |
+| **Twitter / X** | `twitter` | ❌ None (`null`) | Twitter Embed Widget (view-only social embed) |
+| **Instagram** | `instagram` | ❌ None (`null`) | Instagram Embed Frame (view-only social embed) |
+| **Threads** | `threads` | ❌ None (`null`) | Threads Post/Reel Frame (view-only social embed) |
+| **Bilibili** | `bilibili` | ❌ None (`null`) | Bilibili Player Embed (view-only iframe embed) |
+
+> [!NOTE]
+> Social embed widgets (`twitter`, `threads`, `bilibili`, `instagram`) do not provide interactive programmatic playback APIs. Their `createAdapter()` intentionally returns `null` so SRemote will not register invalid dummy adapters.
+
+---
+
 ## 🚀 Usage
 
-All providers return:
-`{ remote, iframe, element, adapter, player, instanceId, destroy }`
+Both `mount()` and `create()` return a unified object:
+```typescript
+interface ProviderResult {
+  element: HTMLElement;         // Generated root DOM element
+  iframe?: HTMLIFrameElement;   // Iframe element (if provider uses iframe)
+  remote: RemoteController;     // Direct standalone Promise-based player controller
+  adapter: SRemoteCustomAdapter | null; // HTML5 Media Element compliant adapter
+  player: any;                  // Native SDK instance (e.g. YT.Player, Vimeo.Player)
+  instanceId: string;           // Unique instance identifier
+  capabilities: SRemoteCapabilities; // Supported feature matrix
+  destroy: () => void;          // Cleanup and teardown function
+}
+```
 
 ---
 
-### 1. Mount and Auto-bind to SRemote
-
-Mounts player into a container element and registers its adapter to SRemote.
+### 1. Mount & Direct Control via `remote`
 
 ```javascript
-import { youtube, vimeo, soundcloud } from '@sremote/ready2use';
+import { youtube } from '@sremote/ready2use';
 
-// Mounts iframe and auto-registers adapter with SRemote
-const yt = await youtube.mount('#youtube-container', {
-  videoId: 'dQw4w9WgXcQ'
+// Mount YouTube Player into '#player-box'
+const yt = await youtube.mount('#player-box', {
+  videoId: 'dQw4w9WgXcQ',
+  playerVars: { autoplay: 0, controls: 1 }
 });
+
+// Control immediately with the standalone remote controller:
 await yt.remote.play();
+await yt.remote.seekTo(45); // Seek to 45s
+await yt.remote.seek(10);   // Relative seek: jump forward 10s
+await yt.remote.setVolume(0.8);
+await yt.remote.toggle();   // Toggle play / pause
+
+console.log('Current time:', yt.remote.getCurrentTime());
+console.log('Duration:', yt.remote.getDuration());
+
+// Teardown when unmounting
+// yt.destroy();
 ```
 
 ---
 
-### 2. Create Elements Without Mounting (React / Vue)
+### 2. Integration with SRemote Wrapper
 
-`provider.create()` creates the player instance, iframe/element, and SRemote adapter. By default, it automatically registers the adapter with SRemote:
-
-```javascript
-import { dailymotion } from '@sremote/ready2use';
-import { createSRemote } from '@sremote/wrapper';
-
-const myRemote = createSRemote();
-const { iframe, adapter, instanceId } = await dailymotion.create({
-  video: 'x7tgad0',
-  width: 640,
-  height: 360,
-  // register: true (default: automatically registers to active SRemote)
-});
-
-// Append to custom container in your React/Vue component
-document.getElementById('my-wrapper').appendChild(iframe);
-await myRemote.play(instanceId);
-```
-
-> **Automatic Event Deduplication & Selective Fallback**:
-> Elements created via `.create()` and `.mount()` leverage SRemote's **Selective Handled Events Fallback**. Adapters report or emit the events they natively handle, while any missing events (such as `timeupdate`) automatically fall back to the underlying media element without duplicating events.
-
----
-
-### 3. Supported Events Matrix
-
-All major providers emit standardized events via `adapter.emit(eventName, payload)`:
-
-| Provider | Standard Events Supported | Notes |
-| :--- | :--- | :--- |
-| **YouTube** | `play`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `ratechange`, `buffering`, `volumechange` | IFrame API + Native Scrubbing detection |
-| **Vimeo** | `play`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `ratechange`, `buffering`, `buffered`, `volumechange` | Official Player SDK events |
-| **SoundCloud** | `play`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `volumechange` | SoundCloud Widget Events |
-| **Spotify** | `play`, `pause`, `timeupdate`, `seeking`, `seeked` | Spotify EmbedController |
-| **Dailymotion** | `play`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `buffering`, `volumechange` | Dailymotion Player Events |
-| **Twitch** | `play`, `pause`, `ended`, `seeking`, `seeked`, `volumechange` | Twitch Interactive SDK |
-| **Apple MusicKit** | `play`, `pause`, `timeupdate`, `seeking`, `seeked`, `volumechange` | Official MusicKit JS v3 |
-| **PeerTube** | `play`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `ratechange`, `volumechange` | PeerTube Embed API |
-| **Facebook** | `play`, `pause`, `ended`, `timeupdate`, `seeking`, `seeked`, `buffering`, `buffered`, `volumechange` | Facebook Video SDK |
-
----
-
-### 4. Standalone Adapter Usage
+By default, `.mount()` and `.create()` automatically register the adapter into the active `sremote` instance (if available):
 
 ```javascript
-import { twitch } from '@sremote/ready2use';
+import { vimeo } from '@sremote/ready2use';
+import { sremote } from '@sremote/wrapper';
 
-const { iframe, adapter } = await twitch.create({
-  channel: 'the8bitdrummer'
-});
-document.body.appendChild(iframe);
-
-adapter.play();
-adapter.seekTo(30);
-```
-
----
-
-### 4. Direct Native SDK Access
-
-```javascript
-import { spotify } from '@sremote/ready2use';
-
-const { player } = await spotify.mount('#player-container', {
-  uri: 'spotify:track:4cOdK2wGLETKBW3PvgPWqT'
+const { instanceId } = await vimeo.mount('#vimeo-box', {
+  videoId: '76979871'
 });
 
-// Direct access to native SDK instance
-player.addListener('playback_update', e => {
-  console.log('Position:', e.data.position);
+// Control via SRemote client
+await sremote.play(instanceId);
+await sremote.seek(30, instanceId);
+
+sremote.on('timeupdate', ({ state, instanceId: id }) => {
+  if (id === instanceId) {
+    console.log(`Playback: ${state.currentTime}s / ${state.duration}s`);
+  }
 });
 ```
 
 ---
 
-### Custom Providers via `BaseProvider`
+### 3. Framework Usage (React / Vue / Svelte)
 
-You can implement new providers by subclassing `BaseProvider`:
+Use `.create()` to prepare DOM elements and adapters without immediate attachment:
 
 ```javascript
-import { BaseProvider } from '@sremote/ready2use';
+import { soundcloud } from '@sremote/ready2use';
 
-export class CustomProvider extends BaseProvider {
+const { iframe, remote, destroy } = await soundcloud.create({
+  trackUrl: 'https://api.soundcloud.com/tracks/293',
+  color: '#ff5500'
+});
+
+// Mount DOM manually in component lifecycle:
+document.getElementById('my-container').appendChild(iframe);
+
+// Control via remote controller:
+await remote.play();
+```
+
+---
+
+## 🛠️ HTML5 Media Element Adapter Specification
+
+Adapters created in `@sremote/ready2use` follow the `HTML5MediaElement` specification:
+
+- **Playback**: `play()`, `pause()`, `toggle()`
+- **Seeking & Position**:
+  - `getCurrentTime()`: Returns current position in seconds.
+  - `setCurrentTime(seconds)`: Core HTML5 seek method (absolute position).
+  - `seekTo(seconds)`: Standard alias to `setCurrentTime(seconds)`.
+  - `seek(deltaSeconds)`: Relative seek offset (`currentTime + delta`).
+- **Volume**: `getVolume()`, `setVolume(0..1)`, `getMuted()`, `setMuted(boolean)`, `toggleMuted()`
+- **State**: `getState()`, `getDuration()`, `isPaused()`
+- **Events**: Emitted via `adapter.emit(eventName, payload)` (`play`, `pause`, `timeupdate`, `ended`, `seeking`, `seeked`, `volumechange`).
+
+---
+
+## 🧰 Polyfill Helpers & Utilities
+
+`@sremote/ready2use` exports core helpers for provider authors:
+
+```javascript
+import { Polyfills, BaseProvider } from '@sremote/ready2use';
+
+const { setCurrentTime, seekTo, seek, toggle, Volume } = Polyfills;
+```
+
+- **`setCurrentTime(adapter, nativeSeekFn)`**: Normalizes core seek behavior.
+- **`seekTo(adapter)`**: Configures `seekTo` alias to `setCurrentTime`.
+- **`seek(adapter)`**: Configures relative seeking based on `getCurrentTime()`.
+- **`toggle(adapter)`**: Configures play/pause toggling based on `isPaused()`.
+- **`Volume` class**: Manages volume levels `[0..1]`, caching, mute/unmute states, and sync callbacks to native SDKs.
+
+---
+
+## 🏗️ Implementing a Custom Provider with `BaseProvider`
+
+```javascript
+import { BaseProvider, Polyfills } from '@sremote/ready2use';
+
+export class CustomPlayerProvider extends BaseProvider {
   constructor() {
     super('custom-player');
   }
 
   async loadSdk() {
-    // Optional: Load third-party script
+    if (window.CustomSDK) return window.CustomSDK;
+    // Load script tag if needed...
+    return window.CustomSDK;
   }
 
   async initPlayer(options, instanceId) {
-    // Initialize native player & return elements
+    const SDK = await this.loadSdk();
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://example.com/embed/${options.id}`;
+
+    const player = new SDK.Player(iframe);
+
     return {
-      player: nativePlayerInstance,
-      element: iframeOrDomElement,
-      destroy: () => nativePlayerInstance.destroy()
+      player,
+      element: iframe,
+      iframe,
+      destroy: () => player.destroy?.()
     };
   }
 
   createAdapter(player, context) {
-    // Return SRemote adapter mapping
-    return {
+    const volumeManager = new Polyfills.Volume({
+      onVolumeChange: (vol) => player.setVolume(vol * 100),
+      onMuteChange: (muted) => player.setMuted(muted)
+    });
+
+    const adapter = {
       play: () => player.play(),
       pause: () => player.pause(),
-      load: (source) => player.load(source)
+      getCurrentTime: () => player.getTime() || 0,
+      getDuration: () => player.getDuration() || 0,
+      isPaused: () => player.paused(),
+      getVolume: () => volumeManager.getVolume(),
+      setVolume: (vol) => volumeManager.setVolume(vol),
+      getMuted: () => volumeManager.getMuted(),
+      setMuted: (m) => volumeManager.setMuted(m),
+      load: (src) => player.load(src),
+      getState: () => ({
+        paused: player.paused(),
+        currentTime: player.getTime() || 0,
+        duration: player.getDuration() || 0
+      })
     };
+
+    // Attach HTML5 polyfill helpers
+    Polyfills.setCurrentTime(adapter, (sec) => player.seek(sec));
+    Polyfills.seekTo(adapter);
+    Polyfills.seek(adapter);
+    Polyfills.toggle(adapter);
+
+    return adapter;
   }
 }
 ```
