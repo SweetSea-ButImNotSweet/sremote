@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, seekTo } from '../core/polyfill.js';
 import { loadSpotifySdk } from '../utils/sdk-loader.js';
 
 /**
@@ -108,13 +109,6 @@ export class SpotifyProvider extends BaseProvider {
       pause() {
         EmbedController?.pause?.();
       },
-      toggle() {
-        if (typeof EmbedController?.togglePlay === 'function') {
-          EmbedController.togglePlay();
-        } else {
-          isPaused ? adapter.play() : adapter.pause();
-        }
-      },
       stop() {
         if (EmbedController && typeof EmbedController.pause === 'function' && typeof EmbedController.seek === 'function') {
           EmbedController.pause();
@@ -132,6 +126,9 @@ export class SpotifyProvider extends BaseProvider {
         isSeeking = true;
         adapter.emit?.('seeking', { state: { paused: isPaused, currentTime: target, duration } });
         EmbedController?.seek?.(target);
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getCurrentTime() {
         return position;
@@ -182,6 +179,9 @@ export class SpotifyProvider extends BaseProvider {
         }
       });
     }
+
+    toggle(adapter);
+    seekTo(adapter);
 
     return adapter;
   }

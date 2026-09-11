@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, Volume } from '../core/polyfill.js';
 import { loadYouTubeIframeApi } from '../utils/sdk-loader.js';
 
 /**
@@ -226,14 +227,6 @@ export class YouTubeProvider extends BaseProvider {
           player.pauseVideo();
         }
       },
-      toggle() {
-        if (!player) return;
-        if (isPlaying()) {
-          player.pauseVideo?.();
-        } else {
-          player.playVideo?.();
-        }
-      },
       stop() {
         if (player && typeof player.stopVideo === 'function') {
           player.stopVideo();
@@ -257,6 +250,9 @@ export class YouTubeProvider extends BaseProvider {
           adapter.emit?.('seeking', { state });
           player.seekTo(target, true);
         }
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getCurrentTime() {
         return player && typeof player.getCurrentTime === 'function' ? player.getCurrentTime() : 0;
@@ -384,6 +380,9 @@ export class YouTubeProvider extends BaseProvider {
         adapter.emit?.('ratechange', { state });
       });
     }
+
+    toggle(adapter);
+    new Volume(adapter.getVolume ? adapter.getVolume() : 1).apply(adapter);
 
     return adapter;
   }

@@ -40,27 +40,25 @@ assert(mockToggle._paused === false, 'toggle() plays when paused');
 mockToggle.toggle();
 assert(mockToggle._paused === true, 'toggle() pauses when playing');
 
-// Seek / SeekTo test
+// HTML5 Seek / setCurrentTime test
 let seekTarget = 0;
 const mockSeek = {
-  seekTo(sec) {
+  _currentTime: 10,
+  getCurrentTime() {
+    return this._currentTime;
+  },
+  setCurrentTime(sec) {
     seekTarget = sec;
+    this._currentTime = sec;
   },
 };
 seek(mockSeek);
-assert(typeof mockSeek.seek === 'function', 'seek() aliases seekTo()');
-mockSeek.seek(42);
-assert(seekTarget === 42, 'seek() forwarded to seekTo() correctly');
-
-const mockSeekTo = {
-  seek(sec) {
-    seekTarget = sec;
-  },
-};
-seekTo(mockSeekTo);
-assert(typeof mockSeekTo.seekTo === 'function', 'seekTo() aliases seek()');
-mockSeekTo.seekTo(88);
-assert(seekTarget === 88, 'seekTo() forwarded to seek() correctly');
+seekTo(mockSeek);
+assert(typeof mockSeek.seek === 'function', 'seek() (relative) was polyfilled');
+await mockSeek.seek(15);
+assert(seekTarget === 25, 'seek(+15) relative seek from 10 correctly moved to 25');
+mockSeek.seekTo(50);
+assert(seekTarget === 50, 'seekTo(50) absolute seek correctly moved to 50');
 
 // Volume class test
 const vol = new Volume(0.8);

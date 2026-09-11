@@ -48,8 +48,8 @@ export {
   applemusickit,
 };
 
-import { toggle, seek, seekTo, Volume } from './core/polyfill.js';
-const Polyfills = [toggle, seek, seekTo, Volume];
+import { toggle, seek, seekTo, setCurrentTime, Volume } from './core/polyfill.js';
+const Polyfills = [toggle, seek, seekTo, setCurrentTime, Volume];
 
 export { Polyfills };
 export { createRemoteProxy } from './core/remote-proxy.js';

@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, seekTo, Volume } from '../core/polyfill.js';
 import { loadTwitchSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -78,10 +79,6 @@ export class TwitchProvider extends BaseProvider {
       pause() {
         player?.pause?.();
       },
-      toggle() {
-        if (!player || typeof player.isPaused !== 'function') return;
-        player.isPaused() ? player.play?.() : player.pause?.();
-      },
       stop() {
         if (player && typeof player.pause === 'function' && typeof player.seek === 'function') {
           player.pause();
@@ -104,6 +101,9 @@ export class TwitchProvider extends BaseProvider {
         adapter.emit?.('seeking', { state });
         player?.seek?.(target);
         adapter.emit?.('seeked', { state });
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getCurrentTime() {
         return player?.getCurrentTime ? player.getCurrentTime() : 0;
@@ -170,6 +170,10 @@ export class TwitchProvider extends BaseProvider {
         });
       });
     }
+
+    toggle(adapter);
+    seekTo(adapter);
+    new Volume(adapter.getVolume ? adapter.getVolume() : 1).apply(adapter);
 
     return adapter;
   }

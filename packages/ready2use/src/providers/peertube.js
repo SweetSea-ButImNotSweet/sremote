@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes, createTempNode } from '../core/dom-utils.js';
+import { toggle, Volume } from '../core/polyfill.js';
 import { loadPeerTubeSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -110,9 +111,6 @@ export class PeerTubeProvider extends BaseProvider {
       pause() {
         player?.pause?.().catch(() => {});
       },
-      toggle() {
-        isPlaying ? adapter.pause() : adapter.play();
-      },
       stop() {
         if (player) {
           player.pause?.().catch(() => {});
@@ -147,6 +145,9 @@ export class PeerTubeProvider extends BaseProvider {
             adapter.emit?.('seeked', { state: { paused: !isPlaying, currentTime: target, duration, volume, playbackRate } });
           })
           .catch(() => {});
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getCurrentTime() {
         return currentTime;
@@ -213,6 +214,9 @@ export class PeerTubeProvider extends BaseProvider {
         adapter.emit?.('timeupdate', { state: { paused: !isPlaying, currentTime, duration } });
       });
     }
+
+    toggle(adapter);
+    new Volume(volume).apply(adapter);
 
     return adapter;
   }

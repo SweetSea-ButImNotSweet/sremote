@@ -28,29 +28,25 @@ export function toggle(adapter) {
 }
 
 /**
- * Ensures adapter has a seek(seconds) method. If missing but seekTo exists, aliases it.
+ * Ensures adapter has setCurrentTime(seconds) based on HTML5 Media standard.
+ * If missing but seekTo exists, maps it to seekTo.
  * @param {Object} adapter - SRemote adapter object to polyfill
  * @returns {Object} The polyfilled adapter
  */
-export function seek(adapter) {
+export function setCurrentTime(adapter) {
   if (!adapter) return adapter;
-  if (typeof adapter.seek === 'function') return adapter;
+  if (typeof adapter.setCurrentTime === 'function') return adapter;
 
   if (typeof adapter.seekTo === 'function') {
-    adapter.seek = function (seconds) {
+    adapter.setCurrentTime = function (seconds) {
       return adapter.seekTo(seconds);
     };
-  } else if (typeof adapter.setCurrentTime === 'function') {
-    adapter.seek = function (seconds) {
-      return adapter.setCurrentTime(seconds);
-    };
   }
-
   return adapter;
 }
 
 /**
- * Ensures adapter has a seekTo(seconds) method. If missing but seek exists, aliases it.
+ * Ensures adapter has seekTo(seconds) for absolute seeking (aliases setCurrentTime).
  * @param {Object} adapter - SRemote adapter object to polyfill
  * @returns {Object} The polyfilled adapter
  */
@@ -58,15 +54,37 @@ export function seekTo(adapter) {
   if (!adapter) return adapter;
   if (typeof adapter.seekTo === 'function') return adapter;
 
-  if (typeof adapter.seek === 'function') {
-    adapter.seekTo = function (seconds) {
-      return adapter.seek(seconds);
-    };
-  } else if (typeof adapter.setCurrentTime === 'function') {
+  if (typeof adapter.setCurrentTime === 'function') {
     adapter.seekTo = function (seconds) {
       return adapter.setCurrentTime(seconds);
     };
   }
+  return adapter;
+}
+
+/**
+ * Ensures adapter has relative seek(offset).
+ * Calculates current time + offset and delegates to setCurrentTime / seekTo.
+ * @param {Object} adapter - SRemote adapter object to polyfill
+ * @returns {Object} The polyfilled adapter
+ */
+export function seek(adapter) {
+  if (!adapter) return adapter;
+  if (typeof adapter.seek === 'function') return adapter;
+
+  adapter.seek = async function (offset) {
+    let cur = 0;
+    if (typeof adapter.getCurrentTime === 'function') {
+      cur = Number((await adapter.getCurrentTime()) || 0);
+    }
+    const target = Math.max(0, cur + Number(offset));
+    if (typeof adapter.setCurrentTime === 'function') {
+      return adapter.setCurrentTime(target);
+    }
+    if (typeof adapter.seekTo === 'function') {
+      return adapter.seekTo(target);
+    }
+  };
 
   return adapter;
 }

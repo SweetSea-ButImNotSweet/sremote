@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, seekTo, Volume } from '../core/polyfill.js';
 import { loadDailymotionSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -83,10 +84,6 @@ export class DailymotionProvider extends BaseProvider {
       pause() {
         player?.pause?.();
       },
-      toggle() {
-        if (!player) return;
-        isPaused ? adapter.play() : adapter.pause();
-      },
       stop() {
         if (player && typeof player.pause === 'function' && typeof player.seek === 'function') {
           player.pause();
@@ -102,6 +99,9 @@ export class DailymotionProvider extends BaseProvider {
         const target = Number(seconds);
         adapter.emit?.('seeking', { state: { paused: isPaused, currentTime: target, duration } });
         player?.seek?.(target);
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getCurrentTime() {
         return currentTime;
@@ -223,6 +223,10 @@ export class DailymotionProvider extends BaseProvider {
         });
       }
     }
+
+    toggle(adapter);
+    seekTo(adapter);
+    new Volume(volume).apply(adapter);
 
     return adapter;
   }

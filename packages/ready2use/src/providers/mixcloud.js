@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, seekTo } from '../core/polyfill.js';
 import { loadMixcloudSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -72,14 +73,6 @@ export class MixcloudProvider extends BaseProvider {
           isPlaying = false;
         }
       },
-      toggle() {
-        if (widget && typeof widget.togglePlay === 'function') {
-          widget.togglePlay();
-          isPlaying = !isPlaying;
-        } else {
-          isPlaying ? adapter.pause() : adapter.play();
-        }
-      },
       stop() {
         if (widget && typeof widget.pause === 'function' && typeof widget.seek === 'function') {
           widget.pause();
@@ -138,6 +131,9 @@ export class MixcloudProvider extends BaseProvider {
         adapter.emit?.('ended', { state: { paused: true, ended: true, currentTime: duration, duration } });
       });
     }
+
+    toggle(adapter);
+    seekTo(adapter);
 
     return adapter;
   }

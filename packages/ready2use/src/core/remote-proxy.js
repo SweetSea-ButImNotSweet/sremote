@@ -52,15 +52,31 @@ export function createRemoteProxy(adapter, sremoteClient = null, instanceId = nu
       return this.pause();
     },
 
-    seek(seconds) {
-      if (typeof safeAdapter.seek === 'function') return safeAdapter.seek(seconds);
+    seek(offset) {
+      if (typeof safeAdapter.seek === 'function') return safeAdapter.seek(offset);
+      return (async () => {
+        let cur = 0;
+        if (typeof safeAdapter.getCurrentTime === 'function') {
+          cur = Number((await safeAdapter.getCurrentTime()) || 0);
+        }
+        const target = Math.max(0, cur + Number(offset));
+        return this.seekTo(target);
+      })();
+    },
+
+    seekTo(seconds) {
       if (typeof safeAdapter.seekTo === 'function') return safeAdapter.seekTo(seconds);
       if (typeof safeAdapter.setCurrentTime === 'function') return safeAdapter.setCurrentTime(seconds);
       return Promise.resolve();
     },
 
-    seekTo(seconds) {
-      return this.seek(seconds);
+    setCurrentTime(seconds) {
+      return this.seekTo(seconds);
+    },
+
+    getCurrentTime() {
+      if (typeof safeAdapter.getCurrentTime === 'function') return safeAdapter.getCurrentTime();
+      return Promise.resolve(0);
     },
 
     setVolume(volume) {

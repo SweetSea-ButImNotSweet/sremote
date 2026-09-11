@@ -1,4 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
+import { toggle, Volume } from '../core/polyfill.js';
 import { loadMusicKitSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -92,12 +93,6 @@ export class AppleMusicKitProvider extends BaseProvider {
       async pause() {
         return mk?.pause?.();
       },
-      async toggle() {
-        if (mk?.isPlaying) {
-          return mk.pause();
-        }
-        return mk?.play?.();
-      },
       async stop() {
         return mk?.stop?.();
       },
@@ -117,6 +112,9 @@ export class AppleMusicKitProvider extends BaseProvider {
         const res = await mk?.seekToTime?.(target);
         adapter.emit?.('seeked', { state: { ...updateSnapshot(), currentTime: target } });
         return res;
+      },
+      setCurrentTime(seconds) {
+        return this.seekTo(seconds);
       },
       getCurrentTime() {
         return Number(mk?.currentPlaybackTime) || currentTime;
@@ -193,6 +191,9 @@ export class AppleMusicKitProvider extends BaseProvider {
         mk.addEventListener('queueItemDidChange', event => adapter.emit?.('trackchange', { item: event.item, state: updateSnapshot() }));
       } catch {}
     }
+
+    toggle(adapter);
+    new Volume(volume).apply(adapter);
 
     return adapter;
   }

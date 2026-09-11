@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, seek, seekTo, Volume } from '../core/polyfill.js';
 import { loadVimeoSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -89,17 +90,6 @@ export class VimeoProvider extends BaseProvider {
       pause() {
         player?.pause?.().catch(() => {});
       },
-      toggle() {
-        if (!player) return;
-        if (typeof player.getPaused === 'function') {
-          player
-            .getPaused()
-            .then(paused => (paused ? player.play().catch(() => {}) : player.pause().catch(() => {})))
-            .catch(() => (isPaused ? player.play().catch(() => {}) : player.pause().catch(() => {})));
-        } else {
-          isPaused ? player.play().catch(() => {}) : player.pause().catch(() => {});
-        }
-      },
       stop() {
         if (player && typeof player.pause === 'function' && typeof player.setCurrentTime === 'function') {
           player
@@ -116,8 +106,11 @@ export class VimeoProvider extends BaseProvider {
             .catch(() => {});
         }
       },
-      seekTo(seconds) {
+      setCurrentTime(seconds) {
         player?.setCurrentTime?.(Number(seconds)).catch(() => {});
+      },
+      seekTo(seconds) {
+        this.setCurrentTime(seconds);
       },
       getCurrentTime() {
         return currentTime;
@@ -247,6 +240,11 @@ export class VimeoProvider extends BaseProvider {
         adapter.emit?.('buffered', { state: { paused: isPaused, currentTime, duration, isBuffering: false } });
       });
     }
+
+    toggle(adapter);
+    seek(adapter);
+    seekTo(adapter);
+    new Volume(volume).apply(adapter);
 
     return adapter;
   }

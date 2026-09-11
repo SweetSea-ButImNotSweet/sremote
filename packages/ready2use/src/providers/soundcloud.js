@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, seekTo, Volume } from '../core/polyfill.js';
 import { loadSoundCloudSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -81,12 +82,6 @@ export class SoundCloudProvider extends BaseProvider {
           isPlaying = false;
         }
       },
-      toggle() {
-        if (widget && typeof widget.toggle === 'function') {
-          widget.toggle();
-          isPlaying = !isPlaying;
-        }
-      },
       stop() {
         if (widget && typeof widget.pause === 'function' && typeof widget.seekTo === 'function') {
           widget.pause();
@@ -109,6 +104,9 @@ export class SoundCloudProvider extends BaseProvider {
           adapter.emit?.('seeking', { state: { paused: !isPlaying, currentTime: targetSec, duration, volume, muted: isMuted } });
           widget.seekTo(targetSec * 1000);
         }
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getCurrentTime() {
         return currentTime;
@@ -187,6 +185,10 @@ export class SoundCloudProvider extends BaseProvider {
         adapter.emit?.('ended', { state: { paused: true, ended: true, currentTime: duration, duration } });
       });
     }
+
+    toggle(adapter);
+    seekTo(adapter);
+    new Volume(volume).apply(adapter);
 
     return adapter;
   }
