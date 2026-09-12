@@ -55,57 +55,102 @@
           <!-- TOC Navigation Groups -->
           <nav class="toc-nav" id="toc-container">
 
-            <!-- Nhóm: Bắt đầu (Getting Started) -->
+            <!-- Nhóm: Bắt đầu nhanh (Quickstart) -->
             <div class="toc-group">
               <div class="toc-group-title">
-                <span id="toc-group-general">🚀 Bắt đầu</span>
+                <span id="toc-group-quickstart">🚀 Bắt đầu nhanh</span>
               </div>
               <ul class="toc-list">
                 <li>
-                  <a href="content/guides/vi/00-developer-overview.md" class="toc-link" data-path="content/guides/vi/00-developer-overview.md" data-en-path="content/guides/en/00-developer-overview.md">
-                    <span class="toc-label" data-vi="00. Tổng quan Kiến trúc cho Dev" data-en="00. Developer Architecture Overview">00. Tổng quan Kiến trúc cho Dev</span>
+                  <a href="content/guides/vi/quickstart/5-minute-quickstart.md" class="toc-link active" data-path="content/guides/vi/quickstart/5-minute-quickstart.md" data-en-path="content/guides/en/quickstart/5-minute-quickstart.md">
+                    <span class="toc-label" data-vi="Khởi động trong 5 phút" data-en="5-Minute Quickstart">Khởi động trong 5 phút</span>
+                    <span class="toc-badge">Start</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Nhóm: Khái niệm cốt lõi (Core Concepts) -->
+            <div class="toc-group">
+              <div class="toc-group-title">
+                <span id="toc-group-concepts">💡 Khái niệm cốt lõi</span>
+              </div>
+              <ul class="toc-list">
+                <li>
+                  <a href="content/guides/vi/concepts/architecture-overview.md" class="toc-link" data-path="content/guides/vi/concepts/architecture-overview.md" data-en-path="content/guides/en/concepts/architecture-overview.md">
+                    <span class="toc-label" data-vi="Kiến trúc tổng quan" data-en="Architecture Overview">Kiến trúc tổng quan</span>
                     <span class="toc-badge">Arch</span>
                   </a>
                 </li>
                 <li>
-                  <a href="content/guides/vi/01-iframe-setup.md" class="toc-link" data-path="content/guides/vi/01-iframe-setup.md" data-en-path="content/guides/en/01-iframe-setup.md">
-                    <span class="toc-label" data-vi="01. Tạo thẻ Iframe đúng chuẩn" data-en="01. Iframe Setup Guide">01. Tạo thẻ Iframe đúng chuẩn</span>
-                    <span class="toc-badge">Guide</span>
+                  <a href="content/guides/vi/concepts/adapter-and-lifecycle.md" class="toc-link" data-path="content/guides/vi/concepts/adapter-and-lifecycle.md" data-en-path="content/guides/en/concepts/adapter-and-lifecycle.md">
+                    <span class="toc-label" data-vi="Chuẩn hóa Adapter & Vòng đời" data-en="Adapter & Lifecycle Spec">Chuẩn hóa Adapter & Vòng đời</span>
+                    <span class="toc-badge">Spec</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Nhóm: Hướng dẫn thực chiến (Use-cases) -->
+            <div class="toc-group">
+              <div class="toc-group-title">
+                <span id="toc-group-usecases">🛠️ Hướng dẫn thực chiến</span>
+              </div>
+              <ul class="toc-list">
+                <li>
+                  <a href="content/guides/vi/use-cases/01-popular-players-ready2use.md" class="toc-link" data-path="content/guides/vi/use-cases/01-popular-players-ready2use.md" data-en-path="content/guides/en/use-cases/01-popular-players-ready2use.md">
+                    <span class="toc-label" data-vi="1. 22 Nền tảng với Ready2Use" data-en="1. 22 Platforms with Ready2Use">1. 22 Nền tảng với Ready2Use</span>
+                    <span class="toc-badge">Preset</span>
                   </a>
                 </li>
                 <li>
-                  <a href="content/guides/vi/02-compatibility-check.md" class="toc-link" data-path="content/guides/vi/02-compatibility-check.md" data-en-path="content/guides/en/02-compatibility-check.md">
-                    <span class="toc-label" data-vi="02. Kiểm tra tính tương thích & Bảng dịch vụ" data-en="02. Compatibility & Service Matrix">02. Kiểm tra tương thích</span>
-                    <span class="toc-badge">Matrix</span>
+                  <a href="content/guides/vi/use-cases/02-custom-player-adapter.md" class="toc-link" data-path="content/guides/vi/use-cases/02-custom-player-adapter.md" data-en-path="content/guides/en/use-cases/02-custom-player-adapter.md">
+                    <span class="toc-label" data-vi="2. Tự viết Custom Adapter" data-en="2. Custom Player Adapter">2. Tự viết Custom Adapter</span>
+                    <span class="toc-badge">Polyfill</span>
                   </a>
                 </li>
                 <li>
-                  <a href="content/guides/vi/03-wrapper-integration.md" class="toc-link" data-path="content/guides/vi/03-wrapper-integration.md" data-en-path="content/guides/en/03-wrapper-integration.md">
-                    <span class="toc-label" data-vi="03. Cài đặt Wrapper & Tích hợp" data-en="03. SRemote Wrapper Integration">03. Cài đặt Wrapper & Tích hợp</span>
-                    <span class="toc-badge">Code</span>
+                  <a href="content/guides/vi/use-cases/03-same-origin-direct-media.md" class="toc-link" data-path="content/guides/vi/use-cases/03-same-origin-direct-media.md" data-en-path="content/guides/en/use-cases/03-same-origin-direct-media.md">
+                    <span class="toc-label" data-vi="3. Media trực tiếp trên trang" data-en="3. Same-Origin Direct Media">3. Media trực tiếp trên trang</span>
+                    <span class="toc-badge">Direct</span>
                   </a>
                 </li>
                 <li>
-                  <a href="content/guides/vi/04-testing-debugging.md" class="toc-link" data-path="content/guides/vi/04-testing-debugging.md" data-en-path="content/guides/en/04-testing-debugging.md">
-                    <span class="toc-label" data-vi="04. Thử nghiệm & Chẩn đoán" data-en="04. Testing & Debugging">04. Thử nghiệm & Chẩn đoán</span>
+                  <a href="content/guides/vi/use-cases/04-cross-origin-userscript.md" class="toc-link" data-path="content/guides/vi/use-cases/04-cross-origin-userscript.md" data-en-path="content/guides/en/use-cases/04-cross-origin-userscript.md">
+                    <span class="toc-label" data-vi="4. Cross-Origin với Userscript" data-en="4. Cross-Origin with Userscript">4. Cross-Origin với Userscript</span>
+                    <span class="toc-badge">Bridge</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Nhóm: Nâng cao & Phụ trợ (Advanced) -->
+            <div class="toc-group">
+              <div class="toc-group-title">
+                <span id="toc-group-advanced">⚡ Nâng cao & Phụ trợ</span>
+              </div>
+              <ul class="toc-list">
+                <li>
+                  <a href="content/guides/vi/advanced/multi-instance-management.md" class="toc-link" data-path="content/guides/vi/advanced/multi-instance-management.md" data-en-path="content/guides/en/advanced/multi-instance-management.md">
+                    <span class="toc-label" data-vi="Quản lý đa Instance" data-en="Multi-Instance Management">Quản lý đa Instance</span>
+                    <span class="toc-badge">Multi</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="content/guides/vi/advanced/troubleshooting-and-debugging.md" class="toc-link" data-path="content/guides/vi/advanced/troubleshooting-and-debugging.md" data-en-path="content/guides/en/advanced/troubleshooting-and-debugging.md">
+                    <span class="toc-label" data-vi="Chẩn đoán & Xử lý sự cố" data-en="Troubleshooting & Debugging">Chẩn đoán & Xử lý sự cố</span>
                     <span class="toc-badge">Debug</span>
                   </a>
                 </li>
                 <li>
-                  <a href="content/guides/vi/05-ux-best-practices.md" class="toc-link" data-path="content/guides/vi/05-ux-best-practices.md" data-en-path="content/guides/en/05-ux-best-practices.md">
-                    <span class="toc-label" data-vi="05. Best Practices & End-User" data-en="05. UX Best Practices & Users">05. Best Practices & End-User</span>
-                    <span class="toc-badge">UX</span>
-                  </a>
-                </li>
-                <li>
-                  <a href="content/guides/vi/06-troubleshooting.md" class="toc-link" data-path="content/guides/vi/06-troubleshooting.md" data-en-path="content/guides/en/06-troubleshooting.md">
-                    <span class="toc-label" data-vi="06. Xử lý sự cố thường gặp" data-en="06. Troubleshooting Guide">06. Xử lý sự cố thường gặp</span>
-                    <span class="toc-badge">Troubleshoot</span>
+                  <a href="content/guides/vi/advanced/compatibility-matrix.md" class="toc-link" data-path="content/guides/vi/advanced/compatibility-matrix.md" data-en-path="content/guides/en/advanced/compatibility-matrix.md">
+                    <span class="toc-label" data-vi="Ma trận tương thích 22 dịch vụ" data-en="Compatibility Matrix (22 services)">Ma trận tương thích 22 dịch vụ</span>
+                    <span class="toc-badge">Matrix</span>
                   </a>
                 </li>
                 <li>
                   <a href="content/api/vi/README.md" class="toc-link" data-path="content/api/vi/README.md" data-en-path="content/api/en/README.md">
-                    <span class="toc-label" data-vi="Bảng tổng hợp API" data-en="API Index Reference">Bảng tổng hợp API</span>
+                    <span class="toc-label" data-vi="Bảng tổng hợp API Reference" data-en="API Index Reference">Bảng tổng hợp API Reference</span>
                     <span class="toc-badge">Index</span>
                   </a>
                 </li>

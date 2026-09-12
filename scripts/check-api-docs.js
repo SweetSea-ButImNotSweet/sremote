@@ -13,22 +13,22 @@ console.log('\n🔍 [SRemote API & Docs Coverage Auditor]\n');
 // 1. Collect all target documentation files
 const docFiles = [
   'README.md',
-  'packages/wrapper/README.md',
+  'packages/sdk/README.md',
   'packages/ready2use/README.md',
   'packages/userscript/README.md',
-  'packages/wrapper/src/index.d.ts',
+  'packages/sdk/src/index.d.ts',
   'packages/shared/src/index.d.ts',
 ].map(rel => ({ path: rel, fullPath: path.join(rootDir, rel), content: fs.existsSync(path.join(rootDir, rel)) ? fs.readFileSync(path.join(rootDir, rel), 'utf-8') : '' }));
 
 const allDocContent = docFiles.map(d => d.content).join('\n');
-const wrapperDts = docFiles.find(d => d.path === 'packages/wrapper/src/index.d.ts')?.content || '';
+const sdkDts = docFiles.find(d => d.path === 'packages/sdk/src/index.d.ts')?.content || '';
 const sharedDts = docFiles.find(d => d.path === 'packages/shared/src/index.d.ts')?.content || '';
 
 const results = { passed: 0, warnings: [] };
 
 function checkItem(category, name, inDts = true, inDocs = false) {
   const presentInDocs = allDocContent.includes(name);
-  const presentInDts = inDts ? wrapperDts.includes(name) || sharedDts.includes(name) : true;
+  const presentInDts = inDts ? sdkDts.includes(name) || sharedDts.includes(name) : true;
 
   if (presentInDocs && presentInDts) {
     results.passed++;

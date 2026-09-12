@@ -13,7 +13,10 @@ const i18nDocs = {
     langTitle: 'Ngôn ngữ:',
     copyLink: 'Sao chép Link',
     copied: '✓ Đã chép!',
-    groupGeneral: '🚀 Bắt đầu (Getting Started)',
+    groupQuickstart: '🚀 Bắt đầu nhanh',
+    groupConcepts: '💡 Khái niệm cốt lõi',
+    groupUsecases: '🛠️ Hướng dẫn thực chiến',
+    groupAdvanced: '⚡ Nâng cao & Phụ trợ',
     groupPlayback: '🎮 Điều khiển phát nhanh',
     groupInstances: '🗂️ Quản lý Instance (instances.*)',
     groupReady2use: '📦 SRemote Ready2use',
@@ -40,7 +43,10 @@ const i18nDocs = {
     langTitle: 'Language:',
     copyLink: 'Copy Link',
     copied: '✓ Copied!',
-    groupGeneral: '🚀 Getting Started',
+    groupQuickstart: '🚀 Quickstart',
+    groupConcepts: '💡 Core Concepts',
+    groupUsecases: '🛠️ Guides by Use-case',
+    groupAdvanced: '⚡ Advanced & Helpers',
     groupPlayback: '🎮 Quick Playback Controls',
     groupInstances: '🗂️ Instance Management (instances.*)',
     groupReady2use: '📦 SRemote Ready2use',
@@ -197,7 +203,7 @@ function scrollToHashElement(hash) {
 }
 
 function getDefaultDocPath(lang) {
-  return lang === 'en' ? 'content/guides/en/00-developer-overview.md' : 'content/guides/vi/00-developer-overview.md';
+  return lang === 'en' ? 'content/guides/en/quickstart/5-minute-quickstart.md' : 'content/guides/vi/quickstart/5-minute-quickstart.md';
 }
 
 // Cleanly normalize shorthand paths, relative paths, and legacy query paths into an exact content/... path
@@ -517,7 +523,10 @@ function setLanguage(lang, renderOnSwitch = true) {
   if (langTitleEl) langTitleEl.textContent = dict.langTitle;
   const copyBtnText = document.getElementById('copy-btn-text');
   if (copyBtnText) copyBtnText.textContent = dict.copyLink;
-  document.getElementById('toc-group-general').textContent = dict.groupGeneral;
+  if (document.getElementById('toc-group-quickstart')) document.getElementById('toc-group-quickstart').textContent = dict.groupQuickstart;
+  if (document.getElementById('toc-group-concepts')) document.getElementById('toc-group-concepts').textContent = dict.groupConcepts;
+  if (document.getElementById('toc-group-usecases')) document.getElementById('toc-group-usecases').textContent = dict.groupUsecases;
+  if (document.getElementById('toc-group-advanced')) document.getElementById('toc-group-advanced').textContent = dict.groupAdvanced;
   if (document.getElementById('toc-group-playback')) document.getElementById('toc-group-playback').textContent = dict.groupPlayback;
   if (document.getElementById('toc-group-instances')) document.getElementById('toc-group-instances').innerHTML = dict.groupInstances;
   if (document.getElementById('toc-group-ready2use')) document.getElementById('toc-group-ready2use').innerHTML = dict.groupReady2use;
