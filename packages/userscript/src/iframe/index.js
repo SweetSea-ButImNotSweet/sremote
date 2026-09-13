@@ -1,4 +1,5 @@
-import { VERSION, NS, ENABLE_DEBUG_API, console_log, console_debug, console_warn, pageWindow, MEDIA_EVENTS, descriptors } from '../config.js';
+import { console_log, console_debug, console_warn, pageWindow, MEDIA_EVENTS, descriptors } from '../config.js';
+import { VERSION, NS, ENABLE_DEBUG_API } from '../const.js';
 import { Storage } from '../core/storage.js';
 import { getOriginStorageKeys, checkOriginPairPermission, generateInstanceId, safeSetProp, safeGetProp } from '../core/utils.js';
 import { showConnectedIndicator, hideConnectedIndicator } from '../ui/indicator-badge.js';

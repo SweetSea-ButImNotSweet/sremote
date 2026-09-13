@@ -1,11 +1,7 @@
+export * from './const.js';
+import { LOG_LEVEL } from './const.js';
+
 import { unsafeWindow } from '$';
-
-export const VERSION = '3.0.0';
-export const NS = 'sremote:';
-
-export const LOG_LEVEL = 3; // 0: None, 1: Error/Warn, 2: Debug, 3: Full Log
-export const ENABLE_DEBUG_API = true;
-
 import { logger as sharedLogger, events } from '@sremote/shared';
 
 // Create unified logger for userscript with dynamic level checking

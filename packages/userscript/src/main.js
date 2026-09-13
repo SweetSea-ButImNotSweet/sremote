@@ -1,3 +1,4 @@
+import './const.js';
 import { registerMenuCommands } from './parent/menu.js';
 import { initParentController } from './parent/index.js';
 import { initIframeAgent } from './iframe/index.js';
