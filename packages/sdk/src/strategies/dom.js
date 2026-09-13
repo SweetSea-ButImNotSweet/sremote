@@ -266,6 +266,16 @@ export class DomDriver {
     if (!resolved) throw new Error(`[SRemote:DomDriver] Media target not found for '${action}'`);
     const instId = resolved.instanceId || resolved.instance?.id || 'dom-media';
 
+    if (this.logger?.scope) {
+      if (resolved.type === 'adapter') {
+        const adapterName = resolved.instance?.name || instId;
+        this.logger.scope('action').log(`(DomDriver) Executing '${action}' via Adapter [${adapterName}]`, { value, instanceId: instId });
+      } else {
+        const tagName = resolved.instance?.tagName ? resolved.instance.tagName.toLowerCase() : 'element';
+        this.logger.scope('action').log(`(DomDriver) Executing '${action}' via In-Page DOM <${tagName}> [${instId}]`, { value, instanceId: instId });
+      }
+    }
+
     return executeMediaAction(resolved.instance, action, value, { transactionTracker: this.transactionTracker, instanceId: instId, logger: this.logger });
   }
 

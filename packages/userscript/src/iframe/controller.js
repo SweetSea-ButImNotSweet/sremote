@@ -151,6 +151,10 @@ export function createMediaController({
 
     // 1. Custom Adapter Execution
     if (mediaType === 'adapter' && activeMedia && typeof activeMedia === 'object') {
+      if (!isPureGet) {
+        const adapterName = activeMedia.name || instanceId;
+        logger.scope('action').log(`(Userscript) Executing '${action}' via Adapter [${adapterName}]`, { action, value, instanceId });
+      }
       const handled = await executeMediaAction(activeMedia, norm, value, { isPureGet, instanceId, transactionTracker: getGlobalTransactionTracker() });
       if (!handled) return false;
       let resVal;
@@ -166,7 +170,8 @@ export function createMediaController({
     // 2. HTML5 Video/Audio Execution
     if ((mediaType === 'video' || mediaType === 'audio') && activeMedia) {
       if (!isPureGet) {
-        logger.scope('action').log(`DOM media executing -> ${action}`, { action, value });
+        const tag = activeMedia.tagName ? activeMedia.tagName.toLowerCase() : mediaType;
+        logger.scope('action').log(`(Userscript) Executing '${action}' via In-Page DOM <${tag}> [${instanceId}]`, { action, value, instanceId });
       }
 
       if (norm === 'bindmetadata') {
@@ -203,6 +208,7 @@ export function createMediaController({
 
     if (hasMockHandler && canHandleNorm) {
       if (!isPureGet) {
+        logger.scope('action').log(`(Userscript) Executing '${action}' via MediaSession ActionHandler [${instanceId}]`, { action, value, instanceId });
         if (norm === 'toggle') {
           const isPaused = navigator.mediaSession?.playbackState === 'paused' || mockMediaSessionInstance.playbackState === 'paused';
           await mockMediaSessionInstance.invoke(isPaused ? 'play' : 'pause');

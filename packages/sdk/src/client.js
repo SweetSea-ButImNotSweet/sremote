@@ -310,7 +310,10 @@ export class SRemoteClient {
       this.logger.error(`No active driver available to execute ${method}()`);
       throw new Error(`[SRemote:Wrapper] No active driver available to execute ${method}()`);
     }
-    this.logger.scope('action').log(`(Wrapper) Executing -> ${method}`, ...args);
+
+    const driverName = driver instanceof UserscriptDriver ? 'Userscript' : 'DomDriver';
+    const targetLabel = targetOrId ? ` (target: ${typeof targetOrId === 'string' ? targetOrId : 'custom'})` : '';
+    this.logger.scope('action').log(`(Wrapper) Routing -> ${method} to [${driverName}]${targetLabel}`, ...args);
     return driver[method](...args);
   }
 

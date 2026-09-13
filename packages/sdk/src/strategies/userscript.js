@@ -56,6 +56,9 @@ export class UserscriptDriver {
     if (!resolved) {
       throw new Error(`[SRemote:Wrapper] Method '${method}' not supported by userscript`);
     }
+    if (this.logger?.scope) {
+      this.logger.scope('action').log(`(UserscriptDriver) Forwarding '${method}' to Userscript host`, ...args);
+    }
     return resolved.fn.call(resolved.context, ...args);
   }
 
