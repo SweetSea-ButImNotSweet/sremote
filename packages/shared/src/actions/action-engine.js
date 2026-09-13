@@ -101,7 +101,7 @@ export async function safePlayMedia(el) {
     if (res && typeof res.then === 'function') {
       try {
         await res;
-      } catch (playErr) {
+      } catch {
         // If play was rejected (e.g. Autoplay without user interaction), attempt simulated click on player container
         try {
           const container = el.closest?.('.bpx-player-video-area, .bilibili-player-video, .player-container, video') || el;

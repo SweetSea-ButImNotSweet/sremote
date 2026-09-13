@@ -1,6 +1,6 @@
 import { NS, console_log, console_debug, console_warn } from '../config.js';
 import { Storage, setHandshakeSecret, checkHandshakeSecret, consumeHandshakeSecret } from '../core/storage.js';
-import { getOriginStorageKeys, generateInstanceId } from '../core/utils.js';
+import { checkOriginPairPermission, generateInstanceId } from '../core/utils.js';
 import { createPermissionDialog } from '../ui/permission-dialog.js';
 import { flushPendingCommands, pendingRpcRequests } from './queue.js';
 
@@ -165,7 +165,7 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
         if (req) {
           clearTimeout(req.timer);
           pendingRpcRequests.delete(data.rpcId);
-          if (data.result && data.result.success === false && data.result.error) {
+          if (data.result?.success === false && data.result?.error) {
             req.resolve?.({ success: false, error: data.result.error, message: data.result.message || 'RPC execution failed', instanceId });
           } else {
             req.resolve(typeof data.result === 'object' && data.result !== null ? { instanceId, ...data.result } : { success: true, instanceId, data: data.result });
@@ -339,20 +339,13 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
         }
       }
 
-      // Origin Whitelist & Local Domain Fallback
+      // Origin Whitelist & Origin Pair Permission Fallback
       if (!isValidSecret && event.ports && event.ports.length > 0) {
-        const { allowKey: parentAllowKey } = getOriginStorageKeys(location.origin);
-        const { allowKey: iframeAllowKey } = getOriginStorageKeys(iframeOrigin);
-        const isPersisted = (parentAllowKey && Storage.get(parentAllowKey) === '1') || (iframeAllowKey && Storage.get(iframeAllowKey) === '1');
-        if (
-          isPersisted ||
-          iframeOrigin === location.origin ||
-          iframeOrigin === '*' ||
-          iframeOrigin === 'null' ||
-          callerOrigin === 'null' ||
-          callerOrigin.startsWith('http') ||
-          callerOrigin.startsWith('file:')
-        ) {
+        const pairPerm = checkOriginPairPermission(location.origin, iframeOrigin, Storage);
+        if (pairPerm.isAllowed) {
+          isValidSecret = true;
+        } else if (iframeOrigin === location.origin) {
+          // Same-origin iframes on same host are implicitly trusted
           isValidSecret = true;
         }
       }
@@ -456,7 +449,8 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
 
     if (lowerAction === 'request_permission' || lowerAction === 'requestpermission') {
       const targetOrigin = data.origin || callerOrigin || location.origin;
-      if (instanceManager.isSessionDenied) {
+      const isDenied = typeof instanceManager.isOriginDenied === 'function' ? instanceManager.isOriginDenied(targetOrigin) : instanceManager.isSessionDenied;
+      if (isDenied) {
         if (event.source) {
           try {
             event.source.postMessage({ type: `${NS}permission_response`, source: 'parent', allowed: false, parentOrigin: location.origin }, '*');
@@ -465,14 +459,23 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
         return;
       }
 
+      const sourceWindow = event.source;
       createPermissionDialog({
+        parentOrigin: location.origin,
+        iframeOrigin: targetOrigin,
         origin: targetOrigin,
         isTop: true,
         onDecision: allowed => {
-          if (!allowed) instanceManager.setSessionDenied(true);
-          if (event.source) {
+          if (!allowed) {
+            if (typeof instanceManager.denyOrigin === 'function') {
+              instanceManager.denyOrigin(targetOrigin);
+            } else {
+              instanceManager.setSessionDenied(true);
+            }
+          }
+          if (sourceWindow) {
             try {
-              event.source.postMessage({ type: `${NS}permission_response`, source: 'parent', allowed: !!allowed, parentOrigin: location.origin }, '*');
+              sourceWindow.postMessage({ type: `${NS}permission_response`, source: 'parent', allowed: !!allowed, parentOrigin: location.origin }, '*');
             } catch {}
           }
         },

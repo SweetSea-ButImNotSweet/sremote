@@ -45,7 +45,7 @@ export class TwitchProvider extends BaseProvider {
     });
 
     const iframe = tempNode.querySelector('iframe') || tempNode;
-    if (iframe && iframe.parentNode === hiddenWrapper) {
+    if (iframe?.parentNode === hiddenWrapper) {
       hiddenWrapper.removeChild(iframe);
     }
     cleanup();

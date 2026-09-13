@@ -1,6 +1,6 @@
 import { VERSION, NS, ENABLE_DEBUG_API, logger, console_log, console_warn, console_error } from '../config.js';
 import { Storage, GM } from '../core/storage.js';
-import { getOriginStorageKeys } from '../core/utils.js';
+import { getOriginStorageKeys, generateInstanceId } from '../core/utils.js';
 import { t } from '../core/i18n.js';
 import { registerMenuCommands } from './menu.js';
 import { pendingCommandQueue } from './queue.js';
@@ -39,9 +39,8 @@ export function initParentController() {
 
   console_log(`%c[sremote v${VERSION}] Parent Controller Initialized`, 'background: #0f172a; color: #38bdf8; font-weight: bold; padding: 2px 6px;');
 
-  // Reset GM hello sequence on top window boot
-  Storage.set('sremote:hello_seq', 0);
-  Storage.set('sremote:parent_origin', location.origin);
+  // Tab-isolated session identifier (in-memory per tab window, avoiding cross-tab contamination)
+  const tabSessionId = generateInstanceId('tab');
 
   // Sync log level from storage to logger if configured
   try {
@@ -266,7 +265,7 @@ export function initParentController() {
   } catch {}
 
   // Initialize and Export window.sremote
-  const api = createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker, transportManager });
+  const api = createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker, transportManager, tabSessionId });
   if (api && typeof api.hello === 'function') {
     broadcastHelloRef = api.hello;
   }

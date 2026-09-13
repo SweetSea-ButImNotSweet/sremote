@@ -73,7 +73,7 @@ export class ThreadsProvider extends BaseProvider {
         const iframe = tempNode.querySelector('iframe');
         const element = tempNode;
 
-        if (element && element.parentNode === hiddenWrapper) {
+        if (element?.parentNode === hiddenWrapper) {
           hiddenWrapper.removeChild(element);
         }
         cleanup();

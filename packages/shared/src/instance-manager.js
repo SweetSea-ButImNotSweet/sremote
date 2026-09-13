@@ -42,6 +42,7 @@ export function createInstanceManager(options = {}) {
   let currentActiveInstanceId = null;
   let isSessionLocked = false;
   let isSessionDenied = false;
+  const sessionDeniedOrigins = new Set();
   let lastAcceptedData = null;
 
   function isMultiModeActive() {
@@ -283,6 +284,17 @@ export function createInstanceManager(options = {}) {
     },
     setSessionDenied: denied => {
       isSessionDenied = denied;
+    },
+    get sessionDeniedOrigins() {
+      return sessionDeniedOrigins;
+    },
+    isOriginDenied: origin => isSessionDenied || (Boolean(origin) && sessionDeniedOrigins.has(origin)),
+    denyOrigin: origin => {
+      if (origin) sessionDeniedOrigins.add(origin);
+    },
+    clearDeniedOrigins: () => {
+      sessionDeniedOrigins.clear();
+      isSessionDenied = false;
     },
     get lastAcceptedData() {
       return lastAcceptedData;

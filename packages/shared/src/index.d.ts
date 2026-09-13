@@ -167,6 +167,10 @@ export interface InstanceManager {
   setSessionLocked: (locked: boolean) => void;
   isSessionDenied: boolean;
   setSessionDenied: (denied: boolean) => void;
+  readonly sessionDeniedOrigins: Set<string>;
+  isOriginDenied: (origin?: string | null) => boolean;
+  denyOrigin: (origin: string) => void;
+  clearDeniedOrigins: () => void;
   readonly lastAcceptedData: any;
   isMultiModeActive: () => boolean;
   getLatestActiveInstanceId: () => string | null;

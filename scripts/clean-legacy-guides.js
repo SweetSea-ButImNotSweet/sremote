@@ -25,7 +25,7 @@ const filesToDelete = [
   // Xóa các file script tạm đã dùng để port
   'scripts/port-matrix.js',
   'scripts/clean-matrix-vi.js',
-  'scripts/create-en-matrix.js'
+  'scripts/create-en-matrix.js',
 ];
 
 let deletedCount = 0;

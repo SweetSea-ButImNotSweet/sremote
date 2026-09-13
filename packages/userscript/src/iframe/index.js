@@ -1,6 +1,6 @@
 import { VERSION, NS, ENABLE_DEBUG_API, console_log, console_debug, console_warn, pageWindow, MEDIA_EVENTS, descriptors } from '../config.js';
 import { Storage } from '../core/storage.js';
-import { getOriginStorageKeys, generateInstanceId, safeSetProp, safeGetProp } from '../core/utils.js';
+import { getOriginStorageKeys, checkOriginPairPermission, generateInstanceId, safeSetProp, safeGetProp } from '../core/utils.js';
 import { showConnectedIndicator, hideConnectedIndicator } from '../ui/indicator-badge.js';
 import { IframeStyleEngine } from './style-engine.js';
 import { mockMediaSessionInstance, hookMediaSession } from './media-session.js';
@@ -30,11 +30,16 @@ export function initIframeAgent() {
     } catch {}
   }
 
-  const selfDenyKey = getOriginStorageKeys(location.origin).denyKey;
   const topDenyKey = topOrigin ? getOriginStorageKeys(topOrigin).denyKey : null;
+  if (topDenyKey && Storage.get(topDenyKey) === '1') {
+    return; // Top window is permanently blocked
+  }
 
-  if ((selfDenyKey && Storage.get(selfDenyKey) === '1') || (topDenyKey && Storage.get(topDenyKey) === '1')) {
-    return; // Silently abort
+  if (topOrigin) {
+    const pairPerm = checkOriginPairPermission(topOrigin, location.origin, Storage);
+    if (pairPerm.isDenied) {
+      return; // This specific parent -> iframe pair was denied
+    }
   }
 
   console_log(`%c[sremote v${VERSION}] Injected into frame:`, 'background: #0284c7; color: #fff; font-weight: bold; padding: 2px 6px;', location.href);

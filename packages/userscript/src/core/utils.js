@@ -34,6 +34,56 @@ export function getOriginStorageKeys(origin) {
   return { allowKey: `sremote:allow:${origin}`, denyKey: `sremote:deny:${origin}`, hideBadgeKey: `sremote:hide_badge:${origin}` };
 }
 
+/**
+ * Generates storage keys for a ParentOrigin -> IframeOrigin permission pair.
+ * Prevents blocking child player instances globally when denied on a specific parent.
+ */
+export function getPermissionPairStorageKeys(parentOrigin, iframeOrigin) {
+  const isParentPersistable = isPersistableOrigin(parentOrigin);
+  const isIframePersistable = isPersistableOrigin(iframeOrigin);
+  if (!isParentPersistable || !isIframePersistable) {
+    return { pairAllowKey: null, pairDenyKey: null, isPersistable: false };
+  }
+  return { pairAllowKey: `sremote:allow:${parentOrigin}->${iframeOrigin}`, pairDenyKey: `sremote:deny:${parentOrigin}->${iframeOrigin}`, isPersistable: true };
+}
+
+/**
+ * Checks if a ParentOrigin -> IframeOrigin pair is granted or denied.
+ * Supports fallback to legacy single-origin keys for seamless backward compatibility.
+ */
+export function checkOriginPairPermission(parentOrigin, iframeOrigin, storage) {
+  if (!storage || typeof storage.get !== 'function') {
+    return { isAllowed: false, isDenied: false, isPersisted: false };
+  }
+
+  // 1. Check pair keys first (highest precedence)
+  const { pairAllowKey, pairDenyKey, isPersistable } = getPermissionPairStorageKeys(parentOrigin, iframeOrigin);
+  if (isPersistable) {
+    if (pairDenyKey && storage.get(pairDenyKey) === '1') {
+      return { isAllowed: false, isDenied: true, isPersisted: true, key: pairDenyKey };
+    }
+    if (pairAllowKey && storage.get(pairAllowKey) === '1') {
+      return { isAllowed: true, isDenied: false, isPersisted: true, key: pairAllowKey };
+    }
+  }
+
+  // 2. Legacy fallback: check parent allow or iframe allow key if previously persisted
+  const { allowKey: parentAllowKey, denyKey: parentDenyKey } = getOriginStorageKeys(parentOrigin);
+  const { allowKey: iframeAllowKey } = getOriginStorageKeys(iframeOrigin);
+
+  if (parentDenyKey && storage.get(parentDenyKey) === '1') {
+    return { isAllowed: false, isDenied: true, isPersisted: true, key: parentDenyKey };
+  }
+  if (parentAllowKey && storage.get(parentAllowKey) === '1') {
+    return { isAllowed: true, isDenied: false, isPersisted: true, key: parentAllowKey };
+  }
+  if (iframeAllowKey && storage.get(iframeAllowKey) === '1') {
+    return { isAllowed: true, isDenied: false, isPersisted: true, key: iframeAllowKey };
+  }
+
+  return { isAllowed: false, isDenied: false, isPersisted: false };
+}
+
 export function generateInstanceId(prefix = 'sv') {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
 }

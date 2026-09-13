@@ -1,6 +1,6 @@
 import { VERSION, NS, console_log, console_warn } from '../config.js';
 import { Storage } from '../core/storage.js';
-import { getOriginStorageKeys } from '../core/utils.js';
+import { checkOriginPairPermission } from '../core/utils.js';
 import { createPermissionDialog } from '../ui/permission-dialog.js';
 import { showConnectedIndicator } from '../ui/indicator-badge.js';
 import { IframeStyleEngine } from './style-engine.js';
@@ -103,28 +103,41 @@ export function createIframeTransportManager({
     if (permissionPopup) return;
     if (sessionDeniedOrigins.has(origin)) return;
 
-    const { allowKey, denyKey } = getOriginStorageKeys(origin);
-    if (Storage.get(denyKey) === '1') return;
-    if (Storage.get(allowKey) === '1') {
+    const perm = checkOriginPairPermission(origin, location.origin, Storage);
+    if (perm.isDenied) return;
+    if (perm.isAllowed) {
       grantAccess(origin);
       return;
     }
 
     if (window.top && window.top !== window) {
       try {
-        window.top.postMessage({ type: `${NS}request_permission`, source: 'iframe', origin: location.origin }, origin || '*');
+        const safeTargetOrigin = origin?.startsWith('http') ? origin : '*';
+        window.top.postMessage({ type: `${NS}request_permission`, source: 'iframe', origin: location.origin }, safeTargetOrigin);
+
+        let timer = null;
         permissionPopup = {
           isDelegating: true,
           close: () => {
+            if (timer) clearTimeout(timer);
             permissionPopup = null;
           },
         };
+
+        // Safety fallback: if top window does not respond within 8s, release delegation
+        timer = setTimeout(() => {
+          if (permissionPopup?.isDelegating) {
+            permissionPopup = null;
+          }
+        }, 8000);
         return;
       } catch {}
     }
 
     permissionPopup = createPermissionDialog({
-      origin,
+      parentOrigin: origin,
+      iframeOrigin: location.origin,
+      origin: location.origin,
       isTop: false,
       onDecision: allowed => {
         permissionPopup = null;
@@ -166,21 +179,13 @@ export function createIframeTransportManager({
 
     if (sessionDeniedOrigins.has(callerOrigin)) return;
 
-    const { allowKey, denyKey } = getOriginStorageKeys(callerOrigin);
-    if (allowKey && Storage.get(denyKey) === '1') return;
+    const perm = checkOriginPairPermission(callerOrigin, location.origin, Storage);
+    if (perm.isDenied) return;
 
     const isAlreadyAccepted = authorizedOrigins.has(callerOrigin);
     const now = Date.now();
 
-    if (isAlreadyAccepted) {
-      if (hasNewCredentials || now - lastGrantTimestamp >= 200) {
-        lastGrantTimestamp = now;
-        grantAccess(callerOrigin);
-      }
-      return;
-    }
-
-    if (allowKey && Storage.get(allowKey) === '1') {
+    if (isAlreadyAccepted || perm.isAllowed) {
       if (hasNewCredentials || now - lastGrantTimestamp >= 200) {
         lastGrantTimestamp = now;
         grantAccess(callerOrigin);
@@ -194,11 +199,12 @@ export function createIframeTransportManager({
 
   async function checkPendingHelloFromGM() {
     try {
-      const helloSeq = Number(Storage.get('sremote:hello_seq', 0)) || 0;
-      if (helloSeq <= 0) return;
-
       const latestHandshake = Storage.get('sremote:latest_handshake');
       if (!latestHandshake) return;
+
+      // Handshake TTL freshness: must be within 8 seconds to prevent cross-tab contamination
+      const now = Date.now();
+      if (now - (latestHandshake.timestamp || 0) > 8000) return;
 
       if (typeof latestHandshake.treatAlmostEndAsEnd === 'boolean') {
         treatAlmostEndAsEndSetter(latestHandshake.treatAlmostEndAsEnd);
@@ -209,19 +215,14 @@ export function createIframeTransportManager({
         currentHandshakeSetter(latestHandshake.handshakeId, latestHandshake.handshakeToken);
       }
 
-      console_log(`%c[SRemote:boot] Iframe detected active hello_seq (${helloSeq}) from Parent (${parentOrigin})`, 'color: #06b6d4; font-weight: bold;');
+      console_log(`%c[SRemote:boot] Iframe detected active handshake from Parent (${parentOrigin})`, 'color: #06b6d4; font-weight: bold;');
 
       if (sessionDeniedOrigins.has(parentOrigin)) return;
 
-      const { allowKey, denyKey } = getOriginStorageKeys(parentOrigin);
-      if (allowKey && Storage.get(denyKey) === '1') return;
+      const perm = checkOriginPairPermission(parentOrigin, location.origin, Storage);
+      if (perm.isDenied) return;
 
-      if (authorizedOrigins.has(parentOrigin)) {
-        grantAccess(parentOrigin);
-        return;
-      }
-
-      if (allowKey && Storage.get(allowKey) === '1') {
+      if (authorizedOrigins.has(parentOrigin) || perm.isAllowed) {
         grantAccess(parentOrigin);
         return;
       }

@@ -5,8 +5,17 @@ import { pendingRpcRequests } from './queue.js';
 import { createParentDebugApi } from '../debug/parent-debug.js';
 import { extractMediaState, evaluateCapabilities, buildSRemoteApi } from '@sremote/shared';
 
-export function createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker = null, transportManager = null }) {
+export function createExportedApi({
+  instanceManager,
+  dispatchCommand,
+  validateDomainAccess,
+  queryMediaInstancesViaGM,
+  topMediaTracker = null,
+  transportManager = null,
+  tabSessionId = null,
+}) {
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap, globalEventListeners, isMultiModeActive, getLatestActiveInstanceId, pauseOthersExcept } = instanceManager;
+  let tabHelloSeq = 0;
 
   // --- 1. Internal Helpers ---
   const assignIframeId = (iframeOrSelector, customId) => {
@@ -355,21 +364,24 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       setHandshakeSecret(handshakeId, handshakeToken);
     }
 
-    const currentSeq = Number(Storage.get('sremote:hello_seq', 0)) || 0;
-    const nextSeq = isRapidRepeat ? currentSeq : currentSeq + 1;
-    if (!isRapidRepeat) {
-      Storage.set('sremote:hello_seq', nextSeq);
-    }
+    const nextSeq = isRapidRepeat ? tabHelloSeq : ++tabHelloSeq;
 
-    Storage.set('sremote:latest_handshake', {
+    const handshakeRecord = {
       seq: nextSeq,
       handshakeId,
       handshakeToken,
       parentOrigin: location.origin,
       css: customCss,
       ...(treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {}),
+      ...(tabSessionId ? { tabSessionId } : {}),
       timestamp: Date.now(),
-    });
+    };
+
+    // Scoped storage per tab session to eliminate multi-tab interference
+    if (tabSessionId) {
+      Storage.set(`sremote:latest_handshake:${tabSessionId}`, handshakeRecord);
+    }
+    Storage.set('sremote:latest_handshake', handshakeRecord);
 
     const createHelloPayload = assignedInstanceId => ({
       type: `${NS}hello`,
@@ -380,9 +392,12 @@ export function createExportedApi({ instanceManager, dispatchCommand, validateDo
       ...(customCss ? { css: customCss } : {}),
       ...(treatAlmostEndAsEnd !== null ? { treatAlmostEndAsEnd } : {}),
       ...(assignedInstanceId ? { assignedInstanceId } : {}),
+      ...(tabSessionId ? { tabSessionId } : {}),
     });
 
-    logger.scope('hello').log(`Parent sending hello (seq: ${nextSeq}) ->`, { hasTarget: !!targetIframeWindow, handshakeId, seq: nextSeq, hasCss: Boolean(customCss) });
+    logger
+      .scope('hello')
+      .log(`Parent sending hello (seq: ${nextSeq}) ->`, { hasTarget: !!targetIframeWindow, handshakeId, seq: nextSeq, hasCss: Boolean(customCss), tabSessionId });
 
     if (targetIframeWindow && typeof targetIframeWindow.postMessage === 'function') {
       try {

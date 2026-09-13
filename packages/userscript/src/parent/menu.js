@@ -43,6 +43,17 @@ export function registerMenuCommands() {
     GM.register(t('menuReset', { target: t('targetTop') }), () => {
       const { allowKey, denyKey, hideBadgeKey } = getOriginStorageKeys(origin);
       [allowKey, denyKey, hideBadgeKey].forEach(k => k && Storage.remove(k));
+
+      // Clear all pair keys involving this origin (parent or child)
+      const allKeys = Storage.list();
+      for (const k of allKeys) {
+        if (typeof k === 'string') {
+          if (k.startsWith(`sremote:allow:${origin}->`) || k.startsWith(`sremote:deny:${origin}->`) || k.includes(`->${origin}`)) {
+            Storage.remove(k);
+          }
+        }
+      }
+
       alert(t('alertResetDone', { origin }));
     });
 

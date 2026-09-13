@@ -23,8 +23,12 @@ function getFiles(dir) {
 const viBase = path.join(__dirname, '../docs/content/guides/vi');
 const enBase = path.join(__dirname, '../docs/content/guides/en');
 
-const viFiles = getFiles(viBase).map(f => path.relative(viBase, f).replace(/\\/g, '/')).sort();
-const enFiles = getFiles(enBase).map(f => path.relative(enBase, f).replace(/\\/g, '/')).sort();
+const viFiles = getFiles(viBase)
+  .map(f => path.relative(viBase, f).replace(/\\/g, '/'))
+  .sort();
+const enFiles = getFiles(enBase)
+  .map(f => path.relative(enBase, f).replace(/\\/g, '/'))
+  .sort();
 
 console.log('VI Guide files (' + viFiles.length + '):');
 console.log(viFiles.join('\n'));
