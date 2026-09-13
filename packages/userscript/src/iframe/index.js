@@ -216,7 +216,7 @@ export function initIframeAgent() {
       metadata: ms?.metadata ? { title: ms.metadata.title, artist: ms.metadata.artist, album: ms.metadata.album, artwork: ms.metadata.artwork || [] } : null,
       supportedActions: Array.from(mockMediaSessionInstance._handlers.keys()),
     };
-    if (action) payload.action = action;
+    if (action) payload.event = action;
     if (specificValue !== undefined) payload.value = specificValue;
 
     const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
@@ -250,7 +250,7 @@ export function initIframeAgent() {
       case 'video':
       case 'audio':
         emitToParent(action || 'state', {
-          ...(action ? { action } : {}),
+          ...(action ? { event: action } : {}),
           ...(specificValue !== undefined ? { value: specificValue } : {}),
           isProgrammatic,
           state: getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),

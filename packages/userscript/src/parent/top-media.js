@@ -126,7 +126,7 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
     if (!trackOpts.silent) {
       notifyMediaCountChange();
     }
-    emitGlobalEvent('accept', { source: 'top-dom', instanceId: customId, mediaType, location: location.href, origin: location.origin });
+    emitGlobalEvent('accept', { source: 'top-dom', instanceId: customId, mediaType, location: location.href, origin: location.origin, event: 'accept' });
   }
 
   function untrackElement(customId) {

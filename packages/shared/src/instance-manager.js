@@ -162,7 +162,7 @@ export function createInstanceManager(options = {}) {
 
     const wildcardListeners = globalEventListeners.get('*');
     if (wildcardListeners) {
-      const starPayload = typeof payload === 'object' && payload !== null ? { action: ev, ...payload } : { action: ev, value: payload };
+      const starPayload = typeof payload === 'object' && payload !== null ? { ...payload, event: ev } : { event: ev, value: payload };
       for (const fn of wildcardListeners) {
         try {
           fn(starPayload);
@@ -192,7 +192,7 @@ export function createInstanceManager(options = {}) {
     // Sticky replay for accept / wildcard
     if ((ev === 'accept' || ev === '*') && lastAcceptedData && instances.has(lastAcceptedData.instanceId)) {
       try {
-        const replayPayload = ev === '*' ? { action: 'accept', ...lastAcceptedData } : lastAcceptedData;
+        const replayPayload = ev === '*' ? { ...lastAcceptedData, event: 'accept' } : lastAcceptedData;
         setTimeout(() => {
           try {
             handler(replayPayload);
@@ -247,7 +247,7 @@ export function createInstanceManager(options = {}) {
       currentActiveInstanceId = null;
     }
     notifyMediaCountChange();
-    emitGlobalEvent('disconnect', { instanceId, reason });
+    emitGlobalEvent('disconnect', { instanceId, reason, event: 'disconnect' });
   }
 
   return {

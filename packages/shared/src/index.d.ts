@@ -64,7 +64,7 @@ export interface SRemoteEventPayload {
   source: string;
   instanceId: string;
   mediaType: string;
-  action: string;
+  event: string;
   isProgrammatic?: boolean;
   state?: SRemoteMediaState | null;
   [key: string]: any;

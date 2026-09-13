@@ -204,8 +204,8 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
         if (item.state && typeof item.state === 'object') {
           item.state = { ...item.state, paused: true };
         }
-        onMediaStateChange({ instanceId, hasMedia: false, action: lowerAction });
-        emitGlobalEvent('noMedia', { instanceId, hasMedia: false, reason: data.reason || 'detached' });
+        onMediaStateChange({ instanceId, hasMedia: false, event: lowerAction });
+        emitGlobalEvent('noMedia', { instanceId, hasMedia: false, reason: data.reason || 'detached', event: 'noMedia' });
         notifyMediaCountChange();
         return;
       }
@@ -232,7 +232,7 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
         if (data.mediaType) item.mediaType = data.mediaType;
         if (data.capabilities) item.capabilities = data.capabilities;
         notifyMediaCountChange();
-        emitGlobalEvent('accept', data);
+        emitGlobalEvent('accept', { ...data, event: 'accept' });
         return;
       }
 
@@ -263,8 +263,8 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
 
       const forwardedPayload =
         typeof data === 'object' && data !== null
-          ? { instanceId, source: data.source || 'iframe', mediaType: data.mediaType || item.mediaType, ...data }
-          : { instanceId, source: 'iframe', mediaType: item.mediaType, value: data };
+          ? { instanceId, source: data.source || 'iframe', mediaType: data.mediaType || item.mediaType, ...data, event: action }
+          : { instanceId, source: 'iframe', mediaType: item.mediaType, value: data, event: action };
       emitGlobalEvent(action, forwardedPayload);
       onMediaMessage(action, forwardedPayload);
     };

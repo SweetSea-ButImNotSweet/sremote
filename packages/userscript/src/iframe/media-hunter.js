@@ -3,10 +3,6 @@ import { pageWindow } from '../config.js';
 import { getKnownShadowRoots } from './hooks.js';
 import { dom } from '@sremote/shared';
 
-export function queryMediaDeep(root = document, visitedRoots = new Set()) {
-  return dom.query(root, visitedRoots);
-}
-
 export function findAllMedia() {
   return dom.findAll({ getKnownShadowRoots });
 }

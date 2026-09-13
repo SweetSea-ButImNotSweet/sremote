@@ -12,9 +12,9 @@ export class DomDriver {
 
     if (this.instanceManager?.on) {
       this.instanceManager.on('*', payload => {
-        const action = payload?.action;
-        if (action) {
-          this.emit(action, payload);
+        const event = payload?.event;
+        if (event) {
+          this.emit(event, payload);
         }
       });
     }
@@ -226,7 +226,7 @@ export class DomDriver {
     if (this._listeners.has('*')) {
       for (const cb of this._listeners.get('*')) {
         try {
-          cb({ event, ...payload });
+          cb({ ...payload, event });
         } catch {}
       }
     }

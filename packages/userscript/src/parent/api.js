@@ -277,7 +277,7 @@ export function createExportedApi({
     const lastAcceptedData = instanceManager.lastAcceptedData;
     if ((ev === 'accept' || ev === '*') && lastAcceptedData && instances.has(lastAcceptedData.instanceId)) {
       try {
-        const payload = ev === '*' ? { action: 'accept', ...lastAcceptedData } : lastAcceptedData;
+        const payload = ev === '*' ? { ...lastAcceptedData, event: 'accept' } : lastAcceptedData;
         setTimeout(() => {
           try {
             handler(payload);

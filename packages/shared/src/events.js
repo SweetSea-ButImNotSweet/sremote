@@ -95,7 +95,7 @@ export function createEventPayload(event, options = {}) {
     ...extra
   } = typeof options === 'object' && options !== null ? options : { value: options };
 
-  return { source, instanceId, mediaType, action: ev, isProgrammatic, ...(state ? { state } : {}), ...extra };
+  return { source, instanceId, mediaType, event: ev, isProgrammatic, ...(state ? { state } : {}), ...extra };
 }
 
 /**
@@ -481,7 +481,7 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
             source,
             instanceId,
             mediaType: 'adapter',
-            action: ev,
+            triggerEvent: ev,
             isProgrammatic,
             state,
             ...(typeof payload === 'object' && payload !== null ? payload : {}),

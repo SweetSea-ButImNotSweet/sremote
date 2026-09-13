@@ -577,14 +577,14 @@
 
     // Register wildcard listener to capture all lifecycle & media events
     api.on('*', payload => {
-      const action = payload.action || payload.event;
+      const event = payload.event;
       const instanceId = payload.instanceId;
 
       if (instanceId) {
         // 1. Direct match by pre-assigned slot id (slot_1, slot_2, ...)
         const matchedSlot = slots.find(s => s.instanceId === instanceId);
         if (matchedSlot) {
-          matchedSlot.onSRemoteEvent(action, payload);
+          matchedSlot.onSRemoteEvent(event, payload);
           return;
         }
 
@@ -596,7 +596,7 @@
               const slotByIfr = slots.find(s => s.iframeEl === ifr);
               if (slotByIfr) {
                 slotByIfr.instanceId = instanceId; // Sync instance ID if dynamic
-                slotByIfr.onSRemoteEvent(action, payload);
+                slotByIfr.onSRemoteEvent(event, payload);
                 return;
               }
             }
@@ -610,7 +610,7 @@
         if (instanceId) {
           activeSlots[0].instanceId = instanceId;
         }
-        activeSlots[0].onSRemoteEvent(action, payload);
+        activeSlots[0].onSRemoteEvent(event, payload);
         return;
       }
 
