@@ -1,16 +1,19 @@
 # sremote.instances.list
-Lấy danh sách tất cả các instance media trong iframe và các custom adapter đang hoạt động.
+
+Lấy danh sách tất cả các media instance trong iframe và các custom adapter đang kết nối.
 
 ## Tham số
-| Tên tham số | Kiểu dữ liệu | Mặc định | Mô tả |
+| Tham số | Kiểu dữ liệu | Mặc định | Mô tả |
 | :--- | :--- | :--- | :--- |
-| `key` | `string` | `null` | Passkey xác thực nếu domain bị khoá. |
+| `key` | `string` | `null` | Passkey xác thực nếu đã bật domain lock. |
 
 ## Giá trị trả về
-Trả về một mảng `Array<Object>` các instance, mỗi phần tử chứa:
-- `instanceId` (`string`): Mã định danh duy nhất.
+Trả về một mảng `Array<SRemoteInstanceInfo>`, mỗi phần tử đại diện cho một instance gồm:
+- `instanceId` (`string`): Định danh duy nhất của instance.
 - `location` (`string`): URL của frame chứa media.
-- `origin` (`string`): Nguồn origin của frame.
-- `note` (`string`): Ghi chú định danh (nếu được đặt qua `sremote.note`).
-- `mediaType` (`'video' | 'audio' | 'mediasession' | 'adapter'`): Phân loại nguồn media.
-- `state` (`Object`): Trạng thái chi tiết của media.
+- `origin` (`string`): Origin của frame.
+- `note` (`string`): Nhãn mô tả ngữ nghĩa (nếu đã gán qua `sremote.instances.note`).
+- `mediaType` (`'video' | 'audio' | 'mediasession' | 'adapter'`): Phân loại nguồn phát.
+- `capabilities` (`SRemoteCapabilities | null`): Ma trận tính năng mà instance này hỗ trợ.
+- `state` (`SRemoteMediaState | null`): Trạng thái phát chi tiết của media.
+- `status` (`'ready' | 'connecting' | 'disconnected'`): Trạng thái kết nối.

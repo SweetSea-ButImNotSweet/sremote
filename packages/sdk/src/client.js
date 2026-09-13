@@ -4,6 +4,7 @@ import { DomDriver } from './strategies/dom.js';
 import { BridgeDriver } from './strategies/bridge.js';
 import { showInstallModal } from './ui/install-modal.js';
 import { lockGlobalSRemoteIfAbsent } from './guard.js';
+import { createUniversalAdapter } from './universal-adapter.js';
 import { logger } from '@sremote/shared';
 
 // Execute immediately when module is loaded to protect window.sremote
@@ -111,6 +112,7 @@ export class SRemoteClient {
     };
 
     this.adapters = {
+      create: options => createUniversalAdapter(options),
       register: (adapter, instanceId) => {
         const registeredId = this.adapterDriver.register(adapter, instanceId);
         this.syncGlobalAdapters();

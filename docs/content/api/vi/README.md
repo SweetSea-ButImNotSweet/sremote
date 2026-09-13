@@ -48,7 +48,7 @@ Các hàm điều khiển phát nhanh tác động lên instance đang active (h
 | **Tua tuyệt đối** | `seekTo(time, instanceId?, key?)` | Nhảy đến mốc thời gian cụ thể (giây) |
 | **Âm lượng** | `volume(vol, instanceId?, key?)` | Thiết lập âm lượng từ `0.0` đến `1.0` |
 | **Tắt / Bật tiếng** | `mute(muted?, instanceId?, key?)` | Bật/tắt mute hoặc đảo trạng thái |
-| **Tốc độ phát** | `rate(speed, instanceId?, key?)`<br>`playbackRate(speed, instanceId?, key?)` | Đổi tốc độ phát (0.25 - 4.0) |
+| **Tốc độ phát** | `speed(rate, instanceId?, key?)`<br>`rate(rate, instanceId?, key?)`<br>`playbackRate(rate, instanceId?, key?)` | Đổi tốc độ phát (0.25 - 4.0) |
 | **Tải nguồn phát mới** | `load(source, instanceId?, key?)` | Nạp nguồn/video mới (ID video, URL hoặc object cấu hình) |
 | **Độ phân giải / Quality** | `quality(level, instanceId?, key?)`<br>`getQualities(instanceId?, key?)` | Thiết lập hoặc lấy danh sách chất lượng video (`'1080p'`, `'720p'`, `'auto'`) |
 | **Phụ đề / Subtitle** | `subtitle(track, instanceId?, key?)`<br>`getSubtitles(instanceId?, key?)` | Bật/tắt phụ đề (`'vi'`, `'en'`, `null`) hoặc lấy danh sách subtitle tracks |

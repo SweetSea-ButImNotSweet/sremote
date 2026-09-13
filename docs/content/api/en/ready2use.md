@@ -142,7 +142,32 @@ interface ProviderMountResult {
 
 ---
 
-## 5. HTML5 Media Element Adapter Specification
+## 5. Standalone Remote Controller (`PlayerRemoteControl`)
+
+The `remote` object returned by `mount()` and `create()` gives you direct programmatic control over the player instance without needing to reference the `instanceId`:
+
+| Method | Signature | Description |
+| :--- | :--- | :--- |
+| `play()` | `remote.play(): Promise<any>` | Requests playback to start. |
+| `pause()` | `remote.pause(): Promise<any>` | Pauses media playback. |
+| `toggle()` | `remote.toggle(): Promise<any>` | Toggles between play and pause. |
+| `stop()` | `remote.stop(): Promise<any>` | Stops playback and resets currentTime to 0. |
+| `seek()` | `remote.seek(seconds: number): Promise<any>` | Relative seek forward (+) or backward (-). |
+| `seekTo()` | `remote.seekTo(seconds: number): Promise<any>` | Absolute seek to a timestamp in seconds. |
+| `setVolume()` | `remote.setVolume(volume: number): Promise<any>` | Sets volume level (`0.0` to `1.0`). |
+| `getVolume()` | `remote.getVolume(): Promise<number>` | Retrieves current volume level. |
+| `setMuted()` | `remote.setMuted(muted: boolean): Promise<any>` | Sets or toggles mute state. |
+| `isMuted()` | `remote.isMuted(): Promise<boolean>` | Checks if player is muted. |
+| `setPlaybackRate()` | `remote.setPlaybackRate(rate: number): Promise<any>` | Changes playback speed. |
+| `getPlaybackRate()` | `remote.getPlaybackRate(): Promise<number>` | Retrieves current playback speed. |
+| `next()` | `remote.next(): Promise<any>` | Skips to next track/video (if supported). |
+| `previous()` | `remote.previous(): Promise<any>` | Jumps to previous track/video (if supported). |
+| `load()` | `remote.load(source: any): Promise<any>` | Loads a new track, video ID, or source. |
+| `getState()` | `remote.getState(): Promise<Record<string, any>>` | Retrieves the current player playback state. |
+
+---
+
+## 6. HTML5 Media Element Adapter Specification
 
 All adapters built in `@sremote/ready2use` adhere to the `HTML5MediaElement` standard:
 
@@ -158,7 +183,7 @@ All adapters built in `@sremote/ready2use` adhere to the `HTML5MediaElement` sta
 
 ---
 
-## 6. Polyfill Utilities (`Polyfills`)
+## 7. Polyfill Utilities (`Polyfills`)
 
 `@sremote/ready2use` exports helper functions and classes to streamline custom adapter development:
 
@@ -179,7 +204,7 @@ const { setCurrentTime, seekTo, seek, toggle, Volume } = Polyfills;
 
 ---
 
-## 7. Creating a Custom Provider with `BaseProvider`
+## 8. Creating a Custom Provider with `BaseProvider`
 
 ```javascript
 import { BaseProvider, Polyfills } from '@sremote/ready2use';

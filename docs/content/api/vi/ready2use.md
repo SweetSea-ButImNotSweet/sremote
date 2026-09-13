@@ -142,7 +142,32 @@ interface ProviderMountResult {
 
 ---
 
-## 5. Chuẩn hóa Adapter theo `HTML5MediaElement`
+## 5. Trình điều khiển độc lập (`PlayerRemoteControl`)
+
+Đối tượng `remote` trả về từ `mount()` và `create()` cho phép bạn trực tiếp điều khiển player theo phong cách hướng đối tượng mà không cần truyền `instanceId`:
+
+| Phương thức | Cú pháp | Mô tả |
+| :--- | :--- | :--- |
+| `play()` | `remote.play(): Promise<any>` | Bắt đầu phát media. |
+| `pause()` | `remote.pause(): Promise<any>` | Tạm dừng media. |
+| `toggle()` | `remote.toggle(): Promise<any>` | Đảo trạng thái phát / tạm dừng. |
+| `stop()` | `remote.stop(): Promise<any>` | Dừng phát và đưa currentTime về 0. |
+| `seek()` | `remote.seek(seconds: number): Promise<any>` | Tua tương đối tiến (+) hoặc lùi (-). |
+| `seekTo()` | `remote.seekTo(seconds: number): Promise<any>` | Tua trực tiếp đến mốc thời gian (giây). |
+| `setVolume()` | `remote.setVolume(volume: number): Promise<any>` | Đặt âm lượng (`0.0` đến `1.0`). |
+| `getVolume()` | `remote.getVolume(): Promise<number>` | Lấy mức âm lượng hiện tại. |
+| `setMuted()` | `remote.setMuted(muted: boolean): Promise<any>` | Bật hoặc tắt tiếng. |
+| `isMuted()` | `remote.isMuted(): Promise<boolean>` | Kiểm tra trạng thái tắt tiếng. |
+| `setPlaybackRate()` | `remote.setPlaybackRate(rate: number): Promise<any>` | Thay đổi tốc độ phát. |
+| `getPlaybackRate()` | `remote.getPlaybackRate(): Promise<number>` | Lấy tốc độ phát hiện tại. |
+| `next()` | `remote.next(): Promise<any>` | Chuyển sang bài tiếp theo trong danh sách. |
+| `previous()` | `remote.previous(): Promise<any>` | Quay lại bài trước đó trong danh sách. |
+| `load()` | `remote.load(source: any): Promise<any>` | Tải bài hát, video ID hoặc nguồn mới. |
+| `getState()` | `remote.getState(): Promise<Record<string, any>>` | Lấy snapshot trạng thái phát hiện tại của player. |
+
+---
+
+## 6. Chuẩn hóa Adapter theo `HTML5MediaElement`
 
 Toàn bộ adapter của `@sremote/ready2use` được chuẩn hóa theo mô hình `HTML5MediaElement`:
 
@@ -158,7 +183,7 @@ Toàn bộ adapter của `@sremote/ready2use` được chuẩn hóa theo mô hì
 
 ---
 
-## 6. Bộ tiện ích `Polyfills`
+## 7. Bộ tiện ích `Polyfills`
 
 `@sremote/ready2use` xuất khẩu đối tượng `Polyfills` giúp việc xây dựng các adapter tùy biến trở nên dễ dàng và nhất quán:
 
@@ -179,7 +204,7 @@ const { setCurrentTime, seekTo, seek, toggle, Volume } = Polyfills;
 
 ---
 
-## 7. Hướng dẫn tự viết Custom Provider với `BaseProvider`
+## 8. Xây dựng Custom Provider kế thừa `BaseProvider`
 
 Nếu bạn muốn tạo một provider đóng gói sẵn mới cho một player chuyên biệt hoặc private player nội bộ:
 

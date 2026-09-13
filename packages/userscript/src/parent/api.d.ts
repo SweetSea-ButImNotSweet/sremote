@@ -140,6 +140,11 @@ export interface SRemoteInstancesNamespace {
  */
 export interface SRemoteAdaptersNamespace {
   /**
+   * Creates an SRemote-compatible custom adapter from configuration options.
+   */
+  create?(options?: any): SRemoteCustomAdapter;
+
+  /**
    * Register a custom adapter object for third-party player SDKs in parent page.
    */
   register(adapter: SRemoteCustomAdapter, instanceId?: string, key?: string): string | null;

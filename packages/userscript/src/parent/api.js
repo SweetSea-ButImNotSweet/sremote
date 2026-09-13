@@ -493,6 +493,10 @@ export function createExportedApi({
         const client = typeof globalThis !== 'undefined' ? globalThis[Symbol.for('__sremote_client__')] : null;
         if (client?.adapters) return client.adapters;
         return {
+          create: options => {
+            if (client?.adapters?.create) return client.adapters.create(options);
+            return null;
+          },
           register: (adapter, instanceId) => {
             if (client?.adapters) return client.adapters.register(adapter, instanceId);
             return null;
