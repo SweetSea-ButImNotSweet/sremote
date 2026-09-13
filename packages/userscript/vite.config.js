@@ -73,6 +73,6 @@ export default defineConfig(() => {
         build: { fileName: isMinify ? 'sremote.min.user.js' : 'sremote.user.js' },
       }),
     ],
-    build: { outDir: 'dist', emptyOutDir: !isMinify, minify: isMinify },
+    build: { outDir: 'dist', emptyOutDir: !isMinify, minify: isMinify, sourcemap: true },
   };
 });

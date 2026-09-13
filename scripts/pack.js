@@ -46,7 +46,7 @@ for (const pkg of packagesToPack) {
 // Also copy userscript outputs to tarballs/ if desired for releases
 const distDir = path.resolve(rootDir, 'dist');
 if (fs.existsSync(distDir)) {
-  const userScripts = fs.readdirSync(distDir).filter(f => f.endsWith('.user.js'));
+  const userScripts = fs.readdirSync(distDir).filter(f => f.endsWith('.user.js') || f.endsWith('.user.js.map'));
   for (const script of userScripts) {
     fs.copyFileSync(path.join(distDir, script), path.join(outputDir, script));
     console.log(`  ✓ Included: ${script}`);

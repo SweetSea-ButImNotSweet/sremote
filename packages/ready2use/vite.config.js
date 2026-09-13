@@ -14,6 +14,7 @@ export default defineConfig({
     },
     outDir: 'dist',
     emptyOutDir: true,
+    sourcemap: true,
     rollupOptions: { external: ['@sremote/sdk', '@sremote/wrapper'], output: { exports: 'named', globals: { '@sremote/sdk': 'SRemoteSDK', '@sremote/wrapper': 'SRemoteSDK' } } },
   },
 });

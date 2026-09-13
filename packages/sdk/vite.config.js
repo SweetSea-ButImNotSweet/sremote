@@ -14,6 +14,7 @@ export default defineConfig({
     },
     outDir: 'dist',
     emptyOutDir: true,
+    sourcemap: true,
     rollupOptions: { output: { exports: 'named' } },
   },
 });
