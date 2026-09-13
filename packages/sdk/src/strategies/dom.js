@@ -6,6 +6,8 @@ import {
   executeMediaAction,
   resolveMediaElement,
   getGlobalTransactionTracker,
+  createMediaWatcher,
+  findAllMedia,
 } from '@sremote/shared';
 
 export class DomDriver {
@@ -58,30 +60,12 @@ export class DomDriver {
   }
 
   initDomAutoTracking() {
-    try {
-      const mediaList = document.querySelectorAll('video, audio');
-      for (const el of mediaList) {
-        this.trackMediaElement(el);
-      }
-
-      if (typeof MutationObserver !== 'undefined') {
-        this._domObserver = new MutationObserver(mutations => {
-          for (const m of mutations) {
-            for (const node of m.addedNodes) {
-              if (node.nodeType === 1) {
-                if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
-                  this.trackMediaElement(node);
-                } else if (node.querySelectorAll) {
-                  const nested = node.querySelectorAll('video, audio');
-                  for (const n of nested) this.trackMediaElement(n);
-                }
-              }
-            }
-          }
-        });
-        this._domObserver.observe(document.documentElement || document.body, { childList: true, subtree: true });
-      }
-    } catch {}
+    this._mediaWatcher = createMediaWatcher(
+      mediaEl => {
+        this.trackMediaElement(mediaEl);
+      },
+      { doc: typeof document !== 'undefined' ? document : null },
+    );
   }
 
   trackMediaElement(mediaEl) {
@@ -123,7 +107,7 @@ export class DomDriver {
   list() {
     const list = [];
     if (typeof document !== 'undefined') {
-      const mediaElements = document.querySelectorAll('video, audio');
+      const mediaElements = findAllMedia();
       for (const el of mediaElements) {
         const id = el.id || el.getAttribute('data-sremote-id') || 'dom-media';
         const state = extractMediaState(el);
@@ -252,11 +236,11 @@ export class DomDriver {
   }
 
   destroy() {
-    if (this._domObserver) {
+    if (this._mediaWatcher) {
       try {
-        this._domObserver.disconnect();
+        this._mediaWatcher.disconnect();
       } catch {}
-      this._domObserver = null;
+      this._mediaWatcher = null;
     }
     this._listeners.clear();
   }

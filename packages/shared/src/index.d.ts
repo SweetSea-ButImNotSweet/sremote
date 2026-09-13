@@ -131,6 +131,13 @@ export declare function bindMediaEvents(
     excludedEvents?: readonly string[] | string[] | Set<string> | null;
   },
 ): () => void;
+export declare function queryMediaDeep(root?: any, visitedRoots?: Set<any>, options?: any): HTMLMediaElement[];
+export declare function findAllMedia(options?: { getKnownShadowRoots?: () => Array<any>; doc?: Document }): HTMLMediaElement[];
+export declare function createMediaWatcher(
+  onMediaAdded: (mediaEl: HTMLMediaElement) => void,
+  options?: { getKnownShadowRoots?: () => Array<any>; doc?: Document },
+): { disconnect: () => void; scanNow: () => HTMLMediaElement[] };
+
 export declare function wrapCustomAdapter(rawAdapter: any, options?: { instanceId?: string; onEmit?: (event: string, payload: any) => void; source?: string }): any;
 
 export declare const API_SPEC: any;

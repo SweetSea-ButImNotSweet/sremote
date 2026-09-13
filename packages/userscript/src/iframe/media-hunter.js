@@ -1,62 +1,14 @@
 import { mockMediaSessionInstance, activeMediaSession } from './media-session.js';
 import { pageWindow } from '../config.js';
 import { getKnownShadowRoots } from './hooks.js';
-import { isValidMediaElement, hasMediaSource } from '@sremote/shared';
+import { hasMediaSource, queryMediaDeep as sharedQueryMediaDeep, findAllMedia as sharedFindAllMedia } from '@sremote/shared';
 
 export function queryMediaDeep(root = document, visitedRoots = new Set()) {
-  const list = [];
-  try {
-    if (!root || visitedRoots.has(root)) return list;
-    visitedRoots.add(root);
-
-    if (root.querySelectorAll) {
-      const found = root.querySelectorAll('video, audio');
-      for (let i = 0; i < found.length; i++) {
-        if (isValidMediaElement(found[i])) {
-          list.push(found[i]);
-        }
-      }
-    }
-    const allElements = root.querySelectorAll ? root.querySelectorAll('*') : [];
-    for (let i = 0; i < allElements.length; i++) {
-      const el = allElements[i];
-      if (el.shadowRoot) {
-        list.push(...queryMediaDeep(el.shadowRoot, visitedRoots));
-      }
-      if (el.tagName === 'IFRAME' || el.tagName === 'FRAME') {
-        try {
-          const childDoc = el.contentDocument || el.contentWindow?.document;
-          if (childDoc) {
-            list.push(...queryMediaDeep(childDoc, visitedRoots));
-          }
-        } catch {}
-      }
-    }
-  } catch {}
-  return list;
+  return sharedQueryMediaDeep(root, visitedRoots);
 }
 
 export function findAllMedia() {
-  const visitedRoots = new Set();
-  const mediaList = queryMediaDeep(document, visitedRoots);
-
-  // Scan through all captured shadow roots (including closed mode)
-  try {
-    const shadowRoots = getKnownShadowRoots();
-    for (let i = 0; i < shadowRoots.length; i++) {
-      const sr = shadowRoots[i];
-      if (sr && !visitedRoots.has(sr)) {
-        const subMedia = queryMediaDeep(sr, visitedRoots);
-        for (let j = 0; j < subMedia.length; j++) {
-          if (!mediaList.includes(subMedia[j])) {
-            mediaList.push(subMedia[j]);
-          }
-        }
-      }
-    }
-  } catch {}
-
-  return mediaList;
+  return sharedFindAllMedia({ getKnownShadowRoots });
 }
 
 export function createMediaResolver(createdMediaPool, bindVideoEvents) {

@@ -6,3 +6,4 @@ export * from './instance-manager.js';
 export * from './logger.js';
 export * from './actions/action-engine.js';
 export * from './pipeline/transaction-tracker.js';
+export * from './dom/dom-hunter.js';
