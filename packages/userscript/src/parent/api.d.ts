@@ -153,6 +153,21 @@ export interface SRemoteAdaptersNamespace {
    * Retrieve an active custom adapter object.
    */
   get(instanceId?: string, key?: string): SRemoteCustomAdapter | null;
+
+  /**
+   * Check if an adapter with the specified instance ID is currently registered.
+   */
+  has(instanceId: string): boolean;
+
+  /**
+   * Get an array of all currently registered custom adapters.
+   */
+  list(): SRemoteInstanceInfo[];
+
+  /**
+   * Underlying Map of registered custom adapters.
+   */
+  readonly map?: Map<string, SRemoteCustomAdapter>;
 }
 
 /**

@@ -505,6 +505,18 @@ export function createExportedApi({
             if (client?.adapters) return client.adapters.get(instanceId);
             return null;
           },
+          has: instanceId => {
+            if (client?.adapters) return client.adapters.has(instanceId);
+            return false;
+          },
+          list: () => {
+            if (client?.adapters) return client.adapters.list();
+            return [];
+          },
+          get map() {
+            if (client?.adapters) return client.adapters.map;
+            return new Map();
+          },
         };
       },
       destroy() {
