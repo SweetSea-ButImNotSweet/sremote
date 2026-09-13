@@ -227,7 +227,7 @@ function normalizeDocPath(inputPath, currentDir = '', lang = currentLang) {
     // Shorthands: /api/... -> content/api/{lang}/...
     p = `content/api/${lang}/` + p.substring(4);
   } else if (p.startsWith('setup/')) {
-    p = `content/guides/${lang}/01-iframe-setup.md`;
+    p = `content/guides/${lang}/quickstart/5-minute-quickstart.md`;
   } else if (!p.startsWith('content/') && !p.startsWith('..') && currentDir) {
     p = currentDir + p;
   }
@@ -252,20 +252,20 @@ function getDocPathForLang(docPath, targetLang) {
   if (!docPath) return getDefaultDocPath(targetLang);
   if (targetLang === 'en') {
     if (docPath === 'content/guides/vi.md' || docPath === 'docs/content/guides/vi.md' || docPath === 'content/guides/README_vi.md') return '../README.md';
-    if (docPath === 'content/setup/vi.md' || docPath === 'docs/content/setup/vi.md') return 'content/guides/en/01-iframe-setup.md';
+    if (docPath === 'content/setup/vi.md' || docPath === 'docs/content/setup/vi.md') return 'content/guides/en/quickstart/5-minute-quickstart.md';
     return docPath
       .replace(/^docs\//, '')
       .replace('content/api/vi/', 'content/api/en/')
       .replace('content/guides/vi/', 'content/guides/en/')
-      .replace('content/setup/vi.md', 'content/guides/en/01-iframe-setup.md');
+      .replace('content/setup/vi.md', 'content/guides/en/quickstart/5-minute-quickstart.md');
   } else {
     if (docPath === '../README.md' || docPath === 'README.md') return 'content/guides/README_vi.md';
-    if (docPath === 'content/setup/en.md' || docPath === 'docs/content/setup/en.md') return 'content/guides/vi/01-iframe-setup.md';
+    if (docPath === 'content/setup/en.md' || docPath === 'docs/content/setup/en.md') return 'content/guides/vi/quickstart/5-minute-quickstart.md';
     return docPath
       .replace(/^docs\//, '')
       .replace('content/api/en/', 'content/api/vi/')
       .replace('content/guides/en/', 'content/guides/vi/')
-      .replace('content/setup/en.md', 'content/guides/vi/01-iframe-setup.md');
+      .replace('content/setup/en.md', 'content/guides/vi/quickstart/5-minute-quickstart.md');
   }
 }
 
