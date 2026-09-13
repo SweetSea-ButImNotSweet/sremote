@@ -1,9 +1,17 @@
 import { isNativeSRemoteInstance } from '../guard.js';
 
-export class UserscriptDriver {
+/**
+ * BridgeDriver (Extensible Host Bridge)
+ *
+ * Connects the SDK to external high-privilege host environments.
+ * Currently uses UserscriptTransport (window.sremote / window.SRemote / GM).
+ * Future-proofed for ElectronTransport and TauriTransport.
+ */
+export class BridgeDriver {
   constructor(options = {}) {
     this.options = { passkey: null, ...options };
     this.logger = options.logger || null;
+    this.transportType = options.transport || 'userscript'; // 'userscript' | 'electron' | 'tauri'
   }
 
   getPasskey(key) {
@@ -13,7 +21,7 @@ export class UserscriptDriver {
   isAvailable() {
     if (typeof window === 'undefined') return false;
     const api = window.SRemote || window.sremote;
-    // Do not treat wrapper itself as external userscript driver
+    // Do not treat wrapper itself as external bridge
     if (api?.[Symbol.for('__sremote_source__')] === 'wrapper') {
       return false;
     }
@@ -22,7 +30,7 @@ export class UserscriptDriver {
 
   getApi(required = false) {
     if (typeof window === 'undefined') {
-      if (required) throw new Error('[SRemote:Wrapper] SRemote Userscript not detected');
+      if (required) throw new Error('[SRemote:BridgeDriver] External host bridge not detected');
       return null;
     }
     const api = window.SRemote || window.sremote || null;
@@ -31,7 +39,7 @@ export class UserscriptDriver {
     }
     const nativeApi = isNativeSRemoteInstance(api) ? api : null;
     if (required && !nativeApi) {
-      throw new Error('[SRemote:Wrapper] SRemote Userscript not detected');
+      throw new Error('[SRemote:BridgeDriver] External host bridge not detected');
     }
     return nativeApi;
   }
@@ -54,10 +62,10 @@ export class UserscriptDriver {
     const api = this.getApi(true);
     const resolved = this._resolveMethod(api, method);
     if (!resolved) {
-      throw new Error(`[SRemote:Wrapper] Method '${method}' not supported by userscript`);
+      throw new Error(`[SRemote:BridgeDriver] Method '${method}' not supported by host bridge`);
     }
     if (this.logger?.scope) {
-      this.logger.scope('action').log(`(UserscriptDriver) Forwarding '${method}' to Userscript host`, ...args);
+      this.logger.scope('action').log(`(BridgeDriver) Forwarding '${method}' to Host (${this.transportType})`, ...args);
     }
     return resolved.fn.call(resolved.context, ...args);
   }
@@ -145,16 +153,43 @@ export class UserscriptDriver {
     return this._callOptional('previous', undefined, instanceId, this.getPasskey(key));
   }
 
-  list(key) {
-    return this._callOptional('instances.list', [], this.getPasskey(key));
-  }
-
-  status(instanceId, key) {
+  async status(instanceId, key) {
     return this._callOptional('status', null, instanceId, this.getPasskey(key));
   }
 
-  capabilities(instanceId, key) {
+  async capabilities(instanceId, key) {
     return this._callOptional('capabilities', null, instanceId, this.getPasskey(key));
+  }
+
+  async bindMetadata(metadata, instanceId, key) {
+    return this._callOptional('bindMetadata', undefined, metadata, instanceId, this.getPasskey(key));
+  }
+
+  async on(event, callback, key) {
+    const api = this.getApi(true);
+    const resolved = this._resolveMethod(api, 'on');
+    if (!resolved) throw new Error('[SRemote:BridgeDriver] Host does not support .on()');
+    return resolved.fn.call(resolved.context, event, callback, this.getPasskey(key));
+  }
+
+  async off(event, callback, key) {
+    const api = this.getApi();
+    const resolved = this._resolveMethod(api, 'off');
+    if (resolved) {
+      return resolved.fn.call(resolved.context, event, callback, this.getPasskey(key));
+    }
+  }
+
+  async emit(event, payload, key) {
+    return this._callOptional('emit', undefined, event, payload, this.getPasskey(key));
+  }
+
+  async call(action, params, instanceId, key) {
+    return this._callRequired('rpc.call', action, params, instanceId, this.getPasskey(key));
+  }
+
+  async postWindowMessage(msg, origin, instanceId, from, key) {
+    return this._callRequired('rpc.postMessage', msg, origin, instanceId, from, this.getPasskey(key));
   }
 
   getIframe(instanceId, key) {
@@ -185,35 +220,10 @@ export class UserscriptDriver {
     return this._callOptional('instances.note', undefined, dict, this.getPasskey(key));
   }
 
-  useAdapter() {
-    return null;
-  }
-
-  removeAdapter() {
-    return false;
-  }
-
-  getCustomAdapter() {
-    return null;
-  }
-
-  call(action, params, instanceId, key) {
-    return this._callRequired('rpc.call', action, params, instanceId, this.getPasskey(key));
-  }
-
-  postWindowMessage(msg, origin, instanceId, from, key) {
-    return this._callOptional('rpc.postMessage', false, msg, origin, instanceId, from, this.getPasskey(key));
-  }
-
-  on(event, handler, key) {
-    return this._callOptional('on', () => {}, event, handler, this.getPasskey(key));
-  }
-
-  off(event, handler) {
-    return this._callOptional('off', undefined, event, handler);
-  }
-
-  bindMetadata(meta, instanceId, key) {
-    return this._callOptional('bindMetadata', false, meta, instanceId, this.getPasskey(key));
+  list(key) {
+    return this._callOptional('instances.list', [], this.getPasskey(key));
   }
 }
+
+// Backward-compatible alias
+export { BridgeDriver as UserscriptDriver };

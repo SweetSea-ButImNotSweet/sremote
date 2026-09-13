@@ -1,5 +1,7 @@
-import { UserscriptDriver } from './strategies/userscript.js';
+import { AdapterDriver } from './strategies/adapter.js';
+import { MediaSessionDriver } from './strategies/mediasession.js';
 import { DomDriver } from './strategies/dom.js';
+import { BridgeDriver } from './strategies/bridge.js';
 import { showInstallModal } from './ui/install-modal.js';
 import { lockGlobalSRemoteIfAbsent } from './guard.js';
 import { createLogger, LOG_LEVELS } from '@sremote/shared';
@@ -10,7 +12,7 @@ lockGlobalSRemoteIfAbsent();
 export class SRemoteClient {
   constructor(options = {}) {
     lockGlobalSRemoteIfAbsent();
-    this.options = { fallbackToDom: true, timeout: 2000, passkey: null, ...options };
+    this.options = { fallbackToDom: true, timeout: 2000, passkey: null, driverPriority: ['adapter', 'mediasession', 'dom', 'bridge'], ...options };
 
     const initialLogLevel = typeof this.options.logLevel === 'number' ? this.options.logLevel : this.options.debug ? LOG_LEVELS.DEBUG : undefined;
 
@@ -20,8 +22,12 @@ export class SRemoteClient {
     this.syncLogLevelFromUserscript();
 
     const driverOptions = { ...this.options, logger: this.logger };
-    this.userscriptDriver = new UserscriptDriver(driverOptions);
+    this.bridgeDriver = new BridgeDriver(driverOptions);
+    this.userscriptDriver = this.bridgeDriver; // Alias for backward compatibility
     this.domDriver = new DomDriver(driverOptions);
+    this.adapterDriver = new AdapterDriver({ ...driverOptions, instanceManager: this.domDriver.instanceManager });
+    this.mediaSessionDriver = new MediaSessionDriver(driverOptions);
+
     this.mode = 'detecting'; // 'userscript' | 'dom-direct' | 'unsupported'
     this._readyPromise = null;
     this._listeners = new Set(); // { event, handler, key, unbindDom, unbindUserscript }
@@ -31,17 +37,18 @@ export class SRemoteClient {
         const result = [];
         const seenIds = new Set();
 
-        // 1. First Priority: Local Adapters in Wrapper
-        if (this.domDriver?.adaptersMap) {
-          for (const [id, adapter] of this.domDriver.adaptersMap.entries()) {
-            seenIds.add(id);
-            result.push({ instanceId: id, mediaType: 'adapter', name: adapter?.name || id, adapter, source: 'adapter' });
+        // 1. First Priority: In-page Custom Adapters
+        if (this.adapterDriver) {
+          const adapterList = this.adapterDriver.list() || [];
+          for (const item of adapterList) {
+            seenIds.add(item.instanceId);
+            result.push(item);
           }
         }
 
-        // 2. Second Priority: Userscript Iframe / Native instances
-        if (this.userscriptDriver.isAvailable()) {
-          const userList = this.userscriptDriver.list(key || this.options.passkey) || [];
+        // 2. Second Priority: External Bridge (Userscript / Host) instances
+        if (this.bridgeDriver.isAvailable()) {
+          const userList = this.bridgeDriver.list(key || this.options.passkey) || [];
           for (const item of userList) {
             const id = typeof item === 'string' ? item : item.instanceId;
             if (id && !seenIds.has(id)) {
@@ -50,6 +57,7 @@ export class SRemoteClient {
             }
           }
         } else if (this.domDriver) {
+          // 3. Fallback: Local DOM media elements
           const domList = this.domDriver.list() || [];
           for (const item of domList) {
             const id = typeof item === 'string' ? item : item.instanceId;
@@ -104,17 +112,21 @@ export class SRemoteClient {
 
     this.adapters = {
       register: (adapter, instanceId) => {
-        this.logger.log(`Registering custom adapter${adapter?.name ? ` [${adapter.name}]` : ''}`, { instanceId });
-        const registeredId = this.domDriver.useAdapter(adapter, instanceId);
+        const registeredId = this.adapterDriver.register(adapter, instanceId);
         this.syncGlobalAdapters();
         return registeredId;
       },
       unregister: instanceId => {
         this.logger.log(`Unregistering adapter for instance: ${instanceId}`);
-        const domResult = this.domDriver.removeAdapter(instanceId);
-        return domResult;
+        const result = this.adapterDriver.unregister(instanceId);
+        return result;
       },
-      get: instanceId => this.domDriver.getCustomAdapter(instanceId),
+      get: instanceId => this.adapterDriver.get(instanceId),
+      has: instanceId => this.adapterDriver.has(instanceId),
+      list: () => this.adapterDriver.list(),
+      get map() {
+        return this.adapterDriver.adaptersMap;
+      },
     };
 
     // Attach/override window.sremote.adapters to guarantee Single Source of Truth
@@ -185,8 +197,8 @@ export class SRemoteClient {
   }
 
   async ready() {
-    // If local custom adapters are already registered, local DOM driver is immediately ready
-    if (this.domDriver && this.domDriver.adaptersMap.size > 0 && this.mode === 'detecting') {
+    // If local custom adapters are already registered, local adapter driver is immediately ready
+    if (this.adapterDriver && this.adapterDriver.isAvailable() && this.mode === 'detecting') {
       this.mode = 'dom-direct';
     }
 
@@ -208,7 +220,7 @@ export class SRemoteClient {
       }
 
       // If already has local adapter or fallback is ready, resolve immediately
-      if (this.domDriver && this.domDriver.adaptersMap.size > 0) {
+      if (this.adapterDriver?.isAvailable()) {
         this.mode = 'dom-direct';
         resolve(this);
         return;
@@ -253,34 +265,75 @@ export class SRemoteClient {
   }
 
   /**
-   * Resolves appropriate driver for a specific target.
-   * If target matches a locally registered adapter (or local adapters exist in single mode),
-   * local DomDriver is ALWAYS prioritized to avoid cross-boundary function serialization loss.
+   * Resolves appropriate driver for a specific target following the driverPriority pipeline.
+   * Priority list defaults to: ['adapter', 'mediasession', 'dom', 'bridge']
    * @param {string|Object|null} targetOrId
-   * @returns {UserscriptDriver|DomDriver|null}
+   * @returns {{ driver: Object, name: string }|null}
    */
   getDriverForTarget(targetOrId = null) {
-    const domAdapters = this.domDriver?.adaptersMap;
-    if (domAdapters && domAdapters.size > 0) {
-      if (typeof targetOrId === 'string' && domAdapters.has(targetOrId)) {
-        return this.domDriver;
+    const priority = Array.isArray(this.options.driverPriority) ? this.options.driverPriority : ['adapter', 'mediasession', 'dom', 'bridge'];
+
+    for (const key of priority) {
+      const norm = String(key || '').toLowerCase();
+
+      // 1. Adapter Driver
+      if (norm === 'adapter' && this.adapterDriver) {
+        if (typeof targetOrId === 'string' && this.adapterDriver.has(targetOrId)) {
+          return { driver: this.adapterDriver, name: 'AdapterDriver' };
+        }
+        if (!targetOrId && this.adapterDriver.isAvailable()) {
+          const isSingle = this.domDriver ? !this.domDriver.isMultiMode() : true;
+          if (isSingle) {
+            return { driver: this.adapterDriver, name: 'AdapterDriver' };
+          }
+        }
       }
-      if (!targetOrId && !this.domDriver.isMultiMode()) {
-        return this.domDriver;
+
+      // 2. MediaSession Driver
+      if (norm === 'mediasession' && this.mediaSessionDriver) {
+        if (targetOrId === 'mediasession' || (!targetOrId && this.mediaSessionDriver.isEligible())) {
+          return { driver: this.mediaSessionDriver, name: 'MediaSessionDriver' };
+        }
+      }
+
+      // 3. Dom Driver (Genuine DOM elements)
+      if (norm === 'dom' && this.domDriver) {
+        if (typeof targetOrId === 'object' && targetOrId instanceof (typeof Element !== 'undefined' ? Element : Object)) {
+          return { driver: this.domDriver, name: 'DomDriver' };
+        }
+        if (typeof targetOrId === 'string' && (targetOrId.startsWith('#') || targetOrId.startsWith('.'))) {
+          return { driver: this.domDriver, name: 'DomDriver' };
+        }
+        // If mode is dom-direct or fallback enabled and target is not an external iframe ID
+        if (!targetOrId && (this.mode === 'dom-direct' || this.options.fallbackToDom)) {
+          const domList = this.domDriver.list();
+          if (domList.length > 0) {
+            return { driver: this.domDriver, name: 'DomDriver' };
+          }
+        }
+      }
+
+      // 4. Bridge / Userscript Driver
+      if ((norm === 'bridge' || norm === 'userscript') && this.bridgeDriver) {
+        if (this.mode === 'userscript' || this.bridgeDriver.isAvailable()) {
+          return { driver: this.bridgeDriver, name: 'BridgeDriver' };
+        }
       }
     }
 
-    if (this.mode === 'userscript' || this.userscriptDriver.isAvailable()) {
-      return this.userscriptDriver;
+    // Default fallback
+    if (this.bridgeDriver.isAvailable()) {
+      return { driver: this.bridgeDriver, name: 'BridgeDriver' };
     }
-    if (this.mode === 'dom-direct' || this.options.fallbackToDom) {
-      return this.domDriver;
+    if (this.options.fallbackToDom && this.domDriver) {
+      return { driver: this.domDriver, name: 'DomDriver' };
     }
     return null;
   }
 
   get activeDriver() {
-    return this.getDriverForTarget(null);
+    const resolved = this.getDriverForTarget(null);
+    return resolved ? resolved.driver : null;
   }
 
   /**
@@ -294,26 +347,26 @@ export class SRemoteClient {
     const valueActions = ['seek', 'seekTo', 'volume', 'mute', 'speed', 'load', 'quality', 'subtitle', 'shuffle', 'repeat'];
     const targetOrId = valueActions.includes(method) ? args[1] : args[0];
 
-    const targetDriver = this.getDriverForTarget(targetOrId);
-    if (!targetDriver && (this.mode === 'userscript' || this.mode === 'dom-direct')) {
-      throw new Error(`[SRemote:Wrapper] No active driver available to execute ${method}()`);
+    const resolvedInitial = this.getDriverForTarget(targetOrId);
+    if (!resolvedInitial && (this.mode === 'userscript' || this.mode === 'dom-direct')) {
+      throw new Error(`[SRemote:SDK] No active driver available to execute ${method}()`);
     }
 
-    // Only await ready() if not already resolved and no immediate local adapter driver available
-    const hasLocalAdapter = this.domDriver?.adaptersMap.size > 0;
-    if (!hasLocalAdapter) {
+    // Only await ready() if no immediate local adapter or eligible MediaSession driver available
+    const hasImmediateLocal = this.adapterDriver?.isAvailable() || this.mediaSessionDriver?.isEligible();
+    if (!hasImmediateLocal) {
       await this.ready();
     }
 
-    const driver = this.getDriverForTarget(targetOrId) || this.activeDriver;
-    if (!driver) {
+    const resolved = this.getDriverForTarget(targetOrId);
+    if (!resolved?.driver) {
       this.logger.error(`No active driver available to execute ${method}()`);
-      throw new Error(`[SRemote:Wrapper] No active driver available to execute ${method}()`);
+      throw new Error(`[SRemote:SDK] No active driver available to execute ${method}()`);
     }
 
-    const driverName = driver instanceof UserscriptDriver ? 'Userscript' : 'DomDriver';
+    const { driver, name: driverName } = resolved;
     const targetLabel = targetOrId ? ` (target: ${typeof targetOrId === 'string' ? targetOrId : 'custom'})` : '';
-    this.logger.scope('action').log(`(Wrapper) Routing -> ${method} to [${driverName}]${targetLabel}`, ...args);
+    this.logger.scope('action').log(`(SDK) Routing -> ${method} to [${driverName}]${targetLabel}`, ...args);
     return driver[method](...args);
   }
 

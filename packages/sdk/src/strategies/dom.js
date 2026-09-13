@@ -6,8 +6,6 @@ import {
   executeMediaAction,
   resolveMediaElement,
   getGlobalTransactionTracker,
-  wrapCustomAdapter,
-  generateInstanceId,
 } from '@sremote/shared';
 
 export class DomDriver {
@@ -16,13 +14,10 @@ export class DomDriver {
     this.logger = options.logger || null;
     this.transactionTracker = options.transactionTracker || getGlobalTransactionTracker();
 
-    this.instanceManager = createInstanceManager({
-      ns: 'sremote:',
-      logger: this.logger,
-      getIframeCount: () => (typeof document !== 'undefined' ? document.querySelectorAll('iframe').length : 0),
-    });
+    this.instanceManager =
+      options.instanceManager ||
+      createInstanceManager({ ns: 'sremote:', logger: this.logger, getIframeCount: () => (typeof document !== 'undefined' ? document.querySelectorAll('iframe').length : 0) });
 
-    // Forward events emitted by instanceManager (e.g. from registered adapters) to DomDriver listeners
     if (this.instanceManager?.on) {
       this.instanceManager.on('*', payload => {
         const action = payload?.action;
@@ -32,7 +27,6 @@ export class DomDriver {
       });
     }
 
-    this.adaptersMap = new Map();
     this.trackedMediaElements = new WeakSet();
     this.treatAlmostEndAsEnd = Boolean(options.treatAlmostEndAsEnd);
     this._listeners = new Map();
@@ -128,152 +122,35 @@ export class DomDriver {
 
   list() {
     const list = [];
-    for (const [id, ad] of this.adaptersMap.entries()) {
-      const state = extractMediaState(ad);
-      list.push({ instanceId: id, mediaType: 'adapter', capabilities: this.getCapabilities(id), status: 'ready', state });
+    if (typeof document !== 'undefined') {
+      const mediaElements = document.querySelectorAll('video, audio');
+      for (const el of mediaElements) {
+        const id = el.id || el.getAttribute('data-sremote-id') || 'dom-media';
+        const state = extractMediaState(el);
+        list.push({ instanceId: id, mediaType: el.tagName ? el.tagName.toLowerCase() : 'video', capabilities: evaluateCapabilities(el), status: 'ready', state, source: 'dom' });
+      }
     }
     return list;
-  }
-
-  useAdapter(rawAdapter, customInstanceId = null) {
-    if (!rawAdapter || typeof rawAdapter !== 'object') return null;
-    const targetId = customInstanceId || generateInstanceId('adapter');
-
-    if (!this.isMultiMode() && this.adaptersMap.size > 0) {
-      for (const oldId of Array.from(this.adaptersMap.keys())) {
-        if (oldId !== targetId) {
-          this.adaptersMap.delete(oldId);
-        }
-      }
-    }
-
-    const adapter = wrapCustomAdapter(rawAdapter, {
-      instanceId: targetId,
-      source: 'adapter',
-      onEmit: (ev, fullPayload) => {
-        this.emit(ev, fullPayload);
-      },
-    });
-
-    this.adaptersMap.set(targetId, adapter);
-
-    const currentLoc = typeof location !== 'undefined' ? location.href : '';
-    const currentOrigin = typeof location !== 'undefined' ? location.origin : '';
-    this.emit('accept', { source: 'adapter', instanceId: targetId, mediaType: 'adapter', location: currentLoc, origin: currentOrigin });
-
-    return targetId;
-  }
-
-  pauseOthersExcept(activeInstanceId) {
-    this.instanceManager.pauseOthersExcept(activeInstanceId);
-    for (const [id, ad] of this.adaptersMap.entries()) {
-      if (id !== activeInstanceId) {
-        try {
-          ad.pause?.();
-        } catch {}
-      }
-    }
-  }
-
-  removeAdapter(instanceId) {
-    if (instanceId) {
-      return this.adaptersMap.delete(instanceId);
-    }
-    this.adaptersMap.clear();
-    return true;
-  }
-
-  getCustomAdapter(instanceId) {
-    if (instanceId) return this.adaptersMap.get(instanceId) || null;
-    if (this.adaptersMap.size === 1) return Array.from(this.adaptersMap.values())[0] || null;
-    return Array.from(this.adaptersMap.values())[this.adaptersMap.size - 1] || null;
-  }
-
-  _findConnectedAdapter(preferredId = null) {
-    const map = this.adaptersMap;
-    if (map.size === 0) return null;
-
-    // Prune any stale adapters whose DOM node has been detached from the document
-    for (const [id, ad] of Array.from(map.entries())) {
-      const el = ad?.mediaElement || ad?.element;
-      if (typeof el?.isConnected !== 'undefined' && !el.isConnected) {
-        map.delete(id);
-      }
-    }
-
-    if (map.size === 0) return null;
-
-    const isSingle = !this.isMultiMode();
-
-    if (preferredId && map.has(preferredId)) {
-      const ad = map.get(preferredId);
-      const el = ad?.mediaElement || ad?.element;
-      if (typeof el?.isConnected === 'undefined' || el.isConnected) {
-        return { type: 'adapter', instance: ad, instanceId: preferredId };
-      }
-    }
-
-    const entries = Array.from(map.entries());
-    if (isSingle && entries.length > 0) {
-      const [latestId, latestAd] = entries[entries.length - 1];
-      const el = latestAd?.mediaElement || latestAd?.element;
-      if (typeof el?.isConnected === 'undefined' || el.isConnected) {
-        return { type: 'adapter', instance: latestAd, instanceId: latestId };
-      }
-    }
-
-    for (let i = entries.length - 1; i >= 0; i--) {
-      const [id, ad] = entries[i];
-      const el = ad?.mediaElement || ad?.element;
-      if (typeof el?.isConnected === 'undefined' || el.isConnected) {
-        return { type: 'adapter', instance: ad, instanceId: id };
-      }
-    }
-
-    const latestEntry = entries[entries.length - 1];
-    return { type: 'adapter', instance: latestEntry[1], instanceId: latestEntry[0] };
-  }
-
-  resolveTarget(target) {
-    const map = this.adaptersMap;
-
-    if (typeof target === 'string' && map.has(target)) {
-      return { type: 'adapter', instance: map.get(target), instanceId: target };
-    }
-
-    if (!target && map.size > 0) {
-      const activeId = this.instanceManager.getLatestActiveInstanceId?.() || this.instanceManager.currentActiveInstanceId;
-      return this._findConnectedAdapter(activeId);
-    }
-
-    const el = resolveMediaElement(target);
-    if (el) return { type: 'element', instance: el };
-
-    if (map.size > 0) {
-      const activeId = this.instanceManager.getLatestActiveInstanceId?.() || this.instanceManager.currentActiveInstanceId;
-      return this._findConnectedAdapter(activeId);
-    }
-
-    return null;
   }
 
   resolveMediaElement(target) {
     return resolveMediaElement(target);
   }
 
+  resolveTarget(target) {
+    const el = resolveMediaElement(target);
+    if (el) return { type: 'element', instance: el };
+    return null;
+  }
+
   async _execAction(action, target, value) {
     const resolved = this.resolveTarget(target);
-    if (!resolved) throw new Error(`[SRemote:DomDriver] Media target not found for '${action}'`);
-    const instId = resolved.instanceId || resolved.instance?.id || 'dom-media';
+    if (!resolved) return false;
+    const instId = resolved.instance?.id || 'dom-media';
+    const tagName = resolved.instance?.tagName ? resolved.instance.tagName.toLowerCase() : 'element';
 
     if (this.logger?.scope) {
-      if (resolved.type === 'adapter') {
-        const adapterName = resolved.instance?.name || instId;
-        this.logger.scope('action').log(`(DomDriver) Executing '${action}' via Adapter [${adapterName}]`, { value, instanceId: instId });
-      } else {
-        const tagName = resolved.instance?.tagName ? resolved.instance.tagName.toLowerCase() : 'element';
-        this.logger.scope('action').log(`(DomDriver) Executing '${action}' via In-Page DOM <${tagName}> [${instId}]`, { value, instanceId: instId });
-      }
+      this.logger.scope('action').log(`(DomDriver) Executing '${action}' via In-Page DOM <${tagName}> [${instId}]`, { value, instanceId: instId });
     }
 
     return executeMediaAction(resolved.instance, action, value, { transactionTracker: this.transactionTracker, instanceId: instId, logger: this.logger });
@@ -282,129 +159,105 @@ export class DomDriver {
   async play(target) {
     return this._execAction('play', target);
   }
-
   async pause(target) {
     return this._execAction('pause', target);
   }
-
   async toggle(target) {
     return this._execAction('toggle', target);
   }
-
   async stop(target) {
     return this._execAction('stop', target);
   }
-
   async seek(offset, target) {
     return this._execAction('seek', target, offset);
   }
-
   async seekTo(time, target) {
-    return this._execAction('seekTo', target, time);
+    return this._execAction('currenttime', target, time);
   }
-
   async volume(vol, target) {
     return this._execAction('volume', target, vol);
   }
-
   async mute(muted, target) {
-    return this._execAction('mute', target, muted);
+    return this._execAction('muted', target, muted);
   }
-
   async speed(rate, target) {
-    return this._execAction('speed', target, rate);
+    return this._execAction('rate', target, rate);
   }
-
   async pip(enable, target) {
-    return this._execAction('pip', target, enable);
+    return this._execAction(enable ? 'pip' : 'exitpip', target);
   }
-
   async load(source, target) {
     return this._execAction('load', target, source);
   }
-
   async quality(level, target) {
     return this._execAction('quality', target, level);
   }
-
-  async getQualities(target) {
-    return this._execAction('getQualities', target);
-  }
-
   async subtitle(track, target) {
     return this._execAction('subtitle', target, track);
   }
-
-  async getSubtitles(target) {
-    return this._execAction('getSubtitles', target);
-  }
-
   async shuffle(enable, target) {
     return this._execAction('shuffle', target, enable);
   }
-
   async repeat(mode, target) {
     return this._execAction('repeat', target, mode);
   }
-
   async next(target) {
     return this._execAction('next', target);
   }
-
   async previous(target) {
     return this._execAction('previous', target);
   }
 
-  getStatus(target) {
-    const resolved = this.resolveTarget(target);
-    if (!resolved) return null;
-    return extractMediaState(resolved.instance);
+  async status(target) {
+    const el = this.resolveMediaElement(target);
+    if (!el) return null;
+    return extractMediaState(el);
   }
 
-  getCapabilities(target) {
-    const resolved = this.resolveTarget(target);
-    if (!resolved) return null;
-    return evaluateCapabilities(resolved.instance);
+  async capabilities(target) {
+    const el = this.resolveMediaElement(target);
+    if (!el) return null;
+    return evaluateCapabilities(el);
   }
 
-  on(event, handler) {
-    const ev = String(event || '').toLowerCase();
-    if (!this._listeners.has(ev)) this._listeners.set(ev, new Set());
-    this._listeners.get(ev).add(handler);
-    return () => this.off(event, handler);
+  on(event, callback) {
+    if (!this._listeners.has(event)) {
+      this._listeners.set(event, new Set());
+    }
+    this._listeners.get(event).add(callback);
+    return () => this.off(event, callback);
   }
 
-  off(event, handler) {
-    const ev = String(event || '').toLowerCase();
-    this._listeners.get(ev)?.delete(handler);
+  off(event, callback) {
+    if (this._listeners.has(event)) {
+      this._listeners.get(event).delete(callback);
+    }
   }
 
   emit(event, payload) {
-    const ev = String(event || '').toLowerCase();
-    const set = this._listeners.get(ev);
-    if (set) {
-      for (const h of set) {
+    if (this._listeners.has(event)) {
+      for (const cb of this._listeners.get(event)) {
         try {
-          h(payload);
+          cb(payload);
         } catch {}
       }
     }
-    const wildcard = this._listeners.get('*');
-    if (wildcard) {
-      for (const h of wildcard) {
+    if (this._listeners.has('*')) {
+      for (const cb of this._listeners.get('*')) {
         try {
-          h(payload);
+          cb({ event, ...payload });
         } catch {}
       }
     }
   }
 
   destroy() {
-    this._listeners.clear();
     if (this._domObserver) {
       try {
         this._domObserver.disconnect();
       } catch {}
+      this._domObserver = null;
     }
+    this._listeners.clear();
   }
 }

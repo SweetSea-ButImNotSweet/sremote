@@ -45,6 +45,13 @@ export interface SRemoteClientOptions {
   logLevel?: number;
 
   /**
+   * Pipeline priority order for command dispatching.
+   * Can be any combination of `'adapter'`, `'mediasession'`, `'dom'`, `'bridge'`, `'userscript'`.
+   * @default ['adapter', 'mediasession', 'dom', 'bridge']
+   */
+  driverPriority?: Array<'adapter' | 'mediasession' | 'dom' | 'bridge' | 'userscript' | string>;
+
+  /**
    * Shorthand boolean to enable verbose debug logging (sets logLevel = 3).
    * @default false
    */
@@ -235,6 +242,21 @@ export interface SRemoteAdaptersNamespace {
    * Retrieve an active custom adapter object.
    */
   get(instanceId?: string, key?: string): SRemoteCustomAdapter | null;
+
+  /**
+   * Check if an adapter with the specified instance ID is currently registered.
+   */
+  has(instanceId: string): boolean;
+
+  /**
+   * Get an array of all currently registered custom adapters.
+   */
+  list(): SRemoteInstanceInfo[];
+
+  /**
+   * Underlying Map of registered custom adapters.
+   */
+  readonly map: Map<string, SRemoteCustomAdapter>;
 }
 
 /**
@@ -434,3 +456,37 @@ export declare function createSRemote(options?: SRemoteClientOptions): SRemoteCl
 
 export declare const sremote: SRemoteClient;
 export default sremote;
+
+export declare class AdapterDriver {
+  constructor(options?: any);
+  adaptersMap: Map<string, any>;
+  has(instanceId: string): boolean;
+  list(): SRemoteInstanceInfo[];
+  get(instanceId?: string): SRemoteCustomAdapter | null;
+  register(rawAdapter: SRemoteCustomAdapter, customInstanceId?: string | null): string | null;
+  unregister(instanceId?: string): boolean;
+  isAvailable(): boolean;
+  [key: string]: any;
+}
+
+export declare class MediaSessionDriver {
+  constructor(options?: any);
+  isAvailable(): boolean;
+  isEligible(): boolean;
+  [key: string]: any;
+}
+
+export declare class DomDriver {
+  constructor(options?: any);
+  list(): SRemoteInstanceInfo[];
+  resolveMediaElement(target: any): HTMLMediaElement | null;
+  [key: string]: any;
+}
+
+export declare class BridgeDriver {
+  constructor(options?: any);
+  isAvailable(): boolean;
+  [key: string]: any;
+}
+
+export { BridgeDriver as UserscriptDriver };

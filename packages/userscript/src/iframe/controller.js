@@ -1,91 +1,37 @@
-import { safeGetProp } from '../core/utils.js';
-import { descriptors, logger, console_warn } from '../config.js';
+import { logger, console_warn } from '../config.js';
 import { mockMediaSessionInstance } from './media-session.js';
-import { executeMediaAction, getGlobalTransactionTracker } from '@sremote/shared';
+import { executeMediaAction, extractMediaState, evaluateCapabilities, getGlobalTransactionTracker } from '@sremote/shared';
 
-const lastKnownDurationMap = new WeakMap();
-
+/**
+ * Gets media state snapshot. Delegates to @sremote/shared extractMediaState.
+ */
 export function getVideoState(targetMedia, activeMedia, resolveActiveMedia) {
-  const media = targetMedia || activeMedia || (resolveActiveMedia() ? activeMedia : null);
+  const media = targetMedia || activeMedia || (resolveActiveMedia?.() ? activeMedia : null);
   if (!media) return null;
-
-  const curVol = safeGetProp(media, descriptors.volume, 'volume') ?? (media.volume !== undefined ? media.volume : 1);
-  const curMuted = safeGetProp(media, descriptors.muted, 'muted') ?? (media.muted !== undefined ? media.muted : false);
-  const curTime = safeGetProp(media, descriptors.currentTime, 'currentTime') ?? (media.currentTime !== undefined ? media.currentTime : 0);
-  const rawDur = safeGetProp(media, descriptors.duration, 'duration') ?? media.duration;
-  const curRate = safeGetProp(media, descriptors.playbackRate, 'playbackRate') ?? (media.playbackRate !== undefined ? media.playbackRate : 1);
-  const isPaused = safeGetProp(media, descriptors.paused, 'paused') ?? (media.paused !== undefined ? media.paused : true);
-  const isEnded = safeGetProp(media, descriptors.ended, 'ended') ?? (media.ended !== undefined ? media.ended : false);
-  const curReadyState = safeGetProp(media, descriptors.readyState, 'readyState') ?? (media.readyState !== undefined ? media.readyState : 0);
-  const curSrc = safeGetProp(media, descriptors.currentSrc, 'currentSrc') || media.currentSrc || safeGetProp(media, descriptors.src, 'src') || media.src || '';
-
-  let dur = Number.isFinite(rawDur) && rawDur > 0 ? rawDur : null;
-  if (dur) {
-    lastKnownDurationMap.set(media, dur);
-  } else {
-    dur = lastKnownDurationMap.get(media) || null;
-  }
-
-  let bufferedEnd = 0;
-  try {
-    const buf = safeGetProp(media, descriptors.buffered, 'buffered') || media.buffered;
-    if (buf && buf.length > 0) bufferedEnd = buf.end(buf.length - 1);
-  } catch {}
-
-  const isLoop = safeGetProp(media, descriptors.loop, 'loop') ?? (media.loop !== undefined ? media.loop : false);
-
-  return {
-    paused: isPaused,
-    ended: Boolean(isEnded || (dur && dur > 0 && curTime >= dur - 0.1)),
-    currentTime: curTime,
-    duration: dur,
-    buffered: bufferedEnd,
-    volume: curVol,
-    muted: curMuted,
-    playbackRate: curRate,
-    readyState: curReadyState,
-    src: curSrc,
-    loop: Boolean(isLoop),
-    repeat: isLoop ? 'one' : 'off',
-    fullscreen: !!(document.fullscreenElement && (document.fullscreenElement === media || document.fullscreenElement.contains(media))),
-    pictureInPicture: document.pictureInPictureElement === media,
-  };
+  return extractMediaState(media);
 }
+
+/**
+ * Evaluates iframe capabilities for media instance.
+ */
 export function getIframeCapabilities(targetMedia, activeMedia, resolveActiveMedia) {
   const media = targetMedia || activeMedia || (resolveActiveMedia?.() ? activeMedia : null);
-  const hasNative = Boolean(media?.tagName === 'VIDEO' || media?.tagName === 'AUDIO');
-  const isVideo = Boolean(media?.tagName === 'VIDEO');
+  const caps = evaluateCapabilities(media);
 
   const msHandlers = mockMediaSessionInstance._handlers;
   const hasMsAction = action => Boolean(msHandlers.has(action));
   const hasMediaSession = Boolean((typeof navigator !== 'undefined' && navigator.mediaSession) || msHandlers.size > 0);
 
-  const canPlay = hasNative || hasMsAction('play');
-  const canPause = hasNative || hasMsAction('pause');
-  const canToggle = (hasNative && canPlay && canPause) || hasMsAction('play') || hasMsAction('pause');
-  const canStop = hasNative || hasMsAction('stop');
-  const canSeek = hasNative || hasMsAction('seekto') || hasMsAction('seekforward') || hasMsAction('seekbackward');
-
   return {
-    play: canPlay,
-    pause: canPause,
-    toggle: canToggle,
-    stop: canStop,
-    seek: canSeek,
-    volume: hasNative,
-    muted: hasNative,
-    speed: hasNative,
-    playbackRate: hasNative,
-    pip: isVideo && typeof document !== 'undefined' && Boolean(document.pictureInPictureEnabled || media.requestPictureInPicture),
-    quality: false,
-    subtitles: Boolean(hasNative && media.textTracks && media.textTracks.length > 0),
-    shuffle: hasMsAction('shuffle'),
-    repeat: hasNative,
-    next: hasMsAction('nexttrack'),
-    previous: hasMsAction('previoustrack'),
-    load: hasNative,
-    hasAdapter: false,
-    hasNative,
+    ...caps,
+    play: caps.play || hasMsAction('play'),
+    pause: caps.pause || hasMsAction('pause'),
+    toggle: caps.toggle || hasMsAction('play') || hasMsAction('pause'),
+    stop: caps.stop || hasMsAction('stop'),
+    seek: caps.seek || hasMsAction('seekto') || hasMsAction('seekforward') || hasMsAction('seekbackward'),
+    shuffle: caps.shuffle || hasMsAction('shuffle'),
+    next: caps.next || hasMsAction('nexttrack'),
+    previous: caps.previous || hasMsAction('previoustrack'),
     hasMediaSession,
   };
 }
@@ -141,7 +87,7 @@ export function createMediaController({
     let activeMedia = activeMediaGetter();
     let mediaType = mediaTypeGetter();
 
-    // If media is momentarily unavailable (e.g. Bilibili switching video element/source), retry briefly
+    // Retry briefly if media momentarily switching/buffering
     if (!activeMedia) {
       await new Promise(r => setTimeout(r, 120));
       resolveActiveMedia();
@@ -167,46 +113,12 @@ export function createMediaController({
       return true;
     }
 
-    // 2. HTML5 Video/Audio Execution
-    if ((mediaType === 'video' || mediaType === 'audio') && activeMedia) {
-      if (!isPureGet) {
-        const tag = activeMedia.tagName ? activeMedia.tagName.toLowerCase() : mediaType;
-        logger.scope('action').log(`(Userscript) Executing '${action}' via In-Page DOM <${tag}> [${instanceId}]`, { action, value, instanceId });
-      }
-
-      if (norm === 'bindmetadata') {
-        handleBindMetadata({ metadata: value, instanceId, emitToParent, sendMediaSessionState });
-        return true;
-      }
-
-      if (norm === 'volume' && !isPureGet && value !== undefined && value !== null) {
-        let num = Number(value);
-        if (num > 1 && num <= 100) num /= 100;
-        num = Math.min(1, Math.max(0, num));
-        configuredVolumeSetter(num);
-        configuredMutedSetter(false);
-      } else if (norm === 'muted' && !isPureGet) {
-        const curM = safeGetProp(activeMedia, descriptors.muted, 'muted');
-        const nextM = value !== undefined && value !== null ? Boolean(value) : !curM;
-        configuredMutedSetter(nextM);
-      }
-
-      const handled = await executeMediaAction(activeMedia, norm, value, { isPureGet, instanceId, transactionTracker: getGlobalTransactionTracker(), logger });
-
-      if (handled) {
-        if (isPureGet) {
-          notifyState(action, getVideoState(activeMedia, activeMedia, resolveActiveMedia));
-        }
-        return true;
-      }
-    }
-
-    // MediaSession Fallback (Only when real handlers exist)
+    // 2. MediaSession Priority (When real handlers exist or activeMedia is mediasession)
     const hasMockHandler = mockMediaSessionInstance._handlers.size > 0;
     const canHandleNorm =
       mockMediaSessionInstance._handlers.has(norm) || (norm === 'toggle' && (mockMediaSessionInstance._handlers.has('play') || mockMediaSessionInstance._handlers.has('pause')));
 
-    if (hasMockHandler && canHandleNorm) {
+    if ((mediaType === 'mediasession' || hasMockHandler) && canHandleNorm) {
       if (!isPureGet) {
         logger.scope('action').log(`(Userscript) Executing '${action}' via MediaSession ActionHandler [${instanceId}]`, { action, value, instanceId });
         if (norm === 'toggle') {
@@ -218,6 +130,38 @@ export function createMediaController({
       }
       sendMediaSessionState(action);
       return true;
+    }
+
+    // 3. HTML5 Video/Audio DOM Execution
+    if ((mediaType === 'video' || mediaType === 'audio') && activeMedia) {
+      if (!isPureGet) {
+        const tag = activeMedia.tagName ? activeMedia.tagName.toLowerCase() : mediaType;
+        logger.scope('action').log(`(Userscript) Executing '${action}' via In-Page DOM <${tag}> [${instanceId}]`, { action, value, instanceId });
+      }
+
+      if (norm === 'bindmetadata') {
+        handleBindMetadata({ metadata: value, instanceId, emitToParent, sendMediaSessionState });
+        return true;
+      }
+
+      // Sync local trackers when volume or mute changed
+      if (norm === 'volume' && !isPureGet && value !== undefined && value !== null) {
+        let num = Number(value);
+        if (num > 1 && num <= 100) num /= 100;
+        configuredVolumeSetter?.(Math.min(1, Math.max(0, num)));
+        configuredMutedSetter?.(false);
+      } else if (norm === 'muted' && !isPureGet) {
+        configuredMutedSetter?.(value !== undefined && value !== null ? Boolean(value) : !activeMedia.muted);
+      }
+
+      const handled = await executeMediaAction(activeMedia, norm, value, { isPureGet, instanceId, transactionTracker: getGlobalTransactionTracker(), logger });
+
+      if (handled) {
+        if (isPureGet) {
+          notifyState(action, extractMediaState(activeMedia));
+        }
+        return true;
+      }
     }
 
     return false;
