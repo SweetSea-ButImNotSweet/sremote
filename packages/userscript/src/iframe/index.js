@@ -10,7 +10,7 @@ import { getVideoState, getIframeCapabilities, createMediaController } from './c
 import { createIframeDebugApi } from '../debug/iframe-debug.js';
 import { createRpcRegistry } from './rpc.js';
 import { createIframeTransportManager } from './transport.js';
-import { getGlobalTransactionTracker } from '@sremote/shared';
+import { pipeline } from '@sremote/shared';
 
 export function initIframeAgent() {
   let topOrigin = null;
@@ -101,7 +101,7 @@ export function initIframeAgent() {
 
         const now = Date.now();
         let isProgrammatic = false;
-        const tracker = getGlobalTransactionTracker();
+        const tracker = pipeline.getTracker();
         if (tracker && typeof tracker.matchAndConsume === 'function') {
           isProgrammatic = tracker.matchAndConsume(evtName, { instanceId, video }).isProgrammatic;
         }

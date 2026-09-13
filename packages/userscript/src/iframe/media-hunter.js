@@ -1,14 +1,14 @@
 import { mockMediaSessionInstance, activeMediaSession } from './media-session.js';
 import { pageWindow } from '../config.js';
 import { getKnownShadowRoots } from './hooks.js';
-import { hasMediaSource, queryMediaDeep as sharedQueryMediaDeep, findAllMedia as sharedFindAllMedia } from '@sremote/shared';
+import { dom } from '@sremote/shared';
 
 export function queryMediaDeep(root = document, visitedRoots = new Set()) {
-  return sharedQueryMediaDeep(root, visitedRoots);
+  return dom.query(root, visitedRoots);
 }
 
 export function findAllMedia() {
-  return sharedFindAllMedia({ getKnownShadowRoots });
+  return dom.findAll({ getKnownShadowRoots });
 }
 
 export function createMediaResolver(createdMediaPool, bindVideoEvents) {
@@ -59,8 +59,8 @@ export function createMediaResolver(createdMediaPool, bindVideoEvents) {
         const bArea = getMediaArea(b);
         if (Math.abs(aArea - bArea) > 500) return bArea - aArea;
 
-        const aHasSrc = hasMediaSource(a) || (a.duration && a.duration > 0) ? 1 : 0;
-        const bHasSrc = hasMediaSource(b) || (b.duration && b.duration > 0) ? 1 : 0;
+        const aHasSrc = dom.hasSource(a) || (a.duration && a.duration > 0) ? 1 : 0;
+        const bHasSrc = dom.hasSource(b) || (b.duration && b.duration > 0) ? 1 : 0;
         return bHasSrc - aHasSrc;
       });
 

@@ -4,7 +4,7 @@ import { DomDriver } from './strategies/dom.js';
 import { BridgeDriver } from './strategies/bridge.js';
 import { showInstallModal } from './ui/install-modal.js';
 import { lockGlobalSRemoteIfAbsent } from './guard.js';
-import { createLogger, LOG_LEVELS } from '@sremote/shared';
+import { logger } from '@sremote/shared';
 
 // Execute immediately when module is loaded to protect window.sremote
 lockGlobalSRemoteIfAbsent();
@@ -14,9 +14,9 @@ export class SRemoteClient {
     lockGlobalSRemoteIfAbsent();
     this.options = { fallbackToDom: true, timeout: 2000, passkey: null, driverPriority: ['adapter', 'mediasession', 'dom', 'bridge'], ...options };
 
-    const initialLogLevel = typeof this.options.logLevel === 'number' ? this.options.logLevel : this.options.debug ? LOG_LEVELS.DEBUG : undefined;
+    const initialLogLevel = typeof this.options.logLevel === 'number' ? this.options.logLevel : this.options.debug ? logger.LEVELS.DEBUG : undefined;
 
-    this.logger = createLogger({ prefix: 'wrapper', level: initialLogLevel, defaultLevel: LOG_LEVELS.ERROR });
+    this.logger = logger.create({ prefix: 'wrapper', level: initialLogLevel, defaultLevel: logger.LEVELS.ERROR });
 
     // If userscript already ran before client creation, sync log level immediately
     this.syncLogLevelFromUserscript();

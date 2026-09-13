@@ -63,7 +63,7 @@ export class BaseProvider {
    * @param {string} instanceId Generated instance ID
    * @returns {Promise<{ player: any, element: HTMLElement, iframe?: HTMLIFrameElement, destroy?: () => void }>}
    */
-  async initPlayer(options, instanceId) {
+  async initPlayer(_options, _instanceId) {
     throw new Error(`[${this.constructor.name}] initPlayer() must be implemented by subclass`);
   }
 
@@ -76,7 +76,7 @@ export class BaseProvider {
    * @param {Object} context Context object containing element, instanceId, options, etc.
    * @returns {Object} SRemoteCustomAdapter
    */
-  createAdapter(player, context) {
+  createAdapter(_player, _context) {
     throw new Error(`[${this.constructor.name}] createAdapter() must be implemented by subclass`);
   }
 

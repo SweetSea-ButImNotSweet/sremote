@@ -7,7 +7,7 @@ import { pendingCommandQueue } from './queue.js';
 import { createExportedApi } from './api.js';
 import { createParentTransportManager } from './transport.js';
 import { setupTopMediaTracker } from './top-media.js';
-import { createInstanceManager, executeMediaAction, hasMediaSource, getGlobalTransactionTracker } from '@sremote/shared';
+import { actions, dom, instance, pipeline } from '@sremote/shared';
 
 export function initParentController() {
   const currentOrigin = location.origin;
@@ -53,7 +53,7 @@ export function initParentController() {
     }
   } catch {}
 
-  const instanceManager = createInstanceManager();
+  const instanceManager = instance.createManager();
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts } = instanceManager;
 
   let broadcastHelloRef = null;
@@ -98,13 +98,13 @@ export function initParentController() {
 
   async function executeTopMediaAction(mediaEl, action, value) {
     if (!mediaEl) return false;
-    const hasSource = hasMediaSource(mediaEl);
+    const hasSource = dom.hasSource(mediaEl);
     const norm = String(action || '').toLowerCase();
     if (['play', 'seek', 'stop'].includes(norm) && !hasSource) return false;
 
     logger.scope('action').log(`Top DOM executing -> ${action}`, { action, value });
     try {
-      return executeMediaAction(mediaEl, action, value, { instanceId: mediaEl.id || 'top-media', transactionTracker: getGlobalTransactionTracker(), logger });
+      return actions.execute(mediaEl, action, value, { instanceId: mediaEl.id || 'top-media', transactionTracker: pipeline.getTracker(), logger });
     } catch (e) {
       console_warn(`[sremote] Error executing top media action '${action}':`, e);
       return false;

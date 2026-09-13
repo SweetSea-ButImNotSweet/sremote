@@ -87,7 +87,8 @@ export declare const SREMOTE_ACTIONS: {
   readonly TOGGLE: 'toggle';
   readonly STOP: 'stop';
   readonly SEEK: 'seek';
-  readonly SEEK_TO: 'currentTime';
+  readonly SEEK_TO: 'seekTo';
+  readonly CURRENT_TIME: 'currentTime';
   readonly VOLUME: 'volume';
   readonly MUTE: 'muted';
   readonly SPEED: 'speed';
@@ -100,8 +101,10 @@ export declare const SREMOTE_ACTIONS: {
   readonly GET_SUBTITLES: 'getSubtitles';
   readonly SHUFFLE: 'shuffle';
   readonly REPEAT: 'repeat';
-  readonly NEXT: 'nexttrack';
-  readonly PREVIOUS: 'previoustrack';
+  readonly NEXT: 'next';
+  readonly PREVIOUS: 'previous';
+  readonly NEXT_TRACK: 'nexttrack';
+  readonly PREVIOUS_TRACK: 'previoustrack';
 };
 
 export type SRemoteActionName = (typeof SREMOTE_ACTIONS)[keyof typeof SREMOTE_ACTIONS];
@@ -115,42 +118,68 @@ export declare const SREMOTE_STORAGE_KEYS: {
 export declare const MEDIA_EVENTS: readonly string[];
 export declare const SAFE_FALLBACK_EVENTS: readonly string[];
 
-export declare function hasMediaSource(media: any): boolean;
-export declare function isValidMediaElement(media: any, options?: { minSize?: number; requireConnected?: boolean }): boolean;
-export declare function extractMediaState(media: any): SRemoteMediaState | null;
-export declare function createEventPayload(event: string, options?: any): SRemoteEventPayload;
-export declare function evaluateCapabilities(target: any): SRemoteCapabilities;
-export declare function bindMediaEvents(
-  media: any,
-  onEvent: (event: string, payload: any) => void,
-  options?: {
-    instanceId?: string;
-    source?: string;
-    treatAlmostEndAsEnd?: boolean;
-    events?: readonly string[] | string[];
-    excludedEvents?: readonly string[] | string[] | Set<string> | null;
-  },
-): () => void;
-export declare function queryMediaDeep(root?: any, visitedRoots?: Set<any>, options?: any): HTMLMediaElement[];
-export declare function findAllMedia(options?: { getKnownShadowRoots?: () => Array<any>; doc?: Document }): HTMLMediaElement[];
-export declare function createMediaWatcher(
-  onMediaAdded: (mediaEl: HTMLMediaElement) => void,
-  options?: { getKnownShadowRoots?: () => Array<any>; doc?: Document },
-): { disconnect: () => void; scanNow: () => HTMLMediaElement[] };
+// --- Domain Modules ---
 
-export declare function wrapCustomAdapter(rawAdapter: any, options?: { instanceId?: string; onEmit?: (event: string, payload: any) => void; source?: string }): any;
+export declare const dom: {
+  resolve(target: string | HTMLElement | null, doc?: Document | null): HTMLMediaElement | null;
+  query(root?: any, visitedRoots?: Set<any>, options?: any): HTMLMediaElement[];
+  findAll(options?: { getKnownShadowRoots?: () => Array<any>; doc?: Document }): HTMLMediaElement[];
+  watch(
+    onMediaAdded: (mediaEl: HTMLMediaElement) => void,
+    options?: { getKnownShadowRoots?: () => Array<any>; doc?: Document },
+  ): { disconnect: () => void; scanNow: () => HTMLMediaElement[] };
+  isValid(media: any, options?: { minSize?: number; requireConnected?: boolean }): boolean;
+  hasSource(media: any): boolean;
+};
 
-export declare const API_SPEC: any;
-export declare function buildSRemoteApi(context: {
-  dispatchCommand?: (action: string, value?: any, targetInstanceId?: string | null, key?: string | null) => Promise<any>;
-  handlers?: Record<string, any>;
-  eventsManager?: { on?: any; off?: any; emit?: any };
-  lifecycleHandlers?: { hello?: any; lock?: any; bindMetadata?: any };
-  debugApi?: any;
-  customExtensions?: Record<string, any>;
-}): any;
+export declare const state: { get(media: any): SRemoteMediaState | null; createPayload(event: string, options?: any): SRemoteEventPayload };
 
-export declare function generateInstanceId(prefix?: string): string;
+export declare const capabilities: { get(target: any): SRemoteCapabilities };
+
+export declare const actions: {
+  execute(target: any, action: string, value?: any, options?: Record<string, any>): Promise<any>;
+  safePlay(el: HTMLMediaElement): Promise<any>;
+  safePause(el: HTMLMediaElement): void;
+  wrapAdapter(rawAdapter: any, options?: { instanceId?: string; onEmit?: (event: string, payload: any) => void; source?: string }): any;
+};
+
+export declare const events: {
+  bind(
+    media: any,
+    onEvent: (event: string, payload: any) => void,
+    options?: {
+      instanceId?: string;
+      source?: string;
+      treatAlmostEndAsEnd?: boolean;
+      events?: readonly string[] | string[];
+      excludedEvents?: readonly string[] | string[] | Set<string> | null;
+    },
+  ): () => void;
+  readonly MEDIA_EVENTS: readonly string[];
+  readonly SAFE_FALLBACK_EVENTS: readonly string[];
+};
+
+export declare const pipeline: {
+  getTracker(): ActionTransactionTracker;
+  createTracker(options?: { defaultTtlMs?: number }): ActionTransactionTracker;
+  Tracker: typeof ActionTransactionTracker;
+};
+
+export declare const instance: { createManager(options?: InstanceManagerOptions): InstanceManager; generateId(prefix?: string): string };
+
+export declare const logger: {
+  create(options?: { prefix?: string; level?: number; getLevel?: () => number; defaultLevel?: number }): Logger;
+  readonly default: Logger;
+  readonly LEVELS: { readonly INHERIT: -1; readonly SILENT: 0; readonly ERROR: 1; readonly INFO: 2; readonly DEBUG: 3 };
+  resolveLevel(localLevel?: number, defaultLevel?: number): number;
+  getGlobalOverride(): number | null;
+  log(...args: any[]): void;
+  debug(...args: any[]): void;
+  warn(...args: any[]): void;
+  error(...args: any[]): void;
+};
+
+export declare const constants: { readonly ACTIONS: typeof SREMOTE_ACTIONS; readonly EVENTS: typeof SREMOTE_EVENTS; readonly STORAGE_KEYS: typeof SREMOTE_STORAGE_KEYS };
 
 export interface InstanceManagerOptions {
   ns?: string;
@@ -190,8 +219,6 @@ export interface InstanceManager {
   removeInstance: (instanceId: string, reason?: string) => void;
 }
 
-export declare function createInstanceManager(options?: InstanceManagerOptions): InstanceManager;
-
 export declare const LOG_LEVELS: { readonly INHERIT: -1; readonly SILENT: 0; readonly ERROR: 1; readonly INFO: 2; readonly DEBUG: 3 };
 
 export interface Logger {
@@ -204,21 +231,6 @@ export interface Logger {
   scope: (prefix: string) => { log: (...args: any[]) => void; debug: (...args: any[]) => void; warn: (...args: any[]) => void; error: (...args: any[]) => void };
 }
 
-export declare function getGlobalLogLevelOverride(): number | null;
-export declare function resolveLogLevel(localLevel?: number, defaultLevel?: number): number;
-export declare function createLogger(options?: { prefix?: string; level?: number; getLevel?: () => number; defaultLevel?: number }): Logger;
-
-export declare const defaultLogger: Logger;
-export declare const console_log: (...args: any[]) => void;
-export declare const console_debug: (...args: any[]) => void;
-export declare const console_warn: (...args: any[]) => void;
-export declare const console_error: (...args: any[]) => void;
-
-export declare function resolveMediaElement(target: string | HTMLElement | null, doc?: Document | null): HTMLMediaElement | null;
-export declare function safePlayMedia(el: HTMLMediaElement): Promise<any>;
-export declare function safePauseMedia(el: HTMLMediaElement): void;
-export declare function executeMediaAction(target: any, action: string, value?: any, options?: Record<string, any>): Promise<any>;
-
 export declare class ActionTransactionTracker {
   constructor(options?: { defaultTtlMs?: number });
   startTransaction(action: string, targetValue?: any, instanceId?: string, ttlMs?: number): string;
@@ -226,5 +238,13 @@ export declare class ActionTransactionTracker {
   isEcho(action: string, value: any, instanceId?: string): boolean;
   clear(): void;
 }
-export declare function getGlobalTransactionTracker(): ActionTransactionTracker;
-export declare function createTransactionTracker(options?: { defaultTtlMs?: number }): ActionTransactionTracker;
+
+export declare const API_SPEC: any;
+export declare function buildSRemoteApi(context: {
+  dispatchCommand?: (action: string, value?: any, targetInstanceId?: string | null, key?: string | null) => Promise<any>;
+  handlers?: Record<string, any>;
+  eventsManager?: { on?: any; off?: any; emit?: any };
+  lifecycleHandlers?: { hello?: any; lock?: any; bindMetadata?: any };
+  debugApi?: any;
+  customExtensions?: Record<string, any>;
+}): any;

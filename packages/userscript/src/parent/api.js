@@ -3,7 +3,7 @@ import { Storage, setHandshakeSecret } from '../core/storage.js';
 import { generateInstanceId } from '../core/utils.js';
 import { pendingRpcRequests } from './queue.js';
 import { createParentDebugApi } from '../debug/parent-debug.js';
-import { extractMediaState, evaluateCapabilities, buildSRemoteApi } from '@sremote/shared';
+import { capabilities, state, buildSRemoteApi } from '@sremote/shared';
 
 export function createExportedApi({
   instanceManager,
@@ -59,7 +59,7 @@ export function createExportedApi({
     if (targetId && instances.has(targetId)) {
       const inst = instances.get(targetId);
       if (inst.isTopMedia && inst.mediaElement) {
-        return extractMediaState(inst.mediaElement);
+        return state.get(inst.mediaElement);
       }
       return inst.state || null;
     }
@@ -78,7 +78,7 @@ export function createExportedApi({
     if (targetId && instances.has(targetId)) {
       const inst = instances.get(targetId);
       if (inst.isTopMedia && inst.mediaElement) {
-        return evaluateCapabilities(inst.mediaElement);
+        return capabilities.get(inst.mediaElement);
       }
       return (
         inst.capabilities || {

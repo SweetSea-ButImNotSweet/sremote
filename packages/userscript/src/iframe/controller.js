@@ -1,14 +1,14 @@
 import { logger, console_warn } from '../config.js';
 import { mockMediaSessionInstance } from './media-session.js';
-import { executeMediaAction, extractMediaState, evaluateCapabilities, getGlobalTransactionTracker } from '@sremote/shared';
+import { actions, capabilities, pipeline, state } from '@sremote/shared';
 
 /**
- * Gets media state snapshot. Delegates to @sremote/shared extractMediaState.
+ * Gets media state snapshot. Delegates to @sremote/shared state.get.
  */
 export function getVideoState(targetMedia, activeMedia, resolveActiveMedia) {
   const media = targetMedia || activeMedia || (resolveActiveMedia?.() ? activeMedia : null);
   if (!media) return null;
-  return extractMediaState(media);
+  return state.get(media);
 }
 
 /**
@@ -16,7 +16,7 @@ export function getVideoState(targetMedia, activeMedia, resolveActiveMedia) {
  */
 export function getIframeCapabilities(targetMedia, activeMedia, resolveActiveMedia) {
   const media = targetMedia || activeMedia || (resolveActiveMedia?.() ? activeMedia : null);
-  const caps = evaluateCapabilities(media);
+  const caps = capabilities.get(media);
 
   const msHandlers = mockMediaSessionInstance._handlers;
   const hasMsAction = action => Boolean(msHandlers.has(action));
@@ -101,7 +101,7 @@ export function createMediaController({
         const adapterName = activeMedia.name || instanceId;
         logger.scope('action').log(`(Userscript) Executing '${action}' via Adapter [${adapterName}]`, { action, value, instanceId });
       }
-      const handled = await executeMediaAction(activeMedia, norm, value, { isPureGet, instanceId, transactionTracker: getGlobalTransactionTracker() });
+      const handled = await actions.execute(activeMedia, norm, value, { isPureGet, instanceId, transactionTracker: pipeline.getTracker() });
       if (!handled) return false;
       let resVal;
       if (typeof activeMedia.getState === 'function') {
@@ -154,11 +154,11 @@ export function createMediaController({
         configuredMutedSetter?.(value !== undefined && value !== null ? Boolean(value) : !activeMedia.muted);
       }
 
-      const handled = await executeMediaAction(activeMedia, norm, value, { isPureGet, instanceId, transactionTracker: getGlobalTransactionTracker(), logger });
+      const handled = await actions.execute(activeMedia, norm, value, { isPureGet, instanceId, transactionTracker: pipeline.getTracker(), logger });
 
       if (handled) {
         if (isPureGet) {
-          notifyState(action, extractMediaState(activeMedia));
+          notifyState(action, state.get(activeMedia));
         }
         return true;
       }

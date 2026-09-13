@@ -1,11 +1,11 @@
-import { extractMediaState, evaluateCapabilities, executeMediaAction, generateInstanceId, wrapCustomAdapter, getGlobalTransactionTracker } from '@sremote/shared';
+import { state, capabilities, actions, instance, pipeline } from '@sremote/shared';
 
 export class AdapterDriver {
   constructor(options = {}) {
     this.options = { passkey: null, ...options };
     this.logger = options.logger || null;
     this.instanceManager = options.instanceManager || null;
-    this.transactionTracker = options.transactionTracker || getGlobalTransactionTracker();
+    this.transactionTracker = options.transactionTracker || pipeline.getTracker();
     this.adaptersMap = new Map();
   }
 
@@ -27,23 +27,32 @@ export class AdapterDriver {
   list() {
     const result = [];
     for (const [id, ad] of this.adaptersMap.entries()) {
-      const state = extractMediaState(ad);
-      result.push({ instanceId: id, mediaType: 'adapter', name: ad?.name || id, adapter: ad, source: 'adapter', capabilities: this.getCapabilities(id), status: 'ready', state });
+      const mediaState = state.get(ad);
+      result.push({
+        instanceId: id,
+        mediaType: 'adapter',
+        name: ad?.name || id,
+        adapter: ad,
+        source: 'adapter',
+        capabilities: this.getCapabilities(id),
+        status: 'ready',
+        state: mediaState,
+      });
     }
     return result;
   }
 
   register(rawAdapter, customInstanceId = null) {
     if (!rawAdapter || typeof rawAdapter !== 'object') return null;
-    const targetId = customInstanceId || generateInstanceId('adapter');
+    const targetId = customInstanceId || instance.generateId('adapter');
 
-    const wrapped = wrapCustomAdapter(rawAdapter, { instanceId: targetId, transactionTracker: this.transactionTracker, logger: this.logger });
+    const wrapped = actions.wrapAdapter(rawAdapter, { instanceId: targetId, transactionTracker: this.transactionTracker, logger: this.logger });
 
     this.adaptersMap.set(targetId, wrapped);
 
     if (this.instanceManager?.registerInstance) {
       try {
-        this.instanceManager.registerInstance(targetId, wrapped, { isAdapter: true, capabilities: evaluateCapabilities(wrapped) });
+        this.instanceManager.registerInstance(targetId, wrapped, { isAdapter: true, capabilities: capabilities.get(wrapped) });
       } catch {}
     }
 
@@ -71,13 +80,13 @@ export class AdapterDriver {
   getCapabilities(instanceId) {
     const ad = this.get(instanceId);
     if (!ad) return null;
-    return evaluateCapabilities(ad);
+    return capabilities.get(ad);
   }
 
   getState(instanceId) {
     const ad = this.get(instanceId);
     if (!ad) return null;
-    return extractMediaState(ad);
+    return state.get(ad);
   }
 
   _findConnectedAdapter(preferredId = null) {
@@ -146,7 +155,7 @@ export class AdapterDriver {
       this.logger.scope('action').log(`(AdapterDriver) Executing '${action}' via Adapter [${adapterName}]`, { value, instanceId: instId });
     }
 
-    return executeMediaAction(resolved.instance, action, value, { transactionTracker: this.transactionTracker, instanceId: instId, logger: this.logger });
+    return actions.execute(resolved.instance, action, value, { transactionTracker: this.transactionTracker, instanceId: instId, logger: this.logger });
   }
 
   async play(target) {

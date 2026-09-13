@@ -1,24 +1,14 @@
-import {
-  createInstanceManager,
-  extractMediaState,
-  evaluateCapabilities,
-  bindMediaEvents,
-  executeMediaAction,
-  resolveMediaElement,
-  getGlobalTransactionTracker,
-  createMediaWatcher,
-  findAllMedia,
-} from '@sremote/shared';
+import { dom, state, capabilities, actions, events, instance, pipeline } from '@sremote/shared';
 
 export class DomDriver {
   constructor(options = {}) {
     this.options = { passkey: null, ...options };
     this.logger = options.logger || null;
-    this.transactionTracker = options.transactionTracker || getGlobalTransactionTracker();
+    this.transactionTracker = options.transactionTracker || pipeline.getTracker();
 
     this.instanceManager =
       options.instanceManager ||
-      createInstanceManager({ ns: 'sremote:', logger: this.logger, getIframeCount: () => (typeof document !== 'undefined' ? document.querySelectorAll('iframe').length : 0) });
+      instance.createManager({ ns: 'sremote:', logger: this.logger, getIframeCount: () => (typeof document !== 'undefined' ? document.querySelectorAll('iframe').length : 0) });
 
     if (this.instanceManager?.on) {
       this.instanceManager.on('*', payload => {
@@ -60,7 +50,7 @@ export class DomDriver {
   }
 
   initDomAutoTracking() {
-    this._mediaWatcher = createMediaWatcher(
+    this._mediaWatcher = dom.watch(
       mediaEl => {
         this.trackMediaElement(mediaEl);
       },
@@ -83,7 +73,7 @@ export class DomDriver {
       this.logger.debug(`DOM auto-tracking attached to media element:`, mediaEl, `(id: ${instId})`);
     }
 
-    bindMediaEvents(
+    events.bind(
       mediaEl,
       (evtName, payload) => {
         this.emit(evtName, payload);
@@ -107,22 +97,29 @@ export class DomDriver {
   list() {
     const list = [];
     if (typeof document !== 'undefined') {
-      const mediaElements = findAllMedia();
+      const mediaElements = dom.findAll();
       for (const el of mediaElements) {
         const id = el.id || el.getAttribute('data-sremote-id') || 'dom-media';
-        const state = extractMediaState(el);
-        list.push({ instanceId: id, mediaType: el.tagName ? el.tagName.toLowerCase() : 'video', capabilities: evaluateCapabilities(el), status: 'ready', state, source: 'dom' });
+        const mediaState = state.get(el);
+        list.push({
+          instanceId: id,
+          mediaType: el.tagName ? el.tagName.toLowerCase() : 'video',
+          capabilities: capabilities.get(el),
+          status: 'ready',
+          state: mediaState,
+          source: 'dom',
+        });
       }
     }
     return list;
   }
 
   resolveMediaElement(target) {
-    return resolveMediaElement(target);
+    return dom.resolve(target);
   }
 
   resolveTarget(target) {
-    const el = resolveMediaElement(target);
+    const el = dom.resolve(target);
     if (el) return { type: 'element', instance: el };
     return null;
   }
@@ -137,7 +134,7 @@ export class DomDriver {
       this.logger.scope('action').log(`(DomDriver) Executing '${action}' via In-Page DOM <${tagName}> [${instId}]`, { value, instanceId: instId });
     }
 
-    return executeMediaAction(resolved.instance, action, value, { transactionTracker: this.transactionTracker, instanceId: instId, logger: this.logger });
+    return actions.execute(resolved.instance, action, value, { transactionTracker: this.transactionTracker, instanceId: instId, logger: this.logger });
   }
 
   async play(target) {
@@ -195,13 +192,13 @@ export class DomDriver {
   async status(target) {
     const el = this.resolveMediaElement(target);
     if (!el) return null;
-    return extractMediaState(el);
+    return state.get(el);
   }
 
   async capabilities(target) {
     const el = this.resolveMediaElement(target);
     if (!el) return null;
-    return evaluateCapabilities(el);
+    return capabilities.get(el);
   }
 
   on(event, callback) {

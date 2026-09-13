@@ -6,10 +6,10 @@ export const NS = 'sremote:';
 export const LOG_LEVEL = 3; // 0: None, 1: Error/Warn, 2: Debug, 3: Full Log
 export const ENABLE_DEBUG_API = true;
 
-import { LOG_LEVELS, createLogger } from '@sremote/shared';
+import { logger as sharedLogger, events } from '@sremote/shared';
 
 // Create unified logger for userscript with dynamic level checking
-export const logger = createLogger({ prefix: 'userscript', level: LOG_LEVEL, defaultLevel: LOG_LEVELS.INFO });
+export const logger = sharedLogger.create({ prefix: 'userscript', level: LOG_LEVEL, defaultLevel: sharedLogger.LEVELS.INFO });
 
 export const console_log = (...args) => logger.log(...args);
 export const console_debug = (...args) => logger.debug(...args);
@@ -18,7 +18,7 @@ export const console_error = (...args) => logger.error(...args);
 
 export const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
-export { MEDIA_EVENTS } from '@sremote/shared';
+export const MEDIA_EVENTS = events.MEDIA_EVENTS;
 
 // Native HTMLMediaElement property descriptors
 const mediaProto = HTMLMediaElement.prototype;

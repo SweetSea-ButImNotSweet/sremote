@@ -1,4 +1,4 @@
-import { bindMediaEvents, extractMediaState, evaluateCapabilities, isValidMediaElement, hasMediaSource } from '@sremote/shared';
+import { capabilities, dom, events, state } from '@sremote/shared';
 import { generateInstanceId } from '../core/utils.js';
 import { console_log, logger } from '../config.js';
 
@@ -31,15 +31,15 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
   }
 
   function trackElement(mediaEl, trackOpts = {}) {
-    if (!isValidMediaElement(mediaEl) || trackedElements.has(mediaEl) || isElementClaimed(mediaEl)) return;
+    if (!dom.isValid(mediaEl) || trackedElements.has(mediaEl) || isElementClaimed(mediaEl)) return;
     trackedElements.add(mediaEl);
 
     const customId = mediaEl.id || mediaEl.getAttribute('data-sremote-id') || generateInstanceId('top_media');
     const mediaType = mediaEl.tagName ? mediaEl.tagName.toLowerCase() : 'video';
 
     // Build instance registration in instanceManager.instances
-    const initialCapabilities = evaluateCapabilities(mediaEl);
-    const initialState = extractMediaState(mediaEl);
+    const initialCapabilities = capabilities.get(mediaEl);
+    const initialState = state.get(mediaEl);
 
     const instanceInfo = {
       instanceId: customId,
@@ -80,7 +80,7 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
     const TIMEUPDATE_LOG_THROTTLE_MS = 2000;
 
     // Standard event listener binding without prototype hooking
-    const unbind = bindMediaEvents(
+    const unbind = events.bind(
       mediaEl,
       (evtName, payload) => {
         // Late check in case element was claimed by an adapter after initial tracking
@@ -105,7 +105,7 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
         }
 
         if (evtName === 'play' || evtName === 'playing') {
-          if (hasMediaSource(mediaEl)) {
+          if (dom.hasSource(mediaEl)) {
             instanceManager.setCurrentActiveInstanceId(customId);
             if (instanceManager.exclusiveMode === 'auto') {
               pauseOthersExcept(customId);
