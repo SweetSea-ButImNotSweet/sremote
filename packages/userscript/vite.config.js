@@ -70,7 +70,7 @@ export default defineConfig(() => {
           'run-at': 'document-start',
           grant: ['GM_getValue', 'GM_setValue', 'GM_deleteValue', 'GM_listValues', 'GM_registerMenuCommand', 'unsafeWindow'],
         },
-        build: { fileName: isMinify ? 'sremote.min.user.js' : 'sremote.user.js' },
+        build: { fileName: isMinify ? 'sremote.min.user.js' : 'sremote.user.js', sourcemap: true },
       }),
     ],
     build: { outDir: 'dist', emptyOutDir: !isMinify, minify: isMinify, sourcemap: true },
