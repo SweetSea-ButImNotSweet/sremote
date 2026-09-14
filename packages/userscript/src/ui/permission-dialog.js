@@ -6,7 +6,7 @@ import { createModal } from './modal.js';
 // Table Queue management: gom toàn bộ các iframe origin đang chờ
 // pendingItems: Map<iframeOrigin, { parentOrigin, iframeOrigin, isTop, callbacks: Function[], rowElement?: HTMLElement }>
 const pendingItems = new Map();
-let activeDialog = null; // { modal, tableContainer, rememberCheckbox }
+let activeDialog = null; // { modal, tableContainer }
 let isSessionBlocked = false;
 let isSessionAllowed = false;
 
@@ -38,10 +38,74 @@ function removePendingRow(iframeOrigin) {
   }
   pendingItems.delete(iframeOrigin);
 
+  // Cập nhật lại trạng thái hiển thị của batch row nếu danh sách thay đổi
+  updateTableBatchRow();
+
   // Nếu không còn mục nào đang chờ thì tự đóng hộp thoại
   if (pendingItems.size === 0 && activeDialog) {
     activeDialog.modal.close();
     activeDialog = null;
+  }
+}
+
+let tableBatchRowEl = null;
+
+function renderTableBatchRow() {
+  const row = document.createElement('div');
+  row.className = 'sv-perm-row sv-perm-footer-row';
+
+  const emptyDomainEl = document.createElement('div');
+  emptyDomainEl.className = 'sv-perm-domain';
+  emptyDomainEl.textContent = ''; // Không ghi domain theo yêu cầu
+
+  const actionsEl = document.createElement('div');
+  actionsEl.className = 'sv-row-actions';
+
+  const denyAllBtn = document.createElement('button');
+  denyAllBtn.type = 'button';
+  denyAllBtn.className = 'sv-row-btn sv-row-btn-deny';
+  denyAllBtn.textContent = t('denyAllBtn');
+  denyAllBtn.addEventListener('click', () => {
+    const items = Array.from(pendingItems.values());
+    pendingItems.clear();
+    if (activeDialog) {
+      activeDialog.modal.close();
+      activeDialog = null;
+    }
+    items.forEach(it => applyDecision(it, false, false));
+  });
+
+  const allowAllBtn = document.createElement('button');
+  allowAllBtn.type = 'button';
+  allowAllBtn.className = 'sv-row-btn sv-row-btn-allow';
+  allowAllBtn.textContent = t('allowAllBtn');
+  allowAllBtn.addEventListener('click', () => {
+    const items = Array.from(pendingItems.values());
+    pendingItems.clear();
+    if (activeDialog) {
+      activeDialog.modal.close();
+      activeDialog = null;
+    }
+    items.forEach(it => applyDecision(it, true, false));
+  });
+
+  actionsEl.append(denyAllBtn, allowAllBtn);
+  row.append(emptyDomainEl, actionsEl);
+  return row;
+}
+
+function updateTableBatchRow() {
+  if (!activeDialog?.tableContainer) return;
+  if (pendingItems.size > 1) {
+    if (!tableBatchRowEl) {
+      tableBatchRowEl = renderTableBatchRow();
+      activeDialog.tableContainer.append(tableBatchRowEl);
+    } else {
+      activeDialog.tableContainer.append(tableBatchRowEl);
+    }
+  } else if (tableBatchRowEl) {
+    tableBatchRowEl.remove();
+    tableBatchRowEl = null;
   }
 }
 
@@ -62,8 +126,7 @@ function renderRow(item) {
   denyBtn.className = 'sv-row-btn sv-row-btn-deny';
   denyBtn.textContent = t('denyBtn');
   denyBtn.addEventListener('click', () => {
-    const remember = activeDialog?.rememberCheckbox?.checked ?? false;
-    applyDecision(item, false, remember);
+    applyDecision(item, false, false);
     removePendingRow(item.iframeOrigin);
   });
 
@@ -72,12 +135,66 @@ function renderRow(item) {
   allowBtn.className = 'sv-row-btn sv-row-btn-allow';
   allowBtn.textContent = t('allowBtn');
   allowBtn.addEventListener('click', () => {
-    const remember = activeDialog?.rememberCheckbox?.checked ?? false;
-    applyDecision(item, true, remember);
+    applyDecision(item, true, false);
     removePendingRow(item.iframeOrigin);
   });
 
-  actionsEl.append(denyBtn, allowBtn);
+  // Dropdown menu [...]
+  const moreBtn = document.createElement('button');
+  moreBtn.type = 'button';
+  moreBtn.className = 'sv-row-btn sv-row-more-btn';
+  moreBtn.textContent = '•••';
+  moreBtn.title = 'Tùy chọn mở rộng';
+
+  let dropdown = null;
+
+  const closeDropdown = () => {
+    if (dropdown) {
+      dropdown.remove();
+      dropdown = null;
+      document.removeEventListener('click', closeDropdown);
+    }
+  };
+
+  moreBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (dropdown) {
+      closeDropdown();
+      return;
+    }
+
+    dropdown = document.createElement('div');
+    dropdown.className = 'sv-row-dropdown';
+
+    const alwaysAllowItem = document.createElement('button');
+    alwaysAllowItem.type = 'button';
+    alwaysAllowItem.className = 'sv-row-dropdown-item sv-item-always-allow';
+    alwaysAllowItem.textContent = `✓ ${t('alwaysAllow')}`;
+    alwaysAllowItem.addEventListener('click', () => {
+      closeDropdown();
+      applyDecision(item, true, true);
+      removePendingRow(item.iframeOrigin);
+    });
+
+    const alwaysDenyItem = document.createElement('button');
+    alwaysDenyItem.type = 'button';
+    alwaysDenyItem.className = 'sv-row-dropdown-item sv-item-always-deny';
+    alwaysDenyItem.textContent = `✕ ${t('alwaysDeny')}`;
+    alwaysDenyItem.addEventListener('click', () => {
+      closeDropdown();
+      applyDecision(item, false, true);
+      removePendingRow(item.iframeOrigin);
+    });
+
+    dropdown.append(alwaysAllowItem, alwaysDenyItem);
+    actionsEl.append(dropdown);
+
+    setTimeout(() => {
+      document.addEventListener('click', closeDropdown);
+    }, 0);
+  });
+
+  actionsEl.append(denyBtn, allowBtn, moreBtn);
   row.append(domainEl, actionsEl);
 
   item.rowElement = row;
@@ -90,9 +207,14 @@ function openOrUpdateDialog(isTop) {
     for (const item of pendingItems.values()) {
       if (!item.rowElement) {
         const row = renderRow(item);
-        activeDialog.tableContainer.append(row);
+        if (tableBatchRowEl) {
+          activeDialog.tableContainer.insertBefore(row, tableBatchRowEl);
+        } else {
+          activeDialog.tableContainer.append(row);
+        }
       }
     }
+    updateTableBatchRow();
     return;
   }
 
@@ -112,27 +234,8 @@ function openOrUpdateDialog(isTop) {
     const row = renderRow(item);
     tableContainer.append(row);
   }
+
   container.append(tableContainer);
-
-  const rememberLabel = document.createElement('label');
-  rememberLabel.className = 'sv-remember';
-  const rememberCheckbox = document.createElement('input');
-  rememberCheckbox.type = 'checkbox';
-  const rememberSpan = document.createElement('span');
-  rememberSpan.textContent = t('rememberChoice');
-  rememberLabel.append(rememberCheckbox, rememberSpan);
-
-  rememberLabel.addEventListener('click', e => {
-    e.stopPropagation();
-    if (e.target !== rememberCheckbox) {
-      e.preventDefault();
-      rememberCheckbox.checked = !rememberCheckbox.checked;
-      rememberCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  });
-  rememberCheckbox.addEventListener('click', e => e.stopPropagation());
-
-  container.append(rememberLabel);
 
   const modal = createModal({
     titleText: t('dialogTitle'),
@@ -141,7 +244,19 @@ function openOrUpdateDialog(isTop) {
     hostId: isTop ? 'sremote-top-permission-host' : 'sremote-permission-host',
     buttons: [
       {
-        className: 'sv-btn sv-btn-allow sv-btn-allow-session',
+        className: 'sv-btn sv-btn-always-allow-all',
+        text: t('alwaysAllowAllBtn'),
+        onClick: (_, { close }) => {
+          const items = Array.from(pendingItems.values());
+          pendingItems.clear();
+          close(true);
+          activeDialog = null;
+          tableBatchRowEl = null;
+          items.forEach(it => applyDecision(it, true, true));
+        },
+      },
+      {
+        className: 'sv-btn sv-btn-allow-session',
         text: t('allowSessionBtn'),
         onClick: (_, { close }) => {
           isSessionAllowed = true;
@@ -149,54 +264,45 @@ function openOrUpdateDialog(isTop) {
           pendingItems.clear();
           close(true);
           activeDialog = null;
+          tableBatchRowEl = null;
           items.forEach(it => applyDecision(it, true, false));
-        },
-      },
-      {
-        className: 'sv-btn sv-btn-allow sv-btn-allow-all',
-        text: t('allowAllBtn'),
-        onClick: (_, { close }) => {
-          const remember = rememberCheckbox.checked;
-          const items = Array.from(pendingItems.values());
-          pendingItems.clear();
-          close(true);
-          activeDialog = null;
-          items.forEach(it => applyDecision(it, true, remember));
         },
       },
       {
         className: 'sv-btn sv-btn-block-session',
         text: t('blockSessionBtn'),
         onClick: (_, { close }) => {
+          tableBatchRowEl = null;
           close(false);
           setPermissionSessionBlocked(true);
         },
       },
       {
-        className: 'sv-btn sv-btn-deny sv-btn-deny-all',
-        text: t('denyAllBtn'),
+        className: 'sv-btn sv-btn-always-deny-all',
+        text: t('alwaysDenyAllBtn'),
         onClick: (_, { close }) => {
-          const remember = rememberCheckbox.checked;
           const items = Array.from(pendingItems.values());
           pendingItems.clear();
           close(false);
           activeDialog = null;
-          items.forEach(it => applyDecision(it, false, remember));
+          tableBatchRowEl = null;
+          items.forEach(it => applyDecision(it, false, true));
         },
       },
     ],
     onClose: () => {
-      // Khi bấm Esc, click backdrop hoặc đóng modal mà còn mục chưa duyệt: mặc định Từ chối (Deny) các mục còn lại
       if (activeDialog) {
         const items = Array.from(pendingItems.values());
         pendingItems.clear();
         activeDialog = null;
+        tableBatchRowEl = null;
         items.forEach(it => applyDecision(it, false, false));
       }
     },
   });
 
-  activeDialog = { modal, tableContainer, rememberCheckbox };
+  activeDialog = { modal, tableContainer };
+  updateTableBatchRow();
 }
 
 export function createPermissionDialog({ origin, iframeOrigin = null, parentOrigin = null, onDecision, isTop = false }) {

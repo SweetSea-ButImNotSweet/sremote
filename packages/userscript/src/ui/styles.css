@@ -192,6 +192,7 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  position: relative;
 }
 
 .sv-row-btn {
@@ -220,6 +221,90 @@
 .sv-row-btn-deny:hover {
   background: #ffebe9;
   border-color: rgba(207, 34, 46, 0.4);
+}
+
+.sv-row-more-btn {
+  background: #f6f8fa;
+  color: #57606a;
+  border: 1px solid #d0d7de;
+  padding: 4px 6px;
+  line-height: 1;
+}
+.sv-row-more-btn:hover {
+  background: #eaeef2;
+  color: #24292f;
+}
+
+.sv-row-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+  z-index: 1000;
+  min-width: 140px;
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sv-row-dropdown-item {
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  color: #24292f;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sv-row-dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.sv-row-dropdown-item.sv-item-always-allow {
+  color: #1a7f37;
+}
+.sv-row-dropdown-item.sv-item-always-allow:hover {
+  background: #dafbe1;
+}
+
+.sv-row-dropdown-item.sv-item-always-deny {
+  color: #cf222e;
+}
+.sv-row-dropdown-item.sv-item-always-deny:hover {
+  background: #ffebe9;
+}
+
+.sv-perm-footer-row {
+  background: #f6f8fa !important;
+  border-top: 2px dashed #d0d7de !important;
+  font-style: italic;
+}
+
+.sv-btn-always-allow-all {
+  background: #1a7f37 !important;
+  color: #ffffff !important;
+  border-color: #1a7f37 !important;
+}
+.sv-btn-always-allow-all:hover {
+  background: #116329 !important;
+}
+
+.sv-btn-always-deny-all {
+  background: #82071e !important;
+  color: #ffffff !important;
+  border-color: #82071e !important;
+}
+.sv-btn-always-deny-all:hover {
+  background: #540313 !important;
 }
 
 .sv-btn-allow-all {
@@ -252,6 +337,7 @@
 .sv-btn-block-session {
   background: #6e7781 !important;
   color: #ffffff !important;
+  border-color: #6e7781 !important;
 }
 .sv-btn-block-session:hover {
   background: #57606a !important;
