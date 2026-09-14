@@ -1,7 +1,5 @@
-import { VERSION, NS, console_log, console_warn } from '../config.js';
-import { Storage } from '../core/storage.js';
-import { checkOriginPairPermission } from '../core/utils.js';
-import { createPermissionDialog } from '../ui/permission-dialog.js';
+import { VERSION, NS, logger } from '../config.js';
+import { generateInstanceId } from '../core/utils.js';
 import { showConnectedIndicator } from '../ui/indicator-badge.js';
 import { IframeStyleEngine } from './style-engine.js';
 import { getVideoState, getIframeCapabilities } from './controller.js';
@@ -9,54 +7,41 @@ import { getVideoState, getIframeCapabilities } from './controller.js';
 /**
  * Transport Connection State for Iframe
  */
-export const IFRAME_TRANSPORT_STATE = Object.freeze({ DISCONNECTED: 'DISCONNECTED', CONNECTING: 'CONNECTING', CONNECTED: 'CONNECTED' });
+export const IFRAME_TRANSPORT_STATE = { DISCONNECTED: 'DISCONNECTED', CONNECTING: 'CONNECTING', CONNECTED: 'CONNECTED' };
 
 /**
  * Clean & Resilient Iframe Transport Manager.
- * Handles:
- * 1. MessageChannel & MessagePort establishment to Top Window
- * 2. Handshake credentials & One-time Challenge response
- * 3. Autonomous connection survival across media detachment / video reload
+ * Implements 1-to-1 TCP-style handshake:
+ * 1. sendSyn(): Iframe creates unique synChallenge and transmits 'syn' directly to window.top.
+ * 2. handleSynAck(): Validates (event.source === window.top && event.data.synChallenge === currentSynChallenge).
+ *    Attaches dedicated MessagePort and sends 'ack' back via the port.
+ * 3. Autonomous connection survival across media detachment / video reload.
  */
-export function createIframeTransportManager({
-  instanceIdGetter,
-  setInstanceId,
-  resolver,
-  bindPort,
-  closeMediaPort,
-  notifyState,
-  treatAlmostEndAsEndSetter,
-  currentHandshakeSetter,
-  currentHandshakeGetter,
-}) {
+export function createIframeTransportManager({ instanceIdGetter, setInstanceId, resolver, bindPort, closeMediaPort, notifyState, treatAlmostEndAsEndSetter }) {
   let primaryAuthorizedOrigin = null;
-  let permissionPopup = null;
   let transportState = IFRAME_TRANSPORT_STATE.DISCONNECTED;
-  let lastGrantTimestamp = 0;
+  let currentSynChallenge = null;
+  let synTimer = null;
 
-  const authorizedOrigins = new Set();
-  const sessionDeniedOrigins = new Set();
+  function sendSyn() {
+    if (typeof window === 'undefined' || !window.top || window.top === window) {
+      return;
+    }
 
-  function grantAccess(origin) {
-    primaryAuthorizedOrigin = origin;
-    if (origin) authorizedOrigins.add(origin);
+    if (transportState === IFRAME_TRANSPORT_STATE.CONNECTED) {
+      return;
+    }
 
-    closeMediaPort();
+    transportState = IFRAME_TRANSPORT_STATE.CONNECTING;
+    currentSynChallenge = generateInstanceId('syn');
 
-    const channel = new MessageChannel();
-    bindPort(channel.port1);
-    const transferredPort = channel.port2;
-
-    const hsInfo = typeof currentHandshakeGetter === 'function' ? currentHandshakeGetter() : {};
     resolver.resolveActiveMedia();
-
     const hasActiveMedia = Boolean(resolver.getActiveMedia());
-    const hasToken = Boolean(hsInfo.handshakeId && hsInfo.handshakeToken);
 
-    const payload = {
-      type: `${NS}accept`,
-      event: 'accept',
+    const synPayload = {
+      type: `${NS}syn`,
       source: 'iframe',
+      synChallenge: currentSynChallenge,
       instanceId: instanceIdGetter(),
       location: location.href,
       origin: location.origin,
@@ -65,94 +50,66 @@ export function createIframeTransportManager({
       mediaType: resolver.getMediaType() || (hasActiveMedia ? 'video' : 'idle'),
       capabilities: getIframeCapabilities(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
       state: getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
-      ...(hsInfo.handshakeId ? { handshakeId: hsInfo.handshakeId } : {}),
-      ...(hsInfo.handshakeToken ? { handshakeToken: hsInfo.handshakeToken } : {}),
-      needsToken: !hasToken,
     };
 
-    console_log(`%c[SRemote:transport] Iframe sending 'accept' to parent ->`, 'color: #10b981; font-weight: bold;', {
-      origin,
-      instanceId: instanceIdGetter(),
-      hasPort: Boolean(transferredPort),
-      hasMedia: hasActiveMedia,
-      needsToken: !hasToken,
-      payload,
-    });
+    const log = logger.scope('handshake');
+
+    log.log(`Iframe sending 'syn' (TCP Handshake) ->`, { synChallenge: currentSynChallenge, instanceId: instanceIdGetter() });
 
     try {
-      if (transferredPort) {
-        window.top.postMessage(payload, origin || '*', [transferredPort]);
-      } else {
-        window.top.postMessage(payload, origin || '*');
-      }
+      window.top.postMessage(synPayload, '*');
     } catch (err) {
-      console_warn('[sremote] Error posting accept to top window with targetOrigin:', err);
-      if (transferredPort) {
-        window.top.postMessage(payload, '*', [transferredPort]);
-      } else {
-        window.top.postMessage(payload, '*');
-      }
+      log.warn('Failed to post SYN to window.top:', err);
     }
 
-    transportState = IFRAME_TRANSPORT_STATE.CONNECTED;
-    notifyState();
-    showConnectedIndicator(origin, primaryAuthorizedOrigin);
+    // Retransmit SYN if no SYN-ACK after 2.5s and still CONNECTING
+    if (synTimer) clearTimeout(synTimer);
+    synTimer = setTimeout(() => {
+      if (transportState === IFRAME_TRANSPORT_STATE.CONNECTING) {
+        sendSyn();
+      }
+    }, 2500);
   }
 
-  function showPermissionPopup(source, origin) {
-    if (permissionPopup) return;
-    if (sessionDeniedOrigins.has(origin)) return;
+  function handleSynAck(event, data) {
+    const log = logger.scope('handshake');
+    const secLog = logger.scope('security');
 
-    const perm = checkOriginPairPermission(origin, location.origin, Storage);
-    if (perm.isDenied) return;
-    if (perm.isAllowed) {
-      grantAccess(origin);
+    // 1. Strict Anti-Spoofing: Must be from window.top
+    if (typeof window !== 'undefined' && event.source !== window.top) {
+      secLog.warn('Dropped syn_ack: sender is not window.top.');
       return;
     }
 
-    if (window.top && window.top !== window) {
-      try {
-        const safeTargetOrigin = origin?.startsWith('http') ? origin : '*';
-        window.top.postMessage({ type: `${NS}request_permission`, source: 'iframe', origin: location.origin }, safeTargetOrigin);
-
-        let timer = null;
-        permissionPopup = {
-          isDelegating: true,
-          close: () => {
-            if (timer) clearTimeout(timer);
-            permissionPopup = null;
-          },
-        };
-
-        // Safety fallback: if top window does not respond within 8s, release delegation
-        timer = setTimeout(() => {
-          if (permissionPopup?.isDelegating) {
-            permissionPopup = null;
-          }
-        }, 8000);
-        return;
-      } catch {}
+    // 2. Strict Challenge Verification: Must match currentSynChallenge
+    if (!currentSynChallenge || data.synChallenge !== currentSynChallenge) {
+      secLog.warn('Dropped syn_ack: invalid or expired synChallenge.', { expected: currentSynChallenge, received: data?.synChallenge });
+      return;
     }
 
-    permissionPopup = createPermissionDialog({
-      parentOrigin: origin,
-      iframeOrigin: location.origin,
-      origin: location.origin,
-      isTop: false,
-      onDecision: allowed => {
-        permissionPopup = null;
-        if (allowed) {
-          grantAccess(origin);
-        } else {
-          sessionDeniedOrigins.add(origin);
-        }
-      },
-    });
-  }
+    if (synTimer) {
+      clearTimeout(synTimer);
+      synTimer = null;
+    }
+    currentSynChallenge = null;
 
-  function handleHelloMessage(event, data) {
-    const callerOrigin = event.origin || 'unknown_parent';
-    if (event.source === window) return;
+    if (data.allowed === false) {
+      transportState = IFRAME_TRANSPORT_STATE.DISCONNECTED;
+      log.warn('Connection rejected by top parent.');
+      return;
+    }
+
+    if (!event.ports || event.ports.length === 0) {
+      log.warn('syn_ack received without MessagePort.');
+      return;
+    }
+
+    const callerOrigin = event.origin || data.parentOrigin || 'unknown_parent';
+    primaryAuthorizedOrigin = callerOrigin;
+
+    if (data.assignedInstanceId && typeof data.assignedInstanceId === 'string') {
+      setInstanceId(data.assignedInstanceId);
+    }
 
     if (data.css && typeof data.css === 'string') {
       IframeStyleEngine.setDynamicCSS(data.css);
@@ -162,63 +119,40 @@ export function createIframeTransportManager({
       treatAlmostEndAsEndSetter(data.treatAlmostEndAsEnd);
     }
 
-    if (data.assignedInstanceId && typeof data.assignedInstanceId === 'string') {
-      setInstanceId(data.assignedInstanceId);
-      console_log(`%c[SRemote:assignId] Iframe accepted assigned instanceId -> ${data.assignedInstanceId}`, 'color: #10b981;');
-    }
-
-    if (event.ports && event.ports.length > 0) {
-      bindPort(event.ports[0]);
-    }
-
-    let hasNewCredentials = false;
-    if (data.handshakeId && data.handshakeToken) {
-      currentHandshakeSetter(data.handshakeId, data.handshakeToken);
-      hasNewCredentials = true;
-    }
-
-    if (sessionDeniedOrigins.has(callerOrigin)) return;
-
-    const perm = checkOriginPairPermission(callerOrigin, location.origin, Storage);
-    if (perm.isDenied) return;
-
-    const isAlreadyAccepted = authorizedOrigins.has(callerOrigin);
-    const now = Date.now();
-
-    if (isAlreadyAccepted || perm.isAllowed) {
-      if (hasNewCredentials || now - lastGrantTimestamp >= 200) {
-        lastGrantTimestamp = now;
-        grantAccess(callerOrigin);
-      }
-      return;
-    }
-
-    if (permissionPopup) return;
-    showPermissionPopup(event.source, callerOrigin);
-  }
-
-  function handlePermissionResponse(data, callerOrigin) {
-    if (permissionPopup) {
-      permissionPopup.close?.();
-      permissionPopup = null;
-    }
-    if (data.allowed) {
-      grantAccess(data.parentOrigin || callerOrigin);
-    } else {
-      const deniedTarget = data.parentOrigin || callerOrigin;
-      if (deniedTarget) sessionDeniedOrigins.add(deniedTarget);
-    }
-  }
-
-  function handleHandshakePort(event, data, callerOrigin) {
-    if (data.instanceId) setInstanceId(data.instanceId);
+    // Bind dedicated private MessagePort
     closeMediaPort();
-    bindPort(event.ports[0]);
-    primaryAuthorizedOrigin = callerOrigin;
-    authorizedOrigins.add(callerOrigin);
+    const port = event.ports[0];
+    bindPort(port);
+
+    // Send ACK back through the established private pipe
+    try {
+      port.postMessage({ type: `${NS}ack`, source: 'iframe', instanceId: instanceIdGetter(), status: 'ESTABLISHED' });
+    } catch {}
+
     transportState = IFRAME_TRANSPORT_STATE.CONNECTED;
     notifyState();
     showConnectedIndicator(callerOrigin, primaryAuthorizedOrigin);
+
+    log.log(`TCP Handshake ESTABLISHED (1-to-1) with parent [${callerOrigin}]`);
+  }
+
+  // Legacy fallback support for older parent userscripts sending 'hello'
+  function handleHelloMessage(event, data) {
+    if (event.source === window) return;
+    if (transportState === IFRAME_TRANSPORT_STATE.CONNECTED) return;
+
+    if (data.assignedInstanceId && typeof data.assignedInstanceId === 'string') {
+      setInstanceId(data.assignedInstanceId);
+    }
+    if (data.css && typeof data.css === 'string') {
+      IframeStyleEngine.setDynamicCSS(data.css);
+    }
+    if (typeof data.treatAlmostEndAsEnd === 'boolean') {
+      treatAlmostEndAsEndSetter(data.treatAlmostEndAsEnd);
+    }
+
+    // If parent sent hello, respond by starting SYN flow
+    sendSyn();
   }
 
   return {
@@ -228,9 +162,8 @@ export function createIframeTransportManager({
     get transportState() {
       return transportState;
     },
-    grantAccess,
+    sendSyn,
+    handleSynAck,
     handleHelloMessage,
-    handlePermissionResponse,
-    handleHandshakePort,
   };
 }

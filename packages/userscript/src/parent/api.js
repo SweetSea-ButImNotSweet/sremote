@@ -129,7 +129,14 @@ export function createExportedApi({
     logger.scope('bootstrap').warn('Error defining sremote on window:', err);
   }
 
-  // Proactively dispatch 'sremote:ready' on pageWindow and unsafeWindow for instant wrapper binding (0ms latency)
+  // Register to hidden internal bridge Symbol for 100% collision-free SDK discovery
+  try {
+    if (typeof globalThis !== 'undefined') {
+      globalThis[Symbol.for('__sremote_internal_bridge__')] = exportedApi;
+    }
+  } catch {}
+
+  // Proactively dispatch 'sremote:ready' and 'sremote:bridge:announce' on pageWindow and unsafeWindow
   try {
     const targetWin = typeof unsafeWindow !== 'undefined' ? unsafeWindow : pageWindow;
     if (typeof targetWin.dispatchEvent === 'function') {
@@ -137,6 +144,12 @@ export function createExportedApi({
       const readyEvent =
         typeof CustomEvent === 'function' ? new CustomEvent('sremote:ready', { detail: readyDetail }) : Object.assign(new Event('sremote:ready'), { detail: readyDetail });
       targetWin.dispatchEvent(readyEvent);
+
+      const announceEvent =
+        typeof CustomEvent === 'function'
+          ? new CustomEvent('sremote:bridge:announce', { detail: readyDetail })
+          : Object.assign(new Event('sremote:bridge:announce'), { detail: readyDetail });
+      targetWin.dispatchEvent(announceEvent);
     }
   } catch (err) {
     logger.scope('bootstrap').warn('Failed to dispatch sremote:ready event:', err);

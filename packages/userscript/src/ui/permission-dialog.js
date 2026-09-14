@@ -8,6 +8,7 @@ import { createModal } from './modal.js';
 const pendingItems = new Map();
 let activeDialog = null; // { modal, tableContainer, rememberCheckbox }
 let isSessionBlocked = false;
+let isSessionAllowed = false;
 
 function applyDecision(item, allowed, remember) {
   const { parentOrigin, iframeOrigin, callbacks } = item;
@@ -140,6 +141,30 @@ function openOrUpdateDialog(isTop) {
     hostId: isTop ? 'sremote-top-permission-host' : 'sremote-permission-host',
     buttons: [
       {
+        className: 'sv-btn sv-btn-allow sv-btn-allow-session',
+        text: t('allowSessionBtn'),
+        onClick: (_, { close }) => {
+          isSessionAllowed = true;
+          const items = Array.from(pendingItems.values());
+          pendingItems.clear();
+          close(true);
+          activeDialog = null;
+          items.forEach(it => applyDecision(it, true, false));
+        },
+      },
+      {
+        className: 'sv-btn sv-btn-allow sv-btn-allow-all',
+        text: t('allowAllBtn'),
+        onClick: (_, { close }) => {
+          const remember = rememberCheckbox.checked;
+          const items = Array.from(pendingItems.values());
+          pendingItems.clear();
+          close(true);
+          activeDialog = null;
+          items.forEach(it => applyDecision(it, true, remember));
+        },
+      },
+      {
         className: 'sv-btn sv-btn-block-session',
         text: t('blockSessionBtn'),
         onClick: (_, { close }) => {
@@ -178,9 +203,13 @@ export function createPermissionDialog({ origin, iframeOrigin = null, parentOrig
   const effectiveIframeOrigin = iframeOrigin || origin;
   const effectiveParentOrigin = parentOrigin || (isTop && typeof location !== 'undefined' ? location.origin : null) || 'unknown_parent';
 
-  // 0. Nếu session này đã bị chặn: lập tức từ chối
+  // 0. Nếu session này đã bị chặn: lập tức từ chối; nếu đã cho phép toàn phiên: lập tức cho phép
   if (isSessionBlocked) {
     onDecision?.(false);
+    return { close: () => {} };
+  }
+  if (isSessionAllowed) {
+    onDecision?.(true);
     return { close: () => {} };
   }
 

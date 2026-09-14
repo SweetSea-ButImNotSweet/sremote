@@ -1,6 +1,6 @@
-import { NS, console_log, console_debug, console_warn } from '../config.js';
-import { Storage, setHandshakeSecret, checkHandshakeSecret, consumeHandshakeSecret } from '../core/storage.js';
-import { checkOriginPairPermission, generateInstanceId } from '../core/utils.js';
+import { NS, logger } from '../config.js';
+import { Storage } from '../core/storage.js';
+import { generateInstanceId } from '../core/utils.js';
 import { createPermissionDialog } from '../ui/permission-dialog.js';
 import { flushPendingCommands, pendingRpcRequests } from './queue.js';
 
@@ -12,11 +12,10 @@ export const TRANSPORT_STATE = Object.freeze({ DISCONNECTED: 'DISCONNECTED', CON
 /**
  * Clean & Resilient Parent Transport Manager.
  * Handles:
- * 1. Handshake Secret Verification
- * 2. One-Time Challenge & Anti-Abuse Blacklist (WeakSet)
- * 3. Dedicated MessagePort Lifecycle per Instance
- * 4. DOM Detach Grace Period (300ms) for React Strict Mode / Remount
- * 5. Ping/Pong Heartbeat Sweeper
+ * 1. Dedicated MessagePort Lifecycle per Instance (TCP 1-to-1 SYN/SYN-ACK/ACK)
+ * 2. Dedicated MessagePort Lifecycle per Instance
+ * 3. DOM Detach Grace Period (300ms) for React Strict Mode / Remount
+ * 4. Ping/Pong Heartbeat Sweeper
  */
 export function createParentTransportManager({
   instanceManager,
@@ -30,7 +29,6 @@ export function createParentTransportManager({
 
   const blacklistedIframes = new WeakSet();
   const blacklistedSources = new WeakSet();
-  const retryChallengeAttempts = new WeakMap();
   const pendingReapTimers = new Map(); // instanceId -> timeoutId
   const GRACE_PERIOD_MS = 300;
 
@@ -94,10 +92,9 @@ export function createParentTransportManager({
         if (oldId !== instanceId) {
           const oldLocationOrOrigin = oldInst?.location || oldInst?.origin || '';
           if (isDifferentService(oldLocationOrOrigin, newLocationOrOrigin)) {
-            console_log(
-              `%c[SRemote:transport] Service switch detected (${getDomainOrOrigin(oldLocationOrOrigin)} -> ${getDomainOrOrigin(newLocationOrOrigin)}): evicting old instance ${oldId}`,
-              'color: #f59e0b; font-weight: bold;',
-            );
+            logger
+              .scope('transport')
+              .log(`Service switch detected (${getDomainOrOrigin(oldLocationOrOrigin)} -> ${getDomainOrOrigin(newLocationOrOrigin)}): evicting old instance ${oldId}`);
             try {
               oldInst?.port?.close();
             } catch {}
@@ -120,7 +117,7 @@ export function createParentTransportManager({
             continue;
           }
 
-          console_log(`%c[SRemote:transport] Single mode: replacing older instance ${oldId} -> ${instanceId}`, 'color: #f59e0b;');
+          logger.scope('transport').log(`Single mode: replacing older instance ${oldId} -> ${instanceId}`);
           try {
             oldInst?.port?.close();
           } catch {}
@@ -163,7 +160,7 @@ export function createParentTransportManager({
       const lowerAction = action.toLowerCase();
 
       if (lowerAction !== 'ping' && lowerAction !== 'pong') {
-        console_debug(`%c[SRemote:transport] Parent received (port) -> ${action}`, 'color: #10b981;', { instanceId, data });
+        logger.scope('transport').debug(`Parent received (port) -> ${action}`, { instanceId, data });
       }
 
       // RPC Handling
@@ -183,10 +180,6 @@ export function createParentTransportManager({
 
       // Heartbeat Pong
       if (lowerAction === 'pong') {
-        if (item.pendingConsumeHandshakeId) {
-          consumeHandshakeSecret(item.pendingConsumeHandshakeId);
-          item.pendingConsumeHandshakeId = null;
-        }
         if (item.transportState === TRANSPORT_STATE.CONNECTING) {
           item.transportState = TRANSPORT_STATE.CONNECTED;
           item.status = 'ready';
@@ -206,7 +199,7 @@ export function createParentTransportManager({
 
       // MEDIA STATE CHANGE: When media drops or is detached, DO NOT terminate port!
       if (lowerAction === 'nomedia' || lowerAction === 'mediadisconnected') {
-        console_log(`%c[SRemote:media] Instance '${instanceId}' has no active media. Port preserved.`, 'color: #f59e0b;');
+        logger.scope('media').log(`Instance '${instanceId}' has no active media. Port preserved.`);
         item.hasMedia = false;
         if (item.state && typeof item.state === 'object') {
           item.state = { ...item.state, paused: true };
@@ -217,29 +210,18 @@ export function createParentTransportManager({
         return;
       }
 
-      // Handshake Mutual Accept on Port
-      if (lowerAction === 'accept') {
-        if (item.authenticated) return;
-        let isValid = false;
-        if (data.handshakeId && data.handshakeToken) {
-          isValid = checkHandshakeSecret(data.handshakeId, data.handshakeToken);
-        } else {
-          isValid = true;
-        }
-        if (!isValid) {
-          console_warn(`[sremote] Spoof detected on port for instance ${instanceId}! Closing port.`);
-          terminateInstance(instanceId, 'spoof_detected');
-          return;
-        }
+      // TCP Handshake ACK on Port
+      if (lowerAction === 'ack' || lowerAction === 'accept') {
         item.authenticated = true;
         item.transportState = TRANSPORT_STATE.CONNECTED;
         item.status = 'ready';
-        item.hasMedia = Boolean(data.hasMedia);
+        if (typeof data.hasMedia === 'boolean') item.hasMedia = data.hasMedia;
         if (data.state) item.state = data.state;
         if (data.mediaType) item.mediaType = data.mediaType;
         if (data.capabilities) item.capabilities = data.capabilities;
+        flushPendingCommands(instanceId, port, isMultiModeActive);
         notifyMediaCountChange();
-        emitGlobalEvent('accept', { ...data, event: 'accept' });
+        emitGlobalEvent('accept', { ...data, instanceId, event: 'accept' });
         return;
       }
 
@@ -310,7 +292,8 @@ export function createParentTransportManager({
       return;
     }
 
-    if (lowerAction === 'accept') {
+    // --- TCP Handshake: 1-to-1 SYN from Iframe ---
+    if (lowerAction === 'syn') {
       const iframeEl = findIframeElementBySource(event.source);
       let preAssignedId = (iframeEl && (iframeEl.getAttribute('data-sremote-id') || iframeToAssignedIdMap.get(iframeEl))) || null;
       if (!preAssignedId && iframeEl?.closest) {
@@ -322,101 +305,99 @@ export function createParentTransportManager({
       const instanceId = preAssignedId || data.instanceId || generateInstanceId();
       const iframeLoc = data.location || '';
       const iframeOrigin = event.origin && event.origin !== 'null' ? event.origin : data.origin || '*';
+      const synChallenge = data.synChallenge;
 
-      console_log(`%c[SRemote:transport] Parent received cross-frame signal -> ${action}`, 'color: #6366f1; font-weight: bold;', {
-        origin: callerOrigin,
-        instanceId,
-        data: { ...data, instanceId },
-      });
+      const synLog = logger.scope('handshake');
+      synLog.log(`Parent received 'syn' from iframe -> ${iframeOrigin}`, { instanceId, synChallenge, data });
 
       if (iframeEl && instanceId) {
         assignedIframeIdMap.set(instanceId, iframeEl);
         iframeToAssignedIdMap.set(iframeEl, instanceId);
       }
 
-      // Check Blacklist
       if (iframeEl && blacklistedIframes.has(iframeEl)) {
-        console_warn(`[sremote] Dropped accept from blacklisted iframe element: ${instanceId}`);
+        synLog.warn(`Dropped syn from blacklisted iframe element: ${instanceId}`);
         return;
       }
       if (event.source && blacklistedSources.has(event.source)) {
-        console_warn(`[sremote] Dropped accept from blacklisted window source: ${instanceId}`);
+        synLog.warn(`Dropped syn from blacklisted window source: ${instanceId}`);
         return;
       }
 
-      let isValidSecret = false;
-      let pendingConsumeHandshakeId = null;
-      if (data.handshakeId && data.handshakeToken) {
-        isValidSecret = checkHandshakeSecret(data.handshakeId, data.handshakeToken);
-        if (isValidSecret) {
-          pendingConsumeHandshakeId = data.handshakeId;
+      const completeSynAck = () => {
+        const channel = new MessageChannel();
+        setupPortForInstance(instanceId, channel.port1, iframeLoc, iframeOrigin, iframeEl, TRANSPORT_STATE.CONNECTING);
+        const inst = instances.get(instanceId);
+        if (inst) {
+          inst.authenticated = false; // Will be set to true on ACK
+          instanceManager.setCurrentActiveInstanceId(instanceId);
+          inst.hasMedia = Boolean(data.hasMedia);
+          if (data.state) inst.state = data.state;
+          if (data.mediaType) inst.mediaType = data.mediaType;
+          if (data.capabilities) inst.capabilities = data.capabilities;
+          inst.lastSeen = Date.now();
         }
-      }
+        notifyMediaCountChange();
 
-      // Origin Whitelist & Origin Pair Permission Fallback
-      if (!isValidSecret && event.ports && event.ports.length > 0) {
-        const pairPerm = checkOriginPairPermission(location.origin, iframeOrigin, Storage);
-        if (pairPerm.isAllowed) {
-          isValidSecret = true;
-        } else if (iframeOrigin === location.origin) {
-          // Same-origin iframes on same host are implicitly trusted
-          isValidSecret = true;
-        }
-      }
-
-      // One-Time Challenge & Blacklist Routine
-      if (!isValidSecret) {
-        const targetRef = iframeEl || event.source;
-        const attempts = (targetRef ? retryChallengeAttempts.get(targetRef) : 0) || 0;
-
-        if (attempts >= 1) {
-          console_warn(`[sremote:security] Handshake challenge failed for iframe '${instanceId}'. Blacklisting to prevent abuse.`);
-          if (iframeEl) blacklistedIframes.add(iframeEl);
-          if (event.source) blacklistedSources.add(event.source);
-          return;
-        }
-
-        if (targetRef) retryChallengeAttempts.set(targetRef, attempts + 1);
-        console_log(`%c[SRemote:transport] Accept without valid token from '${instanceId}'. Issuing one-time hello challenge...`, 'color: #f59e0b; font-weight: bold;');
-
-        const challengeHandshakeId = generateInstanceId('hs');
-        const challengeHandshakeToken = generateInstanceId('tok');
-        setHandshakeSecret(challengeHandshakeId, challengeHandshakeToken);
-
-        const currentSeq = Number(Storage.get('sremote:hello_seq', 0)) || 0;
         const latestHandshake = (tabSessionId ? Storage.get(`sremote:latest_handshake:${tabSessionId}`) : null) || {};
-
-        const helloPayload = {
-          type: `${NS}hello`,
+        const synAckPayload = {
+          type: `${NS}syn_ack`,
           source: 'parent',
-          handshakeId: challengeHandshakeId,
-          handshakeToken: challengeHandshakeToken,
-          seq: currentSeq,
+          synChallenge,
+          allowed: true,
+          parentOrigin: location.origin,
+          assignedInstanceId: instanceId,
           ...(latestHandshake.css ? { css: latestHandshake.css } : {}),
           ...(typeof latestHandshake.treatAlmostEndAsEnd === 'boolean' ? { treatAlmostEndAsEnd: latestHandshake.treatAlmostEndAsEnd } : {}),
-          assignedInstanceId: instanceId,
         };
 
         try {
-          event.source.postMessage(helloPayload, '*');
+          event.source.postMessage(synAckPayload, iframeOrigin && iframeOrigin !== 'null' ? iframeOrigin : '*', [channel.port2]);
+          channel.port1.postMessage({ type: `${NS}ping`, source: 'parent', handshakeVerify: true });
         } catch (err) {
-          console_warn('[sremote] Failed to send hello challenge to iframe:', err);
+          synLog.warn('Failed to transfer MessagePort in syn_ack:', err);
         }
-        return;
-      }
+      };
 
-      // Verified: Clear challenge attempts
-      if (iframeEl) retryChallengeAttempts.delete(iframeEl);
-      if (event.source) retryChallengeAttempts.delete(event.source);
+      const rejectSyn = () => {
+        try {
+          event.source.postMessage(
+            { type: `${NS}syn_ack`, source: 'parent', synChallenge, allowed: false, parentOrigin: location.origin },
+            iframeOrigin && iframeOrigin !== 'null' ? iframeOrigin : '*',
+          );
+        } catch {}
+      };
 
-      // Port established
+      // Check permissions via Dialog (which checks isSessionBlocked, isSessionAllowed, Storage, and batches UI)
+      createPermissionDialog({
+        parentOrigin: location.origin,
+        iframeOrigin,
+        origin: iframeOrigin,
+        isTop: true,
+        onDecision: allowed => {
+          if (allowed) {
+            completeSynAck();
+          } else {
+            rejectSyn();
+          }
+        },
+      });
+      return;
+    }
+
+    // Legacy Fallback: accept without syn
+    if (lowerAction === 'accept') {
+      const iframeEl = findIframeElementBySource(event.source);
+      const instanceId = data.instanceId || generateInstanceId();
+      const iframeLoc = data.location || '';
+      const iframeOrigin = event.origin && event.origin !== 'null' ? event.origin : data.origin || '*';
+
       if (event.ports && event.ports.length > 0) {
         const port = event.ports[0];
         setupPortForInstance(instanceId, port, iframeLoc, iframeOrigin, iframeEl, TRANSPORT_STATE.CONNECTED);
         const inst = instances.get(instanceId);
         if (inst) {
           inst.authenticated = true;
-          if (pendingConsumeHandshakeId) inst.pendingConsumeHandshakeId = pendingConsumeHandshakeId;
           instanceManager.setCurrentActiveInstanceId(instanceId);
           inst.hasMedia = Boolean(data.hasMedia);
           if (data.state) inst.state = data.state;
@@ -425,75 +406,9 @@ export function createParentTransportManager({
           inst.lastSeen = Date.now();
         }
         notifyMediaCountChange();
-
-        try {
-          port.postMessage({ type: `${NS}ping`, source: 'parent', handshakeVerify: true });
-        } catch {}
-
-        emitGlobalEvent('accept', { ...data, instanceId });
-      } else if (event.source) {
-        // Proactive port transfer
-        console_log(`%c[SRemote:transport] Accept without port for '${instanceId}'. Proactively establishing MessagePort...`, 'color: #f59e0b; font-weight: bold;');
-        const channel = new MessageChannel();
-        setupPortForInstance(instanceId, channel.port1, iframeLoc, iframeOrigin, iframeEl, TRANSPORT_STATE.CONNECTING);
-        const inst = instances.get(instanceId);
-        if (inst) {
-          inst.authenticated = true;
-          if (pendingConsumeHandshakeId) inst.pendingConsumeHandshakeId = pendingConsumeHandshakeId;
-          instanceManager.setCurrentActiveInstanceId(instanceId);
-          inst.hasMedia = Boolean(data.hasMedia);
-          if (data.state) inst.state = data.state;
-          if (data.mediaType) inst.mediaType = data.mediaType;
-          if (data.capabilities) inst.capabilities = data.capabilities;
-          inst.lastSeen = Date.now();
-        }
-        notifyMediaCountChange();
-
-        try {
-          event.source.postMessage({ type: `${NS}handshake_port`, source: 'parent', instanceId }, iframeOrigin && iframeOrigin !== 'null' ? iframeOrigin : '*', [channel.port2]);
-          channel.port1.postMessage({ type: `${NS}ping`, source: 'parent', handshakeVerify: true });
-        } catch (err) {
-          console_warn('[sremote] Failed to transfer proactive MessagePort to iframe:', err);
-        }
-
         emitGlobalEvent('accept', { ...data, instanceId });
       }
       return;
-    }
-
-    if (lowerAction === 'request_permission' || lowerAction === 'requestpermission') {
-      const targetOrigin = data.origin || callerOrigin || location.origin;
-      const isDenied = typeof instanceManager.isOriginDenied === 'function' ? instanceManager.isOriginDenied(targetOrigin) : instanceManager.isSessionDenied;
-      if (isDenied) {
-        if (event.source) {
-          try {
-            event.source.postMessage({ type: `${NS}permission_response`, source: 'parent', allowed: false, parentOrigin: location.origin }, '*');
-          } catch {}
-        }
-        return;
-      }
-
-      const sourceWindow = event.source;
-      createPermissionDialog({
-        parentOrigin: location.origin,
-        iframeOrigin: targetOrigin,
-        origin: targetOrigin,
-        isTop: true,
-        onDecision: allowed => {
-          if (!allowed) {
-            if (typeof instanceManager.denyOrigin === 'function') {
-              instanceManager.denyOrigin(targetOrigin);
-            } else if (typeof instanceManager.setSessionDenied === 'function') {
-              instanceManager.setSessionDenied(true);
-            }
-          }
-          if (sourceWindow) {
-            try {
-              sourceWindow.postMessage({ type: `${NS}permission_response`, source: 'parent', allowed: !!allowed, parentOrigin: location.origin }, '*');
-            } catch {}
-          }
-        },
-      });
     }
   };
 
@@ -507,7 +422,7 @@ export function createParentTransportManager({
       pendingReapTimers.delete(assignedId);
       const inst = instances.get(assignedId);
       if (inst?.iframeEl && !inst.iframeEl.isConnected) {
-        console_log(`%c[SRemote:lifecycle] Iframe confirmed removed after grace period: ${assignedId}`, 'color: #ef4444;');
+        logger.scope('lifecycle').log(`Iframe confirmed removed after grace period: ${assignedId}`);
         terminateInstance(assignedId, 'dom_removed');
       }
     }, GRACE_PERIOD_MS);
@@ -518,7 +433,7 @@ export function createParentTransportManager({
     if (pendingReapTimers.has(assignedId)) {
       clearTimeout(pendingReapTimers.get(assignedId));
       pendingReapTimers.delete(assignedId);
-      console_log(`%c[SRemote:lifecycle] Iframe re-attached within grace period: ${assignedId}. Preserving connection.`, 'color: #10b981;');
+      logger.scope('lifecycle').log(`Iframe re-attached within grace period: ${assignedId}. Preserving connection.`);
     }
   }
 
@@ -586,7 +501,7 @@ export function createParentTransportManager({
       }
       const elapsed = now - (item.lastSeen || 0);
       if (elapsed > DEAD_TIMEOUT) {
-        console_warn(`[sremote] Transport instance '${id}' timed out (${elapsed}ms). Terminating...`);
+        logger.scope('transport').warn(`Transport instance '${id}' timed out (${elapsed}ms). Terminating...`);
         terminateInstance(id, 'timeout');
       } else if (elapsed > PING_THRESHOLD) {
         try {

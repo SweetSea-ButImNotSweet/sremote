@@ -20,6 +20,10 @@ export class BridgeDriver {
 
   isAvailable() {
     if (typeof window === 'undefined') return false;
+    const internalBridge = typeof globalThis !== 'undefined' ? globalThis[Symbol.for('__sremote_internal_bridge__')] : null;
+    if (internalBridge && isNativeSRemoteInstance(internalBridge)) {
+      return true;
+    }
     const api = window.SRemote || window.sremote;
     // Do not treat wrapper itself as external bridge
     if (api?.[Symbol.for('__sremote_source__')] === 'wrapper') {
@@ -32,6 +36,10 @@ export class BridgeDriver {
     if (typeof window === 'undefined') {
       if (required) throw new Error('[SRemote:BridgeDriver] External host bridge not detected');
       return null;
+    }
+    const internalBridge = typeof globalThis !== 'undefined' ? globalThis[Symbol.for('__sremote_internal_bridge__')] : null;
+    if (internalBridge && isNativeSRemoteInstance(internalBridge)) {
+      return internalBridge;
     }
     const api = window.SRemote || window.sremote || null;
     if (api?.[Symbol.for('__sremote_source__')] === 'wrapper') {

@@ -233,13 +233,17 @@ export class SRemoteClient {
       const onReadyEvent = () => {
         if (resolved) return;
         resolved = true;
-        window.removeEventListener('sremote:ready', onReadyEvent);
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('sremote:ready', onReadyEvent);
+          window.removeEventListener('sremote:bridge:announce', onReadyEvent);
+        }
         clearTimeout(timer);
-        onConnected("Received 'sremote:ready' event. Mode: userscript");
+        onConnected('Received bridge ready event. Mode: userscript');
       };
 
       if (typeof window !== 'undefined') {
         window.addEventListener('sremote:ready', onReadyEvent, { once: true });
+        window.addEventListener('sremote:bridge:announce', onReadyEvent, { once: true });
       }
 
       const timer = setTimeout(() => {
@@ -247,6 +251,7 @@ export class SRemoteClient {
         resolved = true;
         if (typeof window !== 'undefined') {
           window.removeEventListener('sremote:ready', onReadyEvent);
+          window.removeEventListener('sremote:bridge:announce', onReadyEvent);
         }
 
         if (this.userscriptDriver.isAvailable()) {

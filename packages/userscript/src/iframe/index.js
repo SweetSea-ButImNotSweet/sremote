@@ -68,8 +68,6 @@ export function initIframeAgent() {
   const mediaWaiters = [];
   const boundMediaElements = new WeakSet();
   const createdMediaPool = new WeakSet();
-  let currentHandshakeId = null;
-  let currentHandshakeToken = null;
   let treatAlmostEndAsEnd = false;
   let programmaticActionTimestamp = 0;
   let originalMediaSrcBeforeDebug = null;
@@ -401,11 +399,6 @@ export function initIframeAgent() {
     treatAlmostEndAsEndSetter: val => {
       treatAlmostEndAsEnd = val;
     },
-    currentHandshakeSetter: (id, token) => {
-      currentHandshakeId = id;
-      currentHandshakeToken = token;
-    },
-    currentHandshakeGetter: () => ({ handshakeId: currentHandshakeId, handshakeToken: currentHandshakeToken }),
   });
 
   function onMediaAvailable() {
@@ -474,13 +467,8 @@ export function initIframeAgent() {
 
     console_log(`%c[SRemote:command] Iframe received command/message (window) -> ${action}`, 'color: #ec4899; font-weight: bold;', { origin: callerOrigin, data });
 
-    if (lowerAction === 'handshake_port' && event.ports && event.ports.length > 0) {
-      handshake.handleHandshakePort(event, data, callerOrigin);
-      return;
-    }
-
-    if (lowerAction === 'permission_response') {
-      handshake.handlePermissionResponse(data, callerOrigin);
+    if (lowerAction === 'syn_ack' || lowerAction === 'synack') {
+      handshake.handleSynAck(event, data);
       return;
     }
 
@@ -586,6 +574,7 @@ export function initIframeAgent() {
         window.top.postMessage({ type: `${NS}iframe_ready`, source: 'iframe', origin: location.origin }, '*');
       }
     } catch {}
+    handshake.sendSyn();
   };
 
   if (document.readyState === 'loading') {

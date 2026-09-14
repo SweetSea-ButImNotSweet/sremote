@@ -1,4 +1,4 @@
-import { Storage, setHandshakeSecret } from '../../core/storage.js';
+import { Storage } from '../../core/storage.js';
 import { generateInstanceId } from '../../core/utils.js';
 
 /**
@@ -105,7 +105,6 @@ export function createLifecycleHandlers({ instanceManager, validateDomainAccess,
       handshakeToken = generateInstanceId('tok');
       activeHandshakeId = handshakeId;
       activeHandshakeToken = handshakeToken;
-      setHandshakeSecret(handshakeId, handshakeToken);
     }
 
     const nextSeq = isRapidRepeat ? tabHelloSeq : ++tabHelloSeq;

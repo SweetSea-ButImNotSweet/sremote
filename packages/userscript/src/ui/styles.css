@@ -222,6 +222,24 @@
   border-color: rgba(207, 34, 46, 0.4);
 }
 
+.sv-btn-allow-all {
+  background: #2ea44f !important;
+  color: #ffffff !important;
+  border-color: #2ea44f !important;
+}
+.sv-btn-allow-all:hover {
+  background: #2c974b !important;
+}
+
+.sv-btn-allow-session {
+  background: #0969da !important;
+  color: #ffffff !important;
+  border-color: #0969da !important;
+}
+.sv-btn-allow-session:hover {
+  background: #0858b8 !important;
+}
+
 .sv-btn-deny-all {
   background: #cf222e !important;
   color: #ffffff !important;
