@@ -14,6 +14,7 @@ export function createExportedApi({
   topMediaTracker = null,
   transportManager = null,
   tabSessionId = null,
+  onHelloInitiated = null,
 }) {
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap } = instanceManager;
 
@@ -25,6 +26,13 @@ export function createExportedApi({
   const cssHandlers = createCssHandlers({ rpcCall: rpcHandlers.rpcCall });
 
   const lifecycleHandlers = createLifecycleHandlers({ instanceManager, validateDomainAccess, dispatchCommand, topMediaTracker, tabSessionId, logger, NS });
+
+  const helloWithInitiateTracking = (...args) => {
+    try {
+      onHelloInitiated?.();
+    } catch {}
+    return lifecycleHandlers.broadcastHello(...args);
+  };
 
   // 2. Build Unified API Object via buildSRemoteApi
   let exportedApi;
@@ -46,7 +54,7 @@ export function createExportedApi({
     dispatchCommand,
     handlers: { ...instancesHandlers, ...rpcHandlers, ...cssHandlers, onRpcMessage: (handler, key) => exportedApi.on('iframe:message', handler, key) },
     eventsManager: { on: lifecycleHandlers.onEvent, off: lifecycleHandlers.offEvent },
-    lifecycleHandlers: { hello: lifecycleHandlers.broadcastHello, lock: lifecycleHandlers.lockSession, bindMetadata: lifecycleHandlers.bindMetadata },
+    lifecycleHandlers: { hello: helloWithInitiateTracking, lock: lifecycleHandlers.lockSession, bindMetadata: lifecycleHandlers.bindMetadata },
     debugApi,
     customExtensions: {
       isDummy: false,

@@ -74,16 +74,7 @@ export function initIframeAgent() {
   let programmaticActionTimestamp = 0;
   let originalMediaSrcBeforeDebug = null;
 
-  // Check GM Storage for early hello CSS immediately on document-start
-  let initialBootstrapCss = '';
-  try {
-    const latestHandshake = Storage.get('sremote:latest_handshake');
-    if (latestHandshake?.css && typeof latestHandshake.css === 'string') {
-      initialBootstrapCss = latestHandshake.css;
-    }
-  } catch {}
-
-  IframeStyleEngine.init(initialBootstrapCss);
+  IframeStyleEngine.init('');
 
   function bindVideoEvents(video) {
     if (!video || boundMediaElements.has(video)) return;
@@ -424,9 +415,7 @@ export function initIframeAgent() {
       bindVideoEvents(activeMedia);
     }
     notifyState();
-    if (!handshake.primaryAuthorizedOrigin) {
-      handshake.checkPendingHelloFromGM();
-    } else {
+    if (handshake.primaryAuthorizedOrigin) {
       showConnectedIndicator(handshake.primaryAuthorizedOrigin, handshake.primaryAuthorizedOrigin);
     }
     const waiters = mediaWaiters.splice(0, mediaWaiters.length);
@@ -566,11 +555,7 @@ export function initIframeAgent() {
     try {
       window.addEventListener('pagehide', handleTeardown, { capture: true });
     } catch {}
-
-    handshake.checkPendingHelloFromGM();
   }
-
-  handshake.checkPendingHelloFromGM();
 
   if (ENABLE_DEBUG_API) {
     const iframeDebugApi = createIframeDebugApi({
@@ -595,9 +580,25 @@ export function initIframeAgent() {
     console_log(`%c[sremote] window.sremote_debug is ready inside iframe`, 'background: #065f46; color: #34d399; font-weight: bold;');
   }
 
+  const announceReadyToParent = () => {
+    try {
+      if (window.top && window.top !== window) {
+        window.top.postMessage({ type: `${NS}iframe_ready`, source: 'iframe', origin: location.origin }, '*');
+      }
+    } catch {}
+  };
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
+    document.addEventListener(
+      'DOMContentLoaded',
+      () => {
+        boot();
+        announceReadyToParent();
+      },
+      { once: true },
+    );
   } else {
     boot();
+    announceReadyToParent();
   }
 }

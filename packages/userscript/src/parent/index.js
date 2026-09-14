@@ -57,12 +57,43 @@ export function initParentController() {
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts } = instanceManager;
 
   let broadcastHelloRef = null;
+  let hasInitiatedHello = false;
 
-  // Wakeup: Khi có lệnh dispatch mà chưa có instance hoặc đang pending, lập tức đánh thức iframe
-  const triggerPendingWakeup = () => {
+  // Helper: Đợi n frame trình duyệt (dùng requestAnimationFrame kèm fallback setTimeout cho tab nền)
+  const waitFrames = (frames, callback) => {
+    let count = 0;
+    let cancelled = false;
+
+    const timer = setTimeout(() => {
+      if (!cancelled) {
+        cancelled = true;
+        callback();
+      }
+    }, frames * 18); // Fallback: ~90ms nếu tab ở background mà rAF bị tạm dừng
+
+    const step = () => {
+      if (cancelled) return;
+      count++;
+      if (count >= frames) {
+        cancelled = true;
+        clearTimeout(timer);
+        callback();
+      } else if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(step);
+      }
+    };
+
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(step);
+    }
+  };
+
+  // Wakeup: Đánh thức iframe (toàn bộ hoặc đích danh targetWindow) khi trang cha đã chủ động gọi hello()
+  const triggerPendingWakeup = (targetWindow = null) => {
+    if (!hasInitiatedHello) return;
     try {
       if (typeof broadcastHelloRef === 'function') {
-        broadcastHelloRef();
+        broadcastHelloRef({}, targetWindow);
       }
     } catch {}
   };
@@ -234,11 +265,21 @@ export function initParentController() {
   }
 
   // Initialize Clean Transport Manager (MessagePort, Handshake, Challenge, Heartbeat & Grace Period)
-  const transportManager = createParentTransportManager({ instanceManager });
+  const transportManager = createParentTransportManager({
+    instanceManager,
+    tabSessionId,
+    onIframeReady: (sourceWindow, origin) => {
+      console_log(`%c[SRemote:handshake] Received 'iframe_ready' from ${origin}. Responding with hello...`, 'color: #10b981;');
+      triggerPendingWakeup(sourceWindow);
+    },
+  });
 
   // Auto-Heal: Theo dõi các thẻ <iframe> được chèn động (React remount, dynamic route, v.v.)
+  // Debounce chờ đúng 5 frame của máy tính để DOM và iframe bắt đầu nạp trước khi gửi hello
   try {
     if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+      let pendingDebounce = false;
+
       const iframeObserver = new MutationObserver(mutations => {
         let hasNewIframe = false;
         for (const m of mutations) {
@@ -253,8 +294,14 @@ export function initParentController() {
           }
         }
         if (hasNewIframe) {
-          console_log(`%c[SRemote:autoheal] New iframe detected in DOM. Auto-negotiating hello...`, 'color: #06b6d4; font-weight: bold;');
-          triggerPendingWakeup();
+          if (pendingDebounce) return;
+          pendingDebounce = true;
+          console_log(`%c[SRemote:autoheal] New iframe detected in DOM. Waiting 5 frames for mount...`, 'color: #06b6d4; font-weight: bold;');
+          waitFrames(5, () => {
+            pendingDebounce = false;
+            console_log(`%c[SRemote:autoheal] 5 frames elapsed. Negotiating hello...`, 'color: #06b6d4;');
+            triggerPendingWakeup();
+          });
         }
       });
       const targetMount = document.documentElement || document.body || document;
@@ -265,7 +312,18 @@ export function initParentController() {
   } catch {}
 
   // Initialize and Export window.sremote
-  const api = createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM, topMediaTracker, transportManager, tabSessionId });
+  const api = createExportedApi({
+    instanceManager,
+    dispatchCommand,
+    validateDomainAccess,
+    queryMediaInstancesViaGM,
+    topMediaTracker,
+    transportManager,
+    tabSessionId,
+    onHelloInitiated: () => {
+      hasInitiatedHello = true;
+    },
+  });
   if (api && typeof api.hello === 'function') {
     broadcastHelloRef = api.hello;
   }

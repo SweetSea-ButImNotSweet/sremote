@@ -197,43 +197,6 @@ export function createIframeTransportManager({
     showPermissionPopup(event.source, callerOrigin);
   }
 
-  async function checkPendingHelloFromGM() {
-    try {
-      const latestHandshake = Storage.get('sremote:latest_handshake');
-      if (!latestHandshake) return;
-
-      // Handshake TTL freshness: must be within 8 seconds to prevent cross-tab contamination
-      const now = Date.now();
-      if (now - (latestHandshake.timestamp || 0) > 8000) return;
-
-      if (typeof latestHandshake.treatAlmostEndAsEnd === 'boolean') {
-        treatAlmostEndAsEndSetter(latestHandshake.treatAlmostEndAsEnd);
-      }
-
-      const parentOrigin = latestHandshake.parentOrigin || 'unknown_parent';
-      if (latestHandshake.handshakeId && latestHandshake.handshakeToken) {
-        currentHandshakeSetter(latestHandshake.handshakeId, latestHandshake.handshakeToken);
-      }
-
-      console_log(`%c[SRemote:boot] Iframe detected active handshake from Parent (${parentOrigin})`, 'color: #06b6d4; font-weight: bold;');
-
-      if (sessionDeniedOrigins.has(parentOrigin)) return;
-
-      const perm = checkOriginPairPermission(parentOrigin, location.origin, Storage);
-      if (perm.isDenied) return;
-
-      if (authorizedOrigins.has(parentOrigin) || perm.isAllowed) {
-        grantAccess(parentOrigin);
-        return;
-      }
-
-      if (permissionPopup) return;
-      showPermissionPopup(window.parent, parentOrigin);
-    } catch (err) {
-      console_warn('[sremote] Error in checkPendingHelloFromGM:', err);
-    }
-  }
-
   function handlePermissionResponse(data, callerOrigin) {
     if (permissionPopup) {
       permissionPopup.close?.();
@@ -267,7 +230,6 @@ export function createIframeTransportManager({
     },
     grantAccess,
     handleHelloMessage,
-    checkPendingHelloFromGM,
     handlePermissionResponse,
     handleHandshakePort,
   };

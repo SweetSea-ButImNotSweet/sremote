@@ -18,7 +18,14 @@ export const TRANSPORT_STATE = Object.freeze({ DISCONNECTED: 'DISCONNECTED', CON
  * 4. DOM Detach Grace Period (300ms) for React Strict Mode / Remount
  * 5. Ping/Pong Heartbeat Sweeper
  */
-export function createParentTransportManager({ instanceManager, onMediaMessage = () => {}, onMediaStateChange = () => {}, onBridgeMessage = () => {} }) {
+export function createParentTransportManager({
+  instanceManager,
+  tabSessionId = null,
+  onIframeReady = null,
+  onMediaMessage = () => {},
+  onMediaStateChange = () => {},
+  onBridgeMessage = () => {},
+}) {
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, removeInstance, notifyMediaCountChange, emitGlobalEvent, pauseOthersExcept } = instanceManager;
 
   const blacklistedIframes = new WeakSet();
@@ -296,6 +303,13 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
     const lowerAction = action.toLowerCase();
     const callerOrigin = event.origin || 'unknown_origin';
 
+    if (lowerAction === 'iframe_ready' || lowerAction === 'iframeready') {
+      try {
+        onIframeReady?.(event.source, callerOrigin);
+      } catch {}
+      return;
+    }
+
     if (lowerAction === 'accept') {
       const iframeEl = findIframeElementBySource(event.source);
       let preAssignedId = (iframeEl && (iframeEl.getAttribute('data-sremote-id') || iframeToAssignedIdMap.get(iframeEl))) || null;
@@ -370,7 +384,7 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
         setHandshakeSecret(challengeHandshakeId, challengeHandshakeToken);
 
         const currentSeq = Number(Storage.get('sremote:hello_seq', 0)) || 0;
-        const latestHandshake = Storage.get('sremote:latest_handshake') || {};
+        const latestHandshake = (tabSessionId ? Storage.get(`sremote:latest_handshake:${tabSessionId}`) : null) || {};
 
         const helloPayload = {
           type: `${NS}hello`,
@@ -469,7 +483,7 @@ export function createParentTransportManager({ instanceManager, onMediaMessage =
           if (!allowed) {
             if (typeof instanceManager.denyOrigin === 'function') {
               instanceManager.denyOrigin(targetOrigin);
-            } else {
+            } else if (typeof instanceManager.setSessionDenied === 'function') {
               instanceManager.setSessionDenied(true);
             }
           }

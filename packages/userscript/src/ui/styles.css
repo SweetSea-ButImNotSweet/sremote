@@ -152,3 +152,113 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 }
+
+/* Permission Dialog Table Styles */
+.sv-perm-table-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 10px 0 14px 0;
+  padding: 4px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.sv-perm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: #ffffff;
+  border: 1px solid #e1e4e8;
+}
+
+.sv-perm-domain {
+  font-family: monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2328;
+  word-break: break-all;
+  flex: 1;
+}
+
+.sv-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sv-row-btn {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.sv-row-btn-allow {
+  background: #2ea44f;
+  color: #ffffff;
+}
+.sv-row-btn-allow:hover {
+  background: #2c974b;
+}
+
+.sv-row-btn-deny {
+  background: #f6f8fa;
+  color: #cf222e;
+  border-color: #d0d7de;
+}
+.sv-row-btn-deny:hover {
+  background: #ffebe9;
+  border-color: rgba(207, 34, 46, 0.4);
+}
+
+.sv-btn-deny-all {
+  background: #cf222e !important;
+  color: #ffffff !important;
+  border-color: #cf222e !important;
+}
+.sv-btn-deny-all:hover {
+  background: #a40e26 !important;
+}
+
+.sv-btn-block-session {
+  background: #6e7781 !important;
+  color: #ffffff !important;
+}
+.sv-btn-block-session:hover {
+  background: #57606a !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sv-perm-table-container {
+    border-color: #30363d;
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .sv-perm-row {
+    background: #161b22;
+    border-color: #30363d;
+  }
+  .sv-perm-domain {
+    color: #e6edf3;
+  }
+  .sv-row-btn-deny {
+    background: #21262d;
+    color: #f85149;
+    border-color: #30363d;
+  }
+  .sv-row-btn-deny:hover {
+    background: #b62324;
+    color: #ffffff;
+  }
+}
+

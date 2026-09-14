@@ -10,10 +10,5 @@ export const ENABLE_DEBUG_API = true;
 
 // Gán vào globalThis để tránh bị Rollup tree-shake/inline mất khi bundle
 // và giúp dễ dàng debug hoặc truy cập cấu hình ở runtime
-globalThis.SREMOTE_CONFIG = {
-  VERSION,
-  NS,
-  LOG_LEVEL,
-  ENABLE_DEBUG_API,
-};
+globalThis.SREMOTE_CONFIG = { VERSION, NS, LOG_LEVEL, ENABLE_DEBUG_API };
 // ============================================================================

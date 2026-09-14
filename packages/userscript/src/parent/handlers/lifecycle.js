@@ -125,7 +125,6 @@ export function createLifecycleHandlers({ instanceManager, validateDomainAccess,
     if (tabSessionId) {
       Storage.set(`sremote:latest_handshake:${tabSessionId}`, handshakeRecord);
     }
-    Storage.set('sremote:latest_handshake', handshakeRecord);
 
     const createHelloPayload = assignedInstanceId => ({
       type: `${NS}hello`,
