@@ -19,19 +19,26 @@ export function safeSetProp(el, descriptor, fallbackProp, val) {
   } catch {}
 }
 
-export function isPersistableOrigin(origin) {
-  if (!origin || typeof origin !== 'string') return false;
+export function normalizeOrigin(origin) {
+  if (!origin || typeof origin !== 'string') return '';
   const trimmed = origin.trim();
-  if (!trimmed || trimmed === 'null' || trimmed === '*' || trimmed === 'unknown_parent') return false;
-  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return false;
-  return true;
+  if (!trimmed || trimmed === 'null' || trimmed === '*' || trimmed === 'unknown_parent') return '';
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return '';
+  try {
+    const url = new URL(trimmed);
+    return url.origin;
+  } catch {
+    // If not a full URL with scheme, strip trailing slashes
+    return trimmed.replace(/\/+$/, '').toLowerCase();
+  }
 }
 
 export function getOriginStorageKeys(origin) {
-  if (!isPersistableOrigin(origin)) {
+  const norm = normalizeOrigin(origin);
+  if (!norm) {
     return { allowKey: null, denyKey: null, hideBadgeKey: null };
   }
-  return { allowKey: `sremote:allow:${origin}`, denyKey: `sremote:deny:${origin}`, hideBadgeKey: `sremote:hide_badge:${origin}` };
+  return { allowKey: `sremote:allow:${norm}`, denyKey: `sremote:deny:${norm}`, hideBadgeKey: `sremote:hide_badge:${norm}` };
 }
 
 /**
@@ -39,12 +46,19 @@ export function getOriginStorageKeys(origin) {
  * Prevents blocking child player instances globally when denied on a specific parent.
  */
 export function getPermissionPairStorageKeys(parentOrigin, iframeOrigin) {
-  const isParentPersistable = isPersistableOrigin(parentOrigin);
-  const isIframePersistable = isPersistableOrigin(iframeOrigin);
-  if (!isParentPersistable || !isIframePersistable) {
+  const normParent = normalizeOrigin(parentOrigin);
+  const normIframe = normalizeOrigin(iframeOrigin);
+  if (!normParent || !normIframe) {
     return { pairAllowKey: null, pairDenyKey: null, isPersistable: false };
   }
-  return { pairAllowKey: `sremote:allow:${parentOrigin}->${iframeOrigin}`, pairDenyKey: `sremote:deny:${parentOrigin}->${iframeOrigin}`, isPersistable: true };
+  return { pairAllowKey: `sremote:allow:${normParent}->${normIframe}`, pairDenyKey: `sremote:deny:${normParent}->${normIframe}`, isPersistable: true };
+}
+
+/**
+ * Checks if a stored value represents granted permission ('1', 1, true).
+ */
+function isValueGranted(val) {
+  return val === '1' || val === 1 || val === true || val === 'true';
 }
 
 /**
@@ -59,10 +73,10 @@ export function checkOriginPairPermission(parentOrigin, iframeOrigin, storage) {
   // 1. Check pair keys first (highest precedence)
   const { pairAllowKey, pairDenyKey, isPersistable } = getPermissionPairStorageKeys(parentOrigin, iframeOrigin);
   if (isPersistable) {
-    if (pairDenyKey && storage.get(pairDenyKey) === '1') {
+    if (pairDenyKey && isValueGranted(storage.get(pairDenyKey))) {
       return { isAllowed: false, isDenied: true, isPersisted: true, key: pairDenyKey };
     }
-    if (pairAllowKey && storage.get(pairAllowKey) === '1') {
+    if (pairAllowKey && isValueGranted(storage.get(pairAllowKey))) {
       return { isAllowed: true, isDenied: false, isPersisted: true, key: pairAllowKey };
     }
   }
@@ -71,13 +85,13 @@ export function checkOriginPairPermission(parentOrigin, iframeOrigin, storage) {
   const { allowKey: parentAllowKey, denyKey: parentDenyKey } = getOriginStorageKeys(parentOrigin);
   const { allowKey: iframeAllowKey } = getOriginStorageKeys(iframeOrigin);
 
-  if (parentDenyKey && storage.get(parentDenyKey) === '1') {
+  if (parentDenyKey && isValueGranted(storage.get(parentDenyKey))) {
     return { isAllowed: false, isDenied: true, isPersisted: true, key: parentDenyKey };
   }
-  if (parentAllowKey && storage.get(parentAllowKey) === '1') {
+  if (parentAllowKey && isValueGranted(storage.get(parentAllowKey))) {
     return { isAllowed: true, isDenied: false, isPersisted: true, key: parentAllowKey };
   }
-  if (iframeAllowKey && storage.get(iframeAllowKey) === '1') {
+  if (iframeAllowKey && isValueGranted(storage.get(iframeAllowKey))) {
     return { isAllowed: true, isDenied: false, isPersisted: true, key: iframeAllowKey };
   }
 

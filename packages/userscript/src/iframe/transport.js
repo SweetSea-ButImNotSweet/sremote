@@ -62,11 +62,16 @@ export function createIframeTransportManager({ instanceIdGetter, setInstanceId, 
       log.warn('Failed to post SYN to window.top:', err);
     }
 
-    // Retransmit SYN if no SYN-ACK after 2.5s and still CONNECTING
+    let synRetryCount = 0;
+
+    // Retransmit SYN if no SYN-ACK after 2.5s and still CONNECTING (max 3 attempts)
     if (synTimer) clearTimeout(synTimer);
     synTimer = setTimeout(() => {
-      if (transportState === IFRAME_TRANSPORT_STATE.CONNECTING) {
+      if (transportState === IFRAME_TRANSPORT_STATE.CONNECTING && synRetryCount < 3) {
+        synRetryCount++;
         sendSyn();
+      } else if (transportState === IFRAME_TRANSPORT_STATE.CONNECTING) {
+        transportState = IFRAME_TRANSPORT_STATE.DISCONNECTED;
       }
     }, 2500);
   }

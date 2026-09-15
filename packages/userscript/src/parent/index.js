@@ -268,6 +268,7 @@ export function initParentController() {
   const transportManager = createParentTransportManager({
     instanceManager,
     tabSessionId,
+    isHelloInitiated: () => hasInitiatedHello,
     onIframeReady: (sourceWindow, origin) => {
       console_log(`%c[SRemote:handshake] Received 'iframe_ready' from ${origin}. Responding with hello...`, 'color: #10b981;');
       triggerPendingWakeup(sourceWindow);
@@ -322,6 +323,9 @@ export function initParentController() {
     tabSessionId,
     onHelloInitiated: () => {
       hasInitiatedHello = true;
+      try {
+        transportManager.flushPendingSyns();
+      } catch {}
     },
   });
   if (api && typeof api.hello === 'function') {

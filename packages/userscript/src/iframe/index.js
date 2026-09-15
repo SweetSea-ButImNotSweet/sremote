@@ -574,7 +574,6 @@ export function initIframeAgent() {
         window.top.postMessage({ type: `${NS}iframe_ready`, source: 'iframe', origin: location.origin }, '*');
       }
     } catch {}
-    handshake.sendSyn();
   };
 
   if (document.readyState === 'loading') {

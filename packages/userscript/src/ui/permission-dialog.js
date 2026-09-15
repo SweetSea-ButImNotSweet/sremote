@@ -1,7 +1,8 @@
 import { Storage } from '../core/storage.js';
-import { getPermissionPairStorageKeys, checkOriginPairPermission } from '../core/utils.js';
+import { getPermissionPairStorageKeys, getOriginStorageKeys, checkOriginPairPermission } from '../core/utils.js';
 import { t } from '../core/i18n.js';
 import { createModal } from './modal.js';
+import { logger } from '../config.js';
 
 // Table Queue management: gom toàn bộ các iframe origin đang chờ
 // pendingItems: Map<iframeOrigin, { parentOrigin, iframeOrigin, isTop, callbacks: Function[], rowElement?: HTMLElement }>
@@ -9,18 +10,39 @@ const pendingItems = new Map();
 let activeDialog = null; // { modal, tableContainer }
 let isSessionBlocked = false;
 let isSessionAllowed = false;
+const allowedOriginsInSession = new Set();
+const deniedOriginsInSession = new Set();
 
 function applyDecision(item, allowed, remember) {
   const { parentOrigin, iframeOrigin, callbacks } = item;
+  const permLog = logger.scope('permission');
   const { pairAllowKey, pairDenyKey, isPersistable } = getPermissionPairStorageKeys(parentOrigin, iframeOrigin);
+  const { allowKey: singleAllowKey, denyKey: singleDenyKey } = getOriginStorageKeys(iframeOrigin);
 
-  if (remember && isPersistable && pairAllowKey && pairDenyKey) {
+  permLog.log(`applyDecision: allowed=${allowed}, remember=${remember}, isPersistable=${isPersistable}`, { parentOrigin, iframeOrigin, pairAllowKey, pairDenyKey, singleAllowKey });
+
+  // Track in in-memory session
+  if (allowed) {
+    allowedOriginsInSession.add(iframeOrigin);
+    deniedOriginsInSession.delete(iframeOrigin);
+  } else {
+    deniedOriginsInSession.add(iframeOrigin);
+    allowedOriginsInSession.delete(iframeOrigin);
+  }
+
+  if (remember && isPersistable) {
     if (allowed) {
-      Storage.set(pairAllowKey, '1');
-      Storage.remove(pairDenyKey);
+      if (pairAllowKey) Storage.set(pairAllowKey, '1');
+      if (pairDenyKey) Storage.remove(pairDenyKey);
+      if (singleAllowKey) Storage.set(singleAllowKey, '1');
+      if (singleDenyKey) Storage.remove(singleDenyKey);
+      permLog.log(`Persisted allow key: ${pairAllowKey} = '1' and ${singleAllowKey} = '1'`);
     } else {
-      Storage.set(pairDenyKey, '1');
-      Storage.remove(pairAllowKey);
+      if (pairDenyKey) Storage.set(pairDenyKey, '1');
+      if (pairAllowKey) Storage.remove(pairAllowKey);
+      if (singleDenyKey) Storage.set(singleDenyKey, '1');
+      if (singleAllowKey) Storage.remove(singleAllowKey);
+      permLog.log(`Persisted deny key: ${pairDenyKey} = '1' and ${singleDenyKey} = '1'`);
     }
   }
 
@@ -249,9 +271,13 @@ function openOrUpdateDialog(isTop) {
         onClick: (_, { close }) => {
           const items = Array.from(pendingItems.values());
           pendingItems.clear();
-          close(true);
+          const dlg = activeDialog;
           activeDialog = null;
           tableBatchRowEl = null;
+          try {
+            dlg?.modal?.close();
+          } catch {}
+          close(true);
           items.forEach(it => applyDecision(it, true, true));
         },
       },
@@ -262,9 +288,13 @@ function openOrUpdateDialog(isTop) {
           isSessionAllowed = true;
           const items = Array.from(pendingItems.values());
           pendingItems.clear();
-          close(true);
+          const dlg = activeDialog;
           activeDialog = null;
           tableBatchRowEl = null;
+          try {
+            dlg?.modal?.close();
+          } catch {}
+          close(true);
           items.forEach(it => applyDecision(it, true, false));
         },
       },
@@ -272,9 +302,14 @@ function openOrUpdateDialog(isTop) {
         className: 'sv-btn sv-btn-block-session',
         text: t('blockSessionBtn'),
         onClick: (_, { close }) => {
+          const dlg = activeDialog;
+          activeDialog = null;
           tableBatchRowEl = null;
-          close(false);
           setPermissionSessionBlocked(true);
+          try {
+            dlg?.modal?.close();
+          } catch {}
+          close(false);
         },
       },
       {
@@ -283,9 +318,13 @@ function openOrUpdateDialog(isTop) {
         onClick: (_, { close }) => {
           const items = Array.from(pendingItems.values());
           pendingItems.clear();
-          close(false);
+          const dlg = activeDialog;
           activeDialog = null;
           tableBatchRowEl = null;
+          try {
+            dlg?.modal?.close();
+          } catch {}
+          close(false);
           items.forEach(it => applyDecision(it, false, true));
         },
       },
@@ -310,11 +349,11 @@ export function createPermissionDialog({ origin, iframeOrigin = null, parentOrig
   const effectiveParentOrigin = parentOrigin || (isTop && typeof location !== 'undefined' ? location.origin : null) || 'unknown_parent';
 
   // 0. Nếu session này đã bị chặn: lập tức từ chối; nếu đã cho phép toàn phiên: lập tức cho phép
-  if (isSessionBlocked) {
+  if (isSessionBlocked || deniedOriginsInSession.has(effectiveIframeOrigin)) {
     onDecision?.(false);
     return { close: () => {} };
   }
-  if (isSessionAllowed) {
+  if (isSessionAllowed || allowedOriginsInSession.has(effectiveIframeOrigin)) {
     onDecision?.(true);
     return { close: () => {} };
   }

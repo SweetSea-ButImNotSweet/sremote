@@ -20,6 +20,7 @@ export const TRANSPORT_STATE = Object.freeze({ DISCONNECTED: 'DISCONNECTED', CON
 export function createParentTransportManager({
   instanceManager,
   tabSessionId = null,
+  isHelloInitiated = () => false,
   onIframeReady = null,
   onMediaMessage = () => {},
   onMediaStateChange = () => {},
@@ -30,6 +31,7 @@ export function createParentTransportManager({
   const blacklistedIframes = new WeakSet();
   const blacklistedSources = new WeakSet();
   const pendingReapTimers = new Map(); // instanceId -> timeoutId
+  const pendingSynQueue = new Map(); // instanceId -> { event, data, processFn }
   const GRACE_PERIOD_MS = 300;
 
   // --- Helper: Find Iframe Element from Window Source ---
@@ -75,49 +77,36 @@ export function createParentTransportManager({
     }
   }
 
-  function isDifferentService(locA, locB) {
-    const hostA = getDomainOrOrigin(locA);
-    const hostB = getDomainOrOrigin(locB);
-    if (!hostA || !hostB) return false;
-    return hostA !== hostB;
-  }
-
   // --- 1. Port Setup & Channel Management ---
   function setupPortForInstance(instanceId, port, initialLocation, initialOrigin, iframeEl = null, initialTransportState = TRANSPORT_STATE.CONNECTED) {
     const newLocationOrOrigin = initialLocation || initialOrigin || '';
 
-    // Check for Service / Domain Switch: if domain changes, immediately evict older stale instance
-    if (instances.size > 0 && newLocationOrOrigin) {
+    // Check for Service / Domain Switch: ONLY evict if the EXACT same iframe DOM element navigated
+    if (instances.size > 0 && newLocationOrOrigin && iframeEl) {
       for (const [oldId, oldInst] of Array.from(instances.entries())) {
         if (oldId !== instanceId) {
-          const oldLocationOrOrigin = oldInst?.location || oldInst?.origin || '';
-          if (isDifferentService(oldLocationOrOrigin, newLocationOrOrigin)) {
+          const oldIframe = oldInst?.iframeEl || assignedIframeIdMap.get(oldId);
+          // Only evict if this is confirmed to be the exact same DOM node navigating to a new URL/origin
+          if (oldIframe && oldIframe === iframeEl) {
             logger
               .scope('transport')
-              .log(`Service switch detected (${getDomainOrOrigin(oldLocationOrOrigin)} -> ${getDomainOrOrigin(newLocationOrOrigin)}): evicting old instance ${oldId}`);
+              .log(
+                `Same iframe DOM node re-navigated (${getDomainOrOrigin(oldInst?.location || oldInst?.origin)} -> ${getDomainOrOrigin(newLocationOrOrigin)}): evicting old instance ${oldId}`,
+              );
             try {
               oldInst?.port?.close();
             } catch {}
-            removeInstance(oldId, 'service_switched');
+            removeInstance(oldId, 'iframe_navigated');
           }
         }
       }
     }
 
-    // Single Mode: cleanup older instance safely
-    if (!isMultiModeActive() && instances.size > 0) {
+    // Single Mode: only strictly evict older instances if explicitly forced by multiModeConfig === false
+    if (instanceManager.multiModeConfig === false && instances.size > 0) {
       for (const [oldId, oldInst] of Array.from(instances.entries())) {
         if (oldId !== instanceId) {
-          const oldIframe = oldInst?.iframeEl || assignedIframeIdMap.get(oldId);
-          // If different service or iframe element is replaced/detached, evict old instance immediately
-          const isSameDomNode = iframeEl && oldIframe && (oldIframe === iframeEl || oldIframe.contains?.(iframeEl) || iframeEl.contains?.(oldIframe));
-          const isSameService = !isDifferentService(oldInst?.location || oldInst?.origin, newLocationOrOrigin);
-
-          if (isSameDomNode && isSameService) {
-            continue;
-          }
-
-          logger.scope('transport').log(`Single mode: replacing older instance ${oldId} -> ${instanceId}`);
+          logger.scope('transport').log(`Forced single mode: replacing older instance ${oldId} -> ${instanceId}`);
           try {
             oldInst?.port?.close();
           } catch {}
@@ -368,20 +357,32 @@ export function createParentTransportManager({
         } catch {}
       };
 
-      // Check permissions via Dialog (which checks isSessionBlocked, isSessionAllowed, Storage, and batches UI)
-      createPermissionDialog({
-        parentOrigin: location.origin,
-        iframeOrigin,
-        origin: iframeOrigin,
-        isTop: true,
-        onDecision: allowed => {
-          if (allowed) {
-            completeSynAck();
-          } else {
-            rejectSyn();
-          }
-        },
-      });
+      const processSyn = () => {
+        // Check permissions via Dialog (which checks isSessionBlocked, isSessionAllowed, Storage, and batches UI)
+        createPermissionDialog({
+          parentOrigin: location.origin,
+          iframeOrigin,
+          origin: iframeOrigin,
+          isTop: true,
+          onDecision: allowed => {
+            if (allowed) {
+              completeSynAck();
+            } else {
+              rejectSyn();
+            }
+          },
+        });
+      };
+
+      // On-Demand Handshake: If the top page / SDK hasn't called hello() yet,
+      // hold the SYN in pendingSynQueue so we DO NOT bother users with unprompted dialogs!
+      if (!isHelloInitiated()) {
+        synLog.log(`Deferred 'syn' from ${iframeOrigin} until top window calls sremote.hello()`);
+        pendingSynQueue.set(instanceId, { processSyn, completeSynAck, rejectSyn });
+        return;
+      }
+
+      processSyn();
       return;
     }
 
@@ -515,13 +516,30 @@ export function createParentTransportManager({
 
   window.addEventListener('message', onWindowMessage);
 
+  function flushPendingSyns() {
+    if (pendingSynQueue.size === 0) return;
+    const synLog = logger.scope('handshake');
+    synLog.log(`Flushing ${pendingSynQueue.size} pending SYN handshake(s) as hello() was called.`);
+    const items = Array.from(pendingSynQueue.values());
+    pendingSynQueue.clear();
+    items.forEach(item => {
+      try {
+        item.processSyn();
+      } catch (err) {
+        synLog.warn('Failed to process deferred syn:', err);
+      }
+    });
+  }
+
   return {
+    flushPendingSyns,
     destroy: () => {
       window.removeEventListener('message', onWindowMessage);
       clearInterval(heartbeatInterval);
       parentIframeObserver.disconnect();
       for (const t of pendingReapTimers.values()) clearTimeout(t);
       pendingReapTimers.clear();
+      pendingSynQueue.clear();
     },
   };
 }
