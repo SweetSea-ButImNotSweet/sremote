@@ -19,32 +19,42 @@ export function safeSetProp(el, descriptor, fallbackProp, val) {
   } catch {}
 }
 
-export function isPersistableOrigin(origin) {
-  if (!origin || typeof origin !== 'string') return false;
+export function normalizeOrigin(origin) {
+  if (!origin || typeof origin !== 'string') return '';
   const trimmed = origin.trim();
-  if (!trimmed || trimmed === 'null' || trimmed === '*' || trimmed === 'unknown_parent') return false;
-  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return false;
-  return true;
+  if (!trimmed || trimmed === 'null' || trimmed === '*' || trimmed === 'unknown_parent') return '';
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return '';
+  try {
+    const url = new URL(trimmed);
+    return url.origin;
+  } catch {
+    // If not a full URL with scheme, strip trailing slashes
+    return trimmed.replace(/\/+$/, '').toLowerCase();
+  }
 }
 
-export function getOriginStorageKeys(origin) {
-  if (!isPersistableOrigin(origin)) {
-    return { allowKey: null, denyKey: null, hideBadgeKey: null };
+import { Storage } from './storage.js';
+
+/**
+ * Checks if a ParentOrigin -> IframeOrigin pair is granted or denied in Storage.permissions.
+ */
+export function checkOriginPairPermission(parentOrigin, iframeOrigin) {
+  const normParent = normalizeOrigin(parentOrigin);
+  const normIframe = normalizeOrigin(iframeOrigin);
+
+  const decision = Storage.permissions.get(normParent, normIframe);
+  if (decision === 1) {
+    return { isAllowed: true, isDenied: false, isPersisted: true };
   }
-  return { allowKey: `sremote:allow:${origin}`, denyKey: `sremote:deny:${origin}`, hideBadgeKey: `sremote:hide_badge:${origin}` };
+  if (decision === 0) {
+    return { isAllowed: false, isDenied: true, isPersisted: true };
+  }
+
+  return { isAllowed: false, isDenied: false, isPersisted: false };
 }
 
 export function generateInstanceId(prefix = 'sv') {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
-}
-
-export function getMeta(selectors) {
-  for (const s of selectors) {
-    const el = document.querySelector(s);
-    const val = el?.getAttribute('content') || el?.getAttribute('href');
-    if (val) return val.trim();
-  }
-  return '';
 }
 
 export function createButton({ className, text, title, onClick }) {

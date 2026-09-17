@@ -9,7 +9,8 @@ const recipesDir = path.join(__dirname, '..', 'docs', 'recipes');
 const commentsPath = path.join(recipesDir, 'comments-i18n.json');
 
 const commentsDict = JSON.parse(fs.readFileSync(commentsPath, 'utf8'));
-const dirs = fs.readdirSync(recipesDir, { withFileTypes: true })
+const dirs = fs
+  .readdirSync(recipesDir, { withFileTypes: true })
   .filter(d => d.isDirectory())
   .map(d => d.name);
 

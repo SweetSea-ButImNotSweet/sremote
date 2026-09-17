@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, seekTo } from '../core/polyfill.js';
 import { loadSpotifySdk } from '../utils/sdk-loader.js';
 
 /**
@@ -20,37 +21,64 @@ export class SpotifyProvider extends BaseProvider {
     const height = options.height || (options.compact ? '152' : '352');
     const uri = options.uri || options.url || 'spotify:track:4cOdK2wGLETKBW3PvgPWqT';
 
-    const { hiddenWrapper, tempNode, cleanup } = createTempNode(instanceId, width, height);
+    let targetNode = null;
+    let cleanupTemp = () => {};
+
+    if (options.container) {
+      targetNode = document.createElement('div');
+      targetNode.id = `sremote-spotify-${instanceId}`;
+      applyElementAttributes(targetNode, width, height, instanceId);
+      options.container.appendChild(targetNode);
+    } else {
+      const temp = createTempNode(instanceId, width, height);
+      targetNode = temp.tempNode;
+      cleanupTemp = temp.cleanup;
+    }
 
     return new Promise((resolve, reject) => {
-      try {
-        IFrameAPI.createController(tempNode, { uri, width, height, ...options.controllerOptions }, EmbedController => {
-          const iframe = tempNode.querySelector('iframe') || tempNode;
-          if (iframe && iframe.parentNode === hiddenWrapper) {
-            hiddenWrapper.removeChild(iframe);
-          }
-          cleanup();
+      let isResolved = false;
 
-          if (iframe) {
-            applyElementAttributes(iframe, width, height, instanceId);
-          }
+      const finish = EmbedController => {
+        if (isResolved) return;
+        isResolved = true;
 
-          resolve({
-            player: EmbedController,
-            element: iframe,
-            iframe: iframe?.tagName === 'IFRAME' ? iframe : null,
-            destroy: () => {
-              try {
-                if (EmbedController && typeof EmbedController.destroy === 'function') {
-                  EmbedController.destroy();
-                }
-              } catch {}
-              cleanup();
-            },
-          });
+        const iframe =
+          (targetNode && typeof targetNode.querySelector === 'function' ? targetNode.querySelector('iframe') : null) ||
+          document.querySelector(`#sremote-spotify-${instanceId} iframe`) ||
+          targetNode;
+
+        if (iframe) {
+          applyElementAttributes(iframe, width, height, instanceId);
+        }
+
+        resolve({
+          player: EmbedController,
+          element: targetNode || iframe,
+          iframe: iframe?.tagName === 'IFRAME' ? iframe : null,
+          destroy: () => {
+            try {
+              if (EmbedController && typeof EmbedController.destroy === 'function') {
+                EmbedController.destroy();
+              }
+            } catch {}
+            cleanupTemp();
+          },
         });
+      };
+
+      try {
+        IFrameAPI.createController(targetNode, { uri, width, height, ...options.controllerOptions }, EmbedController => {
+          finish(EmbedController);
+        });
+
+        // Safety fallback in case Spotify controller callback is delayed
+        setTimeout(() => {
+          if (!isResolved) {
+            finish(null);
+          }
+        }, options.timeout || 3500);
       } catch (err) {
-        cleanup();
+        cleanupTemp();
         reject(err);
       }
     });
@@ -60,24 +88,26 @@ export class SpotifyProvider extends BaseProvider {
     let isPaused = true;
     let position = 0;
     let duration = 0;
+    let isSeeking = false;
+    let lastReportedPosition = 0;
+
+    const notifySeeked = state => {
+      if (isSeeking) {
+        isSeeking = false;
+        adapter.emit?.('seeked', { state });
+      }
+    };
 
     const adapter = {
       play() {
-        if (EmbedController && typeof EmbedController.resume === 'function') {
+        if (typeof EmbedController?.resume === 'function') {
           EmbedController.resume();
-        } else if (EmbedController && typeof EmbedController.play === 'function') {
-          EmbedController.play();
+        } else {
+          EmbedController?.play?.();
         }
       },
       pause() {
-        if (EmbedController && typeof EmbedController.pause === 'function') {
-          EmbedController.pause();
-        }
-      },
-      toggle() {
-        if (EmbedController && typeof EmbedController.togglePlay === 'function') {
-          EmbedController.togglePlay();
-        }
+        EmbedController?.pause?.();
       },
       stop() {
         if (EmbedController && typeof EmbedController.pause === 'function' && typeof EmbedController.seek === 'function') {
@@ -86,14 +116,19 @@ export class SpotifyProvider extends BaseProvider {
         }
       },
       seek(offset) {
-        if (EmbedController && typeof EmbedController.seek === 'function') {
-          EmbedController.seek(Math.max(0, position + Number(offset)));
-        }
+        const target = Math.max(0, position + Number(offset));
+        isSeeking = true;
+        adapter.emit?.('seeking', { state: { paused: isPaused, currentTime: target, duration } });
+        EmbedController?.seek?.(target);
       },
       seekTo(seconds) {
-        if (EmbedController && typeof EmbedController.seek === 'function') {
-          EmbedController.seek(Number(seconds));
-        }
+        const target = Number(seconds);
+        isSeeking = true;
+        adapter.emit?.('seeking', { state: { paused: isPaused, currentTime: target, duration } });
+        EmbedController?.seek?.(target);
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getCurrentTime() {
         return position;
@@ -105,9 +140,7 @@ export class SpotifyProvider extends BaseProvider {
         return isPaused;
       },
       load(uri) {
-        if (EmbedController && typeof EmbedController.loadUri === 'function') {
-          EmbedController.loadUri(uri);
-        }
+        EmbedController?.loadUri?.(uri);
       },
       getState() {
         return { paused: isPaused, currentTime: position, duration };
@@ -119,27 +152,41 @@ export class SpotifyProvider extends BaseProvider {
         isPaused = false;
         position = (e?.data?.position || 0) / 1000;
         duration = (e?.data?.duration || 0) / 1000;
-        adapter.emit?.('play', { state: { paused: false, currentTime: position, duration } });
-        adapter.emit?.('timeupdate', { state: { paused: false, currentTime: position, duration } });
+        const state = { paused: false, currentTime: position, duration };
+        notifySeeked(state);
+        adapter.emit?.('play', { state });
+        adapter.emit?.('timeupdate', { state });
       });
 
       EmbedController.addListener('playback_update', e => {
         isPaused = Boolean(e?.data?.isPaused);
         position = (e?.data?.position || 0) / 1000;
         duration = (e?.data?.duration || 0) / 1000;
-        adapter.emit?.('timeupdate', { state: { paused: isPaused, currentTime, duration } });
+        const state = { paused: isPaused, currentTime: position, duration };
+
+        // Detect seek via scrub or after programmatic seek
+        if (Math.abs(position - lastReportedPosition) > 2 && !isSeeking) {
+          adapter.emit?.('seeking', { state });
+          adapter.emit?.('seeked', { state });
+        } else if (isSeeking) {
+          notifySeeked(state);
+        }
+
+        lastReportedPosition = position;
+        adapter.emit?.('timeupdate', { state });
         if (isPaused) {
-          adapter.emit?.('pause', { state: { paused: true, currentTime: position, duration } });
+          adapter.emit?.('pause', { state });
         }
       });
     }
+
+    toggle(adapter);
+    seekTo(adapter);
 
     return adapter;
   }
 }
 
 export const spotifyProvider = new SpotifyProvider();
-export const createSpotifyPlayer = options => spotifyProvider.create(options);
-export const mountSpotifyPlayer = (container, options) => spotifyProvider.mount(container, options);
 
-export const spotify = { create: createSpotifyPlayer, mount: mountSpotifyPlayer, provider: spotifyProvider };
+export const spotify = { create: options => spotifyProvider.create(options), mount: (container, options) => spotifyProvider.mount(container, options), provider: spotifyProvider };

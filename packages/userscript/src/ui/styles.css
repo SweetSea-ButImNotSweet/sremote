@@ -1,4 +1,5 @@
-/* Userscript-specific Badge & Floating UI styles */
+/* ========================================================== SRemote Userscript Styles (2010s Classic Skeuomorphic Aesthetic) - Subtle gradients & bevels (1px border, 2-3px radius max) - Compact & lightweight rules ========================================================== */
+/* 1. Badge & Floating UI */
 .sv-badge-wrapper {
   position: fixed;
   left: 10px;
@@ -11,28 +12,25 @@
   color: #263238;
   font-size: 11px;
   font-weight: 500;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border: 1px solid #aeb7c2;
-  border-radius: 3px;
+  border-radius: 2px;
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    inset 0 1px 0 #fff;
   user-select: none;
   opacity: 0.9;
   transition:
-    opacity 0.12s ease,
-    border-color 0.12s ease,
-    box-shadow 0.12s ease;
+    opacity 0.12s,
+    border-color 0.12s;
 }
-
 .sv-badge-wrapper:hover {
   opacity: 1;
   border-color: #7f8b97;
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    0 2px 5px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 #fff;
 }
-
 .sv-dot-btn {
   width: 8px;
   height: 8px;
@@ -48,31 +46,23 @@
   color: transparent;
   border: none;
   padding: 0;
-  transition:
-    width 0.12s ease,
-    height 0.12s ease,
-    background 0.12s ease,
-    color 0.12s ease;
+  transition: all 0.12s ease;
 }
-
 .sv-badge-wrapper:hover .sv-dot-btn {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   background: #9b2c2c;
   color: #f7c5c5;
 }
-
 .sv-badge-wrapper:hover .sv-dot-btn:hover {
   background: #c0392b;
   color: #fff;
 }
-
 .sv-label {
   cursor: pointer;
   color: #263238;
   font-weight: 600;
 }
-
 .sv-actions {
   display: none;
   align-items: center;
@@ -81,74 +71,284 @@
   padding-left: 6px;
   border-left: 1px solid #c5cbd1;
 }
-
 .sv-badge-wrapper:hover .sv-actions {
   display: inline-flex;
 }
-
 .sv-tooltip {
   display: none;
   position: absolute;
   left: 0;
   bottom: 100%;
-  padding-bottom: 5px;
+  padding-bottom: 4px;
   pointer-events: auto;
-  min-width: 280px;
-  max-width: min(450px, calc(100vw - 32px));
+  min-width: 260px;
+  max-width: min(440px, calc(100vw - 32px));
   box-sizing: border-box;
 }
-
 .sv-tooltip-inner {
   background: #fff;
   color: #374151;
   font-size: 11px;
-  line-height: 1.5;
-  padding: 9px 11px;
+  line-height: 1.45;
+  padding: 7px 9px;
   border: 1px solid #aeb7c2;
-  border-radius: 3px;
+  border-radius: 2px;
   box-shadow:
-    0 3px 10px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    0 3px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 #fff;
   white-space: pre-line;
   word-break: break-word;
 }
-
 .sv-badge-wrapper:hover .sv-tooltip,
 .sv-tooltip:hover {
   display: block;
 }
-
+/* 2. Permission Dialog Table */
+.sv-perm-table-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 8px 0 12px 0;
+  padding: 3px;
+  border: 1px solid #b5bdc6;
+  border-radius: 2px;
+  background: #eaedf1;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+.sv-perm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 2px;
+  background: #fff;
+  border: 1px solid #c9d0d6;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+}
+.sv-perm-domain {
+  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a202c;
+  word-break: break-all;
+  flex: 1;
+}
+.sv-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  position: relative;
+}
+.sv-row-btn {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 2px;
+  cursor: pointer;
+  border: 1px solid #a4afb9;
+  line-height: 1.2;
+  user-select: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 1px 1px rgba(0, 0, 0, 0.1);
+  transition: all 0.1s ease;
+}
+.sv-row-btn:active {
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  transform: translateY(1px);
+}
+.sv-row-btn-allow {
+  background: linear-gradient(to bottom, #5cb85c 0%, #449d44 100%);
+  border-color: #398439;
+  color: #fff;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);
+}
+.sv-row-btn-allow:hover {
+  background: linear-gradient(to bottom, #67c267 0%, #419641 100%);
+  border-color: #255625;
+}
+.sv-row-btn-deny {
+  background: linear-gradient(to bottom, #fff 0%, #f0f2f5 100%);
+  border-color: #b8c1c8;
+  color: #a94442;
+}
+.sv-row-btn-deny:hover {
+  background: linear-gradient(to bottom, #fff 0%, #e6e9ee 100%);
+  border-color: #929ba2;
+  color: #843534;
+}
+.sv-row-more-btn {
+  background: linear-gradient(to bottom, #fff 0%, #e9ecef 100%);
+  border-color: #b8c1c8;
+  color: #495057;
+  padding: 3px 5px;
+}
+.sv-row-more-btn:hover {
+  background: linear-gradient(to bottom, #fff 0%, #dee2e6 100%);
+}
+/* 3. Dropdown Menu (Classic 2010 Context Menu) */
+.sv-row-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 2px;
+  background: #fff;
+  border: 1px solid #97a1a9;
+  border-radius: 2px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  z-index: 1000;
+  min-width: 135px;
+  padding: 2px 0;
+  display: flex;
+  flex-direction: column;
+}
+.sv-row-dropdown-item {
+  background: none;
+  border: none;
+  padding: 5px 10px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  color: #212529;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}
+.sv-row-dropdown-item:hover {
+  background: #337ab7;
+  color: #fff;
+}
+.sv-row-dropdown-item.sv-item-always-allow {
+  color: #2e6b38;
+}
+.sv-row-dropdown-item.sv-item-always-allow:hover {
+  background: #449d44;
+  color: #fff;
+}
+.sv-row-dropdown-item.sv-item-always-deny {
+  color: #a94442;
+}
+.sv-row-dropdown-item.sv-item-always-deny:hover {
+  background: #c9302c;
+  color: #fff;
+}
+/* 4. Table Batch Footer Row */
+.sv-perm-footer-row {
+  background: #e4e8ec !important;
+  border: 1px dashed #aeb7c2 !important;
+}
+/* 5. Modal Footer Action Buttons */
+.sv-box {
+  width: min(520px, calc(100vw - 32px)) !important;
+  border-radius: 3px !important;
+}
+.sv-buttons {
+  flex-wrap: wrap;
+  gap: 6px !important;
+}
+.sv-btn-always-allow-all {
+  background: linear-gradient(to bottom, #4cae4c 0%, #398439 100%) !important;
+  border-color: #255625 !important;
+  color: #fff !important;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.3) !important;
+}
+.sv-btn-always-allow-all:hover {
+  background: linear-gradient(to bottom, #5cb85c 0%, #2f6f2f 100%) !important;
+}
+.sv-btn-allow-session {
+  background: linear-gradient(to bottom, #337ab7 0%, #286090 100%) !important;
+  border-color: #1d4567 !important;
+  color: #fff !important;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.3) !important;
+}
+.sv-btn-allow-session:hover {
+  background: linear-gradient(to bottom, #3b8cd2 0%, #204d74 100%) !important;
+}
+.sv-btn-block-session {
+  background: linear-gradient(to bottom, #777 0%, #5e5e5e 100%) !important;
+  border-color: #474747 !important;
+  color: #fff !important;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.3) !important;
+}
+.sv-btn-block-session:hover {
+  background: linear-gradient(to bottom, #858585 0%, #4d4d4d 100%) !important;
+}
+.sv-btn-always-deny-all {
+  background: linear-gradient(to bottom, #d9534f 0%, #c9302c 100%) !important;
+  border-color: #8b1e1b !important;
+  color: #fff !important;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.3) !important;
+}
+.sv-btn-always-deny-all:hover {
+  background: linear-gradient(to bottom, #e2635f 0%, #ac2925 100%) !important;
+}
+/* 6. Dark Theme overrides */
 @media (prefers-color-scheme: dark) {
   .sv-badge-wrapper {
-    background: #292f35;
+    background: #252a2f;
     color: #e5e9ec;
-    border-color: #59636e;
+    border-color: #4b5560;
     box-shadow:
-      0 2px 6px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      0 1px 3px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
-
   .sv-badge-wrapper:hover {
-    border-color: #707b86;
-    box-shadow:
-      0 3px 9px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    border-color: #636f7d;
   }
-
   .sv-label {
     color: #e5e9ec;
   }
-
   .sv-actions {
-    border-left-color: #4b555f;
+    border-left-color: #444d56;
   }
-
   .sv-tooltip-inner {
-    background: #292f35;
-    color: #d5dbe0;
-    border-color: #59636e;
+    background: #252a2f;
+    color: #d2d8de;
+    border-color: #4b5560;
     box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      0 3px 8px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .sv-perm-table-container {
+    border-color: #3b4249;
+    background: #1a1e22;
+  }
+  .sv-perm-row {
+    background: #252a2f;
+    border-color: #3b4249;
+  }
+  .sv-perm-domain {
+    color: #e5e9ec;
+  }
+  .sv-perm-footer-row {
+    background: #202428 !important;
+    border-color: #4b5560 !important;
+  }
+  .sv-row-btn-deny {
+    background: linear-gradient(to bottom, #32383e 0%, #252a2f 100%);
+    border-color: #4b5560;
+    color: #f28b82;
+  }
+  .sv-row-btn-deny:hover {
+    background: linear-gradient(to bottom, #3b4249 0%, #2d3238 100%);
+    color: #fff;
+  }
+  .sv-row-more-btn {
+    background: linear-gradient(to bottom, #32383e 0%, #252a2f 100%);
+    border-color: #4b5560;
+    color: #c5cbd1;
+  }
+  .sv-row-dropdown {
+    background: #252a2f;
+    border-color: #4b5560;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  }
+  .sv-row-dropdown-item {
+    color: #e5e9ec;
   }
 }

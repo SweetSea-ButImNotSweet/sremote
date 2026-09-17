@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
-import { applyElementAttributes } from '../core/dom-utils.js';
+import { applyElementAttributes, waitForIframeLoad } from '../core/dom-utils.js';
+import { toggle, seekTo, setCurrentTime } from '../core/polyfill.js';
 
 /**
  * Provider for TikTok Official Embed Player API (v1)
@@ -21,6 +22,35 @@ export class TikTokProvider extends BaseProvider {
     iframe.src = `https://www.tiktok.com/player/v1/${videoId}?music_info=${options.musicInfo !== false ? 1 : 0}&description=${options.description !== false ? 1 : 0}&autoplay=${options.autoplay ? 1 : 0}`;
 
     applyElementAttributes(iframe, width, height, instanceId);
+
+    // Wait for TikTok postMessage handshake or iframe load
+    await new Promise(resolve => {
+      let resolved = false;
+      let timer = null;
+
+      const onDone = () => {
+        if (resolved) return;
+        resolved = true;
+        if (timer) clearTimeout(timer);
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('message', onMsg);
+        }
+        resolve();
+      };
+
+      const onMsg = e => {
+        if (e.origin === 'https://www.tiktok.com' && e.data?.['x-tiktok-player']) {
+          onDone();
+        }
+      };
+
+      if (typeof window !== 'undefined') {
+        window.addEventListener('message', onMsg);
+      }
+
+      waitForIframeLoad(iframe, options.timeout || 3500).then(onDone);
+      timer = setTimeout(onDone, options.timeout || 4000);
+    });
 
     return { player: { iframe }, element: iframe, iframe, destroy: () => {} };
   }
@@ -47,9 +77,6 @@ export class TikTokProvider extends BaseProvider {
       pause() {
         sendToTikTok('pause');
       },
-      toggle() {
-        isPlaying ? sendToTikTok('pause') : sendToTikTok('play');
-      },
       stop() {
         sendToTikTok('pause');
         sendToTikTok('seekTo', 0);
@@ -59,9 +86,12 @@ export class TikTokProvider extends BaseProvider {
         currentTime = target;
         sendToTikTok('seekTo', target);
       },
-      seekTo(seconds) {
+      setCurrentTime(seconds) {
         currentTime = Number(seconds);
         sendToTikTok('seekTo', currentTime);
+      },
+      seekTo(seconds) {
+        this.setCurrentTime(seconds);
       },
       getVolume() {
         return isMuted ? 0 : 1;
@@ -69,17 +99,16 @@ export class TikTokProvider extends BaseProvider {
       setVolume(vol) {
         if (Number(vol) <= 0) {
           adapter.setMuted(true);
-        } else {
-          if (isMuted) adapter.setMuted(false);
+        } else if (isMuted) {
+          adapter.setMuted(false);
         }
       },
       getMuted() {
         return isMuted;
       },
       setMuted(m) {
-        const shouldMute = m !== undefined ? Boolean(m) : !isMuted;
-        isMuted = shouldMute;
-        sendToTikTok(shouldMute ? 'mute' : 'unMute');
+        isMuted = m !== undefined ? Boolean(m) : !isMuted;
+        sendToTikTok(isMuted ? 'mute' : 'unMute');
       },
       getCurrentTime() {
         return currentTime;
@@ -93,11 +122,16 @@ export class TikTokProvider extends BaseProvider {
       getState() {
         return { paused: !isPlaying, currentTime, duration, muted: isMuted };
       },
+      destroy() {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('message', messageHandler);
+        }
+      },
     };
 
     const messageHandler = e => {
       if (e.origin !== 'https://www.tiktok.com') return;
-      if (!e.data || !e.data['x-tiktok-player']) return;
+      if (!e.data?.['x-tiktok-player']) return;
 
       const { type, value } = e.data;
 
@@ -129,12 +163,14 @@ export class TikTokProvider extends BaseProvider {
       window.addEventListener('message', messageHandler);
     }
 
+    toggle(adapter);
+    setCurrentTime(adapter);
+    seekTo(adapter);
+
     return adapter;
   }
 }
 
 export const tiktokProvider = new TikTokProvider();
-export const createTikTokPlayer = options => tiktokProvider.create(options);
-export const mountTikTokPlayer = (container, options) => tiktokProvider.mount(container, options);
 
-export const tiktok = { create: createTikTokPlayer, mount: mountTikTokPlayer, provider: tiktokProvider };
+export const tiktok = { create: options => tiktokProvider.create(options), mount: (container, options) => tiktokProvider.mount(container, options), provider: tiktokProvider };

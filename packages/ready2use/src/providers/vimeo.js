@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
-import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
+import { applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, seek, seekTo, Volume } from '../core/polyfill.js';
 import { loadVimeoSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -18,45 +19,48 @@ export class VimeoProvider extends BaseProvider {
     const Vimeo = await this.loadSdk();
     const width = options.width || '100%';
     const height = options.height || '100%';
-    const videoId = options.videoId || options.id || options.url || '76979871';
+    const rawId = options.videoId || options.id || options.url || '76979871';
 
-    const { hiddenWrapper, tempNode, cleanup } = createTempNode(instanceId, width, height);
-
-    const playerOptions = {
-      id: typeof videoId === 'number' ? videoId : undefined,
-      url: typeof videoId === 'string' ? (videoId.startsWith('http') ? videoId : `https://player.vimeo.com/video/${videoId}`) : undefined,
-      width: typeof width === 'number' ? width : undefined,
-      height: typeof height === 'number' ? height : undefined,
-      autoplay: options.autoplay ?? false,
-      muted: options.muted ?? false,
-      ...options.playerOptions,
-    };
-
-    const player = new Vimeo.Player(tempNode, playerOptions);
-
-    await player.ready();
-
-    const iframe = tempNode.querySelector('iframe') || tempNode;
-    if (iframe && iframe.parentNode === hiddenWrapper) {
-      hiddenWrapper.removeChild(iframe);
+    let videoId = '76979871';
+    if (typeof rawId === 'number') {
+      videoId = String(rawId);
+    } else if (typeof rawId === 'string') {
+      const match = rawId.match(/video\/(\d+)/) || rawId.match(/vimeo\.com\/(\d+)/) || rawId.match(/^(\d+)$/);
+      if (match) {
+        videoId = match[1];
+      } else {
+        videoId = rawId.replace(/^https?:\/\/[^/]+\//, '').replace(/[/?#].*$/, '') || '76979871';
+      }
     }
-    cleanup();
 
-    if (iframe) {
-      applyElementAttributes(iframe, width, height, instanceId);
-    }
+    const autoplay = options.autoplay ? 1 : 0;
+    const muted = (options.muted ?? options.mute) ? 1 : 0;
+    const loop = (options.loop ?? options.repeat) ? 1 : 0;
+
+    // Create iframe directly to bypass oEmbed restrictions and speed up mounting
+    const iframe = document.createElement('iframe');
+    iframe.id = `sremote-vimeo-${instanceId}`;
+    iframe.src = `https://player.vimeo.com/video/${videoId}?autoplay=${autoplay}&muted=${muted}&loop=${loop}&api=1`;
+    iframe.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media';
+    iframe.allowFullscreen = true;
+    iframe.style.border = 'none';
+
+    applyElementAttributes(iframe, width, height, instanceId);
+
+    const player = new Vimeo.Player(iframe);
+
+    await Promise.race([player.ready().catch(() => {}), new Promise(resolve => setTimeout(resolve, options.timeout || 3000))]);
 
     return {
       player,
       element: iframe,
-      iframe: iframe?.tagName === 'IFRAME' ? iframe : null,
+      iframe,
       destroy: () => {
         try {
           if (player && typeof player.destroy === 'function') {
             player.destroy();
           }
         } catch {}
-        cleanup();
       },
     };
   }
@@ -81,29 +85,10 @@ export class VimeoProvider extends BaseProvider {
 
     const adapter = {
       play() {
-        if (player && typeof player.play === 'function') {
-          player.play().catch(() => {});
-        }
+        player?.play?.().catch(() => {});
       },
       pause() {
-        if (player && typeof player.pause === 'function') {
-          player.pause().catch(() => {});
-        }
-      },
-      toggle() {
-        if (!player) return;
-        if (typeof player.getPaused === 'function') {
-          player
-            .getPaused()
-            .then(paused => {
-              paused ? player.play().catch(() => {}) : player.pause().catch(() => {});
-            })
-            .catch(() => {
-              isPaused ? player.play().catch(() => {}) : player.pause().catch(() => {});
-            });
-        } else {
-          isPaused ? player.play().catch(() => {}) : player.pause().catch(() => {});
-        }
+        player?.pause?.().catch(() => {});
       },
       stop() {
         if (player && typeof player.pause === 'function' && typeof player.setCurrentTime === 'function') {
@@ -117,16 +102,15 @@ export class VimeoProvider extends BaseProvider {
         if (player && typeof player.getCurrentTime === 'function' && typeof player.setCurrentTime === 'function') {
           player
             .getCurrentTime()
-            .then(t => {
-              player.setCurrentTime(Math.max(0, t + Number(offset))).catch(() => {});
-            })
+            .then(t => player.setCurrentTime(Math.max(0, t + Number(offset))).catch(() => {}))
             .catch(() => {});
         }
       },
+      setCurrentTime(seconds) {
+        player?.setCurrentTime?.(Number(seconds)).catch(() => {});
+      },
       seekTo(seconds) {
-        if (player && typeof player.setCurrentTime === 'function') {
-          player.setCurrentTime(Number(seconds)).catch(() => {});
-        }
+        this.setCurrentTime(seconds);
       },
       getCurrentTime() {
         return currentTime;
@@ -139,41 +123,31 @@ export class VimeoProvider extends BaseProvider {
       },
       setVolume(vol) {
         volume = Number(vol);
-        if (player && typeof player.setVolume === 'function') {
-          player.setVolume(Math.min(1, Math.max(0, volume))).catch(() => {});
-        }
+        player?.setVolume?.(Math.min(1, Math.max(0, volume))).catch(() => {});
       },
       getMuted() {
         return isMuted;
       },
       setMuted(muted) {
         isMuted = Boolean(muted);
-        if (player && typeof player.setMuted === 'function') {
-          player.setMuted(isMuted).catch(() => {});
-        }
+        player?.setMuted?.(isMuted).catch(() => {});
       },
       getPlaybackRate() {
         return playbackRate;
       },
       setPlaybackRate(rate) {
         playbackRate = Number(rate);
-        if (player && typeof player.setPlaybackRate === 'function') {
-          player.setPlaybackRate(playbackRate).catch(() => {});
-        }
+        player?.setPlaybackRate?.(playbackRate).catch(() => {});
       },
       paused() {
         return isPaused;
       },
       setRepeat(mode) {
-        if (player && typeof player.setLoop === 'function') {
-          const loop = mode === 'one' || mode === 'all' || mode === true;
-          player.setLoop(loop).catch(() => {});
-        }
+        const loop = mode === 'one' || mode === 'all' || mode === true;
+        player?.setLoop?.(loop).catch(() => {});
       },
       setQuality(level) {
-        if (player && typeof player.setQuality === 'function') {
-          player.setQuality(String(level)).catch(() => {});
-        }
+        player?.setQuality?.(String(level)).catch(() => {});
       },
       async getQualities() {
         if (player && typeof player.getQualities === 'function') {
@@ -187,12 +161,11 @@ export class VimeoProvider extends BaseProvider {
         return [];
       },
       setSubtitle(track) {
-        if (player && typeof player.enableTextTrack === 'function') {
-          if (!track || track === 'off') {
-            player.disableTextTrack?.().catch(() => {});
-          } else {
-            player.enableTextTrack(String(track)).catch(() => {});
-          }
+        if (!player) return;
+        if (!track || track === 'off') {
+          player.disableTextTrack?.().catch(() => {});
+        } else {
+          player.enableTextTrack?.(String(track)).catch(() => {});
         }
       },
       async getSubtitles() {
@@ -207,9 +180,7 @@ export class VimeoProvider extends BaseProvider {
         return [];
       },
       load(videoId) {
-        if (player && typeof player.loadVideo === 'function') {
-          player.loadVideo(videoId).catch(() => {});
-        }
+        player?.loadVideo?.(videoId).catch(() => {});
       },
       getState() {
         return { paused: isPaused, currentTime, duration, volume, muted: isMuted, playbackRate };
@@ -233,6 +204,12 @@ export class VimeoProvider extends BaseProvider {
         adapter.emit?.('timeupdate', { state: { paused: isPaused, currentTime, duration } });
       });
 
+      player.on('seeking', data => {
+        currentTime = data.seconds || 0;
+        duration = data.duration || duration;
+        adapter.emit?.('seeking', { state: { paused: isPaused, currentTime, duration } });
+      });
+
       player.on('seeked', data => {
         currentTime = data.seconds || 0;
         adapter.emit?.('seeked', { state: { paused: isPaused, currentTime, duration } });
@@ -249,14 +226,30 @@ export class VimeoProvider extends BaseProvider {
         if (typeof data.muted === 'boolean') isMuted = data.muted;
         adapter.emit?.('volumechange', { state: { volume, muted: isMuted } });
       });
+
+      player.on('playbackratechange', data => {
+        if (typeof data?.playbackRate === 'number') playbackRate = data.playbackRate;
+        adapter.emit?.('ratechange', { state: { playbackRate } });
+      });
+
+      player.on('bufferstart', () => {
+        adapter.emit?.('buffering', { state: { paused: isPaused, currentTime, duration, isBuffering: true } });
+      });
+
+      player.on('bufferend', () => {
+        adapter.emit?.('buffered', { state: { paused: isPaused, currentTime, duration, isBuffering: false } });
+      });
     }
+
+    toggle(adapter);
+    seek(adapter);
+    seekTo(adapter);
+    new Volume(volume).apply(adapter);
 
     return adapter;
   }
 }
 
 export const vimeoProvider = new VimeoProvider();
-export const createVimeoPlayer = options => vimeoProvider.create(options);
-export const mountVimeoPlayer = (container, options) => vimeoProvider.mount(container, options);
 
-export const vimeo = { create: createVimeoPlayer, mount: mountVimeoPlayer, provider: vimeoProvider };
+export const vimeo = { create: options => vimeoProvider.create(options), mount: (container, options) => vimeoProvider.mount(container, options), provider: vimeoProvider };

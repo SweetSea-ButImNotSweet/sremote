@@ -1,4 +1,4 @@
-import { NS, console_log, console_warn } from '../config.js';
+import { NS, logger } from '../config.js';
 
 export const pendingCommandQueue = []; // [{ action, value, targetInstanceId, timestamp, resolve }]
 export const pendingRpcRequests = new Map(); // rpcId -> { resolve, reject, timer }
@@ -41,9 +41,9 @@ export function flushPendingCommands(forInstanceId, port, isMultiModeActive) {
     try {
       port.postMessage({ type: `${NS}${cmd.action}`, source: 'parent', value: cmd.value });
       cmd.resolve?.({ success: true, instanceId: forInstanceId, action: cmd.action });
-      console_log(`%c[SRemote:queue] Flushed deduplicated command -> ${cmd.action}`, 'color: #10b981; font-weight: bold;', { value: cmd.value, instanceId: forInstanceId });
+      logger.log(`%c[SRemote:queue] Flushed deduplicated command -> ${cmd.action}`, 'color: #10b981; font-weight: bold;', { value: cmd.value, instanceId: forInstanceId });
     } catch (e) {
-      console_warn('[sremote:queue] Error flushing command:', e);
+      logger.warn('[sremote:queue] Error flushing command:', e);
       cmd.resolve?.({ success: false, error: 'PORT_ERROR', message: String(e), instanceId: forInstanceId });
     }
   }

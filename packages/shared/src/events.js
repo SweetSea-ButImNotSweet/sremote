@@ -1,0 +1,568 @@
+import { defaultLogger } from './logger.js';
+import { getGlobalTransactionTracker } from './pipeline/transaction-tracker.js';
+
+// --- Constants & Configuration ---
+const TIMEUPDATE_THROTTLE_MS = 250;
+const PROGRESS_THROTTLE_MS = 500;
+const TIMEUPDATE_LOG_THROTTLE_MS = 2000;
+const PROGRAMMATIC_WINDOW_MS = 500;
+const ALMOST_END_THRESHOLD_SEC = 0.8;
+const ALMOST_END_MIN_DURATION_SEC = 3;
+const ALMOST_END_RESET_THRESHOLD_SEC = 1.5;
+const ENDED_DRIFT_TOLERANCE_SEC = 1.5;
+
+const sharedLastKnownDurationMap = new WeakMap();
+
+/**
+ * Extracts standardized media state snapshot from a HTMLMediaElement or adapter.
+ * @param {HTMLMediaElement|Object} media
+ * @returns {import('./index.d.ts').SRemoteMediaState|null}
+ */
+export function extractMediaState(media) {
+  if (!media) return null;
+
+  // If already an adapter with getState()
+  if (typeof media.getState === 'function') {
+    try {
+      return media.getState();
+    } catch {}
+  }
+
+  const curVol = media.volume ?? 1;
+  const curMuted = media.muted ?? false;
+  const curTime = media.currentTime ?? 0;
+  const rawDur = media.duration;
+  const curRate = media.playbackRate ?? 1;
+  const isPaused = typeof media.paused === 'function' ? media.paused() : Boolean(media.paused ?? true);
+  const isEnded = Boolean(media.ended);
+  const curReadyState = media.readyState ?? 0;
+  const curSrc = media.currentSrc ?? media.src ?? '';
+
+  let dur = Number.isFinite(rawDur) && rawDur > 0 ? rawDur : null;
+  if (typeof media === 'object') {
+    try {
+      if (dur) {
+        sharedLastKnownDurationMap.set(media, dur);
+      } else {
+        dur = sharedLastKnownDurationMap.get(media) ?? null;
+      }
+    } catch {}
+  }
+
+  let bufferedEnd = 0;
+  try {
+    const buf = media.buffered;
+    if (buf?.length > 0) bufferedEnd = buf.end(buf.length - 1);
+  } catch {}
+
+  const isLoop = Boolean(media.loop);
+  const isFullscreen =
+    typeof document !== 'undefined' && Boolean(document.fullscreenElement && (document.fullscreenElement === media || document.fullscreenElement.contains(media)));
+  const isPip = typeof document !== 'undefined' && document.pictureInPictureElement === media;
+
+  return {
+    paused: isPaused,
+    ended: Boolean(isEnded || (dur && dur > 0 && curTime >= dur - 0.1)),
+    currentTime: curTime,
+    duration: dur,
+    buffered: bufferedEnd,
+    volume: curVol,
+    muted: curMuted,
+    playbackRate: curRate,
+    readyState: curReadyState,
+    src: curSrc,
+    loop: isLoop,
+    repeat: isLoop ? 'one' : 'off',
+    fullscreen: isFullscreen,
+    pictureInPicture: isPip,
+  };
+}
+
+/**
+ * Creates a standardized SRemote event payload.
+ * @param {string} event
+ * @param {Object} [options={}]
+ * @returns {Object}
+ */
+export function createEventPayload(event, options = {}) {
+  const ev = String(event || '').toLowerCase();
+  const {
+    instanceId = 'unknown',
+    source = 'adapter',
+    mediaType = 'adapter',
+    state = null,
+    isProgrammatic = false,
+    ...extra
+  } = typeof options === 'object' && options !== null ? options : { value: options };
+
+  return { source, instanceId, mediaType, event: ev, isProgrammatic, ...(state ? { state } : {}), ...extra };
+}
+
+/**
+ * Evaluates capabilities for an adapter or HTML5 media element.
+ * @param {Object|HTMLElement} target
+ * @returns {import('./index.d.ts').SRemoteCapabilities}
+ */
+export function evaluateCapabilities(target) {
+  if (!target) {
+    return {
+      play: false,
+      pause: false,
+      toggle: false,
+      stop: false,
+      seek: false,
+      volume: false,
+      muted: false,
+      speed: false,
+      playbackRate: false,
+      pip: false,
+      quality: false,
+      subtitles: false,
+      shuffle: false,
+      repeat: false,
+      next: false,
+      previous: false,
+      load: false,
+      hasAdapter: false,
+      hasNative: false,
+      hasMediaSession: false,
+    };
+  }
+
+  // Target has explicit capabilities object
+  if (target.capabilities && typeof target.capabilities === 'object') {
+    return { ...target.capabilities };
+  }
+
+  const isVideo = target.tagName === 'VIDEO';
+  const isAudio = target.tagName === 'AUDIO';
+  const hasNative = isVideo || isAudio;
+  const hasFn = fnName => typeof target[fnName] === 'function';
+
+  return {
+    play: hasNative || hasFn('play'),
+    pause: hasNative || hasFn('pause'),
+    toggle: hasNative || hasFn('toggle') || (hasFn('play') && hasFn('pause')),
+    stop: hasNative || hasFn('stop') || hasFn('pause'),
+    seek: hasNative || hasFn('seek') || hasFn('seekTo') || hasFn('setCurrentTime'),
+    volume: hasNative || hasFn('setVolume'),
+    muted: hasNative || hasFn('setMuted'),
+    speed: hasNative || hasFn('setPlaybackRate'),
+    playbackRate: hasNative || hasFn('setPlaybackRate'),
+    pip: (isVideo && typeof document !== 'undefined' && Boolean(document.pictureInPictureEnabled || target.requestPictureInPicture)) || hasFn('requestPip') || hasFn('pip'),
+    quality: hasFn('setQuality'),
+    subtitles: Boolean(hasNative && target.textTracks?.length > 0) || hasFn('setSubtitle') || hasFn('getSubtitles'),
+    shuffle: hasFn('setShuffle'),
+    repeat: hasNative || hasFn('setRepeat'),
+    next: hasFn('next'),
+    previous: hasFn('previous'),
+    load: hasNative || hasFn('load'),
+    hasAdapter: !hasNative,
+    hasNative,
+    hasMediaSession: false,
+  };
+}
+
+/**
+ * Checks whether a media element has a valid media source attached.
+ * @param {HTMLMediaElement|Object} media
+ * @returns {boolean}
+ */
+export function hasMediaSource(media) {
+  return Boolean(media?.currentSrc ?? media?.src ?? media?.srcObject);
+}
+
+/**
+ * Validates whether an element is a real, connected, interactable HTML media element.
+ * Excludes detached DOM elements and tiny tracking/beacon videos (<32x32).
+ *
+ * @param {HTMLMediaElement|HTMLElement|Object} media
+ * @param {Object} [options]
+ * @param {number} [options.minSize=32] - Minimum width/height required for video elements
+ * @param {boolean} [options.requireConnected=true] - Require media to be connected to DOM
+ * @returns {boolean}
+ */
+export function isValidMediaElement(media, options = {}) {
+  if (!media) return false;
+
+  const { minSize = 32, requireConnected = true } = options;
+  if (requireConnected && !media.isConnected) return false;
+
+  const tag = media.tagName?.toUpperCase() ?? '';
+
+  if (tag === 'VIDEO' && typeof media.getBoundingClientRect === 'function') {
+    try {
+      const rect = media.getBoundingClientRect();
+      const isTooSmall = (rect.width > 0 && rect.width < minSize) || (rect.height > 0 && rect.height < minSize);
+      const isHidden = rect.width === 0 && rect.height === 0 && !media.hasAttribute?.('controls');
+
+      // Reject tracking pixels or hidden videos without source/playback
+      if (isTooSmall || (isHidden && media.paused && !hasMediaSource(media))) {
+        return false;
+      }
+    } catch {}
+  }
+
+  return true;
+}
+
+/**
+ * Standard list of HTML5 Media Events supported by SRemote
+ */
+export const MEDIA_EVENTS = [
+  'play',
+  'pause',
+  'playing',
+  'ended',
+  'timeupdate',
+  'durationchange',
+  'volumechange',
+  'ratechange',
+  'seeking',
+  'seeked',
+  'progress',
+  'canplay',
+  'canplaythrough',
+  'waiting',
+  'stalled',
+  'emptied',
+  'abort',
+  'error',
+  'loadeddata',
+  'loadedmetadata',
+  'loadstart',
+  'suspend',
+  'encrypted',
+  'enterpictureinpicture',
+  'exitpictureinpicture',
+];
+
+/**
+ * Standard list of Safe Passive Fallback Events for Custom Adapters.
+ * Excludes active lifecycle events (play, pause, ended) to prevent state conflicts when adapters manage their own playback.
+ */
+export const SAFE_FALLBACK_EVENTS = [
+  'timeupdate',
+  'volumechange',
+  'ratechange',
+  'seeking',
+  'seeked',
+  'progress',
+  'canplay',
+  'canplaythrough',
+  'waiting',
+  'stalled',
+  'durationchange',
+  'loadedmetadata',
+  'enterpictureinpicture',
+  'exitpictureinpicture',
+];
+
+/**
+ * State-changing events that should automatically emit a unified 'state' event.
+ */
+const STATE_CHANGING_EVENTS = new Set(['play', 'pause', 'playing', 'ended', 'volumechange', 'ratechange', 'seeked', 'loadedmetadata']);
+
+/**
+ * Resolves whether an event was initiated programmatically.
+ * Combines transaction tracker match with timestamp fallback.
+ *
+ * @param {Object} params
+ * @param {string} params.eventName
+ * @param {string} params.instanceId
+ * @param {*} [params.media]
+ * @param {*} [params.value]
+ * @param {Object} [params.tracker]
+ * @param {Function} [params.timestampGetter]
+ * @returns {boolean}
+ */
+function resolveIsProgrammatic({ eventName, instanceId, media, value, tracker, timestampGetter }) {
+  if (tracker?.matchAndConsume?.(eventName, { instanceId, media, value })?.isProgrammatic) {
+    return true;
+  }
+
+  const lastTs = timestampGetter?.();
+  return typeof lastTs === 'number' && Date.now() - lastTs < PROGRAMMATIC_WINDOW_MS;
+}
+
+/**
+ * Binds standardized event listeners to an HTMLMediaElement with smart end/almostend handling.
+ * @param {HTMLMediaElement} media
+ * @param {(event: string, payload: Object) => void} onEvent
+ * @param {Object} [options]
+ * @returns {() => void} Cleanup function to unbind all listeners
+ */
+export function bindMediaEvents(media, onEvent, options = {}) {
+  if (!media || typeof media.addEventListener !== 'function' || typeof onEvent !== 'function') {
+    return () => {};
+  }
+
+  const {
+    instanceId = 'dom-media',
+    source = 'dom',
+    treatAlmostEndAsEnd = false,
+    events = MEDIA_EVENTS,
+    excludedEvents = null,
+    programmaticActionTimestampGetter = null,
+    transactionTracker = getGlobalTransactionTracker(),
+  } = options;
+
+  const excludedSet = excludedEvents ? (excludedEvents instanceof Set ? excludedEvents : new Set(Array.from(excludedEvents).map(e => String(e).toLowerCase()))) : null;
+  const targetEvents = excludedSet?.size > 0 ? events.filter(evt => !excludedSet.has(evt.toLowerCase())) : events;
+
+  if (targetEvents.length === 0) {
+    return () => {};
+  }
+
+  let hasEmittedAlmostEnd = false;
+  let lastTimeupdate = 0;
+  let lastProgress = 0;
+  const boundListeners = [];
+
+  for (const evtName of targetEvents) {
+    const listener = eventObj => {
+      const isProgrammatic = resolveIsProgrammatic({ eventName: evtName, instanceId, media, tracker: transactionTracker, timestampGetter: programmaticActionTimestampGetter });
+
+      const now = Date.now();
+
+      if (evtName === 'timeupdate') {
+        if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) return;
+        lastTimeupdate = now;
+
+        const dur = Number.isFinite(media.duration) ? media.duration : null;
+        const curTime = media.currentTime || 0;
+        if (dur && dur > ALMOST_END_MIN_DURATION_SEC && curTime >= dur - ALMOST_END_THRESHOLD_SEC && curTime <= dur) {
+          if (!hasEmittedAlmostEnd) {
+            hasEmittedAlmostEnd = true;
+            const almostEndEvent = treatAlmostEndAsEnd ? 'ended' : 'almostend';
+            onEvent(
+              almostEndEvent,
+              createEventPayload(almostEndEvent, { source, instanceId, mediaType: media.tagName?.toLowerCase() ?? 'video', state: extractMediaState(media), isProgrammatic }),
+            );
+          }
+        } else if (dur && curTime < dur - ALMOST_END_RESET_THRESHOLD_SEC) {
+          hasEmittedAlmostEnd = false;
+        }
+      }
+
+      if (evtName === 'progress') {
+        if (now - lastProgress < PROGRESS_THROTTLE_MS) return;
+        lastProgress = now;
+      }
+
+      if (evtName === 'ended') {
+        hasEmittedAlmostEnd = false;
+        const dur = Number.isFinite(media.duration) ? media.duration : null;
+        const curTime = media.currentTime || 0;
+        if (dur && dur > 0 && Math.abs(dur - curTime) > ENDED_DRIFT_TOLERANCE_SEC) return;
+      }
+
+      onEvent(
+        evtName,
+        createEventPayload(evtName, {
+          source,
+          instanceId,
+          mediaType: media.tagName?.toLowerCase() ?? 'video',
+          state: extractMediaState(media),
+          isProgrammatic,
+          originalEvent: eventObj,
+        }),
+      );
+    };
+
+    media.addEventListener(evtName, listener, true);
+    boundListeners.push({ evtName, listener });
+  }
+
+  return () => {
+    for (const { evtName, listener } of boundListeners) {
+      try {
+        media.removeEventListener(evtName, listener, true);
+      } catch {}
+    }
+    boundListeners.length = 0;
+  };
+}
+
+/**
+ * Methods intercepted on raw adapter to mark programmatic timestamp.
+ */
+const ACTION_METHODS = [
+  'play',
+  'pause',
+  'toggle',
+  'stop',
+  'seek',
+  'seekTo',
+  'setCurrentTime',
+  'setVolume',
+  'volume',
+  'setMuted',
+  'mute',
+  'setPlaybackRate',
+  'speed',
+  'requestPip',
+  'setLoop',
+  'load',
+];
+
+/**
+ * Wraps a user-provided custom adapter without mutating the original object.
+ * Provides prototype inheritance, safe emit wiring, and fallback toggle implementation.
+ *
+ * @param {Object} rawAdapter - Raw adapter object provided by the user
+ * @param {Object} options - Configuration options
+ * @param {string} options.instanceId - Instance ID assigned to the adapter
+ * @param {Function} [options.onEmit] - Callback triggered when adapter calls emit(event, payload)
+ * @param {string} [options.source='adapter'] - Source identifier
+ * @returns {Object} Wrapped SRemote custom adapter
+ */
+export function wrapCustomAdapter(rawAdapter, options = {}) {
+  if (!rawAdapter || typeof rawAdapter !== 'object') return null;
+
+  const { instanceId, onEmit, source = 'adapter' } = options;
+  const adapter = Object.create(rawAdapter);
+  const originalEmit = typeof rawAdapter.emit === 'function' ? rawAdapter.emit.bind(rawAdapter) : null;
+
+  // Track events handled explicitly by adapter to avoid duplicating fallback events
+  const handledEvents = new Set(Array.isArray(rawAdapter.handledEvents) ? rawAdapter.handledEvents.map(e => String(e).toLowerCase()) : []);
+
+  let unbindFallback = null;
+  let programmaticActionTimestamp = 0;
+
+  // Intercept action methods to detect programmatic calls
+  for (const method of ACTION_METHODS) {
+    if (typeof rawAdapter[method] === 'function') {
+      adapter[method] = function (...args) {
+        programmaticActionTimestamp = Date.now();
+        return rawAdapter[method].apply(this, args);
+      };
+    }
+  }
+
+  let lastTimeupdateAdapterLog = 0;
+
+  adapter.emit = (event, payload = {}) => {
+    const ev = String(event || '').toLowerCase();
+    handledEvents.add(ev);
+
+    try {
+      originalEmit?.(event, payload);
+    } catch {}
+
+    const payloadObj = typeof payload === 'object' && payload !== null ? payload : { value: payload };
+    const isProgrammatic =
+      payloadObj.isProgrammatic ??
+      payloadObj.programmatic ??
+      resolveIsProgrammatic({ eventName: ev, instanceId, value: payloadObj.value, tracker: getGlobalTransactionTracker(), timestampGetter: () => programmaticActionTimestamp });
+
+    const state = extractMediaState(adapter);
+    const fullPayload = createEventPayload(ev, { source, instanceId, mediaType: 'adapter', isProgrammatic, ...(state ? { state } : {}), ...payloadObj });
+
+    const now = Date.now();
+    const shouldLogAdapterEvent = ev !== 'timeupdate' || now - lastTimeupdateAdapterLog >= TIMEUPDATE_LOG_THROTTLE_MS;
+    if (ev === 'timeupdate' && shouldLogAdapterEvent) {
+      lastTimeupdateAdapterLog = now;
+    }
+
+    if (shouldLogAdapterEvent) {
+      defaultLogger.scope('event').debug(`Adapter emit -> ${ev}`, fullPayload);
+    }
+
+    if (typeof onEmit === 'function') {
+      try {
+        onEmit(ev, fullPayload);
+      } catch {}
+
+      // Automatically trigger unified 'state' event for state-changing events
+      if (ev !== 'state' && STATE_CHANGING_EVENTS.has(ev)) {
+        try {
+          const statePayload = createEventPayload('state', {
+            source,
+            instanceId,
+            mediaType: 'adapter',
+            triggerEvent: ev,
+            isProgrammatic,
+            state,
+            ...(typeof payload === 'object' && payload !== null ? payload : {}),
+          });
+          onEmit('state', statePayload);
+        } catch {}
+      }
+    }
+  };
+
+  if (typeof adapter.toggle !== 'function' && typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
+    adapter.toggle = async function () {
+      const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : Boolean(adapter.paused ?? true);
+      return isPaused ? adapter.play() : adapter.pause();
+    };
+  }
+
+  adapter.capabilities ??= evaluateCapabilities(adapter);
+
+  // Setup Selective DOM Fallback if a native HTMLMediaElement is attached to the adapter
+  const targetMediaEl =
+    rawAdapter.mediaElement && (rawAdapter.mediaElement.tagName === 'VIDEO' || rawAdapter.mediaElement.tagName === 'AUDIO')
+      ? rawAdapter.mediaElement
+      : rawAdapter.element && (rawAdapter.element.tagName === 'VIDEO' || rawAdapter.element.tagName === 'AUDIO')
+        ? rawAdapter.element
+        : null;
+
+  if (targetMediaEl) {
+    try {
+      // Mark element as claimed by this adapter so auto-trackers don't duplicate it
+      targetMediaEl[Symbol.for('__sremote_adapter__')] = instanceId;
+    } catch {}
+
+    if (rawAdapter.fallbackEvents !== false) {
+      const allowedFallbackEvents = Array.isArray(rawAdapter.fallbackEvents)
+        ? rawAdapter.fallbackEvents.map(e => String(e).toLowerCase())
+        : rawAdapter.fallbackLifecycle === true
+          ? MEDIA_EVENTS
+          : SAFE_FALLBACK_EVENTS;
+
+      unbindFallback = bindMediaEvents(
+        targetMediaEl,
+        (evtName, payload) => {
+          // Only forward if the adapter has not explicitly emitted this event itself
+          if (!handledEvents.has(evtName.toLowerCase())) {
+            const state = extractMediaState(adapter) || payload.state;
+            const forwarded = { ...payload, source: 'adapter-dom-fallback', instanceId, state };
+            defaultLogger.scope('event').debug(`Adapter fallback emit -> ${evtName}`, forwarded);
+            try {
+              onEmit?.(evtName, forwarded);
+            } catch {}
+          }
+        },
+        {
+          instanceId,
+          source: 'adapter-dom-fallback',
+          events: allowedFallbackEvents,
+          excludedEvents: handledEvents,
+          programmaticActionTimestampGetter: () => programmaticActionTimestamp,
+        },
+      );
+    }
+  }
+
+  const origDestroy = typeof adapter.destroy === 'function' ? adapter.destroy.bind(adapter) : null;
+  adapter.destroy = function () {
+    if (unbindFallback) {
+      try {
+        unbindFallback();
+      } catch {}
+      unbindFallback = null;
+    }
+    // Clean up instance memory in global transaction tracker
+    try {
+      getGlobalTransactionTracker().removeInstance(instanceId);
+    } catch {}
+
+    try {
+      origDestroy?.();
+    } catch {}
+  };
+
+  return adapter;
+}

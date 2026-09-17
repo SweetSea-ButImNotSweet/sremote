@@ -8,17 +8,13 @@ export default defineConfig({
       name: 'SRemoteReady2Use',
       fileName: format => {
         if (format === 'es') return 'index.mjs';
-        if (format === 'cjs') return 'index.cjs';
         return 'index.global.js';
       },
-      formats: ['es', 'cjs', 'iife'],
+      formats: ['es', 'iife'],
     },
     outDir: 'dist',
     emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        exports: 'named',
-      },
-    },
+    sourcemap: true,
+    rollupOptions: { external: ['@sremote/sdk', '@sremote/wrapper'], output: { exports: 'named', globals: { '@sremote/sdk': 'SRemoteSDK', '@sremote/wrapper': 'SRemoteSDK' } } },
   },
 });

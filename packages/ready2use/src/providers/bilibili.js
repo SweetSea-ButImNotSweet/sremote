@@ -1,5 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
-import { applyElementAttributes } from '../core/dom-utils.js';
+import { applyElementAttributes, waitForIframeLoad } from '../core/dom-utils.js';
 
 /**
  * Provider for Bilibili Embed Player
@@ -7,23 +7,44 @@ import { applyElementAttributes } from '../core/dom-utils.js';
  */
 function buildBilibiliUrl(options = {}) {
   const params = new window.URLSearchParams();
+  const opts = typeof options === 'string' ? { videoId: options } : options || {};
 
-  const bvid = options.bvid || (typeof options.videoId === 'string' && options.videoId.startsWith('BV') ? options.videoId : null);
-  const aid =
-    options.aid || options.avid || (typeof options.videoId === 'number' || (typeof options.videoId === 'string' && !options.videoId.startsWith('BV')) ? options.videoId : null);
+  // Extract raw ID candidate
+  let rawId = opts.bvid || opts.aid || opts.avid || opts.videoId || opts.id;
+  if (rawId && typeof rawId === 'object') {
+    rawId = rawId.bvid || rawId.aid || rawId.avid || rawId.videoId || rawId.id || null;
+  }
+
+  const rawUrl = opts.url || opts.videoUrl || (typeof rawId === 'string' && rawId.includes('bilibili.com') ? rawId : null);
+
+  let bvid = null;
+  let aid = null;
+
+  if (rawUrl) {
+    const bvMatch = String(rawUrl).match(/BV[a-zA-Z0-9]+/i);
+    const avMatch = String(rawUrl).match(/av(\d+)/i);
+    if (bvMatch) {
+      bvid = bvMatch[0];
+    } else if (avMatch) {
+      aid = avMatch[1];
+    }
+  }
+
+  if (!bvid && !aid && rawId) {
+    const idStr = String(rawId).trim();
+    if (idStr !== '[object Object]') {
+      if (/^BV/i.test(idStr)) {
+        bvid = idStr;
+      } else {
+        aid = idStr.replace(/^av/i, '');
+      }
+    }
+  }
 
   if (bvid) {
     params.set('bvid', bvid);
   } else if (aid) {
-    const cleanAid = String(aid).replace(/^av/i, '');
-    params.set('aid', cleanAid);
-  } else if (options.id) {
-    const idStr = String(options.id);
-    if (idStr.startsWith('BV')) {
-      params.set('bvid', idStr);
-    } else {
-      params.set('aid', idStr.replace(/^av/i, ''));
-    }
+    params.set('aid', String(aid).replace(/^av/i, ''));
   } else {
     params.set('bvid', 'BV1xx411c7mD');
   }
@@ -63,33 +84,23 @@ export class BilibiliProvider extends BaseProvider {
 
     applyElementAttributes(iframe, width, height, instanceId);
 
+    await waitForIframeLoad(iframe, options.timeout || 4000);
+
     return { player: { iframe, options }, element: iframe, iframe, destroy: () => {} };
   }
 
-  createAdapter(playerInfo, context) {
-    const iframe = context?.iframe || playerInfo?.iframe;
-
-    return {
-      load(source, page = 1) {
-        if (iframe) {
-          if (typeof source === 'object' && source !== null) {
-            iframe.src = buildBilibiliUrl({ ...source, autoplay: true });
-          } else {
-            const srcStr = String(source);
-            if (srcStr.startsWith('BV')) {
-              iframe.src = buildBilibiliUrl({ bvid: srcStr, page, autoplay: true });
-            } else {
-              iframe.src = buildBilibiliUrl({ aid: srcStr, page, autoplay: true });
-            }
-          }
-        }
-      },
-    };
+  createAdapter(_playerInfo, _context) {
+    // Bilibili iframe is natively controlled via SRemote Userscript injected inside the iframe.
+    // Returning null ensures no fake DOM adapter is registered in DomDriver, allowing
+    // SRemote to operate 100% in Userscript signal mode.
+    return null;
   }
 }
 
 export const bilibiliProvider = new BilibiliProvider();
-export const createBilibiliPlayer = options => bilibiliProvider.create(options);
-export const mountBilibiliPlayer = (container, options) => bilibiliProvider.mount(container, options);
 
-export const bilibili = { create: createBilibiliPlayer, mount: mountBilibiliPlayer, provider: bilibiliProvider };
+export const bilibili = {
+  create: options => bilibiliProvider.create(options),
+  mount: (container, options) => bilibiliProvider.mount(container, options),
+  provider: bilibiliProvider,
+};

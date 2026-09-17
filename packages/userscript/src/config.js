@@ -1,46 +1,20 @@
+export * from './const.js';
+import { LOG_LEVEL } from './const.js';
+
 import { unsafeWindow } from '$';
+import { logger as sharedLogger, events } from '@sremote/shared';
 
-export const VERSION = '2.0.0';
-export const NS = 'sremote:';
+// Create unified logger for userscript with dynamic level checking
+export const logger = sharedLogger.create({ prefix: 'userscript', level: LOG_LEVEL, defaultLevel: sharedLogger.LEVELS.INFO });
 
-export const LOG_LEVEL = 3; // 0: None, 1: Error/Warn, 2: Debug, 3: Full Log
-export const ENABLE_DEBUG_API = true;
-
-export const console_log = LOG_LEVEL >= 3 ? console.log.bind(console) : () => {};
-export const console_debug = LOG_LEVEL >= 2 ? console.debug.bind(console) : () => {};
-export const console_warn = LOG_LEVEL >= 1 ? console.warn.bind(console) : () => {};
-export const console_error = LOG_LEVEL >= 1 ? console.error.bind(console) : () => {};
+export const console_log = (...args) => logger.log(...args);
+export const console_debug = (...args) => logger.debug(...args);
+export const console_warn = (...args) => logger.warn(...args);
+export const console_error = (...args) => logger.error(...args);
 
 export const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
-// HTML5 Standard Media Events
-export const MEDIA_EVENTS = [
-  'play',
-  'pause',
-  'playing',
-  'ended',
-  'timeupdate',
-  'durationchange',
-  'volumechange',
-  'ratechange',
-  'seeking',
-  'seeked',
-  'progress',
-  'canplay',
-  'canplaythrough',
-  'waiting',
-  'stalled',
-  'emptied',
-  'abort',
-  'error',
-  'loadeddata',
-  'loadedmetadata',
-  'loadstart',
-  'suspend',
-  'encrypted',
-  'enterpictureinpicture',
-  'exitpictureinpicture',
-];
+export const MEDIA_EVENTS = events.MEDIA_EVENTS;
 
 // Native HTMLMediaElement property descriptors
 const mediaProto = HTMLMediaElement.prototype;

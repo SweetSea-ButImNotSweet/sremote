@@ -45,7 +45,7 @@ let ytSdkPromise = null;
  */
 export function loadYouTubeIframeApi() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.YT && window.YT.Player) {
+  if (window.YT?.Player) {
     return Promise.resolve(window.YT);
   }
 
@@ -79,7 +79,7 @@ let vimeoSdkPromise = null;
  */
 export function loadVimeoSdk() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.Vimeo && window.Vimeo.Player) {
+  if (window.Vimeo?.Player) {
     return Promise.resolve(window.Vimeo);
   }
 
@@ -102,7 +102,7 @@ let scSdkPromise = null;
  */
 export function loadSoundCloudSdk() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.SC && window.SC.Widget) {
+  if (window.SC?.Widget) {
     return Promise.resolve(window.SC);
   }
 
@@ -125,13 +125,13 @@ let dailymotionSdkPromise = null;
  */
 export function loadDailymotionSdk() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.dailymotion && window.dailymotion.createPlayer) {
+  if (window.dailymotion?.createPlayer) {
     return Promise.resolve(window.dailymotion);
   }
 
   if (dailymotionSdkPromise) return dailymotionSdkPromise;
 
-  dailymotionSdkPromise = loadScript('https://player.dailymotion.com/api/player.js')
+  dailymotionSdkPromise = loadScript('https://geo.dailymotion.com/libs/player.js')
     .then(() => window.dailymotion)
     .catch(err => {
       dailymotionSdkPromise = null;
@@ -148,7 +148,7 @@ let twitchSdkPromise = null;
  */
 export function loadTwitchSdk() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.Twitch && window.Twitch.Player) {
+  if (window.Twitch?.Player) {
     return Promise.resolve(window.Twitch);
   }
 
@@ -171,7 +171,7 @@ let mixcloudSdkPromise = null;
  */
 export function loadMixcloudSdk() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
-  if (window.Mixcloud && window.Mixcloud.PlayerWidget) {
+  if (window.Mixcloud?.PlayerWidget) {
     return Promise.resolve(window.Mixcloud);
   }
 
@@ -225,9 +225,10 @@ export function loadSpotifySdk() {
 let facebookSdkPromise = null;
 /**
  * Loads the Facebook JavaScript SDK and resolves when window.FB is ready.
+ * @param {string|null} [appId=''] Optional Facebook App ID (can be empty string or null)
  * @returns {Promise<typeof window.FB>}
  */
-export function loadFacebookSdk(appId = null) {
+export function loadFacebookSdk(appId = '') {
   if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
   if (window.FB) {
     return Promise.resolve(window.FB);
@@ -239,8 +240,12 @@ export function loadFacebookSdk(appId = null) {
     const prevFbAsyncInit = window.fbAsyncInit;
 
     window.fbAsyncInit = () => {
-      if (window.FB && appId) {
-        window.FB.init({ appId, xfbml: true, version: 'v18.0' });
+      if (window.FB) {
+        const initOptions = { xfbml: true, version: 'v18.0' };
+        if (appId) {
+          initOptions.appId = appId;
+        }
+        window.FB.init(initOptions);
       }
       if (typeof prevFbAsyncInit === 'function') {
         try {
@@ -257,4 +262,134 @@ export function loadFacebookSdk(appId = null) {
   });
 
   return facebookSdkPromise;
+}
+
+let twitterSdkPromise = null;
+/**
+ * Loads the Twitter / X widgets.js SDK and resolves when window.twttr is ready.
+ * @returns {Promise<any>}
+ */
+export function loadTwitterSdk() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
+  if (window.twttr?.widgets) {
+    return Promise.resolve(window.twttr);
+  }
+
+  if (twitterSdkPromise) return twitterSdkPromise;
+
+  twitterSdkPromise = loadScript('https://platform.twitter.com/widgets.js')
+    .then(() => {
+      if (window.twttr && typeof window.twttr.ready === 'function') {
+        return new Promise(resolve => {
+          window.twttr.ready(() => resolve(window.twttr));
+        });
+      }
+      return window.twttr;
+    })
+    .catch(err => {
+      twitterSdkPromise = null;
+      throw err;
+    });
+
+  return twitterSdkPromise;
+}
+
+let peerTubeSdkPromise = null;
+/**
+ * Loads the PeerTube Embed API SDK and resolves when window.PeerTubePlayer is ready.
+ * @returns {Promise<any>}
+ */
+export function loadPeerTubeSdk() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
+  if (window.PeerTubePlayer) {
+    return Promise.resolve(window.PeerTubePlayer);
+  }
+
+  if (peerTubeSdkPromise) return peerTubeSdkPromise;
+
+  peerTubeSdkPromise = loadScript('https://unpkg.com/@peertube/embed-api/build/player.min.js')
+    .then(() => window.PeerTubePlayer)
+    .catch(err => {
+      peerTubeSdkPromise = null;
+      throw err;
+    });
+
+  return peerTubeSdkPromise;
+}
+
+let instagramSdkPromise = null;
+/**
+ * Loads the Instagram embed.js script and resolves when window.instgrm is available.
+ * @returns {Promise<any>}
+ */
+export function loadInstagramSdk() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
+  if (window.instgrm?.Embeds) {
+    return Promise.resolve(window.instgrm);
+  }
+
+  if (instagramSdkPromise) return instagramSdkPromise;
+
+  instagramSdkPromise = loadScript('https://www.instagram.com/embed.js')
+    .then(() => window.instgrm)
+    .catch(err => {
+      instagramSdkPromise = null;
+      throw err;
+    });
+
+  return instagramSdkPromise;
+}
+
+let threadsSdkPromise = null;
+/**
+ * Loads the Threads embed.js script.
+ * @returns {Promise<void>}
+ */
+export function loadThreadsSdk() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
+  if (threadsSdkPromise) return threadsSdkPromise;
+
+  threadsSdkPromise = loadScript('https://www.threads.net/embed.js')
+    .then(() => {})
+    .catch(err => {
+      threadsSdkPromise = null;
+      throw err;
+    });
+
+  return threadsSdkPromise;
+}
+
+let musicKitSdkPromise = null;
+/**
+ * Loads the Apple MusicKit JS v3 SDK and resolves when window.MusicKit is ready.
+ * @returns {Promise<any>}
+ */
+export function loadMusicKitSdk() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Window is not available'));
+  if (window.MusicKit) {
+    return Promise.resolve(window.MusicKit);
+  }
+
+  if (musicKitSdkPromise) return musicKitSdkPromise;
+
+  musicKitSdkPromise = new Promise((resolve, reject) => {
+    const onLoaded = () => {
+      document.removeEventListener('musickitloaded', onLoaded);
+      resolve(window.MusicKit);
+    };
+
+    if (window.MusicKit) {
+      return resolve(window.MusicKit);
+    }
+
+    document.addEventListener('musickitloaded', onLoaded);
+
+    loadScript('https://js-cdn.music.apple.com/musickit/v3/musickit.js').catch(err => {
+      document.removeEventListener('musickitloaded', onLoaded);
+      musicKitSdkPromise = null;
+      reject(err);
+    });
+  });
+
+  return musicKitSdkPromise;
 }

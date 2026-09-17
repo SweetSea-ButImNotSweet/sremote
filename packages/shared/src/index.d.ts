@@ -26,10 +26,10 @@ export interface SRemoteInstanceData {
   origin?: string;
   location?: string;
   note?: string;
-  state?: 'playing' | 'paused' | 'stopped' | 'buffering' | 'idle';
+  state?: 'playing' | 'paused' | 'stopped' | 'buffering' | 'idle' | string;
   mediaType?: 'video' | 'audio' | 'adapter' | 'mediasession' | string;
   currentTime?: number;
-  duration?: number;
+  duration?: number | null;
   volume?: number;
   muted?: boolean;
   playbackRate?: number;
@@ -39,5 +39,212 @@ export interface SRemoteInstanceData {
   capabilities?: SRemoteCapabilities;
 }
 
+export interface SRemoteMediaState {
+  paused: boolean;
+  ended?: boolean;
+  currentTime: number;
+  duration: number | null;
+  buffered?: number;
+  volume: number;
+  muted: boolean;
+  playbackRate: number;
+  readyState?: number;
+  src?: string;
+  loop?: boolean;
+  repeat?: 'off' | 'one' | 'all' | boolean;
+  fullscreen?: boolean;
+  pictureInPicture?: boolean;
+  quality?: string | number;
+  subtitle?: string | null;
+  shuffle?: boolean;
+  [key: string]: any;
+}
+
+export interface SRemoteEventPayload {
+  source: string;
+  instanceId: string;
+  mediaType: string;
+  event: string;
+  isProgrammatic?: boolean;
+  state?: SRemoteMediaState | null;
+  [key: string]: any;
+}
+
 export type SRemoteEventHandler = (data: any) => void;
 
+export declare const SREMOTE_EVENTS: {
+  readonly READY: 'sremote:ready';
+  readonly STATE_CHANGE: 'sremote:state-change';
+  readonly DISCONNECT: 'sremote:disconnect';
+  readonly PERMISSION_DECISION: 'sremote:permission_decision';
+};
+
+export type SRemoteEventName = (typeof SREMOTE_EVENTS)[keyof typeof SREMOTE_EVENTS];
+
+export declare const SREMOTE_ACTIONS: {
+  readonly PLAY: 'play';
+  readonly PAUSE: 'pause';
+  readonly TOGGLE: 'toggle';
+  readonly STOP: 'stop';
+  readonly SEEK: 'seek';
+  readonly SEEK_TO: 'seekTo';
+  readonly CURRENT_TIME: 'currentTime';
+  readonly VOLUME: 'volume';
+  readonly MUTE: 'muted';
+  readonly SPEED: 'speed';
+  readonly PIP: 'pip';
+  readonly ENTER_PIP: 'enterpip';
+  readonly EXIT_PIP: 'exitpip';
+  readonly QUALITY: 'quality';
+  readonly GET_QUALITIES: 'getQualities';
+  readonly SUBTITLE: 'subtitle';
+  readonly GET_SUBTITLES: 'getSubtitles';
+  readonly SHUFFLE: 'shuffle';
+  readonly REPEAT: 'repeat';
+  readonly NEXT: 'next';
+  readonly PREVIOUS: 'previous';
+  readonly NEXT_TRACK: 'nexttrack';
+  readonly PREVIOUS_TRACK: 'previoustrack';
+};
+
+export type SRemoteActionName = (typeof SREMOTE_ACTIONS)[keyof typeof SREMOTE_ACTIONS];
+
+export declare const SREMOTE_STORAGE_KEYS: {
+  readonly HELLO_SEQ: 'sremote:hello_seq';
+  readonly PARENT_ORIGIN: 'sremote:parent_origin';
+  readonly HANDSHAKE_SECRET: 'sremote:handshake_secret';
+};
+
+export declare const MEDIA_EVENTS: readonly string[];
+export declare const SAFE_FALLBACK_EVENTS: readonly string[];
+
+// --- Domain Modules ---
+
+export declare const dom: {
+  resolve(target: string | HTMLElement | null, doc?: Document | null): HTMLMediaElement | null;
+  query(root?: any, visitedRoots?: Set<any>, options?: any): HTMLMediaElement[];
+  findAll(options?: { getKnownShadowRoots?: () => Array<any>; doc?: Document }): HTMLMediaElement[];
+  watch(
+    onMediaAdded: (mediaEl: HTMLMediaElement) => void,
+    options?: { getKnownShadowRoots?: () => Array<any>; doc?: Document },
+  ): { disconnect: () => void; scanNow: () => HTMLMediaElement[] };
+  isValid(media: any, options?: { minSize?: number; requireConnected?: boolean }): boolean;
+  hasSource(media: any): boolean;
+};
+
+export declare const state: { get(media: any): SRemoteMediaState | null; createPayload(event: string, options?: any): SRemoteEventPayload };
+
+export declare const capabilities: { get(target: any): SRemoteCapabilities };
+
+export declare const actions: {
+  execute(target: any, action: string, value?: any, options?: Record<string, any>): Promise<any>;
+  safePlay(el: HTMLMediaElement): Promise<any>;
+  safePause(el: HTMLMediaElement): void;
+  wrapAdapter(rawAdapter: any, options?: { instanceId?: string; onEmit?: (event: string, payload: any) => void; source?: string }): any;
+};
+
+export declare const events: {
+  bind(
+    media: any,
+    onEvent: (event: string, payload: any) => void,
+    options?: {
+      instanceId?: string;
+      source?: string;
+      treatAlmostEndAsEnd?: boolean;
+      events?: readonly string[] | string[];
+      excludedEvents?: readonly string[] | string[] | Set<string> | null;
+    },
+  ): () => void;
+  readonly MEDIA_EVENTS: readonly string[];
+  readonly SAFE_FALLBACK_EVENTS: readonly string[];
+};
+
+export declare const pipeline: {
+  getTracker(): ActionTransactionTracker;
+  createTracker(options?: { defaultTtlMs?: number }): ActionTransactionTracker;
+  Tracker: typeof ActionTransactionTracker;
+};
+
+export declare const instance: { createManager(options?: InstanceManagerOptions): InstanceManager; generateId(prefix?: string): string };
+
+export declare const logger: {
+  create(options?: { prefix?: string; level?: number; getLevel?: () => number; defaultLevel?: number }): Logger;
+  readonly default: Logger;
+  readonly LEVELS: { readonly INHERIT: -1; readonly SILENT: 0; readonly ERROR: 1; readonly INFO: 2; readonly DEBUG: 3 };
+  resolveLevel(localLevel?: number, defaultLevel?: number): number;
+  getGlobalOverride(): number | null;
+  log(...args: any[]): void;
+  debug(...args: any[]): void;
+  warn(...args: any[]): void;
+  error(...args: any[]): void;
+};
+
+export declare const constants: { readonly ACTIONS: typeof SREMOTE_ACTIONS; readonly EVENTS: typeof SREMOTE_EVENTS; readonly STORAGE_KEYS: typeof SREMOTE_STORAGE_KEYS };
+
+export interface InstanceManagerOptions {
+  ns?: string;
+  logger?: { log?: (...args: any[]) => void; debug?: (...args: any[]) => void; warn?: (...args: any[]) => void; error?: (...args: any[]) => void };
+  onSignal?: (payload: any) => void;
+  getIframeCount?: () => number;
+}
+
+export interface InstanceManager {
+  instances: Map<string, any>;
+  assignedIframeIdMap: Map<string, any>;
+  iframeToAssignedIdMap: WeakMap<any, string>;
+  globalEventListeners: Map<string, Set<Function>>;
+  exclusiveMode: string | null;
+  setExclusiveMode: (mode: string | null) => void;
+  multiModeConfig: boolean | null;
+  setMultiModeConfig: (mode: boolean | null) => void;
+  currentActiveInstanceId: string | null;
+  setCurrentActiveInstanceId: (id: string | null) => void;
+  isSessionLocked: boolean;
+  setSessionLocked: (locked: boolean) => void;
+  isSessionDenied: boolean;
+  setSessionDenied: (denied: boolean) => void;
+  readonly sessionDeniedOrigins: Set<string>;
+  isOriginDenied: (origin?: string | null) => boolean;
+  denyOrigin: (origin: string) => void;
+  clearDeniedOrigins: () => void;
+  readonly lastAcceptedData: any;
+  isMultiModeActive: () => boolean;
+  getLatestActiveInstanceId: () => string | null;
+  broadcastToPorts: (payload: any, excludeInstanceId?: string | null) => void;
+  notifyMediaCountChange: () => void;
+  emitGlobalEvent: (event: string, payload?: any) => void;
+  on: (event: string, handler: (payload: any) => void) => () => void;
+  off: (event: string, handler?: (payload: any) => void) => void;
+  pauseOthersExcept: (activeInstanceId: string) => void;
+  removeInstance: (instanceId: string, reason?: string) => void;
+}
+
+export declare const LOG_LEVELS: { readonly INHERIT: -1; readonly SILENT: 0; readonly ERROR: 1; readonly INFO: 2; readonly DEBUG: 3 };
+
+export interface Logger {
+  readonly level: number;
+  setLevel: (level: number) => void;
+  log: (...args: any[]) => void;
+  debug: (...args: any[]) => void;
+  warn: (...args: any[]) => void;
+  error: (...args: any[]) => void;
+  scope: (prefix: string) => { log: (...args: any[]) => void; debug: (...args: any[]) => void; warn: (...args: any[]) => void; error: (...args: any[]) => void };
+}
+
+export declare class ActionTransactionTracker {
+  constructor(options?: { defaultTtlMs?: number });
+  startTransaction(action: string, targetValue?: any, instanceId?: string, ttlMs?: number): string;
+  matchAndConsume(eventName: string, payload?: Record<string, any>): { isProgrammatic: boolean; token: string | null; shouldSuppressEcho: boolean };
+  isEcho(action: string, value: any, instanceId?: string): boolean;
+  clear(): void;
+}
+
+export declare const API_SPEC: any;
+export declare function buildSRemoteApi(context: {
+  dispatchCommand?: (action: string, value?: any, targetInstanceId?: string | null, key?: string | null) => Promise<any>;
+  handlers?: Record<string, any>;
+  eventsManager?: { on?: any; off?: any; emit?: any };
+  lifecycleHandlers?: { hello?: any; lock?: any; bindMetadata?: any };
+  debugApi?: any;
+  customExtensions?: Record<string, any>;
+}): any;

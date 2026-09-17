@@ -1,34 +1,27 @@
 import { resolveElement } from './dom-utils.js';
+import { createRemoteProxy } from './remote-proxy.js';
 
 let providerCounter = 0;
 
-let cachedSRemote = null;
-
 /**
- * Resolves SRemote client instance from options, globals, or optional dynamic import.
+ * Resolves SRemote client instance from options or global environment without polling or dynamic imports.
  * @param {Object} [opts]
- * @returns {Promise<any>}
+ * @returns {any}
  */
-async function resolveSRemote(opts = {}) {
+function resolveSRemote(opts = {}) {
   if (opts.sremote && typeof opts.sremote === 'object' && opts.sremote.adapters) {
     return opts.sremote;
   }
-  if (typeof window !== 'undefined' && window.sremote && window.sremote.adapters) {
+  if (typeof globalThis !== 'undefined' && globalThis[Symbol.for('__sremote_client__')]) {
+    return globalThis[Symbol.for('__sremote_client__')];
+  }
+  if (typeof window !== 'undefined' && window.sremote && !window.sremote.isDummy && window.sremote.adapters) {
     return window.sremote;
   }
-  if (typeof globalThis !== 'undefined' && globalThis.sremote && globalThis.sremote.adapters) {
+  if (typeof globalThis !== 'undefined' && globalThis.sremote && !globalThis.sremote.isDummy && globalThis.sremote.adapters) {
     return globalThis.sremote;
   }
-  if (cachedSRemote) {
-    return cachedSRemote;
-  }
-  try {
-    const wrapper = await import('@sremote/wrapper');
-    cachedSRemote = wrapper?.sremote || wrapper?.default?.sremote || wrapper?.default || null;
-    return cachedSRemote;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 /**
@@ -43,7 +36,8 @@ export class BaseProvider {
   }
 
   /**
-   * Optional hook to load third-party player SDK script
+   * Optional hook to load third-party player SDK script.
+   * Subclasses can override this.
    * @returns {Promise<any>}
    */
   async loadSdk() {
@@ -51,8 +45,7 @@ export class BaseProvider {
   }
 
   /**
-   * Generates a unique SRemote instance ID
-   * @protected
+   * Generates a unique SRemote instance ID.
    * @param {string} [customId]
    * @returns {string}
    */
@@ -70,8 +63,7 @@ export class BaseProvider {
    * @param {string} instanceId Generated instance ID
    * @returns {Promise<{ player: any, element: HTMLElement, iframe?: HTMLIFrameElement, destroy?: () => void }>}
    */
-  /* eslint-disable no-unused-vars */
-  async initPlayer(options, instanceId) {
+  async initPlayer(_options, _instanceId) {
     throw new Error(`[${this.constructor.name}] initPlayer() must be implemented by subclass`);
   }
 
@@ -84,10 +76,9 @@ export class BaseProvider {
    * @param {Object} context Context object containing element, instanceId, options, etc.
    * @returns {Object} SRemoteCustomAdapter
    */
-  createAdapter(player, context) {
+  createAdapter(_player, _context) {
     throw new Error(`[${this.constructor.name}] createAdapter() must be implemented by subclass`);
   }
-  /* eslint-enable no-unused-vars */
 
   /**
    * Evaluates or retrieves the capabilities of the adapter created by this provider.
@@ -95,7 +86,7 @@ export class BaseProvider {
    * @returns {import('@sremote/shared').SRemoteCapabilities}
    */
   getCapabilities(adapter = null) {
-    if (adapter && adapter.capabilities && typeof adapter.capabilities === 'object') {
+    if (adapter?.capabilities && typeof adapter.capabilities === 'object') {
       return { ...adapter.capabilities };
     }
     const hasFn = fnName => Boolean(adapter && typeof adapter[fnName] === 'function');
@@ -124,24 +115,36 @@ export class BaseProvider {
   }
 
   /**
-   * Creates the player, element/iframe, and standard custom adapter without mounting to DOM.
-   *
-   * @param {Object|string} options
-   * @returns {Promise<{ element: HTMLElement, iframe?: HTMLIFrameElement, adapter: Object, player: any, instanceId: string, capabilities: import('@sremote/shared').SRemoteCapabilities, destroy: () => void }>}
+   * Internal helper to normalize options parameter.
+   * @protected
    */
-  async create(options = {}) {
-    const opts = typeof options === 'string' ? { videoId: options } : { ...options };
+  _normalizeOptions(options) {
+    return typeof options === 'string' ? { videoId: options } : { ...options };
+  }
+
+  /**
+   * Core initialization pipeline shared by create() and mount().
+   * @private
+   */
+  async _instantiate(options, container = null) {
+    const opts = this._normalizeOptions(options);
     const instanceId = this.generateInstanceId(opts.instanceId);
 
     // 1. Ensure provider SDK is ready
     await this.loadSdk();
 
     // 2. Initialize native player
-    const { player, element, iframe, destroy: customDestroy } = await this.initPlayer(opts, instanceId);
+    const initOptions = container ? { ...opts, container } : opts;
+    const { player, element, iframe, destroy: customDestroy } = await this.initPlayer(initOptions, instanceId);
 
     const targetElement = iframe || element;
 
-    // 3. Build SRemote Custom Adapter
+    // 3. Mount into target container if provided
+    if (container && targetElement && targetElement.parentNode !== container) {
+      container.appendChild(targetElement);
+    }
+
+    // 4. Create custom adapter
     const adapter = this.createAdapter(player, {
       options: opts,
       instanceId,
@@ -149,13 +152,56 @@ export class BaseProvider {
       iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null),
     });
 
-    const capabilities = this.getCapabilities(adapter);
     if (adapter && !adapter.capabilities) {
-      adapter.capabilities = capabilities;
+      adapter.capabilities = this.getCapabilities(adapter);
     }
 
-    // 4. Combined destroy handler
+    const capabilities = adapter?.capabilities || this.getCapabilities(null);
+
+    // 5. Annotate DOM element with SRemote metadata
+    if (targetElement) {
+      targetElement.setAttribute('data-sremote-id', instanceId);
+      targetElement.setAttribute('data-sremote-provider', this.name);
+      if (adapter) {
+        try {
+          targetElement[Symbol.for('__sremote_adapter__')] = adapter;
+        } catch {}
+      }
+    }
+
+    // 6. Automatically register into SRemote Client if available
+    let sremoteClient = null;
+    if (adapter && opts.register !== false && opts.autoRegister !== false) {
+      sremoteClient = resolveSRemote(opts);
+      if (sremoteClient?.adapters && typeof sremoteClient.adapters.register === 'function') {
+        sremoteClient.adapters.register(adapter, instanceId);
+      }
+    }
+
+    // 7. Create unified remote control
+    const remote = createRemoteProxy(adapter, sremoteClient, instanceId);
+
+    // 8. Lifecycle cleanup / destroy function
+    let isDestroyed = false;
     const destroy = () => {
+      if (isDestroyed) return;
+      isDestroyed = true;
+
+      // Unregister from SRemote client
+      try {
+        if (sremoteClient?.adapters && typeof sremoteClient.adapters.unregister === 'function') {
+          sremoteClient.adapters.unregister(instanceId);
+        }
+      } catch {}
+
+      // Call adapter destroy hook if available
+      try {
+        if (typeof adapter?.destroy === 'function') {
+          adapter.destroy();
+        }
+      } catch {}
+
+      // Call player destroy hook
       try {
         if (typeof customDestroy === 'function') {
           customDestroy();
@@ -164,50 +210,39 @@ export class BaseProvider {
         }
       } catch {}
 
+      // Remove element from DOM
       try {
-        if (targetElement && targetElement.parentNode) {
+        if (targetElement?.parentNode) {
           targetElement.parentNode.removeChild(targetElement);
         }
       } catch {}
     };
 
-    return { element: targetElement, iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null), adapter, player, instanceId, capabilities, destroy };
+    return { element: targetElement, iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null), adapter, remote, player, instanceId, capabilities, destroy };
   }
 
   /**
-   * Mounts the player directly into a DOM container and registers the adapter into SRemote.
+   * Creates the player, iframe/element, remote control, and custom adapter without attaching to DOM.
+   *
+   * @param {Object|string} [options={}]
+   * @returns {Promise<{ element: HTMLElement, iframe?: HTMLIFrameElement, adapter: Object, remote: Object, player: any, instanceId: string, capabilities: import('@sremote/shared').SRemoteCapabilities, destroy: () => void }>}
+   */
+  async create(options = {}) {
+    return this._instantiate(options, null);
+  }
+
+  /**
+   * Mounts the player directly into a DOM container and returns remote controls.
    *
    * @param {string|HTMLElement} container - Target DOM element or CSS selector
-   * @param {Object|string} options - Provider configuration options
-   * @returns {Promise<{ element: HTMLElement, iframe?: HTMLIFrameElement, adapter: Object, player: any, instanceId: string, capabilities: import('@sremote/shared').SRemoteCapabilities, destroy: () => void }>}
+   * @param {Object|string} [options={}] - Provider configuration options
+   * @returns {Promise<{ element: HTMLElement, iframe?: HTMLIFrameElement, adapter: Object, remote: Object, player: any, instanceId: string, capabilities: import('@sremote/shared').SRemoteCapabilities, destroy: () => void }>}
    */
   async mount(container, options = {}) {
     const targetContainer = resolveElement(container);
     if (!targetContainer) {
       throw new Error(`[SRemote:${this.name}] Target container '${container}' not found in DOM`);
     }
-
-    const result = await this.create(options);
-    targetContainer.appendChild(result.element);
-
-    const opts = typeof options === 'string' ? {} : options;
-    const remote = await resolveSRemote(opts);
-
-    if (remote?.adapters) {
-      remote.adapters.register(result.adapter, result.instanceId);
-    }
-
-    return {
-      ...result,
-      destroy: () => {
-        try {
-          if (remote?.adapters) {
-            remote.adapters.unregister(result.instanceId);
-          }
-        } catch {}
-        result.destroy();
-      },
-    };
+    return this._instantiate(options, targetContainer);
   }
 }
-

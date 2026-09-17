@@ -27,7 +27,7 @@ if (!fs.existsSync(outputDir)) {
 
 // 3. Define packages to pack
 const packagesToPack = [
-  { name: '@sremote/wrapper', dir: path.resolve(rootDir, 'packages/wrapper') },
+  { name: '@sremote/sdk', dir: path.resolve(rootDir, 'packages/sdk') },
   { name: '@sremote/ready2use', dir: path.resolve(rootDir, 'packages/ready2use') },
 ];
 
@@ -46,7 +46,7 @@ for (const pkg of packagesToPack) {
 // Also copy userscript outputs to tarballs/ if desired for releases
 const distDir = path.resolve(rootDir, 'dist');
 if (fs.existsSync(distDir)) {
-  const userScripts = fs.readdirSync(distDir).filter(f => f.endsWith('.user.js'));
+  const userScripts = fs.readdirSync(distDir).filter(f => f.endsWith('.user.js') || f.endsWith('.user.js.map'));
   for (const script of userScripts) {
     fs.copyFileSync(path.join(distDir, script), path.join(outputDir, script));
     console.log(`  ✓ Included: ${script}`);
@@ -55,3 +55,9 @@ if (fs.existsSync(distDir)) {
 
 console.log('\n🎉 Packaging complete! Files in tarballs/:');
 fs.readdirSync(outputDir).forEach(f => console.log(` - tarballs/${f}`));
+
+console.log('\n📥 Install commands (Absolute path):');
+for (const tarball of generatedTarballs) {
+  const absPath = path.resolve(outputDir, tarball);
+  console.log(` npm install "${absPath}"`);
+}

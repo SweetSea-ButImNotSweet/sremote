@@ -9,7 +9,13 @@ export const GM = {
   register: typeof GM_registerMenuCommand === 'function' ? GM_registerMenuCommand : null,
 };
 
-export const Storage = {
+const ROOT_STORE_KEY = 'sremote_store';
+
+function getDefaultRootStore() {
+  return { version: 1, permissions: {}, auth: {}, preferences: { logLevel: null, hiddenBadges: {} } };
+}
+
+const rawStorage = {
   get(key, defaultValue = null) {
     try {
       const val = GM.get(key, null);
@@ -34,96 +40,190 @@ export const Storage = {
       return [];
     }
   },
-  clearAllsremoteData() {
-    const allKeys = this.list();
+};
+
+function getRawStore() {
+  const raw = rawStorage.get(ROOT_STORE_KEY, null);
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    return {
+      version: raw.version || 1,
+      permissions: raw.permissions && typeof raw.permissions === 'object' ? raw.permissions : {},
+      auth: raw.auth && typeof raw.auth === 'object' ? raw.auth : {},
+      preferences: {
+        logLevel: raw.preferences?.logLevel || null,
+        hiddenBadges: raw.preferences?.hiddenBadges && typeof raw.preferences.hiddenBadges === 'object' ? raw.preferences.hiddenBadges : {},
+      },
+    };
+  }
+  return getDefaultRootStore();
+}
+
+function saveRawStore(storeData) {
+  rawStorage.set(ROOT_STORE_KEY, storeData);
+}
+
+function updateStore(mutator) {
+  const current = getRawStore();
+  mutator(current);
+  saveRawStore(current);
+  return current;
+}
+
+export const Storage = {
+  // 1. Primitive / Raw storage operations (used for IPC or direct access)
+  raw: rawStorage,
+
+  // 2. Permissions Management: permissions[parentOrigin][iframeOrigin] = 1 (allow) | 0 (deny)
+  permissions: {
+    get(parentOrigin, iframeOrigin) {
+      const store = getRawStore();
+      const parentKey = parentOrigin || '*';
+      if (iframeOrigin) {
+        if (store.permissions[parentKey]?.[iframeOrigin] !== undefined) {
+          return store.permissions[parentKey][iframeOrigin];
+        }
+        if (store.permissions['*']?.[iframeOrigin] !== undefined) {
+          return store.permissions['*'][iframeOrigin];
+        }
+      }
+      return null;
+    },
+
+    set(parentOrigin, iframeOrigin, decision) {
+      const parentKey = parentOrigin || '*';
+      if (!iframeOrigin) return;
+      updateStore(store => {
+        if (!store.permissions[parentKey]) {
+          store.permissions[parentKey] = {};
+        }
+        store.permissions[parentKey][iframeOrigin] = Number(decision);
+      });
+    },
+
+    remove(parentOrigin, iframeOrigin = null) {
+      updateStore(store => {
+        const parentKey = parentOrigin || '*';
+        if (!iframeOrigin) {
+          delete store.permissions[parentKey];
+          for (const p of Object.keys(store.permissions)) {
+            if (store.permissions[p]?.[parentOrigin] !== undefined) {
+              delete store.permissions[p][parentOrigin];
+            }
+          }
+        } else if (store.permissions[parentKey]) {
+          delete store.permissions[parentKey][iframeOrigin];
+          if (Object.keys(store.permissions[parentKey]).length === 0) {
+            delete store.permissions[parentKey];
+          }
+        }
+      });
+    },
+  },
+
+  // 3. Auth & Domain Lock Management: auth[hostDomain] = { passkey: string|null, locked: boolean }
+  auth: {
+    get(hostDomain) {
+      if (!hostDomain) return { passkey: null, locked: false };
+      const store = getRawStore();
+      const domainAuth = store.auth[hostDomain] || {};
+      return { passkey: domainAuth.passkey || null, locked: Boolean(domainAuth.locked) };
+    },
+
+    setPasskey(hostDomain, passkey) {
+      if (!hostDomain) return;
+      updateStore(store => {
+        if (!store.auth[hostDomain]) {
+          store.auth[hostDomain] = { passkey: null, locked: false };
+        }
+        store.auth[hostDomain].passkey = passkey;
+      });
+    },
+
+    removePasskey(hostDomain) {
+      if (!hostDomain) return;
+      updateStore(store => {
+        if (store.auth[hostDomain]) {
+          store.auth[hostDomain].passkey = null;
+          if (!store.auth[hostDomain].locked) {
+            delete store.auth[hostDomain];
+          }
+        }
+      });
+    },
+
+    setLocked(hostDomain, locked) {
+      if (!hostDomain) return;
+      updateStore(store => {
+        if (!store.auth[hostDomain]) {
+          store.auth[hostDomain] = { passkey: null, locked: false };
+        }
+        store.auth[hostDomain].locked = Boolean(locked);
+      });
+    },
+
+    isLocked(hostDomain) {
+      return this.get(hostDomain).locked;
+    },
+  },
+
+  // 4. Preferences Management (log level, hidden badges)
+  preferences: {
+    getLogLevel() {
+      return getRawStore().preferences.logLevel;
+    },
+
+    setLogLevel(level) {
+      updateStore(store => {
+        store.preferences.logLevel = level;
+      });
+    },
+
+    isBadgeHidden(origin) {
+      if (!origin) return false;
+      return Boolean(getRawStore().preferences.hiddenBadges[origin]);
+    },
+
+    setBadgeHidden(origin, hidden = true) {
+      if (!origin) return;
+      updateStore(store => {
+        if (hidden) {
+          store.preferences.hiddenBadges[origin] = true;
+        } else {
+          delete store.preferences.hiddenBadges[origin];
+        }
+      });
+    },
+
+    unhideAllBadges() {
+      updateStore(store => {
+        store.preferences.hiddenBadges = {};
+      });
+    },
+  },
+
+  // 5. Cleanup & Maintenance
+  clearPersistentStore() {
+    rawStorage.remove(ROOT_STORE_KEY);
+  },
+
+  clearIPCData() {
+    const keys = rawStorage.list();
+    for (const k of keys) {
+      if (
+        typeof k === 'string' &&
+        (k.startsWith('sremote:ipc:') || k.startsWith('sremote:query_req') || k.startsWith('sremote:report:') || k.startsWith('sremote:latest_handshake:'))
+      ) {
+        rawStorage.remove(k);
+      }
+    }
+  },
+
+  clearAll() {
+    const allKeys = rawStorage.list();
     for (const k of allKeys) {
       if (typeof k === 'string' && (k.startsWith('sremote:') || k.startsWith('sremote_'))) {
-        this.remove(k);
+        rawStorage.remove(k);
       }
     }
   },
 };
-
-// In-Memory Handshake Secrets Store
-const activeHandshakeSecrets = new Map();
-
-export function setHandshakeSecret(handshakeId, token) {
-  if (!handshakeId || !token) return;
-  const record = { token, created: Date.now() };
-  activeHandshakeSecrets.set(handshakeId, record);
-  Storage.set(`sremote:hs_${handshakeId}`, record);
-}
-
-export function checkHandshakeSecret(handshakeId, token, maxAgeMs = 30000) {
-  if (!handshakeId || !token) return false;
-  const now = Date.now();
-
-  // 1. Check in-memory secrets
-  const mem = activeHandshakeSecrets.get(handshakeId);
-  if (mem && mem.token === token && now - (mem.created || 0) <= maxAgeMs) {
-    return true;
-  }
-
-  // 2. Check GM Storage fallback
-  const raw = Storage.get(`sremote:hs_${handshakeId}`);
-  if (raw) {
-    try {
-      const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      if (data && data.token === token && now - (data.created || 0) <= maxAgeMs) {
-        return true;
-      }
-    } catch {}
-  }
-
-  return false;
-}
-
-export function consumeHandshakeSecret(handshakeId) {
-  if (!handshakeId) return;
-  activeHandshakeSecrets.delete(handshakeId);
-  Storage.remove(`sremote:hs_${handshakeId}`);
-}
-
-export function verifyHandshakeSecret(handshakeId, token, maxAgeMs = 30000) {
-  const isValid = checkHandshakeSecret(handshakeId, token, maxAgeMs);
-  if (isValid) {
-    consumeHandshakeSecret(handshakeId);
-  }
-  return isValid;
-}
-
-// Auto-Purge expired handshake secrets from memory and GM Storage
-export function purgeExpiredHandshakeSecrets(maxAgeMs = 60000) {
-  const now = Date.now();
-  for (const [id, item] of activeHandshakeSecrets.entries()) {
-    if (now - (item.created || 0) > maxAgeMs) {
-      activeHandshakeSecrets.delete(id);
-    }
-  }
-  try {
-    const keys = Storage.list();
-    for (const k of keys) {
-      if (typeof k === 'string' && k.startsWith('sremote:hs_')) {
-        const raw = Storage.get(k);
-        if (!raw) {
-          Storage.remove(k);
-          continue;
-        }
-        try {
-          const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          if (!data || !data.created || now - data.created > maxAgeMs) {
-            Storage.remove(k);
-          }
-        } catch {
-          Storage.remove(k);
-        }
-      }
-    }
-  } catch {}
-}
-
-// Run initial purge at startup and schedule periodic sweeps
-try {
-  purgeExpiredHandshakeSecrets();
-  setInterval(purgeExpiredHandshakeSecrets, 60000);
-} catch {}

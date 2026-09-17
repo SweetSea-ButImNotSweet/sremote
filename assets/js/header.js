@@ -22,10 +22,14 @@
       docs: 'Hướng dẫn sử dụng',
       cookbook: 'Hướng dẫn triển khai',
       demo: 'Live Demo',
+      changelog: 'Changelog',
       install: 'Cài đặt Userscript',
       optUnmin: 'Bản tiêu chuẩn (Mặc định)',
       optMin: 'Bản nén (Minified)',
       optDev: 'Môi trường phát triển (Local Dev)',
+      userscriptGuide: 'Tại sao cần Userscript? (Hướng dẫn)',
+      wrapperPkg: 'NPM: @sremote/wrapper',
+      ready2usePkg: 'NPM: @sremote/ready2use',
       langLabel: 'Ngôn ngữ',
       github: 'GitHub',
       devModalTitle: 'Cấu hình Userscript Local Dev',
@@ -40,10 +44,14 @@
       docs: 'Documentation',
       cookbook: 'Integration Recipes',
       demo: 'Live Demo',
+      changelog: 'Changelog',
       install: 'Install Userscript',
       optUnmin: 'Standard Build (Default)',
       optMin: 'Minified Build',
       optDev: 'Local Dev Environment',
+      userscriptGuide: 'Why Userscript? (User Guide)',
+      wrapperPkg: 'NPM: @sremote/wrapper',
+      ready2usePkg: 'NPM: @sremote/ready2use',
       langLabel: 'Language',
       github: 'GitHub',
       devModalTitle: 'Local Dev Userscript Setup',
@@ -116,6 +124,7 @@
       if (path.endsWith('/demo/') || path.endsWith('/demo/index.html')) return 'demo';
       if (path.endsWith('/docs/recipes.html') || path.includes('recipes.html')) return 'cookbook';
       if (path.includes('/docs/')) return 'docs';
+      if (path.includes('changelog.html')) return 'changelog';
       return 'home';
     }
 
@@ -128,13 +137,14 @@
       const docsHref = `${base}docs/index.html`;
       const cookbookHref = `${base}docs/recipes.html`;
       const demoHref = `${base}demo/index.html`;
+      const changelogHref = `${base}changelog.html`;
 
       this.innerHTML = `
         <header class="app-header">
           <div class="header-left">
             <a href="${homeHref}" class="header-brand" title="SRemote Home">
               <span class="header-title">${dict.brandTitle}</span>
-              <span class="header-version-badge">v2.0.0</span>
+              <span class="header-version-badge">v3.0.0</span>
             </a>
 
             <nav class="header-nav" aria-label="Main navigation">
@@ -167,6 +177,17 @@
                 </svg>
                 <span class="nav-text">${dict.demo}</span>
               </a>
+
+              <a href="${changelogHref}" class="header-nav-link ${active === 'changelog' ? 'active' : ''}" data-nav="changelog">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <span class="nav-text">${dict.changelog}</span>
+              </a>
             </nav>
           </div>
 
@@ -196,10 +217,23 @@
                   <small>dist/sremote.min.user.js</small>
                 </a>
                 <div class="header-dropdown-divider"></div>
+                <a href="${this._lang === 'vi' ? `${base}packages/userscript/README/vi.md` : `${base}packages/userscript/README.md`}" class="header-dropdown-item" target="_blank" rel="noopener noreferrer">
+                  <strong>📖 ${dict.userscriptGuide}</strong>
+                  <small>packages/userscript</small>
+                </a>
                 <button type="button" class="header-dropdown-item header-dropdown-btn" id="header-btn-dev-snippet">
-                  <strong>${dict.optDev}</strong>
+                  <strong>🛠️ ${dict.optDev}</strong>
                   <small>Local @require file:/// template</small>
                 </button>
+                <div class="header-dropdown-divider"></div>
+                <a href="https://www.npmjs.com/package/@sremote/wrapper" class="header-dropdown-item" target="_blank" rel="noopener noreferrer">
+                  <strong>📦 ${dict.wrapperPkg}</strong>
+                  <small>Client SDK & Auto-discovery</small>
+                </a>
+                <a href="https://www.npmjs.com/package/@sremote/ready2use" class="header-dropdown-item" target="_blank" rel="noopener noreferrer">
+                  <strong>📦 ${dict.ready2usePkg}</strong>
+                  <small>22+ Pre-configured Player Presets</small>
+                </a>
               </div>
             </div>
 

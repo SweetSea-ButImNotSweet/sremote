@@ -1,108 +1,398 @@
 import { Storage } from '../core/storage.js';
-import { isPersistableOrigin, getOriginStorageKeys } from '../core/utils.js';
+import { checkOriginPairPermission, normalizeOrigin } from '../core/utils.js';
 import { t } from '../core/i18n.js';
 import { createModal } from './modal.js';
+import { logger } from '../config.js';
 
-let activePermissionHost = null;
+// Table Queue management: gom toàn bộ các iframe origin đang chờ
+// pendingItems: Map<iframeOrigin, { parentOrigin, iframeOrigin, isTop, callbacks: Function[], rowElement?: HTMLElement }>
+const pendingItems = new Map();
+let activeDialog = null; // { modal, tableContainer }
+let isSessionBlocked = false;
+let isSessionAllowed = false;
+const allowedOriginsInSession = new Set();
+const deniedOriginsInSession = new Set();
 
-export function createPermissionDialog({ origin, onDecision, isTop = false }) {
-  if (activePermissionHost) return;
+function applyDecision(item, allowed, remember) {
+  const { parentOrigin, iframeOrigin, callbacks } = item;
+  const permLog = logger.scope('permission');
+  const normParent = normalizeOrigin(parentOrigin);
+  const normIframe = normalizeOrigin(iframeOrigin);
 
-  const { allowKey, denyKey } = getOriginStorageKeys(origin);
-  if (Storage.get(denyKey) === '1') {
-    onDecision?.(false);
-    return;
+  permLog.log(`applyDecision: allowed=${allowed}, remember=${remember}`, { parentOrigin, iframeOrigin });
+
+  // Track in in-memory session
+  if (allowed) {
+    allowedOriginsInSession.add(iframeOrigin);
+    deniedOriginsInSession.delete(iframeOrigin);
+  } else {
+    deniedOriginsInSession.add(iframeOrigin);
+    allowedOriginsInSession.delete(iframeOrigin);
   }
-  if (Storage.get(allowKey) === '1') {
-    onDecision?.(true);
-    return;
+
+  if (remember && normIframe) {
+    const decision = allowed ? 1 : 0;
+    // Set for this specific parent-iframe pair
+    Storage.permissions.set(normParent, normIframe, decision);
+    permLog.log(`Persisted permission in Storage.permissions: parent='${normParent}', iframe='${normIframe}', decision=${decision}`);
   }
 
-  const persistable = isPersistableOrigin(origin);
-  const container = document.createElement('div');
+  callbacks.forEach(cb => {
+    try {
+      cb(allowed);
+    } catch {}
+  });
+}
 
-  const rememberLabel = document.createElement('label');
-  rememberLabel.className = 'sv-remember';
-  if (!persistable) rememberLabel.style.display = 'none';
+function removePendingRow(iframeOrigin) {
+  const item = pendingItems.get(iframeOrigin);
+  if (item?.rowElement) {
+    item.rowElement.remove();
+  }
+  pendingItems.delete(iframeOrigin);
 
-  const chk = document.createElement('input');
-  chk.type = 'checkbox';
-  const rememberSpan = document.createElement('span');
-  rememberSpan.textContent = t('rememberChoice');
-  rememberLabel.append(chk, rememberSpan);
+  // Cập nhật lại trạng thái hiển thị của batch row nếu danh sách thay đổi
+  updateTableBatchRow();
 
-  // Handle direct label/span click: preventDefault prevents browser double-toggle conflict
-  rememberLabel.addEventListener('click', e => {
-    e.stopPropagation();
-    if (e.target !== chk) {
-      e.preventDefault();
-      chk.checked = !chk.checked;
-      chk.dispatchEvent(new Event('change', { bubbles: true }));
+  // Nếu không còn mục nào đang chờ thì tự đóng hộp thoại
+  if (pendingItems.size === 0 && activeDialog) {
+    activeDialog.modal.close();
+    activeDialog = null;
+  }
+}
+
+let tableBatchRowEl = null;
+
+function renderTableBatchRow() {
+  const row = document.createElement('div');
+  row.className = 'sv-perm-row sv-perm-footer-row';
+
+  const emptyDomainEl = document.createElement('div');
+  emptyDomainEl.className = 'sv-perm-domain';
+  emptyDomainEl.textContent = ''; // Không ghi domain theo yêu cầu
+
+  const actionsEl = document.createElement('div');
+  actionsEl.className = 'sv-row-actions';
+
+  const denyAllBtn = document.createElement('button');
+  denyAllBtn.type = 'button';
+  denyAllBtn.className = 'sv-row-btn sv-row-btn-deny';
+  denyAllBtn.textContent = t('denyAllBtn');
+  denyAllBtn.addEventListener('click', () => {
+    const items = Array.from(pendingItems.values());
+    pendingItems.clear();
+    if (activeDialog) {
+      activeDialog.modal.close();
+      activeDialog = null;
     }
+    items.forEach(it => applyDecision(it, false, false));
   });
-  chk.addEventListener('click', e => {
+
+  const allowAllBtn = document.createElement('button');
+  allowAllBtn.type = 'button';
+  allowAllBtn.className = 'sv-row-btn sv-row-btn-allow';
+  allowAllBtn.textContent = t('allowAllBtn');
+  allowAllBtn.addEventListener('click', () => {
+    const items = Array.from(pendingItems.values());
+    pendingItems.clear();
+    if (activeDialog) {
+      activeDialog.modal.close();
+      activeDialog = null;
+    }
+    // FIXME: Mặc định ghi nhớ (remember = true) để tránh việc người dùng bấm Cho phép tất cả mà vẫn bị hỏi lại khi F5. Sẽ xem xét thiết kế lại UX nút này sau.
+    items.forEach(it => applyDecision(it, true, true));
+  });
+
+  actionsEl.append(denyAllBtn, allowAllBtn);
+  row.append(emptyDomainEl, actionsEl);
+  return row;
+}
+
+function updateTableBatchRow() {
+  if (!activeDialog?.tableContainer) return;
+  if (pendingItems.size > 1) {
+    if (!tableBatchRowEl) {
+      tableBatchRowEl = renderTableBatchRow();
+      activeDialog.tableContainer.append(tableBatchRowEl);
+    } else {
+      activeDialog.tableContainer.append(tableBatchRowEl);
+    }
+  } else if (tableBatchRowEl) {
+    tableBatchRowEl.remove();
+    tableBatchRowEl = null;
+  }
+}
+
+function renderRow(item) {
+  const row = document.createElement('div');
+  row.className = 'sv-perm-row';
+
+  const domainEl = document.createElement('div');
+  domainEl.className = 'sv-perm-domain';
+  domainEl.textContent = item.iframeOrigin;
+  domainEl.title = item.iframeOrigin;
+
+  const actionsEl = document.createElement('div');
+  actionsEl.className = 'sv-row-actions';
+
+  const denyBtn = document.createElement('button');
+  denyBtn.type = 'button';
+  denyBtn.className = 'sv-row-btn sv-row-btn-deny';
+  denyBtn.textContent = t('denyBtn');
+  denyBtn.addEventListener('click', () => {
+    applyDecision(item, false, false);
+    removePendingRow(item.iframeOrigin);
+  });
+
+  const allowBtn = document.createElement('button');
+  allowBtn.type = 'button';
+  allowBtn.className = 'sv-row-btn sv-row-btn-allow';
+  allowBtn.textContent = t('allowBtn');
+  allowBtn.addEventListener('click', () => {
+    applyDecision(item, true, false);
+    removePendingRow(item.iframeOrigin);
+  });
+
+  // Dropdown menu [...]
+  const moreBtn = document.createElement('button');
+  moreBtn.type = 'button';
+  moreBtn.className = 'sv-row-btn sv-row-more-btn';
+  moreBtn.textContent = '•••';
+  moreBtn.title = 'Tùy chọn mở rộng';
+
+  let dropdown = null;
+
+  const closeDropdown = () => {
+    if (dropdown) {
+      dropdown.remove();
+      dropdown = null;
+      document.removeEventListener('click', closeDropdown);
+    }
+  };
+
+  moreBtn.addEventListener('click', e => {
     e.stopPropagation();
+    if (dropdown) {
+      closeDropdown();
+      return;
+    }
+
+    dropdown = document.createElement('div');
+    dropdown.className = 'sv-row-dropdown';
+
+    const alwaysAllowItem = document.createElement('button');
+    alwaysAllowItem.type = 'button';
+    alwaysAllowItem.className = 'sv-row-dropdown-item sv-item-always-allow';
+    alwaysAllowItem.textContent = `✓ ${t('alwaysAllow')}`;
+    alwaysAllowItem.addEventListener('click', () => {
+      closeDropdown();
+      applyDecision(item, true, true);
+      removePendingRow(item.iframeOrigin);
+    });
+
+    const alwaysDenyItem = document.createElement('button');
+    alwaysDenyItem.type = 'button';
+    alwaysDenyItem.className = 'sv-row-dropdown-item sv-item-always-deny';
+    alwaysDenyItem.textContent = `✕ ${t('alwaysDeny')}`;
+    alwaysDenyItem.addEventListener('click', () => {
+      closeDropdown();
+      applyDecision(item, false, true);
+      removePendingRow(item.iframeOrigin);
+    });
+
+    dropdown.append(alwaysAllowItem, alwaysDenyItem);
+    actionsEl.append(dropdown);
+
+    setTimeout(() => {
+      document.addEventListener('click', closeDropdown);
+    }, 0);
   });
 
-  container.append(rememberLabel);
+  actionsEl.append(denyBtn, allowBtn, moreBtn);
+  row.append(domainEl, actionsEl);
 
-  function handleDecision(result) {
-    const remember = persistable && chk.checked;
-    activePermissionHost = null;
+  item.rowElement = row;
+  return row;
+}
 
-    if (remember && allowKey && denyKey) {
-      if (result) {
-        Storage.set(allowKey, '1');
-        Storage.remove(denyKey);
-      } else {
-        Storage.set(denyKey, '1');
-        Storage.remove(allowKey);
+function openOrUpdateDialog(isTop) {
+  if (activeDialog) {
+    // Đã có dialog mở, bổ sung các row chưa được vẽ
+    for (const item of pendingItems.values()) {
+      if (!item.rowElement) {
+        const row = renderRow(item);
+        if (tableBatchRowEl) {
+          activeDialog.tableContainer.insertBefore(row, tableBatchRowEl);
+        } else {
+          activeDialog.tableContainer.append(row);
+        }
       }
     }
-
-    if (isTop) {
-      // Notify storage decision token to dismiss any open prompt in child iframes
-      Storage.set('sremote:permission_decision', { origin, allowed: result, timestamp: Date.now() });
-    }
-
-    onDecision?.(result);
+    updateTableBatchRow();
+    return;
   }
+
+  // Tạo modal mới dạng Bảng
+  const container = document.createElement('div');
+
+  const desc = document.createElement('div');
+  desc.className = 'sv-text';
+  desc.style.marginBottom = '6px';
+  desc.textContent = t('dialogTableDesc');
+  container.append(desc);
+
+  const tableContainer = document.createElement('div');
+  tableContainer.className = 'sv-perm-table-container';
+
+  for (const item of pendingItems.values()) {
+    const row = renderRow(item);
+    tableContainer.append(row);
+  }
+
+  container.append(tableContainer);
 
   const modal = createModal({
     titleText: t('dialogTitle'),
-    bodyText: t('dialogText'),
     bodyElement: container,
     isTop,
     hostId: isTop ? 'sremote-top-permission-host' : 'sremote-permission-host',
     buttons: [
       {
-        className: 'sv-btn-deny',
-        text: t('denyBtn'),
+        className: 'sv-btn sv-btn-always-allow-all',
+        text: t('alwaysAllowAllBtn'),
         onClick: (_, { close }) => {
-          close(false);
-          handleDecision(false);
+          const items = Array.from(pendingItems.values());
+          pendingItems.clear();
+          const dlg = activeDialog;
+          activeDialog = null;
+          tableBatchRowEl = null;
+          try {
+            dlg?.modal?.close();
+          } catch {}
+          close(true);
+          items.forEach(it => applyDecision(it, true, true));
         },
       },
       {
-        className: 'sv-btn-allow',
-        text: t('allowBtn'),
+        className: 'sv-btn sv-btn-allow-session',
+        text: t('allowSessionBtn'),
         onClick: (_, { close }) => {
+          isSessionAllowed = true;
+          const items = Array.from(pendingItems.values());
+          pendingItems.clear();
+          const dlg = activeDialog;
+          activeDialog = null;
+          tableBatchRowEl = null;
+          try {
+            dlg?.modal?.close();
+          } catch {}
           close(true);
-          handleDecision(true);
+          items.forEach(it => applyDecision(it, true, false));
+        },
+      },
+      {
+        className: 'sv-btn sv-btn-block-session',
+        text: t('blockSessionBtn'),
+        onClick: (_, { close }) => {
+          const dlg = activeDialog;
+          activeDialog = null;
+          tableBatchRowEl = null;
+          setPermissionSessionBlocked(true);
+          try {
+            dlg?.modal?.close();
+          } catch {}
+          close(false);
+        },
+      },
+      {
+        className: 'sv-btn sv-btn-always-deny-all',
+        text: t('alwaysDenyAllBtn'),
+        onClick: (_, { close }) => {
+          const items = Array.from(pendingItems.values());
+          pendingItems.clear();
+          const dlg = activeDialog;
+          activeDialog = null;
+          tableBatchRowEl = null;
+          try {
+            dlg?.modal?.close();
+          } catch {}
+          close(false);
+          items.forEach(it => applyDecision(it, false, true));
         },
       },
     ],
     onClose: () => {
-      activePermissionHost = null;
+      if (activeDialog) {
+        const items = Array.from(pendingItems.values());
+        pendingItems.clear();
+        activeDialog = null;
+        tableBatchRowEl = null;
+        items.forEach(it => applyDecision(it, false, false));
+      }
     },
   });
 
-  activePermissionHost = modal.host;
+  activeDialog = { modal, tableContainer };
+  updateTableBatchRow();
+}
 
-  return {
-    close: () => {
-      modal.close();
-      activePermissionHost = null;
-    },
+export function createPermissionDialog({ origin, iframeOrigin = null, parentOrigin = null, onDecision, isTop = false }) {
+  const effectiveIframeOrigin = iframeOrigin || origin;
+  const effectiveParentOrigin = parentOrigin || (isTop && typeof location !== 'undefined' ? location.origin : null) || 'unknown_parent';
+
+  // 0. Nếu session này đã bị chặn: lập tức từ chối; nếu đã cho phép toàn phiên: lập tức cho phép
+  if (isSessionBlocked || deniedOriginsInSession.has(effectiveIframeOrigin)) {
+    onDecision?.(false);
+    return { close: () => {} };
+  }
+  if (isSessionAllowed || allowedOriginsInSession.has(effectiveIframeOrigin)) {
+    onDecision?.(true);
+    return { close: () => {} };
+  }
+
+  // 1. Immediate storage verification
+  const perm = checkOriginPairPermission(effectiveParentOrigin, effectiveIframeOrigin);
+  if (perm.isDenied) {
+    onDecision?.(false);
+    return { close: () => {} };
+  }
+  if (perm.isAllowed) {
+    onDecision?.(true);
+    return { close: () => {} };
+  }
+
+  // 2. Nếu đã có trong pendingItems thì gom callback lại
+  if (pendingItems.has(effectiveIframeOrigin)) {
+    const existing = pendingItems.get(effectiveIframeOrigin);
+    if (typeof onDecision === 'function') {
+      existing.callbacks.push(onDecision);
+    }
+    return { close: () => removePendingRow(effectiveIframeOrigin) };
+  }
+
+  // 3. Đưa vào bảng chờ
+  const newItem = {
+    parentOrigin: effectiveParentOrigin,
+    iframeOrigin: effectiveIframeOrigin,
+    isTop,
+    callbacks: typeof onDecision === 'function' ? [onDecision] : [],
+    rowElement: null,
   };
+  pendingItems.set(effectiveIframeOrigin, newItem);
+
+  // 4. Mở hoặc cập nhật giao diện bảng
+  openOrUpdateDialog(isTop);
+
+  return { close: () => removePendingRow(effectiveIframeOrigin) };
+}
+
+function setPermissionSessionBlocked(blocked = true) {
+  isSessionBlocked = blocked;
+  if (blocked && activeDialog) {
+    const items = Array.from(pendingItems.values());
+    pendingItems.clear();
+    activeDialog.modal.close();
+    activeDialog = null;
+    items.forEach(it => applyDecision(it, false, false));
+  }
 }

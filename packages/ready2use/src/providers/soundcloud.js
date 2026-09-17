@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, seekTo, Volume } from '../core/polyfill.js';
 import { loadSoundCloudSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -34,9 +35,7 @@ export class SoundCloudProvider extends BaseProvider {
     const widget = SC.Widget(iframe);
 
     await new Promise(resolve => {
-      widget.bind(SC.Widget.Events.READY, () => {
-        resolve();
-      });
+      widget.bind(SC.Widget.Events.READY, () => resolve());
       // Safety timeout in case READY takes too long or fails
       setTimeout(resolve, 2000);
     });
@@ -47,13 +46,9 @@ export class SoundCloudProvider extends BaseProvider {
       iframe,
       destroy: () => {
         try {
-          if (widget && typeof widget.unbind === 'function') {
-            widget.unbind(SC.Widget.Events.READY);
-            widget.unbind(SC.Widget.Events.PLAY);
-            widget.unbind(SC.Widget.Events.PAUSE);
-            widget.unbind(SC.Widget.Events.PLAY_PROGRESS);
-            widget.unbind(SC.Widget.Events.SEEK);
-            widget.unbind(SC.Widget.Events.FINISH);
+          if (widget && typeof widget.unbind === 'function' && SC?.Widget?.Events) {
+            const events = [SC.Widget.Events.READY, SC.Widget.Events.PLAY, SC.Widget.Events.PAUSE, SC.Widget.Events.PLAY_PROGRESS, SC.Widget.Events.SEEK, SC.Widget.Events.FINISH];
+            events.forEach(ev => widget.unbind(ev));
           }
         } catch {}
       },
@@ -87,12 +82,6 @@ export class SoundCloudProvider extends BaseProvider {
           isPlaying = false;
         }
       },
-      toggle() {
-        if (widget && typeof widget.toggle === 'function') {
-          widget.toggle();
-          isPlaying = !isPlaying;
-        }
-      },
       stop() {
         if (widget && typeof widget.pause === 'function' && typeof widget.seekTo === 'function') {
           widget.pause();
@@ -103,15 +92,21 @@ export class SoundCloudProvider extends BaseProvider {
       seek(offset) {
         if (widget && typeof widget.getPosition === 'function' && typeof widget.seekTo === 'function') {
           widget.getPosition(pos => {
-            const targetMs = Math.max(0, (pos || 0) + Number(offset) * 1000);
-            widget.seekTo(targetMs);
+            const targetSec = Math.max(0, (pos || 0) / 1000 + Number(offset));
+            adapter.emit?.('seeking', { state: { paused: !isPlaying, currentTime: targetSec, duration, volume, muted: isMuted } });
+            widget.seekTo(targetSec * 1000);
           });
         }
       },
       seekTo(seconds) {
         if (widget && typeof widget.seekTo === 'function') {
-          widget.seekTo(Number(seconds) * 1000);
+          const targetSec = Number(seconds);
+          adapter.emit?.('seeking', { state: { paused: !isPlaying, currentTime: targetSec, duration, volume, muted: isMuted } });
+          widget.seekTo(targetSec * 1000);
         }
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getCurrentTime() {
         return currentTime;
@@ -126,6 +121,7 @@ export class SoundCloudProvider extends BaseProvider {
         volume = Number(vol);
         if (widget && typeof widget.setVolume === 'function') {
           widget.setVolume(Math.min(100, Math.max(0, volume * 100)));
+          adapter.emit?.('volumechange', { state: { volume, muted: isMuted } });
         }
       },
       getMuted() {
@@ -135,6 +131,7 @@ export class SoundCloudProvider extends BaseProvider {
         isMuted = Boolean(muted);
         if (widget && typeof widget.setVolume === 'function') {
           widget.setVolume(isMuted ? 0 : volume * 100);
+          adapter.emit?.('volumechange', { state: { volume, muted: isMuted } });
         }
       },
       paused() {
@@ -189,12 +186,18 @@ export class SoundCloudProvider extends BaseProvider {
       });
     }
 
+    toggle(adapter);
+    seekTo(adapter);
+    new Volume(volume).apply(adapter);
+
     return adapter;
   }
 }
 
 export const soundcloudProvider = new SoundCloudProvider();
-export const createSoundCloudPlayer = options => soundcloudProvider.create(options);
-export const mountSoundCloudPlayer = (container, options) => soundcloudProvider.mount(container, options);
 
-export const soundcloud = { create: createSoundCloudPlayer, mount: mountSoundCloudPlayer, provider: soundcloudProvider };
+export const soundcloud = {
+  create: options => soundcloudProvider.create(options),
+  mount: (container, options) => soundcloudProvider.mount(container, options),
+  provider: soundcloudProvider,
+};

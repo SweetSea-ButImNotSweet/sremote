@@ -1,20 +1,23 @@
-import { VERSION, NS, ENABLE_DEBUG_API, console_log, console_warn, console_error } from '../config.js';
+import { VERSION, NS, ENABLE_DEBUG_API, logger } from '../config.js';
 import { Storage, GM } from '../core/storage.js';
-import { getOriginStorageKeys } from '../core/utils.js';
+import { generateInstanceId, normalizeOrigin } from '../core/utils.js';
 import { t } from '../core/i18n.js';
 import { registerMenuCommands } from './menu.js';
 import { pendingCommandQueue } from './queue.js';
-import { setupLivenessReaper } from './liveness.js';
 import { createExportedApi } from './api.js';
-import { createInstanceManager } from './instance-manager.js';
-import { setupParentHandshake } from './handshake.js';
+import { createParentTransportManager } from './transport.js';
+import { setupTopMediaTracker } from './top-media.js';
+import { actions, dom, instance, pipeline } from '@sremote/shared';
 
 export function initParentController() {
   const currentOrigin = location.origin;
-  const { allowKey, denyKey, hideBadgeKey } = getOriginStorageKeys(currentOrigin);
+  const normOrigin = normalizeOrigin(currentOrigin);
 
-  if (denyKey && Storage.get(denyKey) === '1') {
-    console_log(
+  // Check if page blocked via Storage.permissions
+  const isBlockedInStore = Storage.permissions.get(normOrigin, '*') === 0 || Storage.permissions.get('*', normOrigin) === 0;
+
+  if (isBlockedInStore) {
+    logger.log(
       `%c[SRemote] THIS PAGE IS BLOCKED PERMANENTLY!%c\nOrigin '${currentOrigin}' is in the permanent deny list. SRemote execution is aborted.\nUse the Tampermonkey menu to reset permissions if needed.`,
       'background: #ef4444; color: #ffffff; font-size: 24px; font-weight: 900; padding: 6px 12px; border-radius: 4px;',
       'color: #f87171; font-size: 13px; font-weight: bold;',
@@ -24,12 +27,13 @@ export function initParentController() {
     try {
       if (GM.register) {
         GM.register(t('menuReset', { target: location.origin }), () => {
-          [allowKey, denyKey, hideBadgeKey].forEach(k => k && Storage.remove(k));
+          Storage.permissions.remove(normOrigin);
+          Storage.preferences.setBadgeHidden(normOrigin, false);
           alert(t('alertResetDone', { origin: currentOrigin }));
         });
         GM.register(t('menuClearAll'), () => {
           if (!confirm(t('confirmClearAll'))) return;
-          Storage.clearAllsremoteData();
+          Storage.clearAll();
           alert(t('alertClearDone'));
         });
       }
@@ -37,26 +41,78 @@ export function initParentController() {
     return;
   }
 
-  console_log(`%c[sremote v${VERSION}] Parent Controller Initialized`, 'background: #0f172a; color: #38bdf8; font-weight: bold; padding: 2px 6px;');
+  logger.log(`%c[sremote v${VERSION}] Parent Controller Initialized`, 'background: #0f172a; color: #38bdf8; font-weight: bold; padding: 2px 6px;');
 
-  // Reset GM hello sequence on top window boot
-  Storage.set('sremote:hello_seq', 0);
-  Storage.set('sremote:parent_origin', location.origin);
+  // Tab-isolated session identifier (in-memory per tab window, avoiding cross-tab contamination)
+  const tabSessionId = generateInstanceId('tab');
 
-  const instanceManager = createInstanceManager();
-  const { instances, parentAdaptersMap, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts, removeInstance } =
-    instanceManager;
+  // Sync log level from storage to logger if configured
+  try {
+    const storedLogLevel = Storage.preferences.getLogLevel();
+    if (storedLogLevel !== null && storedLogLevel !== undefined && storedLogLevel !== '') {
+      const parsedLevel = Number(storedLogLevel);
+      if (!Number.isNaN(parsedLevel) && parsedLevel >= -1) {
+        logger.setLevel(parsedLevel);
+      }
+    }
+  } catch {}
+
+  const instanceManager = instance.createManager();
+  const { instances, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts } = instanceManager;
+
+  let broadcastHelloRef = null;
+  let hasInitiatedHello = false;
+
+  // Helper: Đợi n frame trình duyệt (dùng requestAnimationFrame kèm fallback setTimeout cho tab nền)
+  const waitFrames = (frames, callback) => {
+    let count = 0;
+    let cancelled = false;
+
+    const timer = setTimeout(() => {
+      if (!cancelled) {
+        cancelled = true;
+        callback();
+      }
+    }, frames * 18); // Fallback: ~90ms nếu tab ở background mà rAF bị tạm dừng
+
+    const step = () => {
+      if (cancelled) return;
+      count++;
+      if (count >= frames) {
+        cancelled = true;
+        clearTimeout(timer);
+        callback();
+      } else if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(step);
+      }
+    };
+
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(step);
+    }
+  };
+
+  // Wakeup: Đánh thức iframe (toàn bộ hoặc đích danh targetWindow) khi trang cha đã chủ động gọi hello()
+  const triggerPendingWakeup = (targetWindow = null) => {
+    if (!hasInitiatedHello) return;
+    try {
+      if (typeof broadcastHelloRef === 'function') {
+        broadcastHelloRef({}, targetWindow);
+      }
+    } catch {}
+  };
+
+  // Setup Top DOM Media Tracker (video/audio on top window)
+  const topMediaTracker = setupTopMediaTracker(instanceManager);
 
   function validateDomainAccess(providedKey = null) {
     if (ENABLE_DEBUG_API && providedKey === '__DEBUG_BYPASS__') return true;
     const hostDomain = location.hostname || 'this_domain';
-    const domainLockStorage = `sremote:locked:${hostDomain}`;
-    const isDomainPersistentlyLocked = Storage.get(domainLockStorage) === '1';
-    const isLocked = instanceManager.isSessionLocked || isDomainPersistentlyLocked;
+    const authConfig = Storage.auth.get(hostDomain);
+    const isLocked = instanceManager.isSessionLocked || authConfig.locked;
     if (!isLocked) return true;
 
-    const domainKeyStorage = `sremote:passkey:${hostDomain}`;
-    const expectedKey = Storage.get(domainKeyStorage);
+    const expectedKey = authConfig.passkey;
     const cleanKey = providedKey ? String(providedKey).trim() : null;
 
     return Boolean(expectedKey && cleanKey && cleanKey === expectedKey);
@@ -67,124 +123,31 @@ export function initParentController() {
 
   function emitWhereIsInstanceIdError(cmd) {
     const msg = `[sremote] Multiple medias detected but no instanceId was specified for command '${cmd}'. Pass an instanceId or 'all'.`;
-    console_error(msg);
+    logger.error(msg);
     const payload = { type: `${NS}whereIsInstanceID`, source: 'parent', command: cmd, message: msg };
-    console_log(`%c[SRemote:signal] Emit -> whereIsInstanceID (source: parent)`, 'color: #ef4444;', payload);
+    logger.log(`%c[SRemote:signal] Emit -> whereIsInstanceID (source: parent)`, 'color: #ef4444;', payload);
     window.postMessage(payload, '*');
   }
 
-  function executeParentAdapterAction(action, value, targetInstanceId = null) {
-    let targetId = targetInstanceId;
-    if (!targetId) {
-      if (parentAdaptersMap.size === 1) {
-        targetId = Array.from(parentAdaptersMap.keys())[0];
-      } else if (parentAdaptersMap.has(instanceManager.currentActiveInstanceId)) {
-        targetId = instanceManager.currentActiveInstanceId;
-      }
-    }
-    if (!targetId || !parentAdaptersMap.has(targetId)) return false;
+  async function executeTopMediaAction(mediaEl, action, value) {
+    if (!mediaEl) return false;
+    const hasSource = dom.hasSource(mediaEl);
+    const norm = String(action || '').toLowerCase();
+    if (['play', 'seek', 'stop'].includes(norm) && !hasSource) return false;
 
-    const adapter = parentAdaptersMap.get(targetId);
-    const norm = action.toLowerCase();
+    logger.scope('action').log(`Top DOM executing -> ${action}`, { action, value });
     try {
-      if (norm === 'play' && typeof adapter.play === 'function') {
-        adapter.play();
-        return true;
-      }
-      if (norm === 'pause' && typeof adapter.pause === 'function') {
-        adapter.pause();
-        return true;
-      }
-      if (norm === 'toggle' && typeof adapter.toggle === 'function') {
-        adapter.toggle();
-        return true;
-      }
-      if (norm === 'seek' && typeof adapter.seek === 'function') {
-        adapter.seek(Number(value));
-        return true;
-      }
-      if (norm === 'seek' && typeof adapter.seekTo === 'function' && typeof adapter.getCurrentTime === 'function') {
-        const cur = Number(adapter.getCurrentTime() || 0);
-        adapter.seekTo(Math.max(0, cur + Number(value)));
-        return true;
-      }
-      if ((norm === 'currenttime' || norm === 'seekto') && typeof adapter.seekTo === 'function') {
-        adapter.seekTo(Number(value));
-        return true;
-      }
-      if (norm === 'volume' && typeof adapter.setVolume === 'function') {
-        adapter.setVolume(Number(value));
-        return true;
-      }
-      if ((norm === 'muted' || norm === 'mute') && typeof adapter.setMuted === 'function') {
-        adapter.setMuted(Boolean(value));
-        return true;
-      }
-      if ((norm === 'speed' || norm === 'rate' || norm === 'playbackrate') && typeof adapter.setPlaybackRate === 'function') {
-        adapter.setPlaybackRate(Number(value) || 1);
-        return true;
-      }
-      if (norm === 'quality' && typeof adapter.setQuality === 'function') {
-        adapter.setQuality(value);
-        return true;
-      }
-      if (norm === 'subtitle' && typeof adapter.setSubtitle === 'function') {
-        adapter.setSubtitle(value);
-        return true;
-      }
-      if (norm === 'shuffle' && typeof adapter.setShuffle === 'function') {
-        adapter.setShuffle(value);
-        return true;
-      }
-      if (norm === 'repeat' && typeof adapter.setRepeat === 'function') {
-        adapter.setRepeat(value);
-        return true;
-      }
-      if (norm === 'next' && typeof adapter.next === 'function') {
-        adapter.next();
-        return true;
-      }
-      if (norm === 'previous' && typeof adapter.previous === 'function') {
-        adapter.previous();
-        return true;
-      }
-      if (norm === 'pip' || norm === 'enterpip' || norm === 'exitpip') {
-        if (typeof adapter.pip === 'function') {
-          adapter.pip(value);
-          return true;
-        }
-        if (typeof adapter.requestPip === 'function') {
-          adapter.requestPip(value);
-          return true;
-        }
-      }
-      if (norm === 'load') {
-        if (typeof adapter.load === 'function') {
-          adapter.load(value);
-          return true;
-        }
-        console_warn('[SRemote] load() is primarily designed for custom adapters and is not implemented by default. Implement it via sremote.useAdapter().');
-        return true;
-      }
-      if (norm === 'stop') {
-        if (typeof adapter.stop === 'function') adapter.stop();
-        else {
-          if (typeof adapter.pause === 'function') adapter.pause();
-          if (typeof adapter.seekTo === 'function') adapter.seekTo(0);
-        }
-        return true;
-      }
+      return actions.execute(mediaEl, action, value, { instanceId: mediaEl.id || 'top-media', transactionTracker: pipeline.getTracker(), logger });
     } catch (e) {
-      console_warn(`[sremote] Error invoking parent adapter action for '${targetId}':`, e);
-      return true; // Still handled by adapter
+      logger.warn(`[sremote] Error executing top media action '${action}':`, e);
+      return false;
     }
-    return false;
   }
 
-  function dispatchCommand(action, value, targetInstanceId = null, key = null) {
+  async function dispatchCommand(action, value, targetInstanceId = null, key = null) {
     if (!validateDomainAccess(key)) {
       const errMsg = `[SRemote:auth] Blocked command '${action}'! Valid Passkey is required.`;
-      console_error(`%c${errMsg}`, 'color: #ef4444; font-weight: bold;');
+      logger.error(`%c${errMsg}`, 'color: #ef4444; font-weight: bold;');
       return Promise.resolve({
         success: false,
         error: 'AUTH_FAILED',
@@ -197,20 +160,39 @@ export function initParentController() {
     let targetId = targetInstanceId || getLatestActiveInstanceId();
     let target = targetId ? instances.get(targetId) : null;
 
+    // Smart fallback if target was not found by targetId:
+    if (!target && targetInstanceId) {
+      // 1. Check if the targetInstanceId was associated with an iframe element
+      const mappedIframe = assignedIframeIdMap.get(targetInstanceId);
+      if (mappedIframe) {
+        const liveId = iframeToAssignedIdMap.get(mappedIframe);
+        if (liveId && instances.has(liveId)) {
+          targetId = liveId;
+          target = instances.get(liveId);
+          logger.scope('action').log(`Smart-routed command '${action}' from stale id '${targetInstanceId}' -> live id '${liveId}'`);
+        }
+      }
+      // 2. In single-mode or if exactly 1 instance is registered, route to the only active instance
+      if (!target && (!isMultiModeActive() || instances.size === 1)) {
+        const onlyId = Array.from(instances.keys())[0];
+        if (onlyId && instances.has(onlyId)) {
+          targetId = onlyId;
+          target = instances.get(onlyId);
+          logger.scope('action').log(`Single-mode smart-routed command '${action}' from '${targetInstanceId}' -> active '${onlyId}'`);
+        }
+      }
+    }
+
     if (!target && !targetInstanceId && !isMultiModeActive() && instances.size === 1) {
       targetId = Array.from(instances.keys())[0];
       target = instances.get(targetId);
     }
 
-    console_log(`%c[SRemote:command] Parent dispatching -> ${action}`, 'color: #3b82f6; font-weight: bold;', {
-      action,
-      value,
-      targetInstanceId: targetId || targetInstanceId || 'auto',
-    });
+    logger.scope('action').log(`(Userscript) Dispatching -> ${action}`, { action, value, targetInstanceId: targetId || targetInstanceId || 'auto' });
 
-    if (parentAdaptersMap.size > 0) {
-      const handled = executeParentAdapterAction(action, value, targetId || targetInstanceId);
-      if (handled) return Promise.resolve({ success: true, instanceId: targetId || targetInstanceId, source: 'adapter', action });
+    // 1. FIRST PRIORITY: Direct execution on Top DOM Media Elements
+    if (target?.isTopMedia && target.mediaElement) {
+      return executeTopMediaAction(target.mediaElement, action, value).then(ok => ({ success: ok, instanceId: targetId, source: 'top-dom', action }));
     }
 
     const multi = isMultiModeActive();
@@ -221,27 +203,43 @@ export function initParentController() {
 
     if (targetInstanceId === 'all') {
       broadcastToPorts({ type: `${NS}${action}`, source: 'parent', value });
+      for (const item of instances.values()) {
+        if (item.isTopMedia && item.mediaElement) {
+          executeTopMediaAction(item.mediaElement, action, value);
+        }
+      }
       return Promise.resolve({ success: true, instanceId: 'all', action });
     }
 
-    const isAssignedPending = targetId && (assignedIframeIdMap.has(targetId) || (target && target.status === 'connecting'));
+    const isAssignedPending = targetId && (assignedIframeIdMap.has(targetId) || target?.status === 'connecting');
 
-    if (target?.port && target.status !== 'connecting') {
+    if (target?.port) {
       try {
         target.port.postMessage({ type: `${NS}${action}`, source: 'parent', value });
         return Promise.resolve({ success: true, instanceId: targetId, action });
       } catch (err) {
-        console_warn(`[sremote] Error posting command '${action}' to port for '${targetId}':`, err);
+        logger.warn(`[sremote] Error posting command '${action}' to port for '${targetId}':`, err);
+        const ifr = target.iframeEl || (targetId ? assignedIframeIdMap.get(targetId) : null);
+        if (ifr?.contentWindow && typeof ifr.contentWindow.postMessage === 'function') {
+          try {
+            ifr.contentWindow.postMessage({ type: `${NS}${action}`, source: 'parent', value }, '*');
+            logger.log(`%c[SRemote:command] Fallback command '${action}' sent via contentWindow.postMessage to '${targetId}'`, 'color: #10b981;');
+            return Promise.resolve({ success: true, instanceId: targetId, action, fallback: 'window' });
+          } catch (winErr) {
+            logger.warn(`[sremote] Fallback contentWindow.postMessage failed for '${targetId}':`, winErr);
+          }
+        }
         return Promise.resolve({ success: false, error: 'PORT_DISCONNECTED', message: String(err), instanceId: targetId });
       }
     }
 
     if (targetInstanceId && !target && !isAssignedPending) {
-      console_warn(`[sremote] Target instance '${targetInstanceId}' does not exist.`);
+      logger.warn(`[sremote] Target instance '${targetInstanceId}' does not exist.`);
       return Promise.resolve({ success: false, error: 'INSTANCE_NOT_FOUND', message: `Instance '${targetInstanceId}' not found`, instanceId: targetInstanceId });
     }
 
-    console_log(`%c[SRemote:queue] Instance '${targetId || 'pending'}' is connecting or pending port. Queueing '${action}'...`, 'color: #f59e0b;');
+    logger.log(`%c[SRemote:queue] Instance '${targetId || 'pending'}' is connecting or pending port. Queueing '${action}'...`, 'color: #f59e0b;');
+    triggerPendingWakeup();
     return new Promise(resolve => {
       pendingCommandQueue.push({ action, value, targetInstanceId: targetId, timestamp: Date.now(), resolve });
     });
@@ -249,31 +247,90 @@ export function initParentController() {
 
   function queryMediaInstancesViaGM() {
     const queryToken = `query_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    Storage.set(`sremote:query_req`, queryToken);
+    Storage.raw.set(`sremote:ipc:query_req`, queryToken);
 
-    const keys = Storage.list();
+    const keys = Storage.raw.list();
     const found = [];
     for (const k of keys) {
-      if (k && k.startsWith('sremote:report:')) {
-        const raw = Storage.get(k);
+      if (k?.startsWith('sremote:ipc:report:')) {
+        const raw = Storage.raw.get(k);
         try {
           const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          if (data && data.hasMedia) {
+          if (data?.hasMedia) {
             found.push(data);
           }
         } catch {}
-        Storage.remove(k);
+        Storage.raw.remove(k);
       }
     }
     return found;
   }
 
-  // Setup Handshake Listener
-  setupParentHandshake(instanceManager);
+  // Initialize Clean Transport Manager (MessagePort, Handshake, Challenge, Heartbeat & Grace Period)
+  const transportManager = createParentTransportManager({
+    instanceManager,
+    tabSessionId,
+    isHelloInitiated: () => hasInitiatedHello,
+    onIframeReady: (sourceWindow, origin) => {
+      logger.log(`%c[SRemote:handshake] Received 'iframe_ready' from ${origin}. Responding with hello...`, 'color: #10b981;');
+      triggerPendingWakeup(sourceWindow);
+    },
+  });
 
-  // Setup Liveness Reaper
-  setupLivenessReaper(instances, removeInstance, iframeToAssignedIdMap);
+  // Auto-Heal: Theo dõi các thẻ <iframe> được chèn động (React remount, dynamic route, v.v.)
+  // Debounce chờ đúng 5 frame của máy tính để DOM và iframe bắt đầu nạp trước khi gửi hello
+  try {
+    if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+      let pendingDebounce = false;
+
+      const iframeObserver = new MutationObserver(mutations => {
+        let hasNewIframe = false;
+        for (const m of mutations) {
+          for (const node of m.addedNodes) {
+            if (node.nodeType === 1) {
+              if (node.tagName === 'IFRAME') {
+                hasNewIframe = true;
+              } else if (node.querySelector?.('iframe')) {
+                hasNewIframe = true;
+              }
+            }
+          }
+        }
+        if (hasNewIframe) {
+          if (pendingDebounce) return;
+          pendingDebounce = true;
+          logger.log(`%c[SRemote:autoheal] New iframe detected in DOM. Waiting 5 frames for mount...`, 'color: #06b6d4; font-weight: bold;');
+          waitFrames(5, () => {
+            pendingDebounce = false;
+            logger.log(`%c[SRemote:autoheal] 5 frames elapsed. Negotiating hello...`, 'color: #06b6d4;');
+            triggerPendingWakeup();
+          });
+        }
+      });
+      const targetMount = document.documentElement || document.body || document;
+      if (targetMount) {
+        iframeObserver.observe(targetMount, { childList: true, subtree: true });
+      }
+    }
+  } catch {}
 
   // Initialize and Export window.sremote
-  createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, queryMediaInstancesViaGM });
+  const api = createExportedApi({
+    instanceManager,
+    dispatchCommand,
+    validateDomainAccess,
+    queryMediaInstancesViaGM,
+    topMediaTracker,
+    transportManager,
+    tabSessionId,
+    onHelloInitiated: () => {
+      hasInitiatedHello = true;
+      try {
+        transportManager.flushPendingSyns();
+      } catch {}
+    },
+  });
+  if (api && typeof api.hello === 'function') {
+    broadcastHelloRef = api.hello;
+  }
 }

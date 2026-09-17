@@ -8,7 +8,7 @@ All methods are available on the global `window.sremote` object (or the client i
 
 👉 **See Full API Documentation:** **[SRemote Ready2use API Guide](./ready2use.md)**
 
-Out-of-the-box player presets for YouTube, Vimeo, Spotify, SoundCloud, Twitch, Dailymotion, TikTok, Mixcloud, NicoNico, Bilibili, Facebook.
+Player presets and adapters for YouTube, Vimeo, Spotify, SoundCloud, Twitch, Dailymotion, TikTok, Mixcloud, NicoNico, Bilibili, Facebook.
 
 ```javascript
 import { youtube } from '@sremote/ready2use';
@@ -31,7 +31,6 @@ Initiate handshake connection, manage event listeners, sync metadata, and enforc
 | **Listen to Events** | `on(event, handler, key?)` | Subscribes to events from frames/adapters (supports `'*'`) |
 | **Unsubscribe** | `off(event, handler)` | Removes an event listener |
 | **Session Lock** | `lock(passkey?)` | Locks SRemote execution on the current page |
-| **MediaSession** | `bindMediaSession(instanceId?, key?)` | Syncs iframe with browser MediaSession API |
 | **Metadata** | `bindMetadata(meta, instanceId?, key?)` | Sets track title, artist, album, and artwork |
 
 ---
@@ -49,7 +48,7 @@ Target the active instance or a specifically designated `instanceId`:
 | **Absolute Seek** | `seekTo(time, instanceId?, key?)` | Jumps to a specific timestamp in seconds |
 | **Volume** | `volume(vol, instanceId?, key?)` | Sets volume level from `0.0` to `1.0` |
 | **Mute / Unmute** | `mute(muted?, instanceId?, key?)` | Sets or toggles muted state |
-| **Playback Rate** | `rate(speed, instanceId?, key?)`<br>`playbackRate(speed, instanceId?, key?)` | Changes playback speed (0.25 - 4.0) |
+| **Playback Rate** | `speed(rate, instanceId?, key?)`<br>`rate(rate, instanceId?, key?)`<br>`playbackRate(rate, instanceId?, key?)` | Changes playback speed (0.25 - 4.0) |
 | **Load New Source** | `load(source, instanceId?, key?)` | Loads a new media source (Video ID, URL string, or config object) |
 | **Quality / Resolution** | `quality(level, instanceId?, key?)`<br>`getQualities(instanceId?, key?)` | Sets or retrieves available video resolution qualities (`'1080p'`, `'720p'`, `'auto'`) |
 | **Subtitle / Captions** | `subtitle(track, instanceId?, key?)`<br>`getSubtitles(instanceId?, key?)` | Sets or disables subtitle (`'vi'`, `'en'`, `null`) or retrieves available subtitle tracks |

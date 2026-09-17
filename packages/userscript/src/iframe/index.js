@@ -1,6 +1,7 @@
-import { VERSION, NS, ENABLE_DEBUG_API, console_log, console_debug, console_warn, pageWindow, MEDIA_EVENTS, descriptors } from '../config.js';
+import { logger, pageWindow, MEDIA_EVENTS, descriptors } from '../config.js';
+import { VERSION, NS, ENABLE_DEBUG_API } from '../const.js';
 import { Storage } from '../core/storage.js';
-import { getOriginStorageKeys, generateInstanceId, safeSetProp, safeGetProp } from '../core/utils.js';
+import { checkOriginPairPermission, generateInstanceId, safeSetProp, safeGetProp, normalizeOrigin } from '../core/utils.js';
 import { showConnectedIndicator, hideConnectedIndicator } from '../ui/indicator-badge.js';
 import { IframeStyleEngine } from './style-engine.js';
 import { mockMediaSessionInstance, hookMediaSession } from './media-session.js';
@@ -9,12 +10,13 @@ import { setupMediaHooks } from './hooks.js';
 import { getVideoState, getIframeCapabilities, createMediaController } from './controller.js';
 import { createIframeDebugApi } from '../debug/iframe-debug.js';
 import { createRpcRegistry } from './rpc.js';
-import { createIframeHandshake } from './handshake.js';
+import { createIframeTransportManager } from './transport.js';
+import { pipeline } from '@sremote/shared';
 
 export function initIframeAgent() {
   let topOrigin = null;
   try {
-    if (window.top && window.top !== window.self) {
+    if (window.top?.location?.origin) {
       topOrigin = window.top.location.origin;
     }
   } catch {}
@@ -29,14 +31,22 @@ export function initIframeAgent() {
     } catch {}
   }
 
-  const selfDenyKey = getOriginStorageKeys(location.origin).denyKey;
-  const topDenyKey = topOrigin ? getOriginStorageKeys(topOrigin).denyKey : null;
+  const normTop = normalizeOrigin(topOrigin);
 
-  if ((selfDenyKey && Storage.get(selfDenyKey) === '1') || (topDenyKey && Storage.get(topDenyKey) === '1')) {
-    return; // Silently abort
+  // Check if top window permanently blocked in Storage.permissions
+  const isTopBlocked = normTop ? Storage.permissions.get(normTop, '*') === 0 || Storage.permissions.get('*', normTop) === 0 : false;
+  if (isTopBlocked) {
+    return; // Top window is permanently blocked
   }
 
-  console_log(`%c[sremote v${VERSION}] Injected into frame:`, 'background: #0284c7; color: #fff; font-weight: bold; padding: 2px 6px;', location.href);
+  if (topOrigin) {
+    const pairPerm = checkOriginPairPermission(topOrigin, location.origin);
+    if (pairPerm.isDenied) {
+      return; // This specific parent -> iframe pair was denied
+    }
+  }
+
+  logger.log(`%c[sremote v${VERSION}] Injected into frame:`, 'background: #0284c7; color: #fff; font-weight: bold; padding: 2px 6px;', location.href);
 
   let selfAssignedId = null;
   try {
@@ -61,61 +71,79 @@ export function initIframeAgent() {
   const mediaWaiters = [];
   const boundMediaElements = new WeakSet();
   const createdMediaPool = new WeakSet();
-  let currentHandshakeId = null;
-  let currentHandshakeToken = null;
   let treatAlmostEndAsEnd = false;
   let programmaticActionTimestamp = 0;
   let originalMediaSrcBeforeDebug = null;
 
-  // Check GM Storage for early hello CSS immediately on document-start
-  let initialBootstrapCss = '';
-  try {
-    const latestHandshake = Storage.get('sremote:latest_handshake');
-    if (latestHandshake && latestHandshake.css && typeof latestHandshake.css === 'string') {
-      initialBootstrapCss = latestHandshake.css;
-    }
-  } catch {}
-
-  IframeStyleEngine.init(initialBootstrapCss);
+  IframeStyleEngine.init('');
 
   function bindVideoEvents(video) {
     if (!video || boundMediaElements.has(video)) return;
     boundMediaElements.add(video);
 
     let hasEmittedAlmostEnd = false;
+    let lastTimeupdate = 0;
+    let lastProgress = 0;
+    const TIMEUPDATE_THROTTLE_MS = 250;
+    const PROGRESS_THROTTLE_MS = 500;
 
     for (const evtName of MEDIA_EVENTS) {
       video.addEventListener(evtName, () => {
         resolver.setActiveMedia(video);
         resolver.setMediaType(video.tagName ? video.tagName.toLowerCase() : 'video');
 
+        const now = Date.now();
+        let isProgrammatic = false;
+        const tracker = pipeline.getTracker();
+        if (tracker && typeof tracker.matchAndConsume === 'function') {
+          isProgrammatic = tracker.matchAndConsume(evtName, { instanceId, video }).isProgrammatic;
+        }
+        if (!isProgrammatic) {
+          isProgrammatic = now - programmaticActionTimestamp < 500;
+        }
+
+        const currentState = getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia);
+
         if (evtName === 'timeupdate') {
-          const dur = Number.isFinite(video.duration) ? video.duration : null;
+          // Throttle timeupdate to avoid flooding the MessagePort & parent listeners
+          if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) {
+            return;
+          }
+          lastTimeupdate = now;
+
+          const dur = currentState?.duration || (Number.isFinite(video.duration) ? video.duration : null);
           const curTime = safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0;
           if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
             if (!hasEmittedAlmostEnd) {
               hasEmittedAlmostEnd = true;
-              emitToParent(treatAlmostEndAsEnd ? 'ended' : 'almostend', { state: getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia) });
+              emitToParent(treatAlmostEndAsEnd ? 'ended' : 'almostend', { isProgrammatic, state: currentState });
             }
           } else if (dur && curTime < dur - 1.5) {
             hasEmittedAlmostEnd = false;
           }
         }
 
+        if (evtName === 'progress') {
+          if (now - lastProgress < PROGRESS_THROTTLE_MS) {
+            return;
+          }
+          lastProgress = now;
+        }
+
         if (evtName === 'ended') {
           hasEmittedAlmostEnd = false;
-          const dur = Number.isFinite(video.duration) ? video.duration : null;
+          const dur = currentState?.duration || (Number.isFinite(video.duration) ? video.duration : null);
           const curTime = safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0;
           if (dur && dur > 0 && Math.abs(dur - curTime) > 1.5) return;
         }
 
-        const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
-        emitToParent(evtName, { isProgrammatic, state: getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia) });
+        emitToParent(evtName, { isProgrammatic, state: currentState });
       });
     }
   }
 
   const resolver = createMediaResolver(createdMediaPool, bindVideoEvents);
+  mockMediaSessionInstance.setResolver(resolver);
 
   function trackMediaElement(el) {
     if (!el) return;
@@ -129,9 +157,50 @@ export function initIframeAgent() {
     }
   }
 
-  // Hook constructors & MediaSession
+  // Hook constructors & MediaSession early
   hookMediaSession();
-  setupMediaHooks({ trackMediaElement });
+  setupMediaHooks({
+    trackMediaElement,
+    onElementAdded: () => {
+      checkActiveMediaLiveness();
+    },
+  });
+
+  function checkActiveMediaLiveness() {
+    IframeStyleEngine.maintainStyles();
+
+    const had = Boolean(resolver.getActiveMedia());
+    const oldType = resolver.getMediaType();
+    const activeMedia = resolver.getActiveMedia();
+    const isCurrentAttached = activeMedia && (activeMedia.isConnected || createdMediaPool.has(activeMedia));
+
+    if (!isCurrentAttached || !resolver.resolveActiveMedia()) {
+      if (had) {
+        logger.log(`%c[SRemote:media] Active media detached / changed in iframe. Preserving MessagePort.`, 'color: #f59e0b;');
+        if (!resolver.resolveActiveMedia()) {
+          resolver.setActiveMedia(null);
+          resolver.setMediaType(null);
+          // Crucial: Only emit media state change (noMedia). DO NOT trigger transport termination!
+          emitToParent('noMedia', { instanceId, hasMedia: false, reason: 'media_detached' });
+          return;
+        }
+      }
+    }
+
+    if (resolver.resolveActiveMedia() && (!had || oldType !== resolver.getMediaType())) {
+      onMediaAvailable();
+    }
+  }
+
+  // Early MutationObserver on root / documentElement
+  let observer = null;
+  try {
+    observer = new MutationObserver(checkActiveMediaLiveness);
+    const rootEl = document.documentElement || document;
+    if (rootEl) {
+      observer.observe(rootEl, { childList: true, subtree: true });
+    }
+  } catch {}
 
   function sendMediaSessionState(action, specificValue) {
     const ms = navigator.mediaSession || mockMediaSessionInstance;
@@ -140,8 +209,11 @@ export function initIframeAgent() {
       metadata: ms?.metadata ? { title: ms.metadata.title, artist: ms.metadata.artist, album: ms.metadata.album, artwork: ms.metadata.artwork || [] } : null,
       supportedActions: Array.from(mockMediaSessionInstance._handlers.keys()),
     };
-    if (action) payload.action = action;
+    if (action) payload.event = action;
     if (specificValue !== undefined) payload.value = specificValue;
+
+    const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
+    payload.isProgrammatic = isProgrammatic;
 
     emitToParent(action || 'mediaSessionState', payload);
   }
@@ -154,7 +226,7 @@ export function initIframeAgent() {
 
     const msg = { type: `${NS}${eventOrAction}`, event: eventOrAction, source: 'iframe', instanceId, location: location.href, origin: location.origin, ...payload };
 
-    console_debug(`%c[SRemote:signal] Iframe emit -> ${eventOrAction} (source: iframe)`, 'color: #10b981;', msg);
+    logger.debug(`%c[SRemote:signal] Iframe emit -> ${eventOrAction} (source: iframe)`, 'color: #10b981;', msg);
 
     if (mediaPort) {
       try {
@@ -171,7 +243,7 @@ export function initIframeAgent() {
       case 'video':
       case 'audio':
         emitToParent(action || 'state', {
-          ...(action ? { action } : {}),
+          ...(action ? { event: action } : {}),
           ...(specificValue !== undefined ? { value: specificValue } : {}),
           isProgrammatic,
           state: getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
@@ -235,7 +307,7 @@ export function initIframeAgent() {
       const lowerAction = action.toLowerCase();
 
       if (lowerAction !== 'ping' && lowerAction !== 'pong') {
-        console_log(`%c[SRemote:command] Iframe received command (port) -> ${action}`, 'color: #8b5cf6; font-weight: bold;', data);
+        logger.log(`%c[SRemote:command] Iframe received command (port) -> ${action}`, 'color: #8b5cf6; font-weight: bold;', data);
       }
 
       if (lowerAction === 'resendblobobject' && data.blob) {
@@ -250,7 +322,7 @@ export function initIframeAgent() {
             }
           }
         } catch (err) {
-          console_warn('[sremote] Error creating local object URL for blob:', err);
+          logger.warn('[sremote] Error creating local object URL for blob:', err);
         }
         return;
       }
@@ -261,7 +333,7 @@ export function initIframeAgent() {
         try {
           window.postMessage(payload, targetOrigin);
         } catch (err) {
-          console_warn('[sremote] Error executing bridge postMessage in iframe:', err);
+          logger.warn('[sremote] Error executing bridge postMessage in iframe:', err);
         }
         return;
       }
@@ -276,7 +348,7 @@ export function initIframeAgent() {
             type: `${NS}rpc_response`,
             source: 'iframe',
             rpcId: data.rpcId,
-            result: { success: false, instanceId, error: isNotFound ? 'ACTION_NOT_FOUND' : 'EXECUTION_ERROR', message: String(err) },
+            result: { success: false, error: isNotFound ? 'METHOD_NOT_FOUND' : 'RPC_ERROR', message: String(err), instanceId },
           });
         }
         return;
@@ -287,7 +359,15 @@ export function initIframeAgent() {
         const state = getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia);
         const capabilities = getIframeCapabilities(null, resolver.getActiveMedia(), resolver.resolveActiveMedia);
         try {
-          port.postMessage({ type: `${NS}pong`, source: 'iframe', instanceId, mediaType: resolver.getMediaType(), hasMedia: Boolean(resolver.getActiveMedia()), capabilities, state });
+          port.postMessage({
+            type: `${NS}pong`,
+            source: 'iframe',
+            instanceId,
+            mediaType: resolver.getMediaType(),
+            hasMedia: Boolean(resolver.getActiveMedia()),
+            capabilities,
+            state,
+          });
         } catch {}
         return;
       }
@@ -304,13 +384,13 @@ export function initIframeAgent() {
 
       const handled = await executeControl(action, data.value);
       if (!handled) {
-        console_warn(`[sremote] Command '${action}' failed: No media element or MediaSession handler found in frame.`);
+        logger.warn(`[sremote] Command '${action}' failed: No media element or MediaSession handler found in frame.`);
         emitToParent('noMedia', { action, reason: 'NO_MEDIA_FOUND', message: `No media element or MediaSession handler found for command '${action}'` });
       }
     };
   }
 
-  const handshake = createIframeHandshake({
+  const handshake = createIframeTransportManager({
     instanceIdGetter: () => instanceId,
     setInstanceId: id => {
       instanceId = id;
@@ -318,19 +398,10 @@ export function initIframeAgent() {
     resolver,
     bindPort,
     notifyState,
-    getMediaPort: () => mediaPort,
     closeMediaPort,
     treatAlmostEndAsEndSetter: val => {
       treatAlmostEndAsEnd = val;
     },
-    currentHandshakeSetter: (id, token) => {
-      currentHandshakeId = id;
-      currentHandshakeToken = token;
-    },
-    currentHandshakeGetter: () => ({
-      handshakeId: currentHandshakeId,
-      handshakeToken: currentHandshakeToken,
-    }),
   });
 
   function onMediaAvailable() {
@@ -340,7 +411,9 @@ export function initIframeAgent() {
       bindVideoEvents(activeMedia);
     }
     notifyState();
-    if (handshake.primaryAuthorizedOrigin) showConnectedIndicator(handshake.primaryAuthorizedOrigin, handshake.primaryAuthorizedOrigin);
+    if (handshake.primaryAuthorizedOrigin) {
+      showConnectedIndicator(handshake.primaryAuthorizedOrigin, handshake.primaryAuthorizedOrigin);
+    }
     const waiters = mediaWaiters.splice(0, mediaWaiters.length);
     for (const w of waiters) w(true);
   }
@@ -350,13 +423,12 @@ export function initIframeAgent() {
     let lastQueryToken = null;
     setInterval(() => {
       try {
-        const queryReq = Storage.get('sremote:query_req');
+        const queryReq = Storage.raw.get('sremote:ipc:query_req');
         if (queryReq && queryReq !== lastQueryToken) {
           lastQueryToken = queryReq;
           resolver.resolveActiveMedia();
 
-          const reportKey = `sremote:report:${instanceId}`;
-          Storage.set(reportKey, {
+          const reportData = {
             instanceId,
             location: location.href,
             origin: location.origin,
@@ -364,7 +436,8 @@ export function initIframeAgent() {
             hasMedia: Boolean(resolver.getActiveMedia()),
             mediaType: resolver.getMediaType(),
             lastActive: Date.now(),
-          });
+          };
+          Storage.raw.set(`sremote:ipc:report:${instanceId}`, reportData);
         }
       } catch {}
     }, 800);
@@ -395,15 +468,10 @@ export function initIframeAgent() {
     const lowerAction = action.toLowerCase();
     const callerOrigin = event.origin || 'unknown_parent';
 
-    console_log(`%c[SRemote:command] Iframe received command/message (window) -> ${action}`, 'color: #ec4899; font-weight: bold;', { origin: callerOrigin, data });
+    logger.log(`%c[SRemote:command] Iframe received command/message (window) -> ${action}`, 'color: #ec4899; font-weight: bold;', { origin: callerOrigin, data });
 
-    if (lowerAction === 'handshake_port' && event.ports && event.ports.length > 0) {
-      handshake.handleHandshakePort(event, data, callerOrigin);
-      return;
-    }
-
-    if (lowerAction === 'permission_response') {
-      handshake.handlePermissionResponse(data, callerOrigin);
+    if (lowerAction === 'syn_ack' || lowerAction === 'synack') {
+      handshake.handleSynAck(event, data);
       return;
     }
 
@@ -411,40 +479,38 @@ export function initIframeAgent() {
       handshake.handleHelloMessage(event, data);
       return;
     }
+
+    // Direct Window PostMessage Command Fallback (if port is not ready or failed)
+    if (
+      lowerAction === 'play' ||
+      lowerAction === 'pause' ||
+      lowerAction === 'toggle' ||
+      lowerAction === 'stop' ||
+      lowerAction === 'seek' ||
+      lowerAction === 'seekto' ||
+      lowerAction === 'currenttime' ||
+      lowerAction === 'volume' ||
+      lowerAction === 'muted' ||
+      lowerAction === 'speed' ||
+      lowerAction === 'rate'
+    ) {
+      await executeControl(action, data.value);
+      return;
+    }
   });
 
   function boot() {
     if (resolver.resolveActiveMedia()) onMediaAvailable();
 
-    const checkActiveMediaLiveness = () => {
-      IframeStyleEngine.maintainStyles();
-
-      const had = Boolean(resolver.getActiveMedia());
-      const oldType = resolver.getMediaType();
-      const activeMedia = resolver.getActiveMedia();
-      const isCurrentAttached = activeMedia && (activeMedia.isConnected || createdMediaPool.has(activeMedia));
-
-      if (!isCurrentAttached || !resolver.resolveActiveMedia()) {
-        if (had) {
-          console_log(`%c[SRemote:media] Active media detached / dropped in iframe`, 'color: #f59e0b;');
-          if (!resolver.resolveActiveMedia()) {
-            resolver.setActiveMedia(null);
-            resolver.setMediaType(null);
-            emitToParent('mediaDisconnected', { instanceId, hasMedia: false });
-            return;
-          }
+    // Re-ensure root observer is active if documentElement was not ready during early init
+    if (!observer) {
+      try {
+        observer = new MutationObserver(checkActiveMediaLiveness);
+        const mountTarget = document.documentElement || document.body || document;
+        if (mountTarget) {
+          observer.observe(mountTarget, { childList: true, subtree: true });
         }
-      }
-
-      if (resolver.resolveActiveMedia() && (!had || oldType !== resolver.getMediaType())) {
-        onMediaAvailable();
-      }
-    };
-
-    const observer = new MutationObserver(checkActiveMediaLiveness);
-    const mountTarget = document.documentElement || document;
-    if (mountTarget) {
-      observer.observe(mountTarget, { childList: true, subtree: true });
+      } catch {}
     }
 
     const poolCheckInterval = setInterval(checkActiveMediaLiveness, 1000);
@@ -468,7 +534,7 @@ export function initIframeAgent() {
       clearInterval(huntTimer);
       clearInterval(poolCheckInterval);
       try {
-        observer.disconnect();
+        if (observer) observer.disconnect();
       } catch {}
       try {
         hideConnectedIndicator();
@@ -480,11 +546,7 @@ export function initIframeAgent() {
     try {
       window.addEventListener('pagehide', handleTeardown, { capture: true });
     } catch {}
-
-    handshake.checkPendingHelloFromGM();
   }
-
-  handshake.checkPendingHelloFromGM();
 
   if (ENABLE_DEBUG_API) {
     const iframeDebugApi = createIframeDebugApi({
@@ -506,12 +568,28 @@ export function initIframeAgent() {
     } catch {
       pageWindow.sremote_debug = iframeDebugApi;
     }
-    console_log(`%c[sremote] window.sremote_debug is ready inside iframe`, 'background: #065f46; color: #34d399; font-weight: bold;');
+    logger.log(`%c[sremote] window.sremote_debug is ready inside iframe`, 'background: #065f46; color: #34d399; font-weight: bold;');
   }
 
+  const announceReadyToParent = () => {
+    try {
+      if (window.top && window.top !== window) {
+        window.top.postMessage({ type: `${NS}iframe_ready`, source: 'iframe', origin: location.origin }, '*');
+      }
+    } catch {}
+  };
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
+    document.addEventListener(
+      'DOMContentLoaded',
+      () => {
+        boot();
+        announceReadyToParent();
+      },
+      { once: true },
+    );
   } else {
     boot();
+    announceReadyToParent();
   }
 }

@@ -1,5 +1,5 @@
 import { Storage } from '../core/storage.js';
-import { getOriginStorageKeys, createButton } from '../core/utils.js';
+import { createButton, normalizeOrigin } from '../core/utils.js';
 import { t } from '../core/i18n.js';
 import THEME_CSS from '@sremote/shared/src/css/theme.css?raw';
 import USERSCRIPT_CSS from './styles.css?raw';
@@ -10,9 +10,10 @@ let indicatorHost = null;
 
 export function showConnectedIndicator(origin, primaryAuthorizedOrigin) {
   const targetOrigin = origin || primaryAuthorizedOrigin || 'unknown_parent';
-  const { hideBadgeKey } = getOriginStorageKeys(targetOrigin);
-  if (Storage.get(hideBadgeKey) === '1') return;
-  if (indicatorHost && indicatorHost.isConnected) return;
+  const normOrigin = normalizeOrigin(targetOrigin);
+
+  if (Storage.preferences.isBadgeHidden(normOrigin)) return;
+  if (indicatorHost?.isConnected) return;
 
   indicatorHost = document.createElement('div');
   indicatorHost.id = 'sremote-indicator-host';
@@ -45,7 +46,7 @@ export function showConnectedIndicator(origin, primaryAuthorizedOrigin) {
     text: t('badgeDontShow'),
     title: t('badgeDontShowTitle'),
     onClick: () => {
-      Storage.set(hideBadgeKey, '1');
+      if (normOrigin) Storage.preferences.setBadgeHidden(normOrigin, true);
       indicatorHost?.remove();
       indicatorHost = null;
     },

@@ -13,7 +13,10 @@ const i18nDocs = {
     langTitle: 'Ngôn ngữ:',
     copyLink: 'Sao chép Link',
     copied: '✓ Đã chép!',
-    groupGeneral: '🚀 Bắt đầu (Getting Started)',
+    groupQuickstart: '🚀 Bắt đầu nhanh',
+    groupConcepts: '💡 Khái niệm cốt lõi',
+    groupUsecases: '🛠️ Hướng dẫn thực chiến',
+    groupAdvanced: '⚡ Nâng cao & Phụ trợ',
     groupPlayback: '🎮 Điều khiển phát nhanh',
     groupInstances: '🗂️ Quản lý Instance (instances.*)',
     groupReady2use: '📦 SRemote Ready2use',
@@ -40,7 +43,10 @@ const i18nDocs = {
     langTitle: 'Language:',
     copyLink: 'Copy Link',
     copied: '✓ Copied!',
-    groupGeneral: '🚀 Getting Started',
+    groupQuickstart: '🚀 Quickstart',
+    groupConcepts: '💡 Core Concepts',
+    groupUsecases: '🛠️ Guides by Use-case',
+    groupAdvanced: '⚡ Advanced & Helpers',
     groupPlayback: '🎮 Quick Playback Controls',
     groupInstances: '🗂️ Instance Management (instances.*)',
     groupReady2use: '📦 SRemote Ready2use',
@@ -162,13 +168,22 @@ function renderGfmAlerts(html) {
     CAUTION: { title: 'Caution', icon: '🛑', class: 'gfm-alert-caution' },
   };
 
-  return html.replace(/<blockquote>\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(?:<br>|\n)?([\s\S]*?)<\/p>\s*<\/blockquote>/gi, (match, type, content) => {
-    const upperType = type.toUpperCase();
-    const alert = alertTypes[upperType] || alertTypes.NOTE;
+  return html.replace(/<blockquote>([\s\S]*?)<\/blockquote>/gi, (match, inner) => {
+    const alertMatch = inner.match(/^\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\s*<br\s*\/?>|\s*\n)?([\s\S]*)$/i);
+    if (!alertMatch) return match;
+
+    const type = alertMatch[1].toUpperCase();
+    const restOfFirstP = alertMatch[2];
+    const alert = alertTypes[type] || alertTypes.NOTE;
+
+    let body = inner.replace(/^\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\s*<br\s*\/?>|\s*\n)?/i, '<p>');
+    // Clean up empty <p></p> if rest was empty
+    body = body.replace(/<p>\s*<\/p>/gi, '');
+
     return `
       <div class="gfm-alert ${alert.class}">
         <div class="gfm-alert-title">${alert.icon} ${alert.title}</div>
-        <p>${content}</p>
+        ${body}
       </div>
     `;
   });
@@ -188,7 +203,7 @@ function scrollToHashElement(hash) {
 }
 
 function getDefaultDocPath(lang) {
-  return lang === 'en' ? 'content/guides/en/00-developer-overview.md' : 'content/guides/vi/00-developer-overview.md';
+  return lang === 'en' ? 'content/guides/en/quickstart/5-minute-quickstart.md' : 'content/guides/vi/quickstart/5-minute-quickstart.md';
 }
 
 // Cleanly normalize shorthand paths, relative paths, and legacy query paths into an exact content/... path
@@ -212,7 +227,7 @@ function normalizeDocPath(inputPath, currentDir = '', lang = currentLang) {
     // Shorthands: /api/... -> content/api/{lang}/...
     p = `content/api/${lang}/` + p.substring(4);
   } else if (p.startsWith('setup/')) {
-    p = `content/guides/${lang}/01-iframe-setup.md`;
+    p = `content/guides/${lang}/quickstart/5-minute-quickstart.md`;
   } else if (!p.startsWith('content/') && !p.startsWith('..') && currentDir) {
     p = currentDir + p;
   }
@@ -237,20 +252,20 @@ function getDocPathForLang(docPath, targetLang) {
   if (!docPath) return getDefaultDocPath(targetLang);
   if (targetLang === 'en') {
     if (docPath === 'content/guides/vi.md' || docPath === 'docs/content/guides/vi.md' || docPath === 'content/guides/README_vi.md') return '../README.md';
-    if (docPath === 'content/setup/vi.md' || docPath === 'docs/content/setup/vi.md') return 'content/guides/en/01-iframe-setup.md';
+    if (docPath === 'content/setup/vi.md' || docPath === 'docs/content/setup/vi.md') return 'content/guides/en/quickstart/5-minute-quickstart.md';
     return docPath
       .replace(/^docs\//, '')
       .replace('content/api/vi/', 'content/api/en/')
       .replace('content/guides/vi/', 'content/guides/en/')
-      .replace('content/setup/vi.md', 'content/guides/en/01-iframe-setup.md');
+      .replace('content/setup/vi.md', 'content/guides/en/quickstart/5-minute-quickstart.md');
   } else {
     if (docPath === '../README.md' || docPath === 'README.md') return 'content/guides/README_vi.md';
-    if (docPath === 'content/setup/en.md' || docPath === 'docs/content/setup/en.md') return 'content/guides/vi/01-iframe-setup.md';
+    if (docPath === 'content/setup/en.md' || docPath === 'docs/content/setup/en.md') return 'content/guides/vi/quickstart/5-minute-quickstart.md';
     return docPath
       .replace(/^docs\//, '')
       .replace('content/api/en/', 'content/api/vi/')
       .replace('content/guides/en/', 'content/guides/vi/')
-      .replace('content/setup/en.md', 'content/guides/vi/01-iframe-setup.md');
+      .replace('content/setup/en.md', 'content/guides/vi/quickstart/5-minute-quickstart.md');
   }
 }
 
@@ -463,7 +478,7 @@ function interceptContentLinks(container, currentDocPath) {
       const currentDir = currentDocPath.includes('/') ? currentDocPath.substring(0, currentDocPath.lastIndexOf('/') + 1) : '';
       let rawPath = href;
       if (rawPath.startsWith('docs/')) rawPath = rawPath.replace('docs/', '');
-      
+
       const combined = (currentDir + rawPath).split('/');
       const resolvedParts = [];
       for (const part of combined) {
@@ -508,7 +523,10 @@ function setLanguage(lang, renderOnSwitch = true) {
   if (langTitleEl) langTitleEl.textContent = dict.langTitle;
   const copyBtnText = document.getElementById('copy-btn-text');
   if (copyBtnText) copyBtnText.textContent = dict.copyLink;
-  document.getElementById('toc-group-general').textContent = dict.groupGeneral;
+  if (document.getElementById('toc-group-quickstart')) document.getElementById('toc-group-quickstart').textContent = dict.groupQuickstart;
+  if (document.getElementById('toc-group-concepts')) document.getElementById('toc-group-concepts').textContent = dict.groupConcepts;
+  if (document.getElementById('toc-group-usecases')) document.getElementById('toc-group-usecases').textContent = dict.groupUsecases;
+  if (document.getElementById('toc-group-advanced')) document.getElementById('toc-group-advanced').textContent = dict.groupAdvanced;
   if (document.getElementById('toc-group-playback')) document.getElementById('toc-group-playback').textContent = dict.groupPlayback;
   if (document.getElementById('toc-group-instances')) document.getElementById('toc-group-instances').innerHTML = dict.groupInstances;
   if (document.getElementById('toc-group-ready2use')) document.getElementById('toc-group-ready2use').innerHTML = dict.groupReady2use;

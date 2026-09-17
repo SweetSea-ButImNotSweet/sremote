@@ -68,6 +68,13 @@ export function createModal({ titleText = 'SRemote', bodyElement = null, bodyTex
 
   dialog.addEventListener('cancel', e => {
     e.preventDefault();
+    close(false);
+  });
+
+  dialog.addEventListener('click', e => {
+    if (e.target === dialog) {
+      close(false);
+    }
   });
 
   const mountHost = () => {

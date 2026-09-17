@@ -11,11 +11,11 @@ export const SREMOTE_ACTIONS = {
   TOGGLE: 'toggle',
   STOP: 'stop',
   SEEK: 'seek',
-  SEEK_TO: 'currentTime',
+  SEEK_TO: 'seekTo',
+  CURRENT_TIME: 'currentTime',
   VOLUME: 'volume',
   MUTE: 'muted',
-  SPEED: 'playbackRate',
-  PLAYBACK_RATE: 'playbackRate',
+  SPEED: 'speed',
   PIP: 'pip',
   ENTER_PIP: 'enterpip',
   EXIT_PIP: 'exitpip',
@@ -25,8 +25,10 @@ export const SREMOTE_ACTIONS = {
   GET_SUBTITLES: 'getSubtitles',
   SHUFFLE: 'shuffle',
   REPEAT: 'repeat',
-  NEXT: 'nexttrack',
-  PREVIOUS: 'previoustrack',
+  NEXT: 'next',
+  PREVIOUS: 'previous',
+  NEXT_TRACK: 'nexttrack',
+  PREVIOUS_TRACK: 'previoustrack',
 };
 
 export const SREMOTE_STORAGE_KEYS = { HELLO_SEQ: 'sremote:hello_seq', PARENT_ORIGIN: 'sremote:parent_origin', HANDSHAKE_SECRET: 'sremote:handshake_secret' };

@@ -1,6 +1,51 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, Volume } from '../core/polyfill.js';
 import { loadYouTubeIframeApi } from '../utils/sdk-loader.js';
+
+/**
+ * Checks if the YouTube player state corresponds to playing or buffering.
+ * @param {number} state
+ * @param {any} [YT]
+ * @returns {boolean}
+ */
+function isStatePlaying(state, YT) {
+  return YT ? state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING : state === 1 || state === 3;
+}
+
+/**
+ * Helper to safely configure YouTube captions / subtitles track.
+ * @param {any} player
+ * @param {string|null} track
+ */
+function setCaptions(player, track) {
+  if (!player) return;
+
+  const isOff = !track || track === 'off';
+
+  try {
+    if (isOff) {
+      if (typeof player.setOption === 'function') {
+        player.setOption('captions', 'track', {});
+        player.setOption('cc', 'track', {});
+        player.setOption('captions', 'reload', true);
+      }
+      if (typeof player.unloadModule === 'function') {
+        player.unloadModule('captions');
+      }
+    } else {
+      if (typeof player.loadModule === 'function') {
+        player.loadModule('captions');
+      }
+      if (typeof player.setOption === 'function') {
+        const trackObj = { languageCode: String(track) };
+        player.setOption('captions', 'track', trackObj);
+        player.setOption('cc', 'track', trackObj);
+        player.setOption('captions', 'reload', true);
+      }
+    }
+  } catch {}
+}
 
 /**
  * Provider for YouTube IFrame API
@@ -20,45 +65,88 @@ export class YouTubeProvider extends BaseProvider {
     const height = options.height || '100%';
     const videoId = options.videoId;
 
-    const { hiddenWrapper, tempNode, cleanup } = createTempNode(instanceId, width, height);
+    let targetNode = null;
+    let cleanupTemp = () => {};
+
+    if (options.container) {
+      targetNode = document.createElement('div');
+      targetNode.id = `sremote-youtube-${instanceId}`;
+      applyElementAttributes(targetNode, width, height, instanceId);
+      options.container.appendChild(targetNode);
+    } else {
+      const temp = createTempNode(instanceId, width, height);
+      targetNode = temp.tempNode;
+      cleanupTemp = temp.cleanup;
+    }
 
     return new Promise((resolve, reject) => {
       let player = null;
-      let iframe = null;
 
-      player = new YT.Player(tempNode.id, {
+      player = new YT.Player(targetNode.id, {
         width,
         height,
         videoId,
         playerVars: { enablejsapi: 1, origin: typeof window !== 'undefined' ? window.location.origin : undefined, ...options.playerVars },
         events: {
           onReady: () => {
-            iframe = player.getIFrame ? player.getIFrame() : document.getElementById(tempNode.id);
-            if (iframe && iframe.parentNode === hiddenWrapper) {
-              hiddenWrapper.removeChild(iframe);
-            }
-            cleanup();
-
+            const iframe = player.getIFrame ? player.getIFrame() : document.getElementById(targetNode.id);
             if (iframe) {
               applyElementAttributes(iframe, width, height, instanceId);
             }
 
-            resolve({
+            const buildResult = () => ({
               player,
-              element: iframe,
-              iframe,
+              element: iframe || targetNode,
+              iframe: iframe || (targetNode?.tagName === 'IFRAME' ? targetNode : null),
               destroy: () => {
                 try {
                   if (player && typeof player.destroy === 'function') {
                     player.destroy();
                   }
                 } catch {}
-                cleanup();
+                cleanupTemp();
               },
             });
+
+            // If player already has duration/metadata ready, resolve immediately
+            try {
+              if (player.getDuration && player.getDuration() > 0) {
+                resolve(buildResult());
+                return;
+              }
+            } catch {}
+
+            let isResolved = false;
+            const completeResolve = () => {
+              if (isResolved) return;
+              isResolved = true;
+              clearTimeout(timeoutTimer);
+              resolve(buildResult());
+            };
+
+            // Fallback timeout to prevent hanging if live stream or slow network
+            const timeoutTimer = setTimeout(completeResolve, 1500);
+
+            // Wait for video metadata/state to be cued or playable
+            const onStateChange = ev => {
+              const s = ev.data;
+              // 1: PLAYING, 2: PAUSED, 3: BUFFERING, 5: CUED
+              if ([1, 2, 3, 5].includes(s)) {
+                try {
+                  player.removeEventListener('onStateChange', onStateChange);
+                } catch {}
+                completeResolve();
+              }
+            };
+
+            try {
+              player.addEventListener('onStateChange', onStateChange);
+            } catch {
+              completeResolve();
+            }
           },
           onError: err => {
-            cleanup();
+            cleanupTemp();
             reject(err);
           },
         },
@@ -69,14 +157,22 @@ export class YouTubeProvider extends BaseProvider {
   createAdapter(player) {
     const YT = typeof window !== 'undefined' ? window.YT : null;
 
-    let lastKnownState = { paused: true, currentTime: 0, duration: 0, volume: 1, muted: false, playbackRate: 1 };
+    let lastKnownState = { paused: true, ended: false, currentTime: 0, duration: 0, volume: 1, muted: false, playbackRate: 1 };
+    let timeupdateTimer = null;
+    let isSeeking = false;
+    let lastReportedTime = 0;
+
+    const isPlaying = () => {
+      if (!player || typeof player.getPlayerState !== 'function') return false;
+      return isStatePlaying(player.getPlayerState(), YT);
+    };
 
     const updateStateSnapshot = () => {
       try {
         if (player && typeof player.getPlayerState === 'function') {
-          const state = player.getPlayerState();
-          const isPlayingOrBuffering = YT ? state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING : state === 1 || state === 3;
-          lastKnownState.paused = !isPlayingOrBuffering;
+          const pState = player.getPlayerState();
+          lastKnownState.paused = !isPlaying();
+          lastKnownState.ended = pState === 0;
           lastKnownState.currentTime = player.getCurrentTime ? player.getCurrentTime() : 0;
           lastKnownState.duration = player.getDuration ? player.getDuration() : 0;
           lastKnownState.volume = player.getVolume ? player.getVolume() / 100 : 1;
@@ -87,7 +183,40 @@ export class YouTubeProvider extends BaseProvider {
       return lastKnownState;
     };
 
-    return {
+    const notifySeeked = state => {
+      if (isSeeking) {
+        isSeeking = false;
+        adapter.emit?.('seeked', { state });
+      }
+    };
+
+    const startTimeupdate = () => {
+      if (timeupdateTimer) return;
+      timeupdateTimer = setInterval(() => {
+        const state = updateStateSnapshot();
+        const cur = state.currentTime || 0;
+
+        // Detect user seeking natively via scrubber (jump > 1.5s)
+        if (Math.abs(cur - lastReportedTime) > 1.5 && !isSeeking) {
+          adapter.emit?.('seeking', { state });
+          adapter.emit?.('seeked', { state });
+        } else if (isSeeking) {
+          notifySeeked(state);
+        }
+
+        lastReportedTime = cur;
+        adapter.emit?.('timeupdate', { state });
+      }, 250);
+    };
+
+    const stopTimeupdate = () => {
+      if (timeupdateTimer) {
+        clearInterval(timeupdateTimer);
+        timeupdateTimer = null;
+      }
+    };
+
+    const adapter = {
       play() {
         if (player && typeof player.playVideo === 'function') {
           player.playVideo();
@@ -98,16 +227,6 @@ export class YouTubeProvider extends BaseProvider {
           player.pauseVideo();
         }
       },
-      toggle() {
-        if (!player) return;
-        const state = typeof player.getPlayerState === 'function' ? player.getPlayerState() : -1;
-        const isPlayingOrBuffering = YT ? state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING : state === 1 || state === 3;
-        if (isPlayingOrBuffering) {
-          player.pauseVideo();
-        } else {
-          player.playVideo();
-        }
-      },
       stop() {
         if (player && typeof player.stopVideo === 'function') {
           player.stopVideo();
@@ -116,13 +235,24 @@ export class YouTubeProvider extends BaseProvider {
       seek(offset) {
         if (player && typeof player.getCurrentTime === 'function' && typeof player.seekTo === 'function') {
           const cur = player.getCurrentTime() || 0;
-          player.seekTo(Math.max(0, cur + Number(offset)), true);
+          const target = Math.max(0, cur + Number(offset));
+          isSeeking = true;
+          const state = { ...updateStateSnapshot(), currentTime: target };
+          adapter.emit?.('seeking', { state });
+          player.seekTo(target, true);
         }
       },
       seekTo(seconds) {
         if (player && typeof player.seekTo === 'function') {
-          player.seekTo(Number(seconds), true);
+          const target = Number(seconds);
+          isSeeking = true;
+          const state = { ...updateStateSnapshot(), currentTime: target };
+          adapter.emit?.('seeking', { state });
+          player.seekTo(target, true);
         }
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getCurrentTime() {
         return player && typeof player.getCurrentTime === 'function' ? player.getCurrentTime() : 0;
@@ -137,7 +267,10 @@ export class YouTubeProvider extends BaseProvider {
         if (player && typeof player.setVolume === 'function') {
           let v = Number(vol);
           if (v <= 1 && v > 0) v *= 100;
-          player.setVolume(Math.min(100, Math.max(0, v)));
+          const bounded = Math.min(100, Math.max(0, v));
+          player.setVolume(bounded);
+          const state = { ...updateStateSnapshot(), volume: bounded / 100 };
+          adapter.emit?.('volumechange', { state });
         }
       },
       getMuted() {
@@ -145,25 +278,28 @@ export class YouTubeProvider extends BaseProvider {
       },
       setMuted(muted) {
         if (!player) return;
-        if (muted) {
-          if (typeof player.mute === 'function') player.mute();
+        const isMute = Boolean(muted);
+        if (isMute) {
+          player.mute?.();
         } else {
-          if (typeof player.unMute === 'function') player.unMute();
+          player.unMute?.();
         }
+        const state = { ...updateStateSnapshot(), muted: isMute };
+        adapter.emit?.('volumechange', { state });
       },
       getPlaybackRate() {
         return player && typeof player.getPlaybackRate === 'function' ? player.getPlaybackRate() : 1;
       },
       setPlaybackRate(rate) {
         if (player && typeof player.setPlaybackRate === 'function') {
-          player.setPlaybackRate(Number(rate));
+          const r = Number(rate);
+          player.setPlaybackRate(r);
+          const state = { ...updateStateSnapshot(), playbackRate: r };
+          adapter.emit?.('ratechange', { state });
         }
       },
       paused() {
-        if (!player || typeof player.getPlayerState !== 'function') return true;
-        const state = player.getPlayerState();
-        const isPlayingOrBuffering = YT ? state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING : state === 1 || state === 3;
-        return !isPlayingOrBuffering;
+        return !isPlaying();
       },
       next() {
         if (player && typeof player.nextVideo === 'function') {
@@ -187,35 +323,7 @@ export class YouTubeProvider extends BaseProvider {
         }
       },
       setSubtitle(track) {
-        if (!player) return;
-        if (!track || track === 'off') {
-          if (typeof player.setOption === 'function') {
-            try {
-              player.setOption('captions', 'track', {});
-              player.setOption('cc', 'track', {});
-              player.setOption('captions', 'reload', true);
-            } catch {}
-          }
-          if (typeof player.unloadModule === 'function') {
-            try {
-              player.unloadModule('captions');
-            } catch {}
-          }
-        } else {
-          const lang = String(track);
-          if (typeof player.loadModule === 'function') {
-            try {
-              player.loadModule('captions');
-            } catch {}
-          }
-          if (typeof player.setOption === 'function') {
-            try {
-              player.setOption('captions', 'track', { languageCode: lang });
-              player.setOption('cc', 'track', { languageCode: lang });
-              player.setOption('captions', 'reload', true);
-            } catch {}
-          }
-        }
+        setCaptions(player, track);
       },
       getSubtitles() {
         if (player && typeof player.getOption === 'function') {
@@ -231,27 +339,55 @@ export class YouTubeProvider extends BaseProvider {
         return [];
       },
       load(source) {
-        if (!player) return;
-        if (typeof source === 'string') {
-          if (typeof player.loadVideoById === 'function') {
-            player.loadVideoById(source);
-          }
-        } else if (source && typeof source === 'object') {
-          if (typeof player.loadVideoById === 'function') {
-            player.loadVideoById(source);
-          }
+        if (player && typeof player.loadVideoById === 'function' && source) {
+          player.loadVideoById(source);
         }
       },
       getState() {
         return updateStateSnapshot();
       },
+      destroy() {
+        stopTimeupdate();
+      },
     };
+
+    if (player && typeof player.addEventListener === 'function') {
+      player.addEventListener('onStateChange', event => {
+        const state = updateStateSnapshot();
+        const stateVal = event.data;
+
+        // YT.PlayerState: PLAYING (1), PAUSED (2), ENDED (0), BUFFERING (3), CUED (5)
+        if (stateVal === 1) {
+          notifySeeked(state);
+          startTimeupdate();
+          adapter.emit?.('play', { state });
+        } else if (stateVal === 2) {
+          notifySeeked(state);
+          stopTimeupdate();
+          adapter.emit?.('pause', { state });
+        } else if (stateVal === 0) {
+          notifySeeked(state);
+          stopTimeupdate();
+          adapter.emit?.('ended', { state: { ...state, paused: true, ended: true } });
+        } else if (stateVal === 3) {
+          adapter.emit?.('buffering', { state });
+        }
+      });
+
+      player.addEventListener('onPlaybackRateChange', event => {
+        const rate = event?.data ?? (player.getPlaybackRate ? player.getPlaybackRate() : 1);
+        const state = { ...updateStateSnapshot(), playbackRate: Number(rate) };
+        adapter.emit?.('ratechange', { state });
+      });
+    }
+
+    toggle(adapter);
+    new Volume(adapter.getVolume ? adapter.getVolume() : 1).apply(adapter);
+
+    return adapter;
   }
 }
 
 export const youtubeProvider = new YouTubeProvider();
 
-export const createYouTubePlayer = options => youtubeProvider.create(options);
-export const mountYouTubePlayer = (container, options) => youtubeProvider.mount(container, options);
-
-export const youtube = { create: createYouTubePlayer, mount: mountYouTubePlayer, provider: youtubeProvider };
+export const youtube = { create: options => youtubeProvider.create(options), mount: (container, options) => youtubeProvider.mount(container, options), provider: youtubeProvider };

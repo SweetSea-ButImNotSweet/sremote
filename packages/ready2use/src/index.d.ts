@@ -1,4 +1,4 @@
-import type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities } from '../../wrapper/src/index.d.ts';
+import type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities } from '@sremote/sdk';
 
 export type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities };
 
@@ -28,7 +28,44 @@ export interface BaseProviderOptions {
    */
   sremote?: SRemoteClient;
 
+  /**
+   * Automatically register the created adapter with SRemote if available.
+   * @default true
+   */
+  register?: boolean;
+
+  /**
+   * Alias for register option.
+   * @default true
+   */
+  autoRegister?: boolean;
+
   [key: string]: any;
+}
+
+/**
+ * Unified remote control interface for player instance.
+ */
+export interface PlayerRemoteControl {
+  readonly instanceId: string;
+  readonly adapter: SRemoteCustomAdapter;
+  readonly capabilities: SRemoteCapabilities;
+  play(): Promise<any>;
+  pause(): Promise<any>;
+  toggle(): Promise<any>;
+  stop(): Promise<any>;
+  seek(seconds: number): Promise<any>;
+  seekTo(seconds: number): Promise<any>;
+  setVolume(volume: number): Promise<any>;
+  getVolume(): Promise<number>;
+  setMuted(muted: boolean): Promise<any>;
+  isMuted(): Promise<boolean>;
+  setPlaybackRate(rate: number): Promise<any>;
+  getPlaybackRate(): Promise<number>;
+  next(): Promise<any>;
+  previous(): Promise<any>;
+  load(source: any): Promise<any>;
+  getState(): Promise<Record<string, any>>;
 }
 
 /**
@@ -49,6 +86,11 @@ export interface ProviderCreateResult<TPlayer = any> {
    * The SRemote-compatible custom adapter for this instance.
    */
   adapter: SRemoteCustomAdapter;
+
+  /**
+   * The unified remote controller for this instance.
+   */
+  remote: PlayerRemoteControl;
 
   /**
    * The underlying native SDK player instance.
@@ -75,6 +117,25 @@ export interface ProviderCreateResult<TPlayer = any> {
  * Result returned from provider.mount()
  */
 export interface ProviderMountResult<TPlayer = any> extends ProviderCreateResult<TPlayer> {}
+
+/**
+ * Polyfill helpers for provider custom adapters.
+ */
+export declare function toggle<T extends SRemoteCustomAdapter>(adapter: T): T;
+export declare function seek<T extends SRemoteCustomAdapter>(adapter: T): T;
+export declare function seekTo<T extends SRemoteCustomAdapter>(adapter: T): T;
+export declare function setCurrentTime<T extends SRemoteCustomAdapter>(adapter: T): T;
+
+export declare class Volume {
+  previousVolume: number;
+  constructor(initialVolume?: number);
+  record(vol: number): void;
+  apply<T extends SRemoteCustomAdapter>(adapter: T): T;
+}
+
+export declare const Polyfills: readonly [typeof toggle, typeof seek, typeof seekTo, typeof setCurrentTime, typeof Volume];
+
+export declare function createRemoteProxy(adapter: SRemoteCustomAdapter, sremoteClient?: any, instanceId?: string): PlayerRemoteControl;
 
 /**
  * Abstract BaseProvider class for creating provider implementations
@@ -325,23 +386,249 @@ export declare const bilibili: {
 // --- Facebook Provider Definitions ---
 
 export interface FacebookPlayerOptions extends BaseProviderOptions {
-  /** Facebook Video URL */
+  /** Facebook Video URL (e.g. "https://www.facebook.com/facebook/videos/10153231379946729/") */
   videoUrl?: string;
   url?: string;
   showText?: boolean;
   autoplay?: boolean;
-  useSdk?: boolean;
+  controls?: boolean;
+  muted?: boolean;
   appId?: string;
+  timeout?: number;
 }
 
 export declare class FacebookProvider extends BaseProvider<FacebookPlayerOptions, any> {
   constructor();
+  loadSdk(appId?: string): Promise<any>;
 }
 
 export declare const facebook: {
   create: (options?: FacebookPlayerOptions | string) => Promise<ProviderCreateResult<any>>;
   mount: (container: string | HTMLElement, options?: FacebookPlayerOptions | string) => Promise<ProviderMountResult<any>>;
   provider: FacebookProvider;
+};
+
+// --- Twitter / X Provider Definitions ---
+
+export interface TwitterPlayerOptions extends BaseProviderOptions {
+  /** Tweet ID (e.g. "1234567890") or Tweet URL */
+  tweetId?: string | number;
+  id?: string | number;
+  url?: string;
+  videoId?: string;
+  theme?: 'dark' | 'light';
+  align?: 'left' | 'right' | 'center';
+  conversation?: 'none' | 'all';
+  cards?: 'visible' | 'hidden';
+  tweetOptions?: Record<string, any>;
+  timeout?: number;
+}
+
+export declare class TwitterProvider extends BaseProvider<TwitterPlayerOptions, any> {
+  constructor();
+}
+
+export declare const twitter: {
+  create: (options?: TwitterPlayerOptions | string | number) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: TwitterPlayerOptions | string | number) => Promise<ProviderMountResult<any>>;
+  provider: TwitterProvider;
+};
+
+// --- PeerTube Provider Definitions ---
+
+export interface PeerTubePlayerOptions extends BaseProviderOptions {
+  /** PeerTube Video URL or Embed URL */
+  videoUrl?: string;
+  url?: string;
+  videoId?: string;
+  timeout?: number;
+}
+
+export declare class PeerTubeProvider extends BaseProvider<PeerTubePlayerOptions, any> {
+  constructor();
+}
+
+export declare const peertube: {
+  create: (options?: PeerTubePlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: PeerTubePlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: PeerTubeProvider;
+};
+
+// --- Rumble Provider Definitions ---
+
+export interface RumblePlayerOptions extends BaseProviderOptions {
+  video?: string;
+  videoId?: string;
+  url?: string;
+  timeout?: number;
+}
+
+export declare class RumbleProvider extends BaseProvider<RumblePlayerOptions, any> {
+  constructor();
+}
+
+export declare const rumble: {
+  create: (options?: RumblePlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: RumblePlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: RumbleProvider;
+};
+
+// --- Kick Provider Definitions ---
+
+export interface KickPlayerOptions extends BaseProviderOptions {
+  channel?: string;
+  user?: string;
+  username?: string;
+  url?: string;
+  timeout?: number;
+}
+
+export declare class KickProvider extends BaseProvider<KickPlayerOptions, any> {
+  constructor();
+}
+
+export declare const kick: {
+  create: (options?: KickPlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: KickPlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: KickProvider;
+};
+
+// --- Streamable Provider Definitions ---
+
+export interface StreamablePlayerOptions extends BaseProviderOptions {
+  shortcode?: string;
+  code?: string;
+  url?: string;
+  videoId?: string;
+  timeout?: number;
+}
+
+export declare class StreamableProvider extends BaseProvider<StreamablePlayerOptions, any> {
+  constructor();
+}
+
+export declare const streamable: {
+  create: (options?: StreamablePlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: StreamablePlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: StreamableProvider;
+};
+
+// --- Odysee Provider Definitions ---
+
+export interface OdyseePlayerOptions extends BaseProviderOptions {
+  video?: string;
+  url?: string;
+  claim?: string;
+  timeout?: number;
+}
+
+export declare class OdyseeProvider extends BaseProvider<OdyseePlayerOptions, any> {
+  constructor();
+}
+
+export declare const odysee: {
+  create: (options?: OdyseePlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: OdyseePlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: OdyseeProvider;
+};
+
+// --- Bandcamp Provider Definitions ---
+
+export interface BandcampPlayerOptions extends BaseProviderOptions {
+  albumId?: string | number;
+  album?: string | number;
+  trackId?: string | number;
+  track?: string | number;
+  size?: 'small' | 'large';
+  bgcol?: string;
+  linkcol?: string;
+  artwork?: 'small' | 'large' | 'none';
+  timeout?: number;
+}
+
+export declare class BandcampProvider extends BaseProvider<BandcampPlayerOptions, any> {
+  constructor();
+}
+
+export declare const bandcamp: {
+  create: (options?: BandcampPlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: BandcampPlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: BandcampProvider;
+};
+
+// --- Instagram Provider Definitions ---
+export interface InstagramPlayerOptions extends BaseProviderOptions {
+  postUrl?: string;
+  url?: string;
+  id?: string;
+  captioned?: boolean;
+}
+
+export declare class InstagramProvider extends BaseProvider<InstagramPlayerOptions, any> {
+  constructor();
+}
+
+export declare const instagram: {
+  create: (options?: InstagramPlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: InstagramPlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: InstagramProvider;
+};
+
+// --- Threads Provider Definitions ---
+export interface ThreadsPlayerOptions extends BaseProviderOptions {
+  postUrl?: string;
+  url?: string;
+  id?: string;
+}
+
+export declare class ThreadsProvider extends BaseProvider<ThreadsPlayerOptions, any> {
+  constructor();
+}
+
+export declare const threads: {
+  create: (options?: ThreadsPlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: ThreadsPlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: ThreadsProvider;
+};
+
+// --- Apple Music Embed Provider Definitions ---
+export interface AppleMusicPlayerOptions extends BaseProviderOptions {
+  url?: string;
+  src?: string;
+  albumId?: string;
+  playlistId?: string;
+  songId?: string;
+}
+
+export declare class AppleMusicProvider extends BaseProvider<AppleMusicPlayerOptions, any> {
+  constructor();
+}
+
+export declare const applemusic: {
+  create: (options?: AppleMusicPlayerOptions | string) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: AppleMusicPlayerOptions | string) => Promise<ProviderMountResult<any>>;
+  provider: AppleMusicProvider;
+};
+
+// --- Apple MusicKit JS Provider Definitions ---
+export interface AppleMusicKitPlayerOptions extends BaseProviderOptions {
+  developerToken?: string;
+  appName?: string;
+  appBuild?: string;
+  song?: string | object;
+  album?: string | object;
+  playlist?: string | object;
+  musicKitOptions?: Record<string, any>;
+}
+
+export declare class AppleMusicKitProvider extends BaseProvider<AppleMusicKitPlayerOptions, any> {
+  constructor();
+}
+
+export declare const applemusickit: {
+  create: (options?: AppleMusicKitPlayerOptions) => Promise<ProviderCreateResult<any>>;
+  mount: (container: string | HTMLElement, options?: AppleMusicKitPlayerOptions) => Promise<ProviderMountResult<any>>;
+  provider: AppleMusicKitProvider;
 };
 
 declare const _default: {
@@ -357,6 +644,17 @@ declare const _default: {
   niconico: typeof niconico;
   bilibili: typeof bilibili;
   facebook: typeof facebook;
+  twitter: typeof twitter;
+  peertube: typeof peertube;
+  rumble: typeof rumble;
+  kick: typeof kick;
+  streamable: typeof streamable;
+  odysee: typeof odysee;
+  bandcamp: typeof bandcamp;
+  instagram: typeof instagram;
+  threads: typeof threads;
+  applemusic: typeof applemusic;
+  applemusickit: typeof applemusickit;
 };
 
 export default _default;

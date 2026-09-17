@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
-import { applyElementAttributes } from '../core/dom-utils.js';
+import { applyElementAttributes, waitForIframeLoad } from '../core/dom-utils.js';
+import { toggle, seekTo, setCurrentTime, Volume } from '../core/polyfill.js';
 
 /**
  * Provider for NicoNico Player (postMessage protocol)
@@ -22,6 +23,34 @@ export class NicoNicoProvider extends BaseProvider {
     iframe.src = `https://embed.nicovideo.jp/watch/${watchId}?jsapi=1&playerId=${playerId}&autoplay=${options.autoplay ? 1 : 0}`;
 
     applyElementAttributes(iframe, width, height, instanceId);
+
+    await new Promise(resolve => {
+      let resolved = false;
+      let timer = null;
+
+      const onDone = () => {
+        if (resolved) return;
+        resolved = true;
+        if (timer) clearTimeout(timer);
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('message', onMsg);
+        }
+        resolve();
+      };
+
+      const onMsg = e => {
+        if (e.origin === 'https://embed.nicovideo.jp' && e.data?.playerId === playerId && (e.data?.eventName === 'loadComplete' || e.data?.eventName === 'playerMetadataChange')) {
+          onDone();
+        }
+      };
+
+      if (typeof window !== 'undefined') {
+        window.addEventListener('message', onMsg);
+      }
+
+      waitForIframeLoad(iframe, options.timeout || 3500).then(onDone);
+      timer = setTimeout(onDone, options.timeout || 4000);
+    });
 
     return { player: { iframe, playerId }, element: iframe, iframe, destroy: () => {} };
   }
@@ -47,9 +76,6 @@ export class NicoNicoProvider extends BaseProvider {
       pause() {
         sendToNico('pause');
       },
-      toggle() {
-        isPlaying ? sendToNico('pause') : sendToNico('play');
-      },
       stop() {
         sendToNico('pause');
         sendToNico('seek', { time: 0 });
@@ -58,15 +84,18 @@ export class NicoNicoProvider extends BaseProvider {
         const target = Math.max(0, currentTime + Number(offset));
         sendToNico('seek', { time: target * 1000 });
       },
-      seekTo(seconds) {
+      setCurrentTime(seconds) {
         sendToNico('seek', { time: Number(seconds) * 1000 });
+      },
+      seekTo(seconds) {
+        this.setCurrentTime(seconds);
       },
       getVolume() {
         return volume;
       },
       setVolume(vol) {
         volume = Number(vol);
-        sendToNico('volumeChange', { volume: volume });
+        sendToNico('volumeChange', { volume });
       },
       setMuted(muted) {
         sendToNico('mute', { mute: Boolean(muted) });
@@ -83,11 +112,15 @@ export class NicoNicoProvider extends BaseProvider {
       getState() {
         return { paused: !isPlaying, currentTime, duration, volume };
       },
+      destroy() {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('message', messageHandler);
+        }
+      },
     };
 
     const messageHandler = e => {
-      if (e.origin !== 'https://embed.nicovideo.jp') return;
-      if (e.data?.playerId !== playerId) return;
+      if (e.origin !== 'https://embed.nicovideo.jp' || e.data?.playerId !== playerId) return;
 
       const { eventName, data } = e.data;
 
@@ -122,12 +155,19 @@ export class NicoNicoProvider extends BaseProvider {
       window.addEventListener('message', messageHandler);
     }
 
+    toggle(adapter);
+    setCurrentTime(adapter);
+    seekTo(adapter);
+    new Volume(volume).apply(adapter);
+
     return adapter;
   }
 }
 
 export const niconicoProvider = new NicoNicoProvider();
-export const createNicoNicoPlayer = options => niconicoProvider.create(options);
-export const mountNicoNicoPlayer = (container, options) => niconicoProvider.mount(container, options);
 
-export const niconico = { create: createNicoNicoPlayer, mount: mountNicoNicoPlayer, provider: niconicoProvider };
+export const niconico = {
+  create: options => niconicoProvider.create(options),
+  mount: (container, options) => niconicoProvider.mount(container, options),
+  provider: niconicoProvider,
+};

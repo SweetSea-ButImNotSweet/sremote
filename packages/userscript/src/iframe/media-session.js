@@ -1,4 +1,4 @@
-import { console_warn, pageWindow } from '../config.js';
+import { logger, pageWindow } from '../config.js';
 
 export class MockMediaMetadata {
   constructor(init = {}) {
@@ -20,6 +20,11 @@ export class MockMediaSession {
     this.metadata = null;
     this.playbackState = 'none';
     this._handlers = new Map();
+    this._resolver = null;
+  }
+
+  setResolver(resolver) {
+    this._resolver = resolver;
   }
 
   setActionHandler(action, handler) {
@@ -34,16 +39,64 @@ export class MockMediaSession {
     this.positionState = state;
   }
 
+  hasHandler(action) {
+    if (this._handlers.has(action)) return true;
+    const media = this._resolver?.getActiveMedia?.();
+    if (media && (media.tagName === 'VIDEO' || media.tagName === 'AUDIO')) {
+      return ['play', 'pause', 'stop', 'seekto', 'seekforward', 'seekbackward', 'previoustrack', 'nexttrack'].includes(action);
+    }
+    return false;
+  }
+
   async invoke(action, details = {}) {
+    logger.scope('mediaSession').log(`(MediaSession) Invoked -> ${action}`, details);
     const handler = this._handlers.get(action);
     if (typeof handler === 'function') {
       try {
         await handler({ action, ...details });
         return true;
       } catch (e) {
-        console_warn(`[sremote] MockMediaSession handler for ${action} error:`, e);
+        logger.warn(`[sremote] MockMediaSession handler for ${action} error:`, e);
       }
     }
+
+    // Auto-fallback: Execute on native HTMLMediaElement if available
+    const media = this._resolver?.getActiveMedia?.();
+    if (media && (media.tagName === 'VIDEO' || media.tagName === 'AUDIO')) {
+      try {
+        switch (action) {
+          case 'play':
+            if (typeof media.play === 'function') await media.play();
+            return true;
+          case 'pause':
+            if (typeof media.pause === 'function') media.pause();
+            return true;
+          case 'stop':
+            if (typeof media.pause === 'function') media.pause();
+            media.currentTime = 0;
+            return true;
+          case 'seekto':
+            if (typeof details.seekTime === 'number') {
+              media.currentTime = details.seekTime;
+              return true;
+            }
+            break;
+          case 'seekforward': {
+            const offset = details.seekOffset || 10;
+            media.currentTime = (media.currentTime || 0) + offset;
+            return true;
+          }
+          case 'seekbackward': {
+            const offset = details.seekOffset || 10;
+            media.currentTime = Math.max(0, (media.currentTime || 0) - offset);
+            return true;
+          }
+        }
+      } catch (err) {
+        logger.warn(`[sremote] MockMediaSession fallback ${action} error:`, err);
+      }
+    }
+
     return false;
   }
 }
@@ -69,6 +122,6 @@ export function hookMediaSession() {
       ms.setActionHandler = wrappedSet;
     } catch {}
   } catch (e) {
-    console_warn('[sremote] MediaSession hook warning:', e);
+    logger.warn('[sremote] MediaSession hook warning:', e);
   }
 }

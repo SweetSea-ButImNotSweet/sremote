@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, seekTo, Volume } from '../core/polyfill.js';
 import { loadTwitchSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -44,7 +45,7 @@ export class TwitchProvider extends BaseProvider {
     });
 
     const iframe = tempNode.querySelector('iframe') || tempNode;
-    if (iframe && iframe.parentNode === hiddenWrapper) {
+    if (iframe?.parentNode === hiddenWrapper) {
       hiddenWrapper.removeChild(iframe);
     }
     cleanup();
@@ -73,18 +74,10 @@ export class TwitchProvider extends BaseProvider {
 
     const adapter = {
       play() {
-        if (player && typeof player.play === 'function') {
-          player.play();
-        }
+        player?.play?.();
       },
       pause() {
-        if (player && typeof player.pause === 'function') {
-          player.pause();
-        }
-      },
-      toggle() {
-        if (!player || typeof player.isPaused !== 'function') return;
-        player.isPaused() ? player.play() : player.pause();
+        player?.pause?.();
       },
       stop() {
         if (player && typeof player.pause === 'function' && typeof player.seek === 'function') {
@@ -94,47 +87,57 @@ export class TwitchProvider extends BaseProvider {
       },
       seek(offset) {
         if (player && typeof player.getCurrentTime === 'function' && typeof player.seek === 'function') {
-          player.seek(Math.max(0, (player.getCurrentTime() || 0) + Number(offset)));
+          const cur = player.getCurrentTime() || 0;
+          const target = Math.max(0, cur + Number(offset));
+          const state = { ...adapter.getState(), currentTime: target };
+          adapter.emit?.('seeking', { state });
+          player.seek(target);
+          adapter.emit?.('seeked', { state });
         }
       },
       seekTo(seconds) {
-        if (player && typeof player.seek === 'function') {
-          player.seek(Number(seconds));
-        }
+        const target = Number(seconds);
+        const state = { ...adapter.getState(), currentTime: target };
+        adapter.emit?.('seeking', { state });
+        player?.seek?.(target);
+        adapter.emit?.('seeked', { state });
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getCurrentTime() {
-        return player && typeof player.getCurrentTime === 'function' ? player.getCurrentTime() : 0;
+        return player?.getCurrentTime ? player.getCurrentTime() : 0;
       },
       getDuration() {
-        return player && typeof player.getDuration === 'function' ? player.getDuration() : 0;
+        return player?.getDuration ? player.getDuration() : 0;
       },
       getVolume() {
-        return player && typeof player.getVolume === 'function' ? player.getVolume() : 1;
+        return player?.getVolume ? player.getVolume() : 1;
       },
       setVolume(vol) {
-        if (player && typeof player.setVolume === 'function') {
-          player.setVolume(Math.min(1, Math.max(0, Number(vol))));
-        }
+        const v = Math.min(1, Math.max(0, Number(vol)));
+        player?.setVolume?.(v);
+        adapter.emit?.('volumechange', { state: { ...adapter.getState(), volume: v } });
       },
       getMuted() {
-        return player && typeof player.getMuted === 'function' ? player.getMuted() : false;
+        return player?.getMuted ? player.getMuted() : false;
       },
       setMuted(muted) {
-        if (player && typeof player.setMuted === 'function') {
-          player.setMuted(Boolean(muted));
-        }
+        const m = Boolean(muted);
+        player?.setMuted?.(m);
+        adapter.emit?.('volumechange', { state: { ...adapter.getState(), muted: m } });
       },
       paused() {
-        return player && typeof player.isPaused === 'function' ? player.isPaused() : true;
+        return player?.isPaused ? player.isPaused() : true;
       },
       load(source) {
         if (!player) return;
         if (typeof source === 'string') {
-          if (typeof player.setChannel === 'function') player.setChannel(source);
-        } else if (source?.video && typeof player.setVideo === 'function') {
-          player.setVideo(source.video);
-        } else if (source?.channel && typeof player.setChannel === 'function') {
-          player.setChannel(source.channel);
+          player.setChannel?.(source);
+        } else if (source?.video) {
+          player.setVideo?.(source.video);
+        } else if (source?.channel) {
+          player.setChannel?.(source.channel);
         }
       },
       getState() {
@@ -168,12 +171,14 @@ export class TwitchProvider extends BaseProvider {
       });
     }
 
+    toggle(adapter);
+    seekTo(adapter);
+    new Volume(adapter.getVolume ? adapter.getVolume() : 1).apply(adapter);
+
     return adapter;
   }
 }
 
 export const twitchProvider = new TwitchProvider();
-export const createTwitchPlayer = options => twitchProvider.create(options);
-export const mountTwitchPlayer = (container, options) => twitchProvider.mount(container, options);
 
-export const twitch = { create: createTwitchPlayer, mount: mountTwitchPlayer, provider: twitchProvider };
+export const twitch = { create: options => twitchProvider.create(options), mount: (container, options) => twitchProvider.mount(container, options), provider: twitchProvider };

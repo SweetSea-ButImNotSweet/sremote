@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, seekTo } from '../core/polyfill.js';
 import { loadMixcloudSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -31,10 +32,15 @@ export class MixcloudProvider extends BaseProvider {
 
     applyElementAttributes(iframe, width, height, instanceId);
 
+    // Mixcloud PlayerWidget requires the iframe to be in the active DOM tree to receive postMessage
+    if (options.container) {
+      options.container.appendChild(iframe);
+    }
+
     const widget = Mixcloud.PlayerWidget(iframe);
 
-    if (widget.ready) {
-      await Promise.race([widget.ready, new Promise(resolve => setTimeout(resolve, 2500))]);
+    if (widget?.ready) {
+      await Promise.race([widget.ready.catch?.(() => {}) || widget.ready, new Promise(resolve => setTimeout(resolve, options.timeout || 3000))]);
     }
 
     return { player: widget, element: iframe, iframe, destroy: () => {} };
@@ -65,12 +71,6 @@ export class MixcloudProvider extends BaseProvider {
         if (widget && typeof widget.pause === 'function') {
           widget.pause();
           isPlaying = false;
-        }
-      },
-      toggle() {
-        if (widget && typeof widget.togglePlay === 'function') {
-          widget.togglePlay();
-          isPlaying = !isPlaying;
         }
       },
       stop() {
@@ -132,12 +132,17 @@ export class MixcloudProvider extends BaseProvider {
       });
     }
 
+    toggle(adapter);
+    seekTo(adapter);
+
     return adapter;
   }
 }
 
 export const mixcloudProvider = new MixcloudProvider();
-export const createMixcloudPlayer = options => mixcloudProvider.create(options);
-export const mountMixcloudPlayer = (container, options) => mixcloudProvider.mount(container, options);
 
-export const mixcloud = { create: createMixcloudPlayer, mount: mountMixcloudPlayer, provider: mixcloudProvider };
+export const mixcloud = {
+  create: options => mixcloudProvider.create(options),
+  mount: (container, options) => mixcloudProvider.mount(container, options),
+  provider: mixcloudProvider,
+};

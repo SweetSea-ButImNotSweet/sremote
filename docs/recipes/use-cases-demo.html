@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRemote - 4 Use-Cases Interactive Playground</title>
+  <link rel="stylesheet" href="../assets/css/docs-theme.css">
+  <style>
+    body {
+      background-color: #0b0f19;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 24px;
+    }
+    .demo-container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .demo-header {
+      margin-bottom: 24px;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 16px;
+    }
+    .demo-header h1 {
+      margin: 0 0 8px 0;
+      font-size: 26px;
+      color: #38bdf8;
+    }
+    .demo-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 8px;
+    }
+    .tab-btn {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      background: #334155;
+      color: #f8fafc;
+    }
+    .tab-btn.active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+    .tab-content {
+      display: none;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .player-slot {
+      width: 100%;
+      max-width: 640px;
+      aspect-ratio: 16/9;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .ctrl-btn {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #475569;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13.5px;
+      transition: all 0.2s;
+    }
+    .ctrl-btn:hover {
+      background: #38bdf8;
+      color: #0f172a;
+      border-color: #38bdf8;
+    }
+    .status-log {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 13px;
+      color: #38bdf8;
+    }
+  </style>
+  <script src="../../packages/sdk/dist/index.global.js"></script>
+  <script src="../../packages/ready2use/dist/index.global.js"></script>
+</head>
+<body>
+  <div class="demo-container">
+    <div class="demo-header">
+      <h1>🎮 SRemote Interactive 4 Use-Cases Playground</h1>
+      <p style="margin: 0; color: #94a3b8;">Trang thử nghiệm trực quan tương ứng với 4 use-cases thực chiến trong tài liệu SRemote.</p>
+    </div>
+
+    <!-- Tab Buttons -->
+    <div class="demo-tabs">
+      <button class="tab-btn active" onclick="switchTab(1)">Use-case 1: Ready2Use (YouTube)</button>
+      <button class="tab-btn" onclick="switchTab(2)">Use-case 2: Custom Adapter</button>
+      <button class="tab-btn" onclick="switchTab(3)">Use-case 3: Media trực tiếp trên trang</button>
+      <button class="tab-btn" onclick="switchTab(4)">Use-case 4: Cross-origin Iframe</button>
+    </div>
+
+    <!-- Tab 1 Content -->
+    <div id="tab-1" class="tab-content active">
+      <h3>🚀 Use-case 1: Nhúng YouTube với <code>@sremote/ready2use</code></h3>
+      <p style="color: #94a3b8;">Tự động nạp SDK, mount DOM và điều khiển tự nhiên qua <code>sremote</code> (hoặc <code>remote</code> scoped).</p>
+      
+      <div id="yt-container" class="player-slot"></div>
+      
+      <div class="controls">
+        <button class="ctrl-btn" onclick="uc1Play()">▶ sremote.play()</button>
+        <button class="ctrl-btn" onclick="uc1Pause()">⏸ sremote.pause()</button>
+        <button class="ctrl-btn" onclick="uc1Toggle()">⏯ sremote.toggle()</button>
+        <button class="ctrl-btn" onclick="uc1Seek(-10)">⏪ sremote.seek(-10)</button>
+        <button class="ctrl-btn" onclick="uc1Seek(10)">⏩ sremote.seek(+10)</button>
+        <button class="ctrl-btn" onclick="uc1Mute()">🔇 sremote.mute()</button>
+      </div>
+      <div class="status-log" id="log-1">Trạng thái: Đang sẵn sàng khởi tạo YouTube...</div>
+    </div>
+
+    <!-- Tab 2 Content -->
+    <div id="tab-2" class="tab-content">
+      <h3>🔌 Use-case 2: Tự tạo Custom Adapter với <code>Polyfills</code></h3>
+      <p style="color: #94a3b8;">Mô phỏng một Mock Audio Player chuyên biệt được chuẩn hóa qua <code>Polyfills</code>.</p>
+      
+      <div class="player-slot" style="aspect-ratio: auto; height: 120px; flex-direction: column; gap: 8px;">
+        <span style="font-size: 28px;">🎵 Mock Custom Audio Player</span>
+        <span id="custom-player-status" style="color: #38bdf8;">Paused | 0s / 180s | Vol: 80%</span>
+      </div>
+
+      <div class="controls">
+        <button class="ctrl-btn" onclick="uc2Play()">▶ Play</button>
+        <button class="ctrl-btn" onclick="uc2Pause()">⏸ Pause</button>
+        <button class="ctrl-btn" onclick="uc2Toggle()">⏯ Toggle</button>
+        <button class="ctrl-btn" onclick="uc2Seek(15)">⏩ +15s</button>
+      </div>
+      <div class="status-log" id="log-2">Trạng thái: Đã đăng ký Custom Adapter 'mock-audio' vào SRemote.</div>
+    </div>
+
+    <!-- Tab 3 Content -->
+    <div id="tab-3" class="tab-content">
+      <h3>📹 Use-case 3: Điều khiển Media trực tiếp trên trang (DOM Direct)</h3>
+      <p style="color: #94a3b8;">Điều khiển thẻ <code>&lt;video&gt;</code> cùng domain mà không cần Userscript.</p>
+
+      <div class="player-slot">
+        <video id="local-video" style="width: 100%; height: 100%; object-fit: cover;" src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" controls></video>
+      </div>
+
+      <div class="controls">
+        <button class="ctrl-btn" onclick="uc3Play()">▶ Play qua SRemote</button>
+        <button class="ctrl-btn" onclick="uc3Pause()">⏸ Pause qua SRemote</button>
+        <button class="ctrl-btn" onclick="uc3Toggle()">⏯ Toggle</button>
+        <button class="ctrl-btn" onclick="uc3Seek(10)">⏩ +10s</button>
+      </div>
+      <div class="status-log" id="log-3">Trạng thái: Đang kết nối chế độ 'dom-direct'...</div>
+    </div>
+
+    <!-- Tab 4 Content -->
+    <div id="tab-4" class="tab-content">
+      <h3>🌐 Use-case 4: Cross-origin Iframe với Userscript</h3>
+      <p style="color: #94a3b8;">Gửi tín hiệu bắt tay <code>sremote.hello()</code> và lắng nghe phản hồi xuyên miền.</p>
+
+      <div class="player-slot" style="aspect-ratio: auto; height: 140px; flex-direction: column;">
+        <span style="font-size: 20px;">🛡️ Userscript Handshake Monitor</span>
+        <span id="userscript-state" style="color: #fbbf24; margin-top: 8px;">Đang kiểm tra môi trường Userscript...</span>
+      </div>
+
+      <div class="controls">
+        <button class="ctrl-btn" onclick="uc4Check()">🔍 Kiểm tra Userscript</button>
+        <button class="ctrl-btn" onclick="uc4Modal()">📋 Hiện Modal hướng dẫn cài đặt</button>
+      </div>
+      <div class="status-log" id="log-4">Trạng thái: Bấm nút để kiểm tra kết nối với Userscript Engine.</div>
+    </div>
+  </div>
+
+  <script>
+    let currentTab = 1;
+    let ytInstance = null;
+
+    function switchTab(index) {
+      currentTab = index;
+      document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i + 1 === index));
+      document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i + 1 === index));
+      
+      if (index === 1 && !ytInstance && window.SRemoteReady2Use) {
+        initUc1();
+      }
+    }
+
+    // UC1: Ready2Use YouTube
+    async function initUc1() {
+      try {
+        const { youtube } = window.SRemoteReady2Use;
+        document.getElementById('log-1').textContent = 'Đang nạp YouTube Player...';
+        ytInstance = await youtube.mount('#yt-container', {
+          videoId: 'dQw4w9WgXcQ',
+          playerVars: { controls: 1 }
+        });
+        document.getElementById('log-1').textContent = '✅ Đã gắn YouTube thành công! Sẵn sàng điều khiển qua remote.';
+      } catch (err) {
+        document.getElementById('log-1').textContent = '⚠️ Lỗi nạp YouTube: ' + err.message;
+      }
+    }
+
+    async function uc1Play() { await window.SRemoteSDK?.sremote?.play(); }
+    async function uc1Pause() { await window.SRemoteSDK?.sremote?.pause(); }
+    async function uc1Toggle() { await window.SRemoteSDK?.sremote?.toggle(); }
+    async function uc1Seek(sec) { await window.SRemoteSDK?.sremote?.seek(sec); }
+    async function uc1Mute() {
+      await window.SRemoteSDK?.sremote?.mute();
+      document.getElementById('log-1').textContent = `Toggled mute qua sremote.mute()`;
+    }
+
+    // UC2: Custom Adapter
+    let mockTime = 0;
+    let mockPaused = true;
+    const mockSdk = {
+      play: () => { mockPaused = false; updateUc2(); },
+      pause: () => { mockPaused = true; updateUc2(); },
+      seek: (t) => { mockTime = Math.max(0, Math.min(180, t)); updateUc2(); }
+    };
+
+    function updateUc2() {
+      document.getElementById('custom-player-status').textContent = 
+        `${mockPaused ? 'Paused' : 'Playing'} | ${mockTime}s / 180s | Vol: 80%`;
+    }
+
+    // Wrap adapter
+    if (window.SRemoteSDK && window.SRemoteReady2Use) {
+      const { Polyfills } = window.SRemoteReady2Use;
+      const customAdapter = {
+        play: () => mockSdk.play(),
+        pause: () => mockSdk.pause(),
+        getCurrentTime: () => mockTime,
+        getDuration: () => 180,
+        isPaused: () => mockPaused,
+        getState: () => ({ paused: mockPaused, currentTime: mockTime, duration: 180 })
+      };
+      Polyfills.setCurrentTime(customAdapter, (s) => mockSdk.seek(s));
+      Polyfills.seekTo(customAdapter);
+      Polyfills.seek(customAdapter);
+      Polyfills.toggle(customAdapter);
+
+      window.SRemoteSDK.sremote.adapters.register(customAdapter, 'mock-audio');
+    }
+
+    async function uc2Play() { await window.SRemoteSDK.sremote.play('mock-audio'); }
+    async function uc2Pause() { await window.SRemoteSDK.sremote.pause('mock-audio'); }
+    async function uc2Toggle() { await window.SRemoteSDK.sremote.toggle('mock-audio'); }
+    async function uc2Seek(d) { await window.SRemoteSDK.sremote.seek(d, 'mock-audio'); }
+
+    // UC3: DOM Direct Media
+    async function uc3Play() {
+      const vid = document.getElementById('local-video');
+      await vid.play();
+      document.getElementById('log-3').textContent = '▶ Đang phát video nội bộ trực tiếp trên trang.';
+    }
+    async function uc3Pause() {
+      const vid = document.getElementById('local-video');
+      vid.pause();
+      document.getElementById('log-3').textContent = '⏸ Đã dừng video nội bộ.';
+    }
+    async function uc3Toggle() {
+      const vid = document.getElementById('local-video');
+      if (vid.paused) vid.play(); else vid.pause();
+    }
+    async function uc3Seek(s) {
+      const vid = document.getElementById('local-video');
+      vid.currentTime += s;
+      document.getElementById('log-3').textContent = `Tua tới: ${Math.round(vid.currentTime)}s`;
+    }
+
+    // UC4: Userscript Check
+    async function uc4Check() {
+      if (!window.SRemoteSDK) return;
+      const { sremote } = window.SRemoteSDK;
+      await sremote.ready();
+      document.getElementById('userscript-state').textContent = `Chế độ hiện tại: ${sremote.mode}`;
+      document.getElementById('log-4').textContent = `Mode: ${sremote.mode}. ${sremote.mode === 'userscript' ? '✅ Đã kết nối với Userscript!' : 'ℹ️ Chưa có Userscript chạy.'}`;
+    }
+
+    function uc4Modal() {
+      if (window.SRemoteSDK?.showInstallModal) {
+        window.SRemoteSDK.showInstallModal({ lang: 'vi' });
+      }
+    }
+
+    // Auto init tab 1 on load
+    document.addEventListener('DOMContentLoaded', () => {
+      initUc1();
+    });
+  </script>
+</body>
+</html>

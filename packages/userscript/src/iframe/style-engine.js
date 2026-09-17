@@ -1,4 +1,4 @@
-import { console_warn } from '../config.js';
+import { logger } from '../config.js';
 
 export const IframeStyleEngine = (function initIframeStyleEngine() {
   let dynamicCssText = '';
@@ -15,7 +15,7 @@ export const IframeStyleEngine = (function initIframeStyleEngine() {
     }
 
     try {
-      if (!dynamicStyleEl || !dynamicStyleEl.isConnected) {
+      if (!dynamicStyleEl?.isConnected) {
         dynamicStyleEl = document.createElement('style');
         dynamicStyleEl.id = 'sremote-dynamic-css';
         dynamicStyleEl.textContent = dynamicCssText;
@@ -25,12 +25,12 @@ export const IframeStyleEngine = (function initIframeStyleEngine() {
         dynamicStyleEl.textContent = dynamicCssText;
       }
     } catch (e) {
-      console_warn('[sremote:css] Error applying dynamic CSS:', e);
+      logger.warn('[sremote:css] Error applying dynamic CSS:', e);
     }
   }
 
   function maintainStyles() {
-    if (dynamicCssText && (!dynamicStyleEl || !dynamicStyleEl.isConnected)) {
+    if (dynamicCssText && !dynamicStyleEl?.isConnected) {
       applyDynamicCSS(dynamicCssText);
     }
   }

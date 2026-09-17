@@ -1,5 +1,6 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
+import { toggle, seekTo, Volume } from '../core/polyfill.js';
 import { loadDailymotionSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -20,33 +21,50 @@ export class DailymotionProvider extends BaseProvider {
     const height = options.height || '100%';
     const video = options.video || options.videoId || 'x7tgad0';
 
-    const { hiddenWrapper, tempNode, cleanup } = createTempNode(instanceId, width, height);
+    let targetNode = null;
+    let cleanupTemp = () => {};
+
+    if (options.container) {
+      targetNode = document.createElement('div');
+      targetNode.id = `sremote-dailymotion-${instanceId}`;
+      applyElementAttributes(targetNode, width, height, instanceId);
+      options.container.appendChild(targetNode);
+    } else {
+      const temp = createTempNode(instanceId, width, height);
+      targetNode = temp.tempNode;
+      cleanupTemp = temp.cleanup;
+    }
 
     const playerOptions = { video, params: { autoplay: options.autoplay ?? false, mute: options.mute ?? options.muted ?? false, ...options.params }, ...options.playerOptions };
 
-    const player = await dailymotion.createPlayer(tempNode, playerOptions);
+    // Dailymotion createPlayer expects container ID string (e.g. "sremote-dailymotion-xxx") or target selector
+    const targetId = targetNode.id || `sremote-dailymotion-${instanceId}`;
+    targetNode.id = targetId;
 
-    const iframe = tempNode.querySelector('iframe') || tempNode;
-    if (iframe && iframe.parentNode === hiddenWrapper) {
-      hiddenWrapper.removeChild(iframe);
-    }
-    cleanup();
+    const player = await dailymotion.createPlayer(targetId, playerOptions);
+
+    const iframe = (targetNode && typeof targetNode.querySelector === 'function' ? targetNode.querySelector('iframe') : null) || document.querySelector(`#${targetId} iframe`);
+
+    const finalElement = options.container ? iframe || targetNode : iframe || targetNode;
 
     if (iframe) {
       applyElementAttributes(iframe, width, height, instanceId);
     }
+    if (targetNode) {
+      applyElementAttributes(targetNode, width, height, instanceId);
+    }
 
     return {
       player,
-      element: iframe,
-      iframe: iframe?.tagName === 'IFRAME' ? iframe : null,
+      element: targetNode || finalElement,
+      iframe: iframe || (targetNode?.tagName === 'IFRAME' ? targetNode : null),
       destroy: () => {
         try {
           if (player && typeof player.destroy === 'function') {
             player.destroy();
           }
         } catch {}
-        cleanup();
+        cleanupTemp();
       },
     };
   }
@@ -61,18 +79,10 @@ export class DailymotionProvider extends BaseProvider {
 
     const adapter = {
       play() {
-        if (player && typeof player.play === 'function') {
-          player.play();
-        }
+        player?.play?.();
       },
       pause() {
-        if (player && typeof player.pause === 'function') {
-          player.pause();
-        }
-      },
-      toggle() {
-        if (!player) return;
-        isPaused ? adapter.play() : adapter.pause();
+        player?.pause?.();
       },
       stop() {
         if (player && typeof player.pause === 'function' && typeof player.seek === 'function') {
@@ -81,14 +91,17 @@ export class DailymotionProvider extends BaseProvider {
         }
       },
       seek(offset) {
-        if (player && typeof player.seek === 'function') {
-          player.seek(Math.max(0, currentTime + Number(offset)));
-        }
+        const target = Math.max(0, currentTime + Number(offset));
+        adapter.emit?.('seeking', { state: { paused: isPaused, currentTime: target, duration } });
+        player?.seek?.(target);
       },
       seekTo(seconds) {
-        if (player && typeof player.seek === 'function') {
-          player.seek(Number(seconds));
-        }
+        const target = Number(seconds);
+        adapter.emit?.('seeking', { state: { paused: isPaused, currentTime: target, duration } });
+        player?.seek?.(target);
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getCurrentTime() {
         return currentTime;
@@ -101,26 +114,20 @@ export class DailymotionProvider extends BaseProvider {
       },
       setVolume(vol) {
         volume = Number(vol);
-        if (player && typeof player.setVolume === 'function') {
-          player.setVolume(Math.min(1, Math.max(0, volume)));
-        }
+        player?.setVolume?.(Math.min(1, Math.max(0, volume)));
       },
       getMuted() {
         return isMuted;
       },
       setMuted(muted) {
         isMuted = Boolean(muted);
-        if (player && typeof player.setMuted === 'function') {
-          player.setMuted(isMuted);
-        }
+        player?.setMuted?.(isMuted);
       },
       paused() {
         return isPaused;
       },
       setQuality(level) {
-        if (player && typeof player.setQuality === 'function') {
-          player.setQuality(String(level));
-        }
+        player?.setQuality?.(String(level));
       },
       async getQualities() {
         if (player && typeof player.getQualities === 'function') {
@@ -134,9 +141,7 @@ export class DailymotionProvider extends BaseProvider {
         return [];
       },
       setSubtitle(track) {
-        if (player && typeof player.setSubtitle === 'function') {
-          player.setSubtitle(track ? String(track) : 'off');
-        }
+        player?.setSubtitle?.(track ? String(track) : 'off');
       },
       async getSubtitles() {
         if (player && typeof player.getSubtitles === 'function') {
@@ -150,9 +155,7 @@ export class DailymotionProvider extends BaseProvider {
         return [];
       },
       load(video) {
-        if (player && typeof player.load === 'function') {
-          player.load(video);
-        }
+        player?.load?.(video);
       },
       getState() {
         return { paused: isPaused, currentTime, duration, volume, muted: isMuted };
@@ -184,11 +187,24 @@ export class DailymotionProvider extends BaseProvider {
         });
       }
 
+      if (events.PLAYER_SEEKING) {
+        player.on(events.PLAYER_SEEKING, state => {
+          currentTime = state?.videoTime ?? state?.time ?? currentTime;
+          adapter.emit?.('seeking', { state: { paused: isPaused, currentTime, duration } });
+        });
+      }
+
       if (events.PLAYER_SEEKED) {
         player.on(events.PLAYER_SEEKED, state => {
           currentTime = state?.videoTime ?? state?.time ?? currentTime;
           adapter.emit?.('seeked', { state: { paused: isPaused, currentTime, duration } });
           adapter.emit?.('timeupdate', { state: { paused: isPaused, currentTime, duration } });
+        });
+      }
+
+      if (events.PLAYER_BUFFERING) {
+        player.on(events.PLAYER_BUFFERING, () => {
+          adapter.emit?.('buffering', { state: { paused: isPaused, currentTime, duration } });
         });
       }
 
@@ -208,12 +224,18 @@ export class DailymotionProvider extends BaseProvider {
       }
     }
 
+    toggle(adapter);
+    seekTo(adapter);
+    new Volume(volume).apply(adapter);
+
     return adapter;
   }
 }
 
 export const dailymotionProvider = new DailymotionProvider();
-export const createDailymotionPlayer = options => dailymotionProvider.create(options);
-export const mountDailymotionPlayer = (container, options) => dailymotionProvider.mount(container, options);
 
-export const dailymotion = { create: createDailymotionPlayer, mount: mountDailymotionPlayer, provider: dailymotionProvider };
+export const dailymotion = {
+  create: options => dailymotionProvider.create(options),
+  mount: (container, options) => dailymotionProvider.mount(container, options),
+  provider: dailymotionProvider,
+};

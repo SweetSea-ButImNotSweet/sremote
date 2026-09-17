@@ -1,4 +1,4 @@
-import { ENABLE_DEBUG_API, console_warn } from '../config.js';
+import { ENABLE_DEBUG_API, logger } from '../config.js';
 import { IframeStyleEngine } from './style-engine.js';
 import { getVideoState, getIframeCapabilities, handleBindMetadata } from './controller.js';
 import { findAllMedia } from './media-hunter.js';
@@ -98,7 +98,7 @@ export function createRpcRegistry({ resolver, instanceId, emitToParent, sendMedi
       try {
         await media.play();
       } catch (err) {
-        console_warn('[sremote_debug] Autoplay error on new source:', err);
+        logger.warn('[sremote_debug] Autoplay error on new source:', err);
       }
 
       if (params?.title && mockMediaSessionInstance) {
