@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.0.1] - 2026/08/17
+
+### 📝 Documentation & Chores
+- **`@sremote/sdk` & `@sremote/ready2use`**: Update documentation, recipes, and package metadata to reference `@sremote/sdk` instead of the legacy `@sremote/wrapper` name.
+- Fix package repository URL and sync version parity across monorepo packages.
+
 ## [3.0.0] - 2026/08/17
 
 SRemote v3.0.0 is a major architecture overhaul, unification, and feature release. This release introduces a unified API schema and factory builder across the entire monorepo (`@sremote/shared`), massively expands platform compatibility in `@sremote/ready2use` up to **22 supported platforms**, transitions completely to modern Pure ESM, revamps the Facebook/Instagram/Threads/Apple Music pipelines, provides full seeking/seeked event coverage, replaces crude DOM ownership claiming with selective handled events fallback for 100% reliable event emission without duplicates, and delivers centralized parent adapter logging along with critical runtime fixes.
