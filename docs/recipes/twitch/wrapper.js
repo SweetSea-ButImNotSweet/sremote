@@ -1,4 +1,4 @@
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 // [cmt_twitch_adapter]
 const currentHost = window.location.hostname || 'localhost';

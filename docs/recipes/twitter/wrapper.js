@@ -1,4 +1,4 @@
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 // [cmt_twitter_adapter]
 window.twttr = window.twttr || {};

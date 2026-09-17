@@ -1,4 +1,4 @@
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 // [cmt_tiktok_adapter]
 const iframe = document.getElementById('tiktok-player-frame');

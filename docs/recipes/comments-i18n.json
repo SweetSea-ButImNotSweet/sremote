@@ -1,6 +1,6 @@
 {
-  "cmt_install_ready2use": { "vi": "// 🚀 Cài đặt: npm install @sremote/ready2use @sremote/wrapper", "en": "// 🚀 Installation: npm install @sremote/ready2use @sremote/wrapper" },
-  "cmt_install_wrapper": { "vi": "// 1. Cài đặt SDK: npm install @sremote/wrapper", "en": "// 1. Install SDK: npm install @sremote/wrapper" },
+  "cmt_install_ready2use": { "vi": "// 🚀 Cài đặt: npm install @sremote/ready2use @sremote/sdk", "en": "// 🚀 Installation: npm install @sremote/ready2use @sremote/sdk" },
+  "cmt_install_wrapper": { "vi": "// 1. Cài đặt SDK: npm install @sremote/sdk", "en": "// 1. Install SDK: npm install @sremote/sdk" },
   "cmt_mount_auto": { "vi": "// Khởi tạo và gắn player tự động trong 1 dòng lệnh", "en": "// Auto-initialize and mount player in a single line of code" },
   "cmt_control_via_client": { "vi": "// Điều khiển qua SRemote Client", "en": "// Control media playback via SRemote Client" },
   "cmt_listen_realtime": { "vi": "// Lắng nghe sự kiện phát thời gian thực", "en": "// Listen for real-time playback events" },

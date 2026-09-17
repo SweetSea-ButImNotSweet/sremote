@@ -1,5 +1,5 @@
 /**
- * SRemote Recipes Runtime: Powered directly by @sremote/ready2use & @sremote/wrapper
+ * SRemote Recipes Runtime: Powered directly by @sremote/ready2use & @sremote/sdk
  */
 
 // Active mounted player handle { remote, player, element, iframe, destroy, instanceId }

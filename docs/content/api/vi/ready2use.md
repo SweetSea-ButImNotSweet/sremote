@@ -15,10 +15,10 @@ Gói tiện ích mở rộng cung cấp các **trình phát định sẵn (Ready
 
 ```bash
 # npm
-npm install @sremote/ready2use @sremote/wrapper
+npm install @sremote/ready2use @sremote/sdk
 
 # pnpm
-pnpm add @sremote/ready2use @sremote/wrapper
+pnpm add @sremote/ready2use @sremote/sdk
 ```
 
 ---
@@ -64,7 +64,7 @@ Tạo phần tử iframe/container, gắn trực tiếp vào DOM container, tr�
 
 ```javascript
 import { youtube, vimeo } from '@sremote/ready2use';
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 // Gắn YouTube Player vào thẻ có id="player-box"
 const yt = await youtube.mount('#player-box', {
@@ -233,7 +233,7 @@ export class MyCustomVideoProvider extends BaseProvider {
   // 2. Khởi tạo native player
   async initPlayer(options, instanceId) {
     const SDK = await this.loadSdk();
-    
+
     const iframe = document.createElement('iframe');
     iframe.src = `https://example.com/embed/${options.videoId}`;
     iframe.style.width = options.width || '100%';

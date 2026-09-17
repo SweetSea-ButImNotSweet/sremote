@@ -12,7 +12,6 @@ export default defineConfig(({ command }) => {
     resolve: {
       alias: {
         '@sremote/sdk': path.resolve(import.meta.dirname, 'packages/sdk/src/index.js'),
-        '@sremote/wrapper': path.resolve(import.meta.dirname, 'packages/sdk/src/index.js'),
         '@sremote/shared/src': path.resolve(import.meta.dirname, 'packages/shared/src'),
         '@sremote/shared': path.resolve(import.meta.dirname, 'packages/shared/src/index.js'),
       },

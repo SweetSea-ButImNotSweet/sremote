@@ -1,6 +1,6 @@
 # SRemote API Reference
 
-All methods are available on the global `window.sremote` object (or the client instance created from `@sremote/wrapper`).
+All methods are available on the global `window.sremote` object (or the client instance created from `@sremote/sdk`).
 
 ---
 

@@ -5,7 +5,7 @@
 > **Universal Cross-Origin Embedded Media Remote Control Framework & SDK**
 
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](LICENSE)
-[![npm version](https://img.shields.io/npm/v/@sremote/wrapper.svg)](https://www.npmjs.com/package/@sremote/wrapper)
+[![npm version](https://img.shields.io/npm/v/@sremote/sdk.svg)](https://www.npmjs.com/package/@sremote/sdk)
 
 **SRemote** provides a unified control interface for embedded web media (HTML5 video/audio, YouTube, Spotify, Vimeo, SoundCloud, Bilibili, and 20+ other platforms). It solves cross-domain limitations (Same-Origin Policy) through an optional companion userscript bridge and provides rich client-side SDKs for web developers.
 
@@ -47,7 +47,7 @@ if (type === 'youtube') {
 <td width="50%" valign="top">
 
 ```javascript
-import { createSRemote } from '@sremote/wrapper';
+import { createSRemote } from '@sremote/sdk';
 
 const remote = createSRemote();
 await remote.ready();
@@ -75,7 +75,7 @@ Embedding platforms without official JS APIs (Bilibili, Kick, Bandcamp) makes th
 ```javascript
 // Accessing cross-origin iframe:
 const iframe = document.querySelector('iframe');
-iframe.contentWindow.document... 
+iframe.contentWindow.document...
 // 💥 DOMException: Blocked a frame
 // with origin "..." from accessing
 // a cross-origin frame.
@@ -148,7 +148,7 @@ remote.on('play', ({ state, instanceId }) => {
 
 | Package | Purpose | Documentation |
 | :--- | :--- | :--- |
-| **`@sremote/wrapper`** | Client-side SDK to auto-discover, connect, control players, and show install prompts | [Wrapper README](packages/wrapper/README.md) |
+| **`@sremote/sdk`** | Client-side SDK to auto-discover, connect, control players, and show install prompts | [Wrapper README](packages/wrapper/README.md) |
 | **`@sremote/ready2use`** | Pre-configured player presets & official SDK adapters (YouTube, Spotify, Apple Music, etc.) | [Ready2Use README](packages/ready2use/README.md) |
 | **`@sremote/userscript`** | The companion Userscript bridging cross-origin iframes without native APIs | [Userscript Guide](packages/userscript/README.md) |
 
@@ -156,14 +156,14 @@ remote.on('play', ({ state, instanceId }) => {
 
 ## 🚀 Quick Start
 
-### 1. Using `@sremote/wrapper` (Universal Client SDK)
+### 1. Using `@sremote/sdk` (Universal Client SDK)
 
 ```bash
-npm install @sremote/wrapper
+npm install @sremote/sdk
 ```
 
 ```javascript
-import { createSRemote } from '@sremote/wrapper';
+import { createSRemote } from '@sremote/sdk';
 
 const remote = createSRemote();
 await remote.ready();
@@ -182,7 +182,7 @@ await remote.volume(0.8);
 ### 2. Using `@sremote/ready2use` (Pre-configured Player Presets)
 
 ```bash
-npm install @sremote/ready2use @sremote/wrapper
+npm install @sremote/ready2use @sremote/sdk
 ```
 
 ```javascript
@@ -200,7 +200,7 @@ await yt.remote.seek(15);
 ### 3. Direct HTML / Global Script (`window.sremote`)
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@sremote/wrapper/dist/index.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sremote/sdk/dist/index.global.js"></script>
 <script>
   window.sremote.hello();
   window.sremote.on('accept', (data) => console.log('Connected:', data.instanceId));

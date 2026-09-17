@@ -1,4 +1,4 @@
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 // [cmt_soundcloud_adapter]
 const widgetIframe = document.getElementById('sc-widget');

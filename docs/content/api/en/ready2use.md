@@ -15,10 +15,10 @@ The `@sremote/ready2use` package provides **out-of-the-box player presets**, thi
 
 ```bash
 # npm
-npm install @sremote/ready2use @sremote/wrapper
+npm install @sremote/ready2use
 
 # pnpm
-pnpm add @sremote/ready2use @sremote/wrapper
+pnpm add @sremote/ready2use
 ```
 
 ---
@@ -64,7 +64,7 @@ Generates the iframe/element, appends it into a target DOM container, returns a 
 
 ```javascript
 import { youtube, vimeo } from '@sremote/ready2use';
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 // Mount YouTube Player directly into element #player-box
 const yt = await youtube.mount('#player-box', {
@@ -224,7 +224,7 @@ export class MyCustomVideoProvider extends BaseProvider {
   // 2. Initialize native player
   async initPlayer(options, instanceId) {
     const SDK = await this.loadSdk();
-    
+
     const iframe = document.createElement('iframe');
     iframe.src = `https://example.com/embed/${options.videoId}`;
     iframe.style.width = options.width || '100%';

@@ -49,7 +49,7 @@ async function fetchSnippet(platformId, filename, lang = 'vi') {
 
   await loadCommentsDict();
   let result = translateComments(text, lang);
-  result = result.replace(/import\s*\{\s*sremote\s*\}\s*from\s*["']\/packages\/wrapper\/src\/index\.js["'];?/g, 'import { sremote } from "@sremote/wrapper";');
+  result = result.replace(/import\s*\{\s*sremote\s*\}\s*from\s*["']\/packages\/wrapper\/src\/index\.js["'];?/g, 'import { sremote } from "@sremote/sdk";');
   return result;
 }
 

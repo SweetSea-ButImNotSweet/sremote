@@ -1,5 +1,5 @@
 // [cmt_install_wrapper]
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 let ytPlayer;
 

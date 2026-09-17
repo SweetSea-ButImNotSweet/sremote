@@ -1,4 +1,4 @@
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 // [cmt_html5_connect]
 document.addEventListener('DOMContentLoaded', async () => {

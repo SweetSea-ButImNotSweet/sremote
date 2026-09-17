@@ -5,7 +5,7 @@
 > **Framework & SDK Điều Khiển Media Nhúng (Cross-Origin) Đa Nền Tảng**
 
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](../LICENSE)
-[![npm version](https://img.shields.io/npm/v/@sremote/wrapper.svg)](https://www.npmjs.com/package/@sremote/wrapper)
+[![npm version](https://img.shields.io/npm/v/@sremote/sdk.svg)](https://www.npmjs.com/package/@sremote/sdk)
 
 **SRemote** cung cấp một giao diện điều khiển thống nhất cho media nhúng trên web (HTML5 video/audio, YouTube, Spotify, Vimeo, SoundCloud, Bilibili và nhiều nền tảng khác). Dự án làm việc quanh giới hạn Same-Origin Policy (SOP) thông qua cầu nối Userscript tùy chọn, kèm theo SDK phía client cho lập trình viên.
 
@@ -47,7 +47,7 @@ if (type === 'youtube') {
 <td width="50%" valign="top">
 
 ```javascript
-import { createSRemote } from '@sremote/wrapper';
+import { createSRemote } from '@sremote/sdk';
 
 const remote = createSRemote();
 await remote.ready();
@@ -75,7 +75,7 @@ Với các nền tảng không có JS API mở (như Bilibili, Kick, Bandcamp...
 ```javascript
 // Thử chọc vào iframe khác domain:
 const iframe = document.querySelector('iframe');
-iframe.contentWindow.document... 
+iframe.contentWindow.document...
 // 💥 Trình duyệt chặn thẳng tay:
 // "Blocked a frame with origin...
 // from accessing a cross-origin frame"
@@ -148,7 +148,7 @@ remote.on('play', ({ state, instanceId }) => {
 
 | Gói | Mục đích | Tài liệu |
 | :--- | :--- | :--- |
-| **`@sremote/wrapper`** | SDK phía client giúp tự động nhận diện, kết nối, điều khiển player và hiển thị modal hướng dẫn cài đặt | [Wrapper README](../packages/wrapper/README.md) |
+| **`@sremote/sdk`** | SDK phía client giúp tự động nhận diện, kết nối, điều khiển player và hiển thị modal hướng dẫn cài đặt | [Wrapper README](../packages/wrapper/README.md) |
 | **`@sremote/ready2use`** | Bộ preset & adapter dựng sẵn cho nhiều nền tảng (YouTube, Spotify, Apple Music, v.v.) | [Ready2Use README](../packages/ready2use/README.md) |
 | **`@sremote/userscript`** | Cầu nối Userscript cho trình duyệt giúp điều khiển các iframe bị chặn bởi Same-Origin Policy | [Userscript Hướng Dẫn](../packages/userscript/README/vi.md) |
 
@@ -156,14 +156,14 @@ remote.on('play', ({ state, instanceId }) => {
 
 ## 🚀 Bắt đầu nhanh
 
-### 1. Dùng thư viện `@sremote/wrapper` (Khuyên dùng cho Web App hiện đại)
+### 1. Dùng thư viện `@sremote/sdk` (Khuyên dùng cho Web App hiện đại)
 
 ```bash
-npm install @sremote/wrapper
+npm install @sremote/sdk
 ```
 
 ```javascript
-import { createSRemote } from '@sremote/wrapper';
+import { createSRemote } from '@sremote/sdk';
 
 const remote = createSRemote();
 await remote.ready();
@@ -182,7 +182,7 @@ await remote.volume(0.8);
 ### 2. Dùng gói preset `@sremote/ready2use` (Preset dựng sẵn cho YouTube, Spotify...)
 
 ```bash
-npm install @sremote/ready2use @sremote/wrapper
+npm install @sremote/ready2use @sremote/sdk
 ```
 
 ```javascript
@@ -200,7 +200,7 @@ await yt.remote.seek(15);
 ### 3. Dùng trực tiếp qua thẻ Script (`window.sremote`)
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@sremote/wrapper/dist/index.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sremote/sdk/dist/index.global.js"></script>
 <script>
   window.sremote.hello();
   window.sremote.on('accept', (data) => console.log('Đã kết nối:', data.instanceId));

@@ -1,4 +1,4 @@
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 // [cmt_peertube_adapter]
 document.addEventListener('DOMContentLoaded', async () => {

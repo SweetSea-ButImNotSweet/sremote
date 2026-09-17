@@ -28,7 +28,7 @@
       optMin: 'Bản nén (Minified)',
       optDev: 'Môi trường phát triển (Local Dev)',
       userscriptGuide: 'Tại sao cần Userscript? (Hướng dẫn)',
-      wrapperPkg: 'NPM: @sremote/wrapper',
+      wrapperPkg: 'NPM: @sremote/sdk',
       ready2usePkg: 'NPM: @sremote/ready2use',
       langLabel: 'Ngôn ngữ',
       github: 'GitHub',
@@ -50,7 +50,7 @@
       optMin: 'Minified Build',
       optDev: 'Local Dev Environment',
       userscriptGuide: 'Why Userscript? (User Guide)',
-      wrapperPkg: 'NPM: @sremote/wrapper',
+      wrapperPkg: 'NPM: @sremote/sdk',
       ready2usePkg: 'NPM: @sremote/ready2use',
       langLabel: 'Language',
       github: 'GitHub',
@@ -226,7 +226,7 @@
                   <small>Local @require file:/// template</small>
                 </button>
                 <div class="header-dropdown-divider"></div>
-                <a href="https://www.npmjs.com/package/@sremote/wrapper" class="header-dropdown-item" target="_blank" rel="noopener noreferrer">
+                <a href="https://www.npmjs.com/package/@sremote/sdk" class="header-dropdown-item" target="_blank" rel="noopener noreferrer">
                   <strong>📦 ${dict.wrapperPkg}</strong>
                   <small>Client SDK & Auto-discovery</small>
                 </a>

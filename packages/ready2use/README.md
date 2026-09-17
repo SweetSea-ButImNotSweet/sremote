@@ -10,10 +10,10 @@ It automatically loads third-party SDKs, injects and sizes DOM/iframe elements, 
 
 ```bash
 # npm
-npm install @sremote/ready2use @sremote/wrapper
+npm install @sremote/ready2use @sremote/sdk
 
 # pnpm
-pnpm add @sremote/ready2use @sremote/wrapper
+pnpm add @sremote/ready2use @sremote/sdk
 ```
 
 ---
@@ -103,7 +103,7 @@ By default, `.mount()` and `.create()` automatically register the adapter into t
 
 ```javascript
 import { vimeo } from '@sremote/ready2use';
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 const { instanceId } = await vimeo.mount('#vimeo-box', {
   videoId: '76979871'

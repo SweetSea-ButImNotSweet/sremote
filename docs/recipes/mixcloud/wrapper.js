@@ -1,4 +1,4 @@
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 // [cmt_mixcloud_adapter]
 const mcIframe = document.getElementById('mixcloud-widget');

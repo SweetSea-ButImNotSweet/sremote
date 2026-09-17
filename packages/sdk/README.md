@@ -1,14 +1,14 @@
-# @sremote/wrapper
+# @sremote/sdk
 
-[![npm version](https://img.shields.io/npm/v/@sremote/wrapper.svg)](https://www.npmjs.com/package/@sremote/wrapper)
-[![license](https://img.shields.io/npm/l/@sremote/wrapper.svg)](https://github.com/SweetSea-ButImNotSweet/sremote)
+[![npm version](https://img.shields.io/npm/v/@sremote/sdk.svg)](https://www.npmjs.com/package/@sremote/sdk)
+[![license](https://img.shields.io/npm/l/@sremote/sdk.svg)](https://github.com/SweetSea-ButImNotSweet/sremote)
 
 A client-side library for controlling embedded media players via [SRemote](https://sweetsea-butimnotsweet.github.io/sremote) or custom adapters. Can also be used standalone as a unified abstraction layer across different player SDKs without requiring the SRemote bridge.
 
 - **Standalone**: Controls same-origin media elements via DOM or registered adapters.
 - **With Userscript**: Bridges cross-origin iframes (YouTube, Bilibili, SoundCloud, etc.) across the Same-Origin Policy boundary.
 
-> **Script Order**: Load `@sremote/wrapper` before untrusted third-party scripts or iframes. When the userscript is absent, `@sremote/wrapper` guards `window.sremote` with a non-writable Proxy to prevent tampering.
+> **Script Order**: Load `@sremote/sdk` before untrusted third-party scripts or iframes. When the userscript is absent, `@sremote/sdk` guards `window.sremote` with a non-writable Proxy to prevent tampering.
 
 ---
 
@@ -24,13 +24,13 @@ A client-side library for controlling embedded media players via [SRemote](https
 
 ```bash
 # npm
-npm install @sremote/wrapper
+npm install @sremote/sdk
 
 # yarn
-yarn add @sremote/wrapper
+yarn add @sremote/sdk
 
 # pnpm
-pnpm add @sremote/wrapper
+pnpm add @sremote/sdk
 ```
 
 ---
@@ -40,7 +40,7 @@ pnpm add @sremote/wrapper
 ### 1. Basic Usage
 
 ```javascript
-import { createSRemote } from '@sremote/wrapper';
+import { createSRemote } from '@sremote/sdk';
 
 // Initialize the client
 const remote = createSRemote({
@@ -103,7 +103,7 @@ remote.on('timeupdate', (data) => {
 ```
 
 > **Automatic Event Deduplication & Selective Fallback**:
-> When a media element is managed by an adapter (e.g. via `@sremote/ready2use` or custom adapters), `@sremote/wrapper` coordinates via SRemote's **Selective Handled Events Fallback**. Events handled natively by the adapter are suppressed on the DOM listener, while unhandled natural events (such as `timeupdate`) are safely forwarded without duplicates.
+> When a media element is managed by an adapter (e.g. via `@sremote/ready2use` or custom adapters), `@sremote/sdk` coordinates via SRemote's **Selective Handled Events Fallback**. Events handled natively by the adapter are suppressed on the DOM listener, while unhandled natural events (such as `timeupdate`) are safely forwarded without duplicates.
 
 ---
 
@@ -112,7 +112,7 @@ remote.on('timeupdate', (data) => {
  Displays a modal prompting users to install the userscript if cross-origin bridging is needed:
 
 ```javascript
-import { createSRemote, showInstallModal } from '@sremote/wrapper';
+import { createSRemote, showInstallModal } from '@sremote/sdk';
 
 const remote = createSRemote();
 await remote.ready();

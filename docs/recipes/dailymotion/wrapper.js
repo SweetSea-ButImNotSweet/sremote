@@ -1,4 +1,4 @@
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 // [cmt_dailymotion_adapter]
 const dmIframe = document.getElementById('dailymotion-player');

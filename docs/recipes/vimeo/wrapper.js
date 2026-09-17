@@ -1,4 +1,4 @@
-import { sremote } from '@sremote/wrapper';
+import { sremote } from '@sremote/sdk';
 
 // [cmt_vimeo_adapter]
 const vimeoIframe = document.getElementById('vimeo-player');

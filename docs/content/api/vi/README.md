@@ -1,6 +1,6 @@
 # Danh sách API SRemote
 
-Tất cả các hàm được cung cấp qua đối tượng toàn cục `window.sremote` (hoặc instance client từ `@sremote/wrapper`).
+Tất cả các hàm được cung cấp qua đối tượng toàn cục `window.sremote` (hoặc instance client từ `@sremote/sdk`).
 
 ---
 
