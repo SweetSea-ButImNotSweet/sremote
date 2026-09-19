@@ -507,12 +507,12 @@ export class SRemoteClient {
 
   status(instanceId, key) {
     // 1. Check local adapters first
-    if (this.domDriver?.adaptersMap) {
-      if (instanceId && this.domDriver.adaptersMap.has(instanceId)) {
-        return this.domDriver.getStatus(instanceId);
+    if (this.adapterDriver?.adaptersMap) {
+      if (instanceId && this.adapterDriver.adaptersMap.has(instanceId)) {
+        return this.adapterDriver.getState(instanceId);
       }
-      if (!instanceId && !this.domDriver.isMultiMode() && this.domDriver.adaptersMap.size > 0) {
-        return this.domDriver.getStatus();
+      if (!instanceId && this.adapterDriver.adaptersMap.size > 0) {
+        return this.adapterDriver.getState();
       }
     }
 
@@ -521,19 +521,19 @@ export class SRemoteClient {
       return this.userscriptDriver.status(instanceId, key);
     }
     if (this.domDriver) {
-      return this.domDriver.getStatus(instanceId);
+      return this.domDriver.status(instanceId);
     }
     return null;
   }
 
   capabilities(targetOrId, key) {
     // 1. Check local adapters first
-    if (this.domDriver?.adaptersMap) {
-      if (typeof targetOrId === 'string' && this.domDriver.adaptersMap.has(targetOrId)) {
-        return this.domDriver.getCapabilities(targetOrId);
+    if (this.adapterDriver?.adaptersMap) {
+      if (typeof targetOrId === 'string' && this.adapterDriver.adaptersMap.has(targetOrId)) {
+        return this.adapterDriver.getCapabilities(targetOrId);
       }
-      if (!targetOrId && !this.domDriver.isMultiMode() && this.domDriver.adaptersMap.size > 0) {
-        return this.domDriver.getCapabilities();
+      if (!targetOrId && this.adapterDriver.adaptersMap.size > 0) {
+        return this.adapterDriver.getCapabilities();
       }
     }
 
@@ -542,7 +542,7 @@ export class SRemoteClient {
       return this.userscriptDriver.capabilities(targetOrId, key);
     }
     if (this.domDriver) {
-      return this.domDriver.getCapabilities(targetOrId);
+      return this.domDriver.capabilities(targetOrId);
     }
     return null;
   }
