@@ -7,11 +7,6 @@ import { logger as sharedLogger, events } from '@sremote/shared';
 // Create unified logger for userscript with dynamic level checking
 export const logger = sharedLogger.create({ prefix: 'userscript', level: LOG_LEVEL, defaultLevel: sharedLogger.LEVELS.INFO });
 
-export const console_log = (...args) => logger.log(...args);
-export const console_debug = (...args) => logger.debug(...args);
-export const console_warn = (...args) => logger.warn(...args);
-export const console_error = (...args) => logger.error(...args);
-
 export const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
 export const MEDIA_EVENTS = events.MEDIA_EVENTS;
