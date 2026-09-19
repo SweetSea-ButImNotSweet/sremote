@@ -59,7 +59,9 @@ Version 4.0 is a milestone architectural overhaul that synchronizes developer er
 ### 3. SRemote SDK & Ready2Use Bridge Binding
 - [ ] **Direct Fluent Instance Binding**:
   - Both `.mount(target, opts)` and `.create(opts)` from `@sremote/ready2use` immediately return a chainable, active Fluent instance managed by the SDK.
-  - Standardize the bridge adapter registration interface so any custom adapter or ready2use provider plugs directly into the Driver Pipeline without `window.sremote` polling.
+- [x] **Standardize Bridge Driver & Registration Interface**:
+  - Standardized the bridge adapter registration interface so any custom adapter or ready2use provider plugs directly into the Driver Pipeline without `window.sremote` polling.
+  - Eliminated `window.sremote` hijacking by userscript; unified discovery via `Symbol.for('__sremote_native_driver__')` and reactive event `sremote:driver:ready`.
 
 ### 4. Userscript Permission Dialog Overhaul
 - [ ] **Fix "Always Allow" Logic Bug**:

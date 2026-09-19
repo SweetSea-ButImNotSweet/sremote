@@ -117,23 +117,6 @@ export function createRpcRegistry({ resolver, instanceId, emitToParent, sendMedi
       return { success: true, newSrc, activeMediaTag: media.tagName };
     });
 
-    customRpcActions.set('debug_toggleLoop', async () => {
-      resolver.resolveActiveMedia();
-      const media = resolver.getActiveMedia() || findAllMedia()[0];
-      if (!media) return { success: false, error: 'NO_MEDIA_FOUND', message: 'No media element found to toggle loop' };
-      media.loop = !media.loop;
-      return { success: true, loop: media.loop };
-    });
-
-    customRpcActions.set('debug_simulateStall', async () => {
-      resolver.resolveActiveMedia();
-      const media = resolver.getActiveMedia() || findAllMedia()[0];
-      if (!media) return { success: false, error: 'NO_MEDIA_FOUND', message: 'No media element found to simulate stall' };
-      media.dispatchEvent(new Event('waiting'));
-      media.dispatchEvent(new Event('stalled'));
-      return { success: true, simulated: ['waiting', 'stalled'] };
-    });
-
     customRpcActions.set('debug_restoreOriginal', async () => {
       resolver.resolveActiveMedia();
       const media = resolver.getActiveMedia() || findAllMedia()[0];

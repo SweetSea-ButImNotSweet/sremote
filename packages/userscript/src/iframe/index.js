@@ -1,4 +1,4 @@
-import { logger, pageWindow, MEDIA_EVENTS, descriptors } from '../config.js';
+import { logger, MEDIA_EVENTS, descriptors } from '../config.js';
 import { VERSION, NS, ENABLE_DEBUG_API } from '../const.js';
 import { Storage } from '../core/storage.js';
 import { checkOriginPairPermission, generateInstanceId, safeSetProp, safeGetProp, normalizeOrigin } from '../core/utils.js';
@@ -556,7 +556,6 @@ export function initIframeAgent() {
       getVideoState: () => getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
       getIframeCapabilities: () => getIframeCapabilities(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
       mockMediaSessionInstance,
-      IframeStyleEngine,
       originalMediaSrcBeforeDebugGetter: () => originalMediaSrcBeforeDebug,
       originalMediaSrcBeforeDebugSetter: src => {
         originalMediaSrcBeforeDebug = src;
@@ -564,11 +563,10 @@ export function initIframeAgent() {
     });
 
     try {
-      Object.defineProperty(pageWindow, 'sremote_debug', { value: iframeDebugApi, writable: false, configurable: true, enumerable: true });
-    } catch {
-      pageWindow.sremote_debug = iframeDebugApi;
-    }
-    logger.log(`%c[sremote] window.sremote_debug is ready inside iframe`, 'background: #065f46; color: #34d399; font-weight: bold;');
+      if (typeof globalThis !== 'undefined') {
+        globalThis[Symbol.for('__sremote_iframe_debug__')] = iframeDebugApi;
+      }
+    } catch {}
   }
 
   const announceReadyToParent = () => {

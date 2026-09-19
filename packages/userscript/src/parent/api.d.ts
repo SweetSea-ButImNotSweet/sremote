@@ -234,19 +234,12 @@ export interface SRemoteDebugNamespace {
   setVolume(vol: number, instanceId?: string | null): Promise<SRemoteCommandResult>;
   setMute(muted: boolean, instanceId?: string | null): Promise<SRemoteCommandResult>;
   setRate(rate: number, instanceId?: string | null): Promise<SRemoteCommandResult>;
-  toggleLoop(instanceId?: string | null): Promise<any>;
   setSource(sourceUrlOrBlob: string | Blob | File, instanceId?: string | null): Promise<any>;
-  injectTestTone(freq?: number, duration?: number, instanceId?: string | null): Promise<any>;
-  injectSilentTrack(duration?: number, instanceId?: string | null): Promise<any>;
-  injectWhiteNoise(duration?: number, instanceId?: string | null): Promise<any>;
-  injectSampleVideo(instanceId?: string | null): Promise<any>;
-  restoreOriginal(instanceId?: string | null): Promise<any>;
   logLevel(newLevel?: number): number;
-  simulateStall(instanceId?: string | null): Promise<any>;
 }
 
 /**
- * Native `window.sremote` API exposed by the userscript in the parent window.
+ * Native SRemote Driver API exposed internally by the userscript.
  */
 export interface SRemoteParentApi {
   // Quick Playback Controls
@@ -274,7 +267,6 @@ export interface SRemoteParentApi {
 
   // Subsystems
   instances: SRemoteInstancesNamespace;
-  adapters: SRemoteAdaptersNamespace;
   rpc: SRemoteRpcNamespace;
   css: SRemoteCssNamespace;
 

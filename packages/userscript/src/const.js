@@ -2,7 +2,7 @@
 // SRemote User Configuration
 // Bạn có thể tùy chỉnh các thông số này trực tiếp trong Userscript
 // ============================================================================
-export const VERSION = '3.0.0';
+export const VERSION = '4.0.0-alpha.1';
 export const NS = 'sremote:';
 
 export const LOG_LEVEL = 3; // 0: None, 1: Error/Warn, 2: Debug, 3: Full Log

@@ -1,4 +1,3 @@
-import { SRemoteDebugUtils } from '../debug/audio-generator.js';
 import { logger } from '../config.js';
 import { Storage } from '../core/storage.js';
 
@@ -114,9 +113,8 @@ export function createParentDebugApi({ instances, currentActiveInstanceIdGetter,
     setVolume: (vol, instanceId = null) => dispatchCommand('volume', vol, instanceId, '__DEBUG_BYPASS__'),
     setMute: (muted, instanceId = null) => dispatchCommand('muted', muted, instanceId, '__DEBUG_BYPASS__'),
     setRate: (rate, instanceId = null) => dispatchCommand('playbackRate', rate, instanceId, '__DEBUG_BYPASS__'),
-    toggleLoop: (instanceId = null) => exportedApi.call('debug_toggleLoop', {}, instanceId),
 
-    // Thay thế Source / Inject Blob / Test Audio Generator
+    // Thay thế Source / Inject Blob
     setSource: async (sourceUrlOrBlob, instanceId = null) => {
       let url = sourceUrlOrBlob;
       if (sourceUrlOrBlob instanceof Blob || sourceUrlOrBlob instanceof File) {
@@ -124,30 +122,6 @@ export function createParentDebugApi({ instances, currentActiveInstanceIdGetter,
       }
       return exportedApi.call('debug_setSource', { src: url }, instanceId);
     },
-
-    injectTestTone: async (freq = 440, duration = 3, instanceId = null) => {
-      const blob = SRemoteDebugUtils.createToneBlob(freq, duration);
-      const url = URL.createObjectURL(blob);
-      console.log(`%c[sremote.debug] Generated Tone ${freq}Hz (${duration}s) -> ${url}`, 'color: #a855f7; font-weight: bold;');
-      return exportedApi.call('debug_setSource', { src: url, isBlob: true, title: `Test Tone (${freq}Hz)` }, instanceId);
-    },
-
-    injectSilentTrack: async (duration = 5, instanceId = null) => {
-      const blob = SRemoteDebugUtils.createSilentBlob(duration);
-      const url = URL.createObjectURL(blob);
-      console.log(`%c[sremote.debug] Generated Silent Track (${duration}s) -> ${url}`, 'color: #a855f7; font-weight: bold;');
-      return exportedApi.call('debug_setSource', { src: url, isBlob: true, title: `Silent Track (${duration}s)` }, instanceId);
-    },
-
-    injectWhiteNoise: async (duration = 3, instanceId = null) => {
-      const blob = SRemoteDebugUtils.createNoiseBlob(duration);
-      const url = URL.createObjectURL(blob);
-      console.log(`%c[sremote.debug] Generated White Noise (${duration}s) -> ${url}`, 'color: #a855f7; font-weight: bold;');
-      return exportedApi.call('debug_setSource', { src: url, isBlob: true, title: `White Noise (${duration}s)` }, instanceId);
-    },
-
-    injectSampleVideo: async (instanceId = null) =>
-      exportedApi.call('debug_setSource', { src: SRemoteDebugUtils.SAMPLE_VIDEO_URL, title: 'Mozilla Flower Sample (MP4)' }, instanceId),
 
     // Thay đổi / Xem log level động
     logLevel: (newLevel = undefined) => {
@@ -158,7 +132,5 @@ export function createParentDebugApi({ instances, currentActiveInstanceIdGetter,
       }
       return logger.level;
     },
-
-    simulateStall: async (instanceId = null) => exportedApi.call('debug_simulateStall', {}, instanceId),
   });
 }

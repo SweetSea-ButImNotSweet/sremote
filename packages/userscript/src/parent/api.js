@@ -60,43 +60,9 @@ export function createExportedApi({
       isDummy: false,
       isSremoteNative: true,
       [Symbol.for('__sremote_native__')]: true,
+      [Symbol.for('__sremote_driver__')]: true,
       get logLevel() {
         return logger.level;
-      },
-      // Dynamic getter to forward any window.sremote.adapters calls directly to Wrapper client
-      get adapters() {
-        const client = typeof globalThis !== 'undefined' ? globalThis[Symbol.for('__sremote_client__')] : null;
-        if (client?.adapters) return client.adapters;
-        return {
-          create: options => {
-            if (client?.adapters?.create) return client.adapters.create(options);
-            return null;
-          },
-          register: (adapter, instanceId) => {
-            if (client?.adapters) return client.adapters.register(adapter, instanceId);
-            return null;
-          },
-          unregister: instanceId => {
-            if (client?.adapters) return client.adapters.unregister(instanceId);
-            return false;
-          },
-          get: instanceId => {
-            if (client?.adapters) return client.adapters.get(instanceId);
-            return null;
-          },
-          has: instanceId => {
-            if (client?.adapters) return client.adapters.has(instanceId);
-            return false;
-          },
-          list: () => {
-            if (client?.adapters) return client.adapters.list();
-            return [];
-          },
-          get map() {
-            if (client?.adapters) return client.adapters.map;
-            return new Map();
-          },
-        };
       },
       destroy() {
         if (transportManager && typeof transportManager.destroy === 'function') {
@@ -109,52 +75,35 @@ export function createExportedApi({
     },
   });
 
-  // Explicitly bind to unsafeWindow.sremote and pageWindow.sremote
-  try {
-    if (typeof unsafeWindow !== 'undefined') {
-      try {
-        Object.defineProperty(unsafeWindow, 'sremote', { value: exportedApi, writable: true, configurable: true, enumerable: true });
-      } catch {
-        unsafeWindow.sremote = exportedApi;
-      }
-    }
-    if (typeof pageWindow !== 'undefined' && pageWindow !== (typeof unsafeWindow !== 'undefined' ? unsafeWindow : null)) {
-      try {
-        Object.defineProperty(pageWindow, 'sremote', { value: exportedApi, writable: true, configurable: true, enumerable: true });
-      } catch {
-        pageWindow.sremote = exportedApi;
-      }
-    }
-  } catch (err) {
-    logger.scope('bootstrap').warn('Error defining sremote on window:', err);
-  }
-
-  // Register to hidden internal bridge Symbol for 100% collision-free SDK discovery
+  // Register Native Driver to internal Symbols for 100% collision-free SDK discovery
   try {
     if (typeof globalThis !== 'undefined') {
+      globalThis[Symbol.for('__sremote_native_driver__')] = exportedApi;
+      // Backward compatibility for internal bridge resolution during transition
       globalThis[Symbol.for('__sremote_internal_bridge__')] = exportedApi;
     }
   } catch {}
 
-  // Proactively dispatch 'sremote:ready' and 'sremote:bridge:announce' on pageWindow and unsafeWindow
+  // Proactively dispatch 'sremote:driver:ready' and 'sremote:ready' for late-loading SDK clients
   try {
     const targetWin = typeof unsafeWindow !== 'undefined' ? unsafeWindow : pageWindow;
-    if (typeof targetWin.dispatchEvent === 'function') {
-      const readyDetail = { version: VERSION, isSremoteNative: true, api: exportedApi };
-      const readyEvent =
-        typeof CustomEvent === 'function' ? new CustomEvent('sremote:ready', { detail: readyDetail }) : Object.assign(new Event('sremote:ready'), { detail: readyDetail });
-      targetWin.dispatchEvent(readyEvent);
-
-      const announceEvent =
+    if (typeof targetWin?.dispatchEvent === 'function') {
+      const driverDetail = { version: VERSION, isSremoteNative: true, driver: exportedApi, api: exportedApi };
+      const driverReadyEvent =
         typeof CustomEvent === 'function'
-          ? new CustomEvent('sremote:bridge:announce', { detail: readyDetail })
-          : Object.assign(new Event('sremote:bridge:announce'), { detail: readyDetail });
-      targetWin.dispatchEvent(announceEvent);
+          ? new CustomEvent('sremote:driver:ready', { detail: driverDetail })
+          : Object.assign(new Event('sremote:driver:ready'), { detail: driverDetail });
+      targetWin.dispatchEvent(driverReadyEvent);
+
+      // Legacy fallback event
+      const legacyReadyEvent =
+        typeof CustomEvent === 'function' ? new CustomEvent('sremote:ready', { detail: driverDetail }) : Object.assign(new Event('sremote:ready'), { detail: driverDetail });
+      targetWin.dispatchEvent(legacyReadyEvent);
     }
   } catch (err) {
-    logger.scope('bootstrap').warn('Failed to dispatch sremote:ready event:', err);
+    logger.scope('bootstrap').warn('Failed to dispatch sremote:driver:ready event:', err);
   }
 
-  logger.scope('bootstrap').log('window.sremote is ready with unified builder');
+  logger.scope('bootstrap').log('SRemote Native Driver is ready');
   return exportedApi;
 }

@@ -1,5 +1,3 @@
-import { SRemoteDebugUtils } from './audio-generator.js';
-
 export function createIframeDebugApi({
   activeMediaGetter,
   resolveActiveMedia,
@@ -7,7 +5,6 @@ export function createIframeDebugApi({
   getVideoState,
   getIframeCapabilities,
   mockMediaSessionInstance,
-  IframeStyleEngine,
   originalMediaSrcBeforeDebugGetter,
   originalMediaSrcBeforeDebugSetter,
 }) {
@@ -28,12 +25,12 @@ export function createIframeDebugApi({
       resolveActiveMedia();
       const target = activeMediaGetter() || findAllMedia()[0];
       if (target) {
-        console.log('%c[sremote_debug.inspect] Active Media Element:', 'color: #10b981; font-weight: bold;', target);
+        console.log('%c[sremote.debug.inspect] Active Media Element:', 'color: #10b981; font-weight: bold;', target);
         if (typeof inspect === 'function') {
           inspect(target);
         }
       } else {
-        console.warn('[sremote_debug] No active media element found to inspect.');
+        console.warn('[sremote.debug] No active media element found to inspect.');
       }
       return target;
     },
@@ -51,7 +48,7 @@ export function createIframeDebugApi({
     dump(index = 0) {
       const all = findAllMedia();
       const target = all[index] || activeMediaGetter();
-      console.log(`%c[sremote_debug] Frame Media Dump (Element #${index}):`, 'color: #10b981; font-weight: bold;');
+      console.log(`%c[sremote.debug] Frame Media Dump (Element #${index}):`, 'color: #10b981; font-weight: bold;');
       if (target) {
         console.table({
           tagName: target.tagName,
@@ -70,30 +67,15 @@ export function createIframeDebugApi({
       }
       console.log('MediaSession Details:', this.getMediaSession());
     },
-    setSource(url, index = 0) {
+    setSource(sourceUrlOrBlob, index = 0) {
       const all = findAllMedia();
       const target = all[index] || activeMediaGetter();
-      if (!target) return console.warn('[sremote_debug] No media element to set source');
+      if (!target) return console.warn('[sremote.debug] No media element to set source');
       if (!originalMediaSrcBeforeDebugGetter()) originalMediaSrcBeforeDebugSetter(target.currentSrc || target.src);
+      const url = typeof sourceUrlOrBlob === 'string' ? sourceUrlOrBlob : URL.createObjectURL(sourceUrlOrBlob);
       target.src = url;
       target.load();
-      target.play().catch(e => console.warn('[sremote_debug] Autoplay prevented:', e));
-    },
-    setBlob(blobOrFile, index = 0) {
-      const url = typeof blobOrFile === 'string' ? blobOrFile : URL.createObjectURL(blobOrFile);
-      this.setSource(url, index);
-    },
-    playTone(freq = 440, duration = 3, index = 0) {
-      const blob = SRemoteDebugUtils.createToneBlob(freq, duration);
-      this.setBlob(blob, index);
-    },
-    playSilent(duration = 5, index = 0) {
-      const blob = SRemoteDebugUtils.createSilentBlob(duration);
-      this.setBlob(blob, index);
-    },
-    playNoise(duration = 3, index = 0) {
-      const blob = SRemoteDebugUtils.createNoiseBlob(duration);
-      this.setBlob(blob, index);
+      target.play().catch(e => console.warn('[sremote.debug] Autoplay prevented:', e));
     },
     restoreOriginal(index = 0) {
       const all = findAllMedia();
@@ -104,18 +86,8 @@ export function createIframeDebugApi({
         target.load();
         target.play().catch(() => {});
         originalMediaSrcBeforeDebugSetter(null);
-        console.log('[sremote_debug] Restored original source:', target.src);
+        console.log('[sremote.debug] Restored original source:', target.src);
       }
-    },
-    setCSS(css) {
-      IframeStyleEngine.setDynamicCSS(css);
-      return IframeStyleEngine.getDynamicCSS();
-    },
-    getCSS() {
-      return IframeStyleEngine.getDynamicCSS();
-    },
-    removeCSS() {
-      IframeStyleEngine.removeDynamicCSS();
     },
   };
 }

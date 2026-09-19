@@ -145,6 +145,23 @@ export class SRemoteClient {
       get: (instanceId, key) => this.userscriptDriver.call('getIframeCSS', {}, instanceId, key),
       remove: (instanceId, key) => this.userscriptDriver.call('removeIframeCSS', {}, instanceId, key),
     };
+
+    this.debug = {
+      scan: () => this.bridgeDriver.getApi()?.debug?.scan?.() ?? [],
+      getMediaElement: instanceId => this.bridgeDriver.getApi()?.debug?.getMediaElement?.(instanceId) ?? null,
+      inspect: instanceId => this.bridgeDriver.getApi()?.debug?.inspect?.(instanceId) ?? null,
+      getState: instanceId => this.bridgeDriver.getApi()?.debug?.getState?.(instanceId) ?? null,
+      capabilities: instanceId => this.bridgeDriver.getApi()?.debug?.capabilities?.(instanceId) ?? null,
+      getCapabilities: instanceId => this.bridgeDriver.getApi()?.debug?.getCapabilities?.(instanceId) ?? null,
+      dump: instanceId => this.bridgeDriver.getApi()?.debug?.dump?.(instanceId) ?? null,
+      setSource: (src, instanceId) => this.bridgeDriver.getApi()?.debug?.setSource?.(src, instanceId),
+      logLevel: newLevel => {
+        if (typeof newLevel === 'number') {
+          this.logger.setLevel(newLevel);
+        }
+        return this.bridgeDriver.getApi()?.debug?.logLevel?.(newLevel) ?? this.logger.level;
+      },
+    };
   }
 
   syncGlobalAdapters() {
@@ -234,14 +251,16 @@ export class SRemoteClient {
         if (resolved) return;
         resolved = true;
         if (typeof window !== 'undefined') {
+          window.removeEventListener('sremote:driver:ready', onReadyEvent);
           window.removeEventListener('sremote:ready', onReadyEvent);
           window.removeEventListener('sremote:bridge:announce', onReadyEvent);
         }
         clearTimeout(timer);
-        onConnected('Received bridge ready event. Mode: userscript');
+        onConnected('Received driver ready event. Mode: userscript');
       };
 
       if (typeof window !== 'undefined') {
+        window.addEventListener('sremote:driver:ready', onReadyEvent, { once: true });
         window.addEventListener('sremote:ready', onReadyEvent, { once: true });
         window.addEventListener('sremote:bridge:announce', onReadyEvent, { once: true });
       }
@@ -250,6 +269,7 @@ export class SRemoteClient {
         if (resolved) return;
         resolved = true;
         if (typeof window !== 'undefined') {
+          window.removeEventListener('sremote:driver:ready', onReadyEvent);
           window.removeEventListener('sremote:ready', onReadyEvent);
           window.removeEventListener('sremote:bridge:announce', onReadyEvent);
         }

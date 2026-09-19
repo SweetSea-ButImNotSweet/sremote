@@ -420,6 +420,17 @@ export class SRemoteClient {
   adapters: SRemoteAdaptersNamespace;
   rpc: SRemoteRpcNamespace;
   css: SRemoteCssNamespace;
+  debug: {
+    scan(): Promise<any[]>;
+    getMediaElement(instanceId?: string | null): HTMLElement | null;
+    inspect(instanceId?: string | null): HTMLElement | null;
+    getState(instanceId?: string | null): Promise<any>;
+    capabilities(instanceId?: string | null): SRemoteCapabilities | null;
+    getCapabilities(instanceId?: string | null): SRemoteCapabilities | null;
+    dump(instanceId?: string | null): Promise<any>;
+    setSource(sourceUrlOrBlob: string | Blob | File, instanceId?: string | null): Promise<any>;
+    logLevel(newLevel?: number): number;
+  };
 
   // --- Quick Playback Controls ---
   play(targetOrId?: string | HTMLElement, key?: string): Promise<any>;

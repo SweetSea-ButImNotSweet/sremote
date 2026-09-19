@@ -20,11 +20,17 @@ export class BridgeDriver {
 
   isAvailable() {
     if (typeof window === 'undefined') return false;
-    const internalBridge = typeof globalThis !== 'undefined' ? globalThis[Symbol.for('__sremote_internal_bridge__')] : null;
-    if (internalBridge && isNativeSRemoteInstance(internalBridge)) {
-      return true;
+    if (typeof globalThis !== 'undefined') {
+      const nativeDriver = globalThis[Symbol.for('__sremote_native_driver__')];
+      if (nativeDriver && isNativeSRemoteInstance(nativeDriver)) {
+        return true;
+      }
+      const internalBridge = globalThis[Symbol.for('__sremote_internal_bridge__')];
+      if (internalBridge && isNativeSRemoteInstance(internalBridge)) {
+        return true;
+      }
     }
-    const api = window.SRemote || window.sremote;
+    const api = window.SRemote;
     // Do not treat wrapper itself as external bridge
     if (api?.[Symbol.for('__sremote_source__')] === 'wrapper') {
       return false;
@@ -37,11 +43,17 @@ export class BridgeDriver {
       if (required) throw new Error('[SRemote:BridgeDriver] External host bridge not detected');
       return null;
     }
-    const internalBridge = typeof globalThis !== 'undefined' ? globalThis[Symbol.for('__sremote_internal_bridge__')] : null;
-    if (internalBridge && isNativeSRemoteInstance(internalBridge)) {
-      return internalBridge;
+    if (typeof globalThis !== 'undefined') {
+      const nativeDriver = globalThis[Symbol.for('__sremote_native_driver__')];
+      if (nativeDriver && isNativeSRemoteInstance(nativeDriver)) {
+        return nativeDriver;
+      }
+      const internalBridge = globalThis[Symbol.for('__sremote_internal_bridge__')];
+      if (internalBridge && isNativeSRemoteInstance(internalBridge)) {
+        return internalBridge;
+      }
     }
-    const api = window.SRemote || window.sremote || null;
+    const api = window.SRemote || null;
     if (api?.[Symbol.for('__sremote_source__')] === 'wrapper') {
       return null;
     }

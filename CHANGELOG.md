@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.0.0-alpha.1] - Unreleased
+
+### 🔄 Architecture & Public API Refactoring
+- **Userscript decoupled from `window.sremote`**: Userscript no longer claims or overwrites `window.sremote`. The global `window.sremote` is now 100% created and managed exclusively by `@sremote/sdk`.
+- **Standardized Driver Handshake Protocol**:
+  - Replaced ad-hoc global pollution with internal symbol discovery `Symbol.for('__sremote_native_driver__')`.
+  - Added reactive lifecycle CustomEvent `sremote:driver:ready`, allowing the SDK to connect instantaneously when userscript injects after page load without polling timers.
+  - Eliminated mock `adapters` registry and fake client proxies in Userscript.
+  - Removed defensive dummy proxy wrappers and overwrite traps in `@sremote/sdk/guard.js`.
+- **Khai tử `sremote_debug` & Quy hoạch Debug Namespace**:
+  - Completely eliminated `window.sremote_debug` in child iframes.
+  - Consolidated debugging under `sremote.debug` on the SDK (`scan()`, `inspect()`, `getMediaElement()`, `getState()`, `dump()`, `setSource()`, `logLevel()`).
+- **Pruned Bloatware & Synthetic Audio Generator**:
+  - Removed `audio-generator.js` and PCM WAV 16-bit array buffer generation (`playTone`, `playSilent`, `playNoise`, `injectTestTone`, `injectSilentTrack`, `injectWhiteNoise`, `injectSampleVideo`).
+  - Removed obsolete debug actions and RPC handlers (`debug_toggleLoop`, `debug_simulateStall`, `setCSS`, `getCSS`, `removeCSS`).
+
 ## [3.0.1] - 2026/08/17
 
 ### 📝 Documentation & Chores
