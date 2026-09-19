@@ -126,16 +126,6 @@ export interface SRemoteCustomAdapter {
 }
 
 /**
- * Options for configuring a Universal Adapter instance.
- */
-export interface UniversalAdapterOptions extends SRemoteCustomAdapter {}
-
-/**
- * Factory to create an SRemote-compatible Universal Adapter.
- */
-export declare function createUniversalAdapter(options?: UniversalAdapterOptions): SRemoteCustomAdapter;
-
-/**
  * Options for `sremote.hello()` discovery broadcast.
  */
 export interface SRemoteHelloOptions {
@@ -228,11 +218,6 @@ export interface SRemoteInstancesNamespace {
  * Custom Adapters Subsystem (`sremote.adapters`).
  */
 export interface SRemoteAdaptersNamespace {
-  /**
-   * Creates an SRemote-compatible custom adapter from configuration options.
-   */
-  create(options?: UniversalAdapterOptions): SRemoteCustomAdapter;
-
   /**
    * Register a custom adapter object for third-party player SDKs.
    */
@@ -431,6 +416,11 @@ export class SRemoteClient {
     setSource(sourceUrlOrBlob: string | Blob | File, instanceId?: string | null): Promise<any>;
     logLevel(newLevel?: number): number;
   };
+
+  /**
+   * Unified Driver Execution Pipeline
+   */
+  execute(actionName: string, payload?: any, context?: { targetId?: string | HTMLElement | null; passkey?: string | null; [key: string]: any }): Promise<any>;
 
   // --- Quick Playback Controls ---
   play(targetOrId?: string | HTMLElement, key?: string): Promise<any>;

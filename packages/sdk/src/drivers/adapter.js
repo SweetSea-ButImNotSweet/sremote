@@ -145,68 +145,29 @@ export class AdapterDriver {
     return null;
   }
 
-  async _execAction(action, target, value) {
+  /**
+   * Unified Driver Execution Contract
+   * @param {string} actionName - Action name (e.g. 'play', 'pause', 'seek', 'volume')
+   * @param {*} payload - Parameter or payload for the action
+   * @param {Object} context - Execution context { targetId, passkey, source, timestamp }
+   * @returns {Promise<any>}
+   */
+  async execute(actionName, payload, context = {}) {
+    const target = context?.targetId ?? null;
     const resolved = this.resolveTarget(target);
     if (!resolved) return false;
     const instId = resolved.instanceId || 'adapter';
     const adapterName = resolved.instance?.name || instId;
 
     if (this.logger?.scope) {
-      this.logger.scope('action').log(`(AdapterDriver) Executing '${action}' via Adapter [${adapterName}]`, { value, instanceId: instId });
+      this.logger.scope('action').log(`(AdapterDriver) Executing '${actionName}' via Adapter [${adapterName}]`, { payload, instanceId: instId });
     }
 
-    return actions.execute(resolved.instance, action, value, { transactionTracker: this.transactionTracker, instanceId: instId, logger: this.logger });
-  }
+    // Standardize internal action naming for actions.execute
+    let mappedAction = actionName;
+    if (actionName === 'seekTo') mappedAction = 'seekto';
+    if (actionName === 'mute') mappedAction = 'muted';
 
-  async play(target) {
-    return this._execAction('play', target);
-  }
-  async pause(target) {
-    return this._execAction('pause', target);
-  }
-  async toggle(target) {
-    return this._execAction('toggle', target);
-  }
-  async stop(target) {
-    return this._execAction('stop', target);
-  }
-  async seek(offset, target) {
-    return this._execAction('seek', target, offset);
-  }
-  async seekTo(time, target) {
-    return this._execAction('seekto', target, time);
-  }
-  async volume(vol, target) {
-    return this._execAction('volume', target, vol);
-  }
-  async mute(muted, target) {
-    return this._execAction('muted', target, muted);
-  }
-  async speed(rate, target) {
-    return this._execAction('speed', target, rate);
-  }
-  async pip(enable, target) {
-    return this._execAction('pip', target, enable);
-  }
-  async load(source, target) {
-    return this._execAction('load', target, source);
-  }
-  async quality(level, target) {
-    return this._execAction('quality', target, level);
-  }
-  async subtitle(track, target) {
-    return this._execAction('subtitle', target, track);
-  }
-  async shuffle(enable, target) {
-    return this._execAction('shuffle', target, enable);
-  }
-  async repeat(mode, target) {
-    return this._execAction('repeat', target, mode);
-  }
-  async next(target) {
-    return this._execAction('next', target);
-  }
-  async previous(target) {
-    return this._execAction('previous', target);
+    return actions.execute(resolved.instance, mappedAction, payload, { transactionTracker: this.transactionTracker, instanceId: instId, logger: this.logger });
   }
 }

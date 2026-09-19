@@ -248,3 +248,48 @@ export declare function buildSRemoteApi(context: {
   debugApi?: any;
   customExtensions?: Record<string, any>;
 }): any;
+
+export declare const TransportState: {
+  readonly DISCONNECTED: 'DISCONNECTED';
+  readonly CONNECTING: 'CONNECTING';
+  readonly CONNECTED: 'CONNECTED';
+  readonly TERMINATED: 'TERMINATED';
+};
+
+export declare const MediaState: {
+  readonly NONE: 'NONE';
+  readonly NO_MEDIA: 'NO_MEDIA';
+  readonly READY: 'READY';
+  readonly PLAYING: 'PLAYING';
+  readonly PAUSED: 'PAUSED';
+  readonly ENDED: 'ENDED';
+};
+
+export declare class HierarchicalFSM {
+  constructor(initialOptions?: any);
+  readonly state: { transport: string; media: string; isReady: boolean; isConnected: boolean };
+  readonly transportState: string;
+  readonly mediaState: string;
+  canTransitionTransport(nextState: string): boolean;
+  canTransitionMedia(nextState: string): boolean;
+  transitionTransport(nextState: string, meta?: any): boolean;
+  transitionMedia(nextState: string, meta?: any): boolean;
+  canExecute(action: string): boolean;
+  onChange(listener: (state: any, event: any) => void): () => void;
+  destroy(): void;
+}
+
+export declare function createFSM(initialOptions?: any): HierarchicalFSM;
+
+export declare class ConnectionManager {
+  constructor(options?: any);
+  readonly state: any;
+  readonly isConnected: boolean;
+  readonly isReady: boolean;
+  connect(context?: any): Promise<boolean>;
+  notifyMediaChange(hasMedia: boolean, mediaState?: string): void;
+  disconnect(): void;
+  terminate(): void;
+}
+
+export declare function createConnectionManager(options?: any): ConnectionManager;

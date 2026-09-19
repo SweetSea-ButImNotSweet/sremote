@@ -19,9 +19,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Khai tử `sremote_debug` & Quy hoạch Debug Namespace**:
   - Completely eliminated `window.sremote_debug` in child iframes.
   - Consolidated debugging under `sremote.debug` on the SDK (`scan()`, `inspect()`, `getMediaElement()`, `getState()`, `dump()`, `setSource()`, `logLevel()`).
-- **Pruned Bloatware & Synthetic Audio Generator**:
-  - Removed `audio-generator.js` and PCM WAV 16-bit array buffer generation (`playTone`, `playSilent`, `playNoise`, `injectTestTone`, `injectSilentTrack`, `injectWhiteNoise`, `injectSampleVideo`).
-  - Removed obsolete debug actions and RPC handlers (`debug_toggleLoop`, `debug_simulateStall`, `setCSS`, `getCSS`, `removeCSS`).
+- **Zero-Dependency Hierarchical FSM Engine (`@sremote/shared`)**:
+  - Implemented lightweight, deterministic FSM with two-level hierarchy: Root Transport (`DISCONNECTED` -> `CONNECTING` -> `CONNECTED` -> `TERMINATED`) and Nested Media (`NO_MEDIA` <-> `HAS_MEDIA` [`READY`, `PLAYING`, `PAUSED`, `ENDED`]).
+  - Added deterministic transitions, transition event listeners, and `canExecute(action)` state guards.
+- **Standalone Connection Manager (`@sremote/shared`)**:
+  - Decoupled physical handshake and connection detection logic into independent `ConnectionManager` class.
+- **Unified Driver Pipeline & Driver Interface (`@sremote/sdk`)**:
+  - Renamed legacy `strategies/` directory to `drivers/` (`AdapterDriver`, `BridgeDriver`, `DomDriver`, `MediaSessionDriver`).
+  - Standardized all drivers to a single unified execution contract: `driver.execute(actionName, payload, context)`.
+  - Added new `client.execute(actionName, payload, context)` method on SRemoteClient.
+- **Platform-Aware JIT Driver Caching & Micro Auto-Queue**:
+  - Implemented JIT (On-Demand per Action) dispatch table caching per target instance (`DriverCache`) for 0ms subsequent command dispatching.
+  - Added automatic cache invalidation upon DOM detach (`!element.isConnected`).
+  - Added micro Auto-Queue to safely buffer commands when FSM connection is still in progress.
+- **Purged `universal-adapter`**:
+  - Completely eliminated `universal-adapter.js` factory (~300 LoC), trimming bundle footprint. Custom adapters now plug straight into `sremote.adapters.register(adapter)` without unnecessary wrapper overhead.
 
 ## [3.0.1] - 2026/08/17
 

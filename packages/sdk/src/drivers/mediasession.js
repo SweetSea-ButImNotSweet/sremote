@@ -76,55 +76,34 @@ export class MediaSessionDriver {
     return true;
   }
 
-  async play(_target) {
-    return this._execAction('play', { action: 'play' });
-  }
-  async pause(_target) {
-    return this._execAction('pause', { action: 'pause' });
-  }
-  async toggle(_target) {
-    return this._execAction('toggle', { action: 'toggle' });
-  }
-  async stop(_target) {
-    return this._execAction('stop', { action: 'stop' });
-  }
-  async seek(offset, _target) {
-    return this._execAction('seekforward', { seekOffset: offset });
-  }
-  async seekTo(time, _target) {
-    return this._execAction('seekto', { seekTime: time });
-  }
-  async next(_target) {
-    return this._execAction('nexttrack', { action: 'nexttrack' });
-  }
-  async previous(_target) {
-    return this._execAction('previoustrack', { action: 'previoustrack' });
-  }
-  async speed(_rate, _target) {
-    return false;
-  }
-  async volume(_vol, _target) {
-    return false;
-  }
-  async mute(_muted, _target) {
-    return false;
-  }
-  async pip(_enable, _target) {
-    return false;
-  }
-  async load(_source, _target) {
-    return false;
-  }
-  async quality(_level, _target) {
-    return false;
-  }
-  async subtitle(_track, _target) {
-    return false;
-  }
-  async shuffle(_enable, _target) {
-    return false;
-  }
-  async repeat(_mode, _target) {
-    return false;
+  /**
+   * Unified Driver Execution Contract
+   * @param {string} actionName - Action name
+   * @param {*} payload - Action parameter/payload
+   * @param {Object} context - Execution context { targetId, passkey, source, timestamp }
+   * @returns {Promise<boolean>}
+   */
+  async execute(actionName, payload, _context = {}) {
+    const norm = String(actionName || '').toLowerCase();
+    switch (norm) {
+      case 'play':
+        return this._execAction('play', { action: 'play' });
+      case 'pause':
+        return this._execAction('pause', { action: 'pause' });
+      case 'toggle':
+        return this._execAction('toggle', { action: 'toggle' });
+      case 'stop':
+        return this._execAction('stop', { action: 'stop' });
+      case 'seek':
+        return this._execAction(payload < 0 ? 'seekbackward' : 'seekforward', { seekOffset: Math.abs(payload) });
+      case 'seekto':
+        return this._execAction('seekto', { seekTime: payload });
+      case 'next':
+        return this._execAction('nexttrack', { action: 'nexttrack' });
+      case 'previous':
+        return this._execAction('previoustrack', { action: 'previoustrack' });
+      default:
+        return false;
+    }
   }
 }

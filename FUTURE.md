@@ -30,22 +30,22 @@ Version 4.0 is a milestone architectural overhaul that synchronizes developer er
   - Drop trailing `instanceId` arguments (`remote.play('id')` ➔ `remote('id').play()`) to eliminate API ambiguity.
 
 ### 2. Unified Driver Pipeline & Platform-Aware Caching
-- [ ] **Unified Driver Interface**:
+- [x] **Unified Driver Interface**:
   - Standardize all drivers to implement a single execution contract:
     ```javascript
     driver.execute(actionName, payload, context)
     ```
   - Eliminate brittle argument-sniffing heuristics (`args[0]` vs `args[1]`).
-- [ ] **Lazy Driver Resolution**:
+- [x] **Lazy Driver Resolution**:
   - Resolve the underlying driver (Adapter vs. Bridge vs. MediaSession vs. DOM) lazily on the first executed command rather than blocking synchronous initialization.
-- [ ] **Platform-Aware Driver Caching**:
+- [x] **Platform-Aware Driver Caching**:
   - Cache the resolved driver tagged with platform metadata (e.g., `platform: 'youtube'`) for instant 0ms subsequent dispatch.
   - Automatic cache invalidation when target elements detach, remount, or navigate to another media source.
 - [ ] **Micro-Kernel Protocol Envelope & Pure Transport Layer**:
   - Completely decouple physical communication (`MessagePort` delivery) from business logic (Permissions, Media RPC, Command Queue).
   - Standardize all cross-origin packets into an immutable envelope contract: `{ id, type: 'RPC'|'EVENT'|'HANDSHAKE', action, payload, meta }`.
   - Eliminate recursive DOM scanning (`root.querySelectorAll('iframe')`) by indexing source ports directly.
-- [ ] **Zero-Dependency Hierarchical FSM Engine (`@sremote/shared`)**:
+- [x] **Zero-Dependency Hierarchical FSM Engine (`@sremote/shared`)**:
   - Build an ultra-lightweight (~50 LoC) State Machine engine with deterministic transitions and transition listeners.
   - Implement a **Hierarchical State Tree**:
     - Root Transport State: `DISCONNECTED` ➔ `CONNECTING` ➔ `CONNECTED` ➔ `TERMINATED`.

@@ -97,92 +97,60 @@ export class BridgeDriver {
     return resolved.fn.call(resolved.context, ...args);
   }
 
-  async play(instanceId, key) {
-    return this._callRequired('play', instanceId, this.getPasskey(key));
-  }
+  /**
+   * Unified Driver Execution Contract
+   * @param {string} actionName - Action name
+   * @param {*} payload - Action parameter/payload
+   * @param {Object} context - Execution context { targetId, passkey, source, timestamp }
+   * @returns {Promise<any>}
+   */
+  async execute(actionName, payload, context = {}) {
+    const instanceId = context?.targetId ?? null;
+    const passkey = this.getPasskey(context?.passkey);
 
-  async pause(instanceId, key) {
-    return this._callRequired('pause', instanceId, this.getPasskey(key));
-  }
-
-  async toggle(instanceId, key) {
-    return this._callRequired('toggle', instanceId, this.getPasskey(key));
-  }
-
-  async stop(instanceId, key) {
-    return this._callRequired('stop', instanceId, this.getPasskey(key));
-  }
-
-  async seek(offset, instanceId, key) {
-    return this._callRequired('seek', offset, instanceId, this.getPasskey(key));
-  }
-
-  async seekTo(time, instanceId, key) {
-    return this._callRequired('seekTo', time, instanceId, this.getPasskey(key));
-  }
-
-  async volume(vol, instanceId, key) {
-    return this._callRequired('volume', vol, instanceId, this.getPasskey(key));
-  }
-
-  async mute(muted, instanceId, key) {
-    return this._callRequired('mute', muted, instanceId, this.getPasskey(key));
-  }
-
-  async speed(rate, instanceId, key) {
-    return this._callRequired('rate', rate, instanceId, this.getPasskey(key));
-  }
-
-  async pip(enable, instanceId, key) {
-    return this._callRequired('pip', enable, instanceId, this.getPasskey(key));
-  }
-
-  async load(source, instanceId, key) {
-    return this._callRequired('load', source, instanceId, this.getPasskey(key));
-  }
-
-  async quality(level, instanceId, key) {
-    return this._callOptional('quality', undefined, level, instanceId, this.getPasskey(key));
-  }
-
-  async getQualities(instanceId, key) {
-    return this._callOptional('getQualities', [], instanceId, this.getPasskey(key));
-  }
-
-  async subtitle(track, instanceId, key) {
-    return this._callOptional('subtitle', undefined, track, instanceId, this.getPasskey(key));
-  }
-
-  async getSubtitles(instanceId, key) {
-    return this._callOptional('getSubtitles', [], instanceId, this.getPasskey(key));
-  }
-
-  async shuffle(enable, instanceId, key) {
-    return this._callOptional('shuffle', undefined, enable, instanceId, this.getPasskey(key));
-  }
-
-  async repeat(mode, instanceId, key) {
-    return this._callOptional('repeat', undefined, mode, instanceId, this.getPasskey(key));
-  }
-
-  async next(instanceId, key) {
-    return this._callOptional('next', undefined, instanceId, this.getPasskey(key));
-  }
-
-  async previous(instanceId, key) {
-    return this._callOptional('previous', undefined, instanceId, this.getPasskey(key));
-  }
-
-  async status(instanceId, key) {
-    return this._callOptional('status', null, instanceId, this.getPasskey(key));
-  }
-
-  async capabilities(instanceId, key) {
-    return this._callOptional('capabilities', null, instanceId, this.getPasskey(key));
-  }
-
-  async bindMetadata(metadata, instanceId, key) {
-    return this._callOptional('bindMetadata', undefined, metadata, instanceId, this.getPasskey(key));
+    const norm = String(actionName || '');
+    switch (norm) {
+      case 'play':
+      case 'pause':
+      case 'toggle':
+      case 'stop':
+        return this._callRequired(norm, instanceId, passkey);
+      case 'seek':
+        return this._callRequired('seek', payload, instanceId, passkey);
+      case 'seekTo':
+        return this._callRequired('seekTo', payload, instanceId, passkey);
+      case 'volume':
+        return this._callRequired('volume', payload, instanceId, passkey);
+      case 'mute':
+        return this._callRequired('mute', payload, instanceId, passkey);
+      case 'speed':
+      case 'playbackRate':
+        return this._callRequired('rate', payload, instanceId, passkey);
+      case 'pip':
+        return this._callRequired('pip', payload, instanceId, passkey);
+      case 'load':
+        return this._callRequired('load', payload, instanceId, passkey);
+      case 'quality':
+        return this._callOptional('quality', undefined, payload, instanceId, passkey);
+      case 'getQualities':
+        return this._callOptional('getQualities', [], instanceId, passkey);
+      case 'subtitle':
+        return this._callOptional('subtitle', undefined, payload, instanceId, passkey);
+      case 'getSubtitles':
+        return this._callOptional('getSubtitles', [], instanceId, passkey);
+      case 'shuffle':
+        return this._callOptional('shuffle', undefined, payload, instanceId, passkey);
+      case 'repeat':
+        return this._callOptional('repeat', undefined, payload, instanceId, passkey);
+      case 'next':
+        return this._callOptional('next', undefined, instanceId, passkey);
+      case 'previous':
+        return this._callOptional('previous', undefined, instanceId, passkey);
+      case 'bindMetadata':
+        return this._callOptional('bindMetadata', undefined, payload, instanceId, passkey);
+      default:
+        return this._callOptional(actionName, undefined, payload, instanceId, passkey);
+    }
   }
 
   async on(event, callback, key) {

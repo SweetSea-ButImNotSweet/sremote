@@ -1,11 +1,11 @@
-import { AdapterDriver } from './strategies/adapter.js';
-import { MediaSessionDriver } from './strategies/mediasession.js';
-import { DomDriver } from './strategies/dom.js';
-import { BridgeDriver } from './strategies/bridge.js';
+import { AdapterDriver } from './drivers/adapter.js';
+import { MediaSessionDriver } from './drivers/mediasession.js';
+import { DomDriver } from './drivers/dom.js';
+import { BridgeDriver } from './drivers/bridge.js';
+import { DriverCache } from './driver-cache.js';
 import { showInstallModal } from './ui/install-modal.js';
 import { lockGlobalSRemoteIfAbsent } from './guard.js';
-import { createUniversalAdapter } from './universal-adapter.js';
-import { logger } from '@sremote/shared';
+import { logger, ConnectionManager, HierarchicalFSM } from '@sremote/shared';
 
 // Execute immediately when module is loaded to protect window.sremote
 lockGlobalSRemoteIfAbsent();
@@ -28,6 +28,11 @@ export class SRemoteClient {
     this.domDriver = new DomDriver(driverOptions);
     this.adapterDriver = new AdapterDriver({ ...driverOptions, instanceManager: this.domDriver.instanceManager });
     this.mediaSessionDriver = new MediaSessionDriver(driverOptions);
+
+    this.fsm = options.fsm || new HierarchicalFSM();
+    this.connectionManager = new ConnectionManager({ ...this.options, logger: this.logger, fsm: this.fsm });
+    this.driverCache = new DriverCache({ logger: this.logger });
+    this._commandQueue = []; // Auto-queue for commands waiting for ready FSM
 
     this.mode = 'detecting'; // 'userscript' | 'dom-direct' | 'unsupported'
     this._readyPromise = null;
@@ -112,7 +117,6 @@ export class SRemoteClient {
     };
 
     this.adapters = {
-      create: options => createUniversalAdapter(options),
       register: (adapter, instanceId) => {
         const registeredId = this.adapterDriver.register(adapter, instanceId);
         this.syncGlobalAdapters();
@@ -216,79 +220,46 @@ export class SRemoteClient {
   }
 
   async ready() {
-    // If local custom adapters are already registered, local adapter driver is immediately ready
-    if (this.adapterDriver && this.adapterDriver.isAvailable() && this.mode === 'detecting') {
-      this.mode = 'dom-direct';
-    }
-
     if (this._readyPromise) return this._readyPromise;
 
-    this._readyPromise = new Promise(resolve => {
-      const onConnected = reason => {
-        this.mode = 'userscript';
-        this.syncLogLevelFromUserscript();
-        this.logger.log(reason);
-        this.syncGlobalAdapters();
-        this.syncListenersToUserscript();
-        resolve(this);
-      };
+    this._readyPromise = (async () => {
+      // If local custom adapters are already registered, local adapter driver is immediately ready
+      if (this.adapterDriver && this.adapterDriver.isAvailable() && this.mode === 'detecting') {
+        this.mode = 'dom-direct';
+      }
+
+      await this.connectionManager.connect({ checkUserscriptAvailable: () => this.userscriptDriver.isAvailable(), checkAdapterAvailable: () => this.adapterDriver?.isAvailable() });
 
       if (this.userscriptDriver.isAvailable()) {
-        onConnected('Userscript detected immediately. Mode: userscript');
-        return;
-      }
-
-      // If already has local adapter or fallback is ready, resolve immediately
-      if (this.adapterDriver?.isAvailable()) {
+        this.mode = 'userscript';
+        this.syncLogLevelFromUserscript();
+        this.syncGlobalAdapters();
+        this.syncListenersToUserscript();
+      } else if (this.options.fallbackToDom) {
         this.mode = 'dom-direct';
-        resolve(this);
-        return;
+      } else {
+        this.mode = 'unsupported';
       }
 
-      let resolved = false;
-
-      const onReadyEvent = () => {
-        if (resolved) return;
-        resolved = true;
-        if (typeof window !== 'undefined') {
-          window.removeEventListener('sremote:driver:ready', onReadyEvent);
-          window.removeEventListener('sremote:ready', onReadyEvent);
-          window.removeEventListener('sremote:bridge:announce', onReadyEvent);
-        }
-        clearTimeout(timer);
-        onConnected('Received driver ready event. Mode: userscript');
-      };
-
-      if (typeof window !== 'undefined') {
-        window.addEventListener('sremote:driver:ready', onReadyEvent, { once: true });
-        window.addEventListener('sremote:ready', onReadyEvent, { once: true });
-        window.addEventListener('sremote:bridge:announce', onReadyEvent, { once: true });
-      }
-
-      const timer = setTimeout(() => {
-        if (resolved) return;
-        resolved = true;
-        if (typeof window !== 'undefined') {
-          window.removeEventListener('sremote:driver:ready', onReadyEvent);
-          window.removeEventListener('sremote:ready', onReadyEvent);
-          window.removeEventListener('sremote:bridge:announce', onReadyEvent);
-        }
-
-        if (this.userscriptDriver.isAvailable()) {
-          onConnected('Userscript detected after wait timeout. Mode: userscript');
-        } else if (this.options.fallbackToDom) {
-          this.mode = 'dom-direct';
-          this.logger.log('Userscript not detected. Falling back to Mode: dom-direct');
-          resolve(this);
-        } else {
-          this.mode = 'unsupported';
-          this.logger.warn('Userscript not detected and DOM fallback disabled. Mode: unsupported');
-          resolve(this);
-        }
-      }, this.options.timeout);
-    });
+      // Flush any queued commands waiting for readiness
+      this._flushCommandQueue();
+      return this;
+    })();
 
     return this._readyPromise;
+  }
+
+  _flushCommandQueue() {
+    if (this._commandQueue.length === 0) return;
+    const pending = [...this._commandQueue];
+    this._commandQueue = [];
+    for (const item of pending) {
+      try {
+        item.run();
+      } catch (err) {
+        item.reject(err);
+      }
+    }
   }
 
   /**
@@ -364,37 +335,97 @@ export class SRemoteClient {
   }
 
   /**
-   * Helper to execute commands on the active driver after awaiting readiness
+   * Unified Execution Pipeline
+   * @param {string} actionName
+   * @param {*} payload
+   * @param {Object} context
+   * @returns {Promise<any>}
+   */
+  async execute(actionName, payload, context = {}) {
+    const targetOrId = context?.targetId ?? null;
+
+    // 1. Check FSM: if transport is not yet connected, auto-queue the command
+    if (!this.connectionManager.isConnected) {
+      this.logger.debug(`[Auto-Queue] Enqueuing '${actionName}' while connecting...`);
+      return new Promise((resolve, reject) => {
+        const timeoutTimer = setTimeout(() => {
+          const idx = this._commandQueue.findIndex(q => q.timer === timeoutTimer);
+          if (idx !== -1) {
+            this._commandQueue.splice(idx, 1);
+            reject(new Error(`[SRemote:SDK] Command '${actionName}' timed out waiting for connection.`));
+          }
+        }, this.options.timeout || 2000);
+
+        this._commandQueue.push({
+          timer: timeoutTimer,
+          run: () => {
+            clearTimeout(timeoutTimer);
+            this.execute(actionName, payload, context).then(resolve, reject);
+          },
+          reject,
+        });
+
+        // Trigger connection if not already in flight
+        this.ready().catch(reject);
+      });
+    }
+
+    // 2. Fast-Path: JIT Driver Cache Lookup (0ms)
+    let driver = this.driverCache.getDriverForAction(targetOrId, actionName);
+
+    if (!driver) {
+      // 3. Cache Miss: Resolve through priority pipeline
+      const resolved = this.getDriverForTarget(targetOrId);
+      if (!resolved?.driver) {
+        this.logger.error(`No active driver available to execute ${actionName}()`);
+        throw new Error(`[SRemote:SDK] No active driver available to execute ${actionName}()`);
+      }
+
+      driver = resolved.driver;
+
+      // Detect platform tag for cache entry
+      let platform = 'generic';
+      if (resolved.name === 'BridgeDriver') platform = 'userscript-bridge';
+      else if (resolved.name === 'AdapterDriver') platform = 'custom-adapter';
+      else if (resolved.name === 'MediaSessionDriver') platform = 'mediasession';
+      else if (resolved.name === 'DomDriver') platform = 'html5-dom';
+
+      // Save to JIT Cache
+      this.driverCache.setDriverForAction(targetOrId, actionName, driver, { platform, element: typeof targetOrId === 'object' ? targetOrId : null });
+    }
+
+    const targetLabel = targetOrId ? ` (target: ${typeof targetOrId === 'string' ? targetOrId : 'custom'})` : '';
+    this.logger.scope('action').log(`(SDK) Dispatching -> ${actionName}${targetLabel}`, { payload, context });
+
+    return driver.execute(actionName, payload, {
+      targetId: targetOrId,
+      passkey: context?.passkey || this.options.passkey,
+      source: 'sdk-client',
+      timestamp: Date.now(),
+      ...context,
+    });
+  }
+
+  /**
+   * Internal helper mapping legacy method calls to execute()
    * @private
    */
   async _exec(method, ...args) {
-    // Extract target identifier from args depending on action signature
-    // For seek/seekTo/volume/mute/speed/load/quality/subtitle/shuffle/repeat: targetOrId is args[1]
-    // For play/pause/toggle/stop/next/previous: targetOrId is args[0]
     const valueActions = ['seek', 'seekTo', 'volume', 'mute', 'speed', 'load', 'quality', 'subtitle', 'shuffle', 'repeat'];
-    const targetOrId = valueActions.includes(method) ? args[1] : args[0];
+    let payload = undefined;
+    let targetOrId = null;
+    let key = null;
 
-    const resolvedInitial = this.getDriverForTarget(targetOrId);
-    if (!resolvedInitial && (this.mode === 'userscript' || this.mode === 'dom-direct')) {
-      throw new Error(`[SRemote:SDK] No active driver available to execute ${method}()`);
+    if (valueActions.includes(method)) {
+      payload = args[0];
+      targetOrId = args[1] || null;
+      key = args[2] || null;
+    } else {
+      targetOrId = args[0] || null;
+      key = args[1] || null;
     }
 
-    // Only await ready() if no immediate local adapter or eligible MediaSession driver available
-    const hasImmediateLocal = this.adapterDriver?.isAvailable() || this.mediaSessionDriver?.isEligible();
-    if (!hasImmediateLocal) {
-      await this.ready();
-    }
-
-    const resolved = this.getDriverForTarget(targetOrId);
-    if (!resolved?.driver) {
-      this.logger.error(`No active driver available to execute ${method}()`);
-      throw new Error(`[SRemote:SDK] No active driver available to execute ${method}()`);
-    }
-
-    const { driver, name: driverName } = resolved;
-    const targetLabel = targetOrId ? ` (target: ${typeof targetOrId === 'string' ? targetOrId : 'custom'})` : '';
-    this.logger.scope('action').log(`(SDK) Routing -> ${method} to [${driverName}]${targetLabel}`, ...args);
-    return driver[method](...args);
+    return this.execute(method, payload, { targetId: targetOrId, passkey: key });
   }
 
   // --- Quick Playback Controls ---
