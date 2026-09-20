@@ -270,10 +270,10 @@
       window.SRemoteSDK.sremote.adapters.register(customAdapter, 'mock-audio');
     }
 
-    async function uc2Play() { await window.SRemoteSDK.sremote.play('mock-audio'); }
-    async function uc2Pause() { await window.SRemoteSDK.sremote.pause('mock-audio'); }
-    async function uc2Toggle() { await window.SRemoteSDK.sremote.toggle('mock-audio'); }
-    async function uc2Seek(d) { await window.SRemoteSDK.sremote.seek(d, 'mock-audio'); }
+    async function uc2Play() { await window.SRemoteSDK.sremote('mock-audio').play(); }
+    async function uc2Pause() { await window.SRemoteSDK.sremote('mock-audio').pause(); }
+    async function uc2Toggle() { await window.SRemoteSDK.sremote('mock-audio').toggle(); }
+    async function uc2Seek(d) { await window.SRemoteSDK.sremote('mock-audio').seek(d); }
 
     // UC3: DOM Direct Media
     async function uc3Play() {

@@ -78,8 +78,9 @@ await sremote.seekTo(45);
 await sremote.volume(0.8);
 await sremote.toggle();
 
-// Hoặc điều khiển đích danh theo instanceId nếu trang có nhiều player:
-await sremote.play(yt.instanceId);
+// Hoặc điều khiển đích danh theo instanceId hoặc DOM selector (SRemote 4.0):
+await sremote(yt.instanceId).play();
+await sremote('#player').seekTo(45);
 
 // Lắng nghe sự kiện toàn cục:
 sremote.on('timeupdate', ({ instanceId, state }) => {

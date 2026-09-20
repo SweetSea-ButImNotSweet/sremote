@@ -11,7 +11,7 @@ This document outlines the evolutionary ideas, architectural vision, and roadmap
 Version 4.0 is a milestone architectural overhaul that synchronizes developer ergonomics across the entire SDK, modernizes driver execution, and cleans up user permission UX.
 
 ### 1. Fluent Multi-Instance & Polymorphic Selector
-- [ ] **Polymorphic Scoped Selector Syntax**:
+- [x] **Polymorphic Scoped Selector Syntax**:
   - Allow `sremote(...)` to seamlessly accept any target: a CSS selector string (`'#my-iframe'`), a direct DOM element reference (`HTMLIFrameElement` / `HTMLMediaElement`), or an existing `instanceId` string:
     ```javascript
     sremote(document.querySelector('iframe')).play();
@@ -20,14 +20,15 @@ Version 4.0 is a milestone architectural overhaul that synchronizes developer er
     ```
   - Automatically infer or assign a tracking `instanceId` under the hood if an HTML element without an ID is passed.
   - Calling without a selector (`sremote().play()`) targets the active/default player or broadcasts across registered instances.
-- [ ] **Promise-like Pipeline Queue (Fluent Chaining)**:
+- [x] **Promise-like Pipeline Queue (Fluent Chaining)**:
   - Asynchronous chaining without cluttering code with multiple `await` statements:
     ```javascript
     await sremote('#hero-video').play().seek(10).volume(0.8);
     ```
   - Internal command queue with automatic microtask dispatch and flush.
-- [ ] **Deprecate Legacy Trailing Arguments**:
+- [x] **Deprecate Legacy Trailing Arguments**:
   - Drop trailing `instanceId` arguments (`remote.play('id')` ➔ `remote('id').play()`) to eliminate API ambiguity.
+
 
 ### 2. Unified Driver Pipeline & Platform-Aware Caching
 - [x] **Unified Driver Interface**:

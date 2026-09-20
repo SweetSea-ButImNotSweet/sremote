@@ -3,6 +3,7 @@ import { MediaSessionDriver } from './drivers/mediasession.js';
 import { DomDriver } from './drivers/dom.js';
 import { BridgeDriver } from './drivers/bridge.js';
 import { DriverCache } from './driver-cache.js';
+import { FluentInstance } from './fluent/instance.js';
 import { showInstallModal } from './ui/install-modal.js';
 import { lockGlobalSRemoteIfAbsent } from './guard.js';
 import { logger, ConnectionManager, HierarchicalFSM } from '@sremote/shared';
@@ -407,102 +408,91 @@ export class SRemoteClient {
   }
 
   /**
-   * Internal helper mapping legacy method calls to execute()
-   * @private
+   * Returns a scoped FluentInstance targeting a specific element or player
+   * @param {string|HTMLElement|null} [target=null]
+   * @param {Object} [options={}]
+   * @param {string|null} [options.key=null]
+   * @returns {FluentInstance}
    */
-  async _exec(method, ...args) {
-    const valueActions = ['seek', 'seekTo', 'volume', 'mute', 'speed', 'load', 'quality', 'subtitle', 'shuffle', 'repeat'];
-    let payload = undefined;
-    let targetOrId = null;
-    let key = null;
-
-    if (valueActions.includes(method)) {
-      payload = args[0];
-      targetOrId = args[1] || null;
-      key = args[2] || null;
-    } else {
-      targetOrId = args[0] || null;
-      key = args[1] || null;
-    }
-
-    return this.execute(method, payload, { targetId: targetOrId, passkey: key });
+  select(target = null, options = {}) {
+    return new FluentInstance(this, target, options);
   }
 
-  // --- Quick Playback Controls ---
-  async play(targetOrId, key) {
-    return this._exec('play', targetOrId, key);
+  // --- Pure Root Playback Controls (Targets default/active instance) ---
+  async play() {
+    return this.execute('play');
   }
 
-  async pause(targetOrId, key) {
-    return this._exec('pause', targetOrId, key);
+  async pause() {
+    return this.execute('pause');
   }
 
-  async toggle(targetOrId, key) {
-    return this._exec('toggle', targetOrId, key);
+  async toggle() {
+    return this.execute('toggle');
   }
 
-  async stop(targetOrId, key) {
-    return this._exec('stop', targetOrId, key);
+  async stop() {
+    return this.execute('stop');
   }
 
-  async seek(offset, targetOrId, key) {
-    return this._exec('seek', offset, targetOrId, key);
+  async seek(offset) {
+    return this.execute('seek', offset);
   }
 
-  async seekTo(time, targetOrId, key) {
-    return this._exec('seekTo', time, targetOrId, key);
+  async seekTo(time) {
+    return this.execute('seekTo', time);
   }
 
-  async volume(vol, targetOrId, key) {
-    return this._exec('volume', vol, targetOrId, key);
+  async volume(vol) {
+    return this.execute('volume', vol);
   }
 
-  async mute(muted, targetOrId, key) {
-    return this._exec('mute', muted, targetOrId, key);
+  async mute(muted = true) {
+    return this.execute('mute', muted);
   }
 
-  async speed(rate, targetOrId, key) {
-    return this._exec('speed', rate, targetOrId, key);
+  async speed(rate) {
+    return this.execute('speed', rate);
   }
 
-  async pip(enable, targetOrId, key) {
-    return this._exec('pip', enable, targetOrId, key);
+  async pip(enable = true) {
+    return this.execute('pip', enable);
   }
 
-  async load(source, targetOrId, key) {
-    return this._exec('load', source, targetOrId, key);
+  async load(source) {
+    return this.execute('load', source);
   }
 
-  async quality(level, targetOrId, key) {
-    return this._exec('quality', level, targetOrId, key);
+  async quality(level) {
+    return this.execute('quality', level);
   }
 
-  async getQualities(targetOrId, key) {
-    return this._exec('getQualities', targetOrId, key);
+  async getQualities() {
+    return this.execute('getQualities');
   }
 
-  async subtitle(track, targetOrId, key) {
-    return this._exec('subtitle', track, targetOrId, key);
+  async subtitle(track) {
+    return this.execute('subtitle', track);
   }
 
-  async getSubtitles(targetOrId, key) {
-    return this._exec('getSubtitles', targetOrId, key);
+  async getSubtitles() {
+    return this.execute('getSubtitles');
   }
 
-  async shuffle(enable, targetOrId, key) {
-    return this._exec('shuffle', enable, targetOrId, key);
+  async shuffle(enable = true) {
+    return this.execute('shuffle', enable);
   }
 
-  async repeat(mode, targetOrId, key) {
-    return this._exec('repeat', mode, targetOrId, key);
+  async repeat(mode = true) {
+    return this.execute('repeat', mode);
   }
 
-  async next(targetOrId, key) {
-    return this._exec('next', targetOrId, key);
+  async next() {
+    return this.execute('next');
   }
 
-  async previous(targetOrId, key) {
-    return this._exec('previous', targetOrId, key);
+  async previous() {
+    return this.execute('previous');
   }
 
   status(instanceId, key) {
@@ -656,21 +646,48 @@ export function createSRemote(options) {
 }
 
 // Default singleton client instance
-export const sremote = new SRemoteClient();
+export const clientSingleton = new SRemoteClient();
+
+/**
+ * Callable SRemote entrypoint and singleton client.
+ * Allows scoped fluent selection: `sremote('#player').play().seek(10)`
+ * As well as global calls: `sremote.play()`, `sremote.adapters`, `sremote.debug`
+ */
+function sremoteCallable(target = null, options = {}) {
+  return clientSingleton.select(target, options);
+}
+
+export const sremote = new Proxy(sremoteCallable, {
+  get(targetFn, prop, _receiver) {
+    if (prop in targetFn) return targetFn[prop];
+    const val = clientSingleton[prop];
+    if (typeof val === 'function') {
+      return val.bind(clientSingleton);
+    }
+    return val;
+  },
+  set(targetFn, prop, value) {
+    clientSingleton[prop] = value;
+    return true;
+  },
+  has(targetFn, prop) {
+    return prop in targetFn || prop in clientSingleton;
+  },
+});
 
 // Expose singleton on global symbol for 100% resilient cross-bundle resolution
 if (typeof globalThis !== 'undefined') {
   try {
-    globalThis[Symbol.for('__sremote_client__')] = sremote;
+    globalThis[Symbol.for('__sremote_client__')] = clientSingleton;
   } catch {}
 }
 
 if (typeof window !== 'undefined') {
   try {
-    sremote[Symbol.for('__sremote_source__')] = 'wrapper';
-    sremote[Symbol.for('__sremote_native__')] = true;
-    sremote.isSremoteNative = true;
-    sremote.isDummy = false;
+    clientSingleton[Symbol.for('__sremote_source__')] = 'wrapper';
+    clientSingleton[Symbol.for('__sremote_native__')] = true;
+    clientSingleton.isSremoteNative = true;
+    clientSingleton.isDummy = false;
 
     // Define window.sremote if not existing or dummy
     if (!window.sremote || window.sremote.isDummy) {

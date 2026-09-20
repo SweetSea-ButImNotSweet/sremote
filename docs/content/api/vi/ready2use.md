@@ -82,9 +82,10 @@ await yt.remote.seek(10);     // Nhảy tương đối: tới 10 giây
 await yt.remote.setVolume(0.8);
 await yt.remote.toggle();     // Đảo trạng thái Play / Pause
 
-// 2. Cách 2: Điều khiển qua SRemote wrapper instance:
-await sremote.play(yt.instanceId);
-await sremote.seek(45, yt.instanceId);
+// 2. Cách 2: Điều khiển qua SRemote wrapper instance (Fluent selector):
+await sremote(yt.instanceId).play();
+await sremote(yt.instanceId).seek(45);
+// Hoặc chaining: await sremote(yt.instanceId).play().seek(45);
 
 // Lắng nghe sự kiện phát theo thời gian thực (timeupdate, play, pause, ended...):
 sremote.on('timeupdate', (data) => {

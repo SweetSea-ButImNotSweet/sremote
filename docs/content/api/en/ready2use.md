@@ -82,9 +82,10 @@ await yt.remote.seek(10);     // Relative seek forward 10s
 await yt.remote.setVolume(0.8);
 await yt.remote.toggle();     // Toggle play / pause
 
-// 2. Approach 2: Control via SRemote wrapper instance:
-await sremote.play(yt.instanceId);
-await sremote.seek(45, yt.instanceId);
+// 2. Approach 2: Control via SRemote wrapper instance (Fluent selector):
+await sremote(yt.instanceId).play();
+await sremote(yt.instanceId).seek(45);
+// Or chaining: await sremote(yt.instanceId).play().seek(45);
 
 // Listen to real-time playback events (timeupdate, play, pause, ended...):
 sremote.on('timeupdate', (data) => {

@@ -36,7 +36,7 @@ sremote.instances.assign(iframeOrSelector, customId);
 // 1. Pre-assign custom ID 'main-player' to the iframe element
 sremote.instances.assign('#my-iframe', 'main-player');
 
-// 2. Trigger handshake and control the player directly
+// 2. Afterwards broadcast handshake and target this ID directly (or via fluent syntax)
 sremote.hello();
-sremote.play('main-player');
+await sremote('main-player').play();
 ```

@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.0.0-alpha.1] - Unreleased
 
+### 🚀 Fluent Multi-Instance & Developer Ergonomics
+- **Callable Singleton & Polymorphic Selector Syntax (`sremote(...)`)**:
+  - `sremote` is now both a singleton client with static namespaces and a callable function.
+  - Accepts CSS selectors (`sremote('#hero-video')`), direct DOM elements (`sremote(iframeElement)`), instance IDs (`sremote('youtube_1')`), or no argument (`sremote()`) targeting active/default player.
+  - Scoped options support domain passkey isolation: `sremote('#player', { key: 'secret_key' })`.
+- **Promise-like Pipeline Queue (Fluent Chaining / Thenable)**:
+  - `FluentInstance` implements Thenable contract (`then`, `catch`, `finally`), allowing chainable calls with a single `await`:
+    ```javascript
+    await sremote('#hero-video').play().seek(10).volume(0.8);
+    ```
+- **Dropped Legacy Trailing Arguments (`instanceId`, `key`)**:
+  - Eliminated trailing target and passkey parameters from root playback functions (`play()`, `pause()`, `seek(offset)`, `volume(val)`...). All playback methods are now pure and focused solely on their functional action.
+
 ### 🔄 Architecture & Public API Refactoring
 - **Userscript decoupled from `window.sremote`**: Userscript no longer claims or overwrites `window.sremote`. The global `window.sremote` is now 100% created and managed exclusively by `@sremote/sdk`.
 - **Standardized Driver Handshake Protocol**:

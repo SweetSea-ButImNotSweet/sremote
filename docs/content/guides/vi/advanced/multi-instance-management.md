@@ -46,9 +46,12 @@ Mặc định, các instance sẽ được cấp mã định danh ngẫu nhiên 
 sremote.instances.assign('#video-header', 'hero-player');
 sremote.instances.assign('#sidebar-podcast', 'podcast-player');
 
-// Giờ đây bạn có thể nhắm chính xác mục tiêu cần điều khiển:
-await sremote.play('hero-player');
-await sremote.volume(0.5, 'podcast-player');
+// SRemote 4.0: Điều khiển trực tiếp bằng Fluent Selector hoặc ID gán nhãn:
+await sremote('hero-player').play();
+await sremote('podcast-player').volume(0.5);
+
+// Hoặc gọi trực tiếp bằng DOM selector & method chaining:
+await sremote('#video-header').play().seek(10);
 ```
 
 ---

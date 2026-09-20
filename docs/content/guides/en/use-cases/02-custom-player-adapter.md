@@ -46,9 +46,9 @@ const myAdapter = {
 // Register adapter into SRemote with a custom instance identifier:
 sremote.adapters.register(myAdapter, 'my-custom-player');
 
-// Control seamlessly across SRemote:
-await sremote.play('my-custom-player');
-await sremote.seek(15, 'my-custom-player');
+// Now control it consistently via SRemote (or fluent chaining):
+await sremote('my-custom-player').play();
+await sremote('my-custom-player').seek(15);
 ```
 
 ---

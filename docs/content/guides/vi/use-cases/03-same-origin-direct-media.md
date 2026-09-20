@@ -72,9 +72,12 @@ import { sremote } from '@sremote/sdk';
 sremote.instances.assign('#lecture-video', 'lecture');
 sremote.instances.assign('#pip-video', 'companion');
 
-// Điều khiển chính xác từng video theo ID:
-await sremote.play('lecture');
-await sremote.pause('companion');
+// Điều khiển chính xác từng video theo ID hoặc selector trực tiếp (SRemote 4.0):
+await sremote('lecture').play();
+await sremote('companion').pause();
+
+// Hoặc gọi trực tiếp qua CSS Selector:
+await sremote('#lecture-video').play();
 
 // Hoặc bật chế độ phát độc quyền (chỉ cho phép 1 video phát tại 1 thời điểm):
 sremote.instances.setExclusive('auto');

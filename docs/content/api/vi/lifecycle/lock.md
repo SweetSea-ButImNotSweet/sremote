@@ -13,5 +13,5 @@ Trả về `boolean` (`true`).
 - **Cách duy nhất để tiếp tục:**
   1. Người dùng mở menu của tiện ích mở rộng (Tampermonkey/Violentmonkey) trên trang hiện tại.
   2. Chọn mục **🔑 Tạo & Copy Passkey** để sinh mã khóa bí mật (dạng `SR-XXXX-XXXX-XXXX-XXXX`).
-  3. Lấy mã này truyền vào tham số `key` của các hàm API (ví dụ: `sremote.hello({ key: 'SR-...' })` hoặc `sremote.play(instanceId, 'SR-...')`).
+  3. Lấy mã này truyền vào tùy chọn `key` của các hàm API (ví dụ: `sremote.hello({ key: 'SR-...' })` hoặc `sremote('target', { key: 'SR-...' }).play()`).
   4. Nếu muốn gỡ bỏ hoàn toàn trạng thái khóa, người dùng phải thao tác trực tiếp qua menu tiện ích hoặc tải lại trang.

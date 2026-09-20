@@ -78,8 +78,9 @@ await sremote.seekTo(45);
 await sremote.volume(0.8);
 await sremote.toggle();
 
-// Or target a specific player by instanceId:
-await sremote.play(yt.instanceId);
+// Or target by instanceId or DOM selector (SRemote 4.0):
+await sremote(yt.instanceId).play();
+await sremote('#player').seekTo(45);
 
 // Listen to global media events:
 sremote.on('timeupdate', ({ instanceId, state }) => {

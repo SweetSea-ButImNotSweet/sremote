@@ -46,9 +46,12 @@ By default, players receive generated instance IDs (e.g. `sv_youtube_1a2b3c`). F
 sremote.instances.assign('#video-header', 'hero-player');
 sremote.instances.assign('#sidebar-podcast', 'podcast-player');
 
-// Now you can target instances deterministically:
-await sremote.play('hero-player');
-await sremote.volume(0.5, 'podcast-player');
+// SRemote 4.0: Target directly via Fluent Selector or assigned ID:
+await sremote('hero-player').play();
+await sremote('podcast-player').volume(0.5);
+
+// Or target directly via DOM selector & method chaining:
+await sremote('#video-header').play().seek(10);
 ```
 
 ---

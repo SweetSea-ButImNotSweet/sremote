@@ -46,9 +46,9 @@ const myAdapter = {
 // Đăng ký adapter vào SRemote với một ID tùy ý:
 sremote.adapters.register(myAdapter, 'my-custom-player');
 
-// Bây giờ bạn có thể điều khiển xuyên suốt qua SRemote:
-await sremote.play('my-custom-player');
-await sremote.seek(15, 'my-custom-player');
+// Bây giờ bạn có thể điều khiển xuyên suốt qua SRemote (hoặc chuỗi lệnh fluent):
+await sremote('my-custom-player').play();
+await sremote('my-custom-player').seek(15);
 ```
 
 ---

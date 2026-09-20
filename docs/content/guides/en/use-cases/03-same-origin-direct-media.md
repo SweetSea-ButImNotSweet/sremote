@@ -72,9 +72,12 @@ import { sremote } from '@sremote/sdk';
 sremote.instances.assign('#lecture-video', 'lecture');
 sremote.instances.assign('#pip-video', 'companion');
 
-// Target individual media instances by ID:
-await sremote.play('lecture');
-await sremote.pause('companion');
+// Target exact videos deterministically via assigned ID or selector (SRemote 4.0):
+await sremote('lecture').play();
+await sremote('companion').pause();
+
+// Or target directly by CSS selector:
+await sremote('#lecture-video').play();
 
 // Or enable exclusive playback mode (auto-pauses others when one starts playing):
 sremote.instances.setExclusive('auto');

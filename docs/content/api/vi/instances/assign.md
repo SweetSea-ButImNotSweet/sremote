@@ -36,7 +36,7 @@ sremote.instances.assign(iframeOrSelector, customId);
 // 1. Gán ID tùy chỉnh 'main-player' cho iframe trước khi kết nối
 sremote.instances.assign('#my-iframe', 'main-player');
 
-// 2. Sau đó gửi hello và điều khiển trực tiếp qua ID này
+// 2. Sau đó gửi hello và điều khiển trực tiếp qua ID này (hoặc chuỗi lệnh fluent)
 sremote.hello();
-sremote.play('main-player');
+await sremote('main-player').play();
 ```

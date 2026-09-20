@@ -422,26 +422,31 @@ export class SRemoteClient {
    */
   execute(actionName: string, payload?: any, context?: { targetId?: string | HTMLElement | null; passkey?: string | null; [key: string]: any }): Promise<any>;
 
-  // --- Quick Playback Controls ---
-  play(targetOrId?: string | HTMLElement, key?: string): Promise<any>;
-  pause(targetOrId?: string | HTMLElement, key?: string): Promise<any>;
-  toggle(targetOrId?: string | HTMLElement, key?: string): Promise<any>;
-  stop(targetOrId?: string | HTMLElement, key?: string): Promise<any>;
-  seek(offset: number, targetOrId?: string | HTMLElement, key?: string): Promise<any>;
-  seekTo(time: number, targetOrId?: string | HTMLElement, key?: string): Promise<any>;
-  volume(vol: number, targetOrId?: string | HTMLElement, key?: string): Promise<any>;
-  mute(muted?: boolean, targetOrId?: string | HTMLElement, key?: string): Promise<any>;
-  speed(rate: number, targetOrId?: string | HTMLElement, key?: string): Promise<any>;
-  pip(enable?: boolean, targetOrId?: string | HTMLElement, key?: string | null): Promise<any>;
-  quality(level: string | number, targetOrId?: string | HTMLElement, key?: string | null): Promise<any>;
-  getQualities(targetOrId?: string | HTMLElement, key?: string | null): Promise<string[]>;
-  subtitle(track: string | null, targetOrId?: string | HTMLElement, key?: string | null): Promise<any>;
-  getSubtitles(targetOrId?: string | HTMLElement, key?: string | null): Promise<any[]>;
-  shuffle(enable?: boolean, targetOrId?: string | HTMLElement, key?: string | null): Promise<any>;
-  repeat(mode?: 'off' | 'all' | 'one' | boolean, targetOrId?: string | HTMLElement, key?: string | null): Promise<any>;
-  next(targetOrId?: string | HTMLElement, key?: string | null): Promise<any>;
-  previous(targetOrId?: string | HTMLElement, key?: string | null): Promise<any>;
-  load(source: any, targetOrId?: string | HTMLElement, key?: string | null): Promise<any>;
+  /**
+   * Scopes a specific iframe, media element or instance for fluent chaining.
+   */
+  select(target?: string | HTMLElement | null, options?: { key?: string | null }): SRemoteFluentInstance;
+
+  // --- Quick Playback Controls (Root / Default Instance) ---
+  play(): Promise<any>;
+  pause(): Promise<any>;
+  toggle(): Promise<any>;
+  stop(): Promise<any>;
+  seek(offset: number): Promise<any>;
+  seekTo(time: number): Promise<any>;
+  volume(vol: number): Promise<any>;
+  mute(muted?: boolean): Promise<any>;
+  speed(rate: number): Promise<any>;
+  pip(enable?: boolean): Promise<any>;
+  quality(level: string | number): Promise<any>;
+  getQualities(): Promise<string[]>;
+  subtitle(track: string | null): Promise<any>;
+  getSubtitles(): Promise<any[]>;
+  shuffle(enable?: boolean): Promise<any>;
+  repeat(mode?: 'off' | 'all' | 'one' | boolean): Promise<any>;
+  next(): Promise<any>;
+  previous(): Promise<any>;
+  load(source: any): Promise<any>;
   status(instanceId?: string, key?: string | null): SRemoteMediaState | null;
   capabilities(targetOrId?: string | HTMLElement, key?: string | null): SRemoteCapabilities | null;
 
@@ -456,11 +461,61 @@ export class SRemoteClient {
   showInstallModal(options?: SRemoteInstallModalOptions): SRemoteInstallModalHandle;
 }
 
+/**
+ * Scoped, Promise-like (Thenable) fluent chain instance for an individual media/iframe target.
+ */
+export interface SRemoteFluentInstance extends PromiseLike<any> {
+  // Pure Playback Chaining
+  play(): this;
+  pause(): this;
+  toggle(): this;
+  stop(): this;
+  seek(offset: number): this;
+  seekTo(time: number): this;
+  volume(val: number): this;
+  mute(val?: boolean): this;
+  speed(rate: number): this;
+  pip(enable?: boolean): this;
+  load(source: any): this;
+  quality(level: string | number): this;
+  subtitle(track: string | null): this;
+  shuffle(enable?: boolean): this;
+  repeat(mode?: 'off' | 'all' | 'one' | boolean): this;
+  next(): this;
+  previous(): this;
+
+  // Scoped Inspection & Events
+  getQualities(): Promise<string[]>;
+  getSubtitles(): Promise<any[]>;
+  status(): SRemoteMediaState | null;
+  capabilities(): SRemoteCapabilities | null;
+  bindMetadata(meta: any): void;
+  on(event: string, handler: (data: any) => void): () => void;
+  off(event: string, handler: (data: any) => void): void;
+
+  // Thenable Interface
+  then<TResult1 = any, TResult2 = never>(
+    onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | undefined | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null,
+  ): Promise<TResult1 | TResult2>;
+  catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): Promise<any | TResult>;
+  finally(onfinally?: (() => void) | undefined | null): Promise<any>;
+}
+
+export interface SRemoteCallable {
+  /**
+   * Selects a target player (selector, DOM element, or instance ID) for fluent, chainable execution.
+   * @example
+   * await sremote('#hero-video').play().seek(10).volume(0.8);
+   */
+  (target?: string | HTMLElement | null, options?: { key?: string | null }): SRemoteFluentInstance;
+}
+
 export declare function showInstallModal(options?: SRemoteInstallModalOptions): SRemoteInstallModalHandle;
 
 export declare function createSRemote(options?: SRemoteClientOptions): SRemoteClient;
 
-export declare const sremote: SRemoteClient;
+export declare const sremote: SRemoteClient & SRemoteCallable;
 export default sremote;
 
 export declare class AdapterDriver {
