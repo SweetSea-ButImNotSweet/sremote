@@ -124,6 +124,25 @@ Version 4.1 focuses on expressive developer experience, stylized playback events
 
 ---
 
+## 🎛️ Version 4.2 — Deep Media Inspection & Advanced Playback Capabilities
+
+Elevate SRemote's API coverage to 100% parity with HTML5 MediaElement specifications and professional web players:
+
+- [ ] **Multi-Segment Buffered & Seekable TimeRanges**:
+  - `bufferedRanges()`: Parse native `TimeRanges` into serializable segments `[{ start, end }]` allowing developers to render segmented buffer bars accurately on custom UI.
+  - `seekableRanges()`: Expose sliding seekable windows critical for Live Stream time-shifting (HLS / DASH).
+- [ ] **Cross-Origin Fullscreen Orchestration**:
+  - `requestFullscreen(target)` / `exitFullscreen()` / `isFullscreen()` bypassing iframe sandbox restrictions (`allow="fullscreen"`).
+- [ ] **Live Stream Detection & Live-Edge Catchup**:
+  - `isLive()` / `seekToLive()`: Automatically detect continuous streams (duration = `Infinity` or live stream signatures) and provide a one-click method to jump straight to the live edge.
+- [ ] **Deep Playback Diagnostics & Stall Sensing**:
+  - Expose `isBuffering`, `isStalled`, `readyState`, and `networkState` across all drivers.
+  - Detect browser Autoplay Policy rejection, enabling host applications to prompt users with a clean *"Click to unmute / play"* fallback banner.
+- [ ] **Video Frame Metrics & Dimension Sensing**:
+  - Dynamically read `videoWidth`, `videoHeight`, and computed `aspectRatio` directly from active video frames to allow responsive layout auto-fitting on the host page.
+
+---
+
 ## 🧪 Version 5.x – 6.x — Real-World E2E Test Suite & Comprehensive Documentation Audit
 
 Ensure rock-solid stability and top-tier developer documentation before venturing onto desktop platforms.
