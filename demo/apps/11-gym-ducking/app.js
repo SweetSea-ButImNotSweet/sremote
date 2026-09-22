@@ -1,6 +1,24 @@
 import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
 import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
 
+// Khởi tạo Top Bar chuẩn Flat 2.0
+if (window.setupDemoTopBar) {
+  window.setupDemoTopBar({
+    appNumber: '11',
+    title: 'Smart Gym HIIT Audio Ducking',
+    subtitle: 'Tự động giảm âm lượng nhạc nền (Audio Ducking) khi phát tiếng đếm nhịp kết thúc hiệp',
+    tutorialLink: '../../tutorials/11-gym-ducking.html',
+  });
+}
+
+// Chèn SVG icons vào buttons
+if (window.DemoIcons) {
+  const startIcon = document.getElementById('start-icon');
+  const pauseIcon = document.getElementById('pause-icon');
+  if (startIcon) startIcon.innerHTML = window.DemoIcons.play;
+  if (pauseIcon) pauseIcon.innerHTML = window.DemoIcons.pause;
+}
+
 // Bộ phát âm thanh Web Audio
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -24,11 +42,10 @@ function playBeepSound(frequency = 880, duration = 0.2) {
   osc.stop(audioCtx.currentTime + duration);
 }
 
-
 // Cấu hình bài tập HIIT
 const WORK_SECONDS = 20; // 20 giây tập hết sức
 const REST_SECONDS = 10; // 10 giây nghỉ
-const TOTAL_ROUNDS = 8;  // 8 hiệp Tabata
+const TOTAL_ROUNDS = 8; // 8 hiệp Tabata
 
 let currentRound = 1;
 let currentPhase = 'PREPARE'; // 'PREPARE' | 'WORK' | 'REST'
@@ -47,12 +64,11 @@ const btnPauseWorkout = document.getElementById('btn-pause-workout');
 async function initGymApp() {
   await youtube.mount('#workout-music-slot', {
     videoId: '4xDzrJKXOOY', // Workout EDM Livestream
-    playerVars: { controls: 1, autoplay: 0 }
+    playerVars: { controls: 1, autoplay: 0 },
   });
   await sremote.setVolume(1);
   console.log('✅ Hệ thống phòng Gym thông minh đã sẵn sàng!');
 }
-
 
 function startWorkout() {
   if (isWorkingOut) return;
@@ -70,8 +86,7 @@ function startWorkout() {
       duckingStatusEl.textContent = 'Ducking (20%)';
       duckingStatusEl.classList.add('active');
       playBeepSound(660, 0.2); // Beep thấp
-    } 
-    else if (secondsLeft === 2 || secondsLeft === 1) {
+    } else if (secondsLeft === 2 || secondsLeft === 1) {
       playBeepSound(660, 0.2); // Beep thấp
     }
 
@@ -93,14 +108,14 @@ async function switchPhase() {
     // Chuyển sang hiệp WORK
     currentPhase = 'WORK';
     secondsLeft = WORK_SECONDS;
-    phaseNameEl.textContent = '🔥 TẬP HẾT SỨC!';
+    phaseNameEl.textContent = 'TẬP HẾT SỨC!';
     phaseCard.className = 'phase-card work-phase';
   } else if (currentPhase === 'WORK') {
     // Chuyển sang hiệp REST hoặc kết thúc bài tập
     if (currentRound >= TOTAL_ROUNDS) {
       clearInterval(timerId);
       isWorkingOut = false;
-      phaseNameEl.textContent = '🎉 HOÀN THÀNH!';
+      phaseNameEl.textContent = 'HOÀN THÀNH!';
       timerCountdownEl.textContent = '00';
       alert('Chúc mừng bạn đã hoàn thành trọn vẹn 8 hiệp TABATA!');
       return;
@@ -108,7 +123,7 @@ async function switchPhase() {
     currentRound++;
     currentPhase = 'REST';
     secondsLeft = REST_SECONDS;
-    phaseNameEl.textContent = '☕ NGHỈ NGƠI';
+    phaseNameEl.textContent = 'NGHỈ NGƠI';
     phaseCard.className = 'phase-card rest-phase';
     roundIndicatorEl.textContent = `HIỆP ${currentRound} / ${TOTAL_ROUNDS}`;
   }
@@ -125,5 +140,3 @@ btnPauseWorkout.addEventListener('click', () => {
 
 // Khởi chạy
 initGymApp();
-
-

@@ -1,11 +1,22 @@
 import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
 import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
 
+// Setup common top bar
+if (window.setupDemoTopBar) {
+  window.setupDemoTopBar({ appName: 'App 01: Simple Custom Player', tutorialPath: 'content/guides/vi/blueprints/01-simple-player.md' });
+}
+
 const btnPlay = document.getElementById('btn-play');
 const timeDisplay = document.getElementById('time-display');
 const seekBar = document.getElementById('seek-bar');
 const btnMute = document.getElementById('btn-mute');
 const volumeBar = document.getElementById('volume-bar');
+
+const Icons = window.DemoIcons || { play: '▶', pause: '⏸', replay: '🔄', volumeHigh: '🔊', volumeMute: '🔇' };
+
+// Set initial SVG icons
+btnPlay.innerHTML = Icons.play;
+btnMute.innerHTML = Icons.volumeHigh;
 
 let isScrubbing = false;
 let videoDuration = 0;
@@ -19,15 +30,18 @@ function formatTime(seconds) {
 }
 
 async function init() {
-  await youtube.mount('#video-container', {
-    videoId: 'M7lc1UVf-VE',
-    playerVars: { controls: 0, autoplay: 0 }
-  });
+  await youtube.mount('#video-container', { videoId: 'M7lc1UVf-VE', playerVars: { controls: 0, autoplay: 0 } });
 
-  // State Sync
-  sremote.on('play', () => { btnPlay.textContent = '⏸'; });
-  sremote.on('pause', () => { btnPlay.textContent = '▶'; });
-  sremote.on('ended', () => { btnPlay.textContent = '🔄'; });
+  // State Sync with SVG icons
+  sremote.on('play', () => {
+    btnPlay.innerHTML = Icons.pause;
+  });
+  sremote.on('pause', () => {
+    btnPlay.innerHTML = Icons.play;
+  });
+  sremote.on('ended', () => {
+    btnPlay.innerHTML = Icons.replay;
+  });
 
   sremote.on('durationchange', ({ duration }) => {
     videoDuration = duration;
@@ -57,7 +71,7 @@ async function init() {
   volumeBar.addEventListener('input', async () => {
     const val = parseFloat(volumeBar.value);
     await sremote.setVolume(val);
-    btnMute.textContent = val === 0 ? '🔇' : '🔊';
+    btnMute.innerHTML = val === 0 ? Icons.volumeMute : Icons.volumeHigh;
     if (val > 0) lastVolume = val;
   });
 
@@ -67,12 +81,12 @@ async function init() {
       lastVolume = cur;
       volumeBar.value = 0;
       await sremote.setVolume(0);
-      btnMute.textContent = '🔇';
+      btnMute.innerHTML = Icons.volumeMute;
     } else {
       const res = lastVolume || 0.5;
       volumeBar.value = res;
       await sremote.setVolume(res);
-      btnMute.textContent = '🔊';
+      btnMute.innerHTML = Icons.volumeHigh;
     }
   });
 }

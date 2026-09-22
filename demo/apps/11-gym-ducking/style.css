@@ -1,68 +1,71 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: #090d16;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
 .gym-app {
-  max-width: 480px;
+  max-width: 520px;
   width: 100%;
+  margin: 0 auto;
 }
 
 .phase-card {
-  background: #1e293b;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   padding: 36px 20px;
   text-align: center;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
   margin-bottom: 24px;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
 }
 
-/* Đổi màu đỏ rực khi vào hiệp tập cường độ cao */
+.phase-card.prepare-phase {
+  background: var(--bg-surface);
+  border-color: var(--border-color);
+}
+
+/* Đổi màu đỏ phong cách Flat 2.0 khi vào hiệp tập cường độ cao */
 .phase-card.work-phase {
-  background: linear-gradient(180deg, #991b1b, #450a0a);
+  background: rgba(239, 68, 68, 0.12);
   border-color: #ef4444;
+  color: #ef4444;
 }
 
-/* Đổi màu xanh lá khi vào hiệp nghỉ ngơi */
+.phase-card.work-phase .phase-name,
+.phase-card.work-phase .timer-countdown {
+  color: #ef4444;
+}
+
+/* Đổi màu xanh lá Flat 2.0 khi vào hiệp nghỉ ngơi */
 .phase-card.rest-phase {
-  background: linear-gradient(180deg, #065f46, #022c22);
+  background: rgba(16, 185, 129, 0.12);
   border-color: #10b981;
+  color: #10b981;
+}
+
+.phase-card.rest-phase .phase-name,
+.phase-card.rest-phase .timer-countdown {
+  color: #10b981;
 }
 
 .round-indicator {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  color: #94a3b8;
+  color: var(--text-muted);
   letter-spacing: 1px;
   margin-bottom: 8px;
 }
 
 .phase-name {
-  font-size: 32px;
-  font-weight: 900;
+  font-size: 28px;
+  font-weight: 800;
   text-transform: uppercase;
   margin-bottom: 12px;
+  color: var(--text-primary);
 }
 
 .timer-countdown {
-  font-size: 88px;
+  font-size: 80px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  color: var(--text-primary);
+  font-family: monospace, -apple-system, sans-serif;
 }
 
 .controls-row {
@@ -71,70 +74,80 @@ body {
   margin-bottom: 24px;
 }
 
-.btn {
+.controls-row .btn {
   flex: 1;
-  padding: 14px;
-  border-radius: 10px;
-  border: none;
-  font-size: 15px;
+  padding: 14px 20px;
+  font-size: 16px;
   font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-.btn-start {
-  background: #38bdf8;
-  color: #0f172a;
+.btn-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
-.btn-start:hover {
-  background: #0284c7;
-  color: #fff;
-}
-
-.btn-pause {
-  background: #334155;
-  color: #f1f5f9;
-}
-
-.btn-pause:hover {
-  background: #475569;
-}
-
+/* Khung nhạc nền Gym Workout */
 .music-section {
-  background: #111827;
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 20px;
 }
 
 .music-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12.5px;
-  color: #94a3b8;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.music-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.music-note-icon {
+  font-size: 24px;
+}
+
+.music-title-wrap strong {
+  font-size: 14px;
+  color: var(--text-primary);
+  display: block;
+}
+
+.music-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
 }
 
 .ducking-badge {
-  background: #1e293b;
-  color: #38bdf8;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
   font-weight: 600;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
 .ducking-badge.active {
   background: #f59e0b;
-  color: #000;
-  font-weight: 700;
+  color: #ffffff;
+  border-color: #d97706;
 }
 
 .music-slot {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #000;
-  border-radius: 8px;
+  background: #000000;
+  border-radius: var(--radius-md);
   overflow: hidden;
+  border: 1px solid var(--border-color);
 }

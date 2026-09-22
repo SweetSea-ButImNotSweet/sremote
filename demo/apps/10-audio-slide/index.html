@@ -3,44 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Audio-Driven Slide Deck - SRemote Tutorial 10</title>
+  <title>App 10: Audio-Driven Slide Deck - SRemote Demo</title>
+  <link rel="stylesheet" href="../common.css">
   <link rel="stylesheet" href="style.css">
+  <script src="../common.js"></script>
 </head>
 <body>
-  <!-- Top Navigation Header -->
-  <nav style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0f172a; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
-    <a href="../../index.html" style="color:#38bdf8; text-decoration:none; font-weight:600;">⬅️ Về Demo Hub</a>
-    <span style="color:#94a3b8; font-weight:500;">Live Demo: 10-audio-slide</span>
-    <a href="../../../docs/index.html?path=content/guides/vi/blueprints/10-audio-slide.md" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">📖 Xem Tutorial</a>
-  </nav>
 
-  <div class="deck-app">
-    <!-- Header thông tin bài thuyết trình -->
-    <header class="deck-header">
-      <div>
-        <h2>📊 Kiến Trúc Microservices & Event-Driven</h2>
-        <p class="meta">Thuyết trình bởi: Tech Lead • Tự động lật slide theo giọng đọc</p>
+  <main class="demo-main-layout">
+    <div class="deck-app">
+      <header class="deck-header">
+        <div>
+          <h2>📊 Kiến Trúc Microservices & Event-Driven</h2>
+          <p class="meta">Thuyết trình: Tech Lead • Tự động lật slide theo giọng đọc thuyết minh</p>
+        </div>
+        <div class="slide-counter" id="slide-counter">Slide 1 / 4</div>
+      </header>
+
+      <!-- Màn hình hiển thị Slide chính -->
+      <div class="slide-stage">
+        <div id="active-slide-card" class="slide-card">
+          <h1 id="slide-title" class="slide-title">Đang nạp slide...</h1>
+          <p id="slide-desc" class="slide-desc"></p>
+          <div id="slide-graphic" class="slide-graphic"></div>
+        </div>
       </div>
-      <div class="slide-counter" id="slide-counter">Slide 1 / 4</div>
-    </header>
 
-    <!-- Màn hình hiển thị Slide chính -->
-    <div class="slide-stage">
-      <div id="active-slide-card" class="slide-card">
-        <h1 id="slide-title" class="slide-title">Đang nạp slide...</h1>
-        <p id="slide-desc" class="slide-desc"></p>
-        <div id="slide-graphic" class="slide-graphic"></div>
+      <!-- Khung phát âm thanh thuyết minh (Voiceover Slot) -->
+      <div class="audio-control-panel">
+        <div id="audio-slot" class="audio-slot"></div>
       </div>
-    </div>
 
-    <!-- Khung phát âm thanh thuyết minh (Voiceover Slot) -->
-    <div class="audio-control-panel">
-      <div id="audio-slot" class="audio-slot"></div>
+      <!-- Thanh thumbnail danh sách tất cả các slide (Bấm để nhảy) -->
+      <div class="thumbnails-bar" id="thumbnails-bar"></div>
     </div>
-
-    <!-- Thanh thumbnail danh sách tất cả các slide (Bấm để nhảy) -->
-    <div class="thumbnails-bar" id="thumbnails-bar"></div>
-  </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>

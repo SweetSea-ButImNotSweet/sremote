@@ -3,45 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EdTech Interactive Video Quiz - SRemote Tutorial 04</title>
+  <title>App 04: EdTech Interactive Quiz - SRemote Demo</title>
+  <link rel="stylesheet" href="../common.css">
   <link rel="stylesheet" href="style.css">
+  <script src="../common.js"></script>
 </head>
 <body>
-  <!-- Top Navigation Header -->
-  <nav style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0f172a; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
-    <a href="../../index.html" style="color:#38bdf8; text-decoration:none; font-weight:600;">⬅️ Về Demo Hub</a>
-    <span style="color:#94a3b8; font-weight:500;">Live Demo: 04-edtech-quiz</span>
-    <a href="../../../docs/index.html?path=content/guides/vi/blueprints/04-edtech-quiz.md" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">📖 Xem Tutorial</a>
-  </nav>
 
-  <div class="course-container">
-    <header class="course-header">
-      <span class="course-tag">Khóa học JavaScript Cơ Bản</span>
-      <h2>Bài 04: Biến, Kiểu dữ liệu và Vòng lặp</h2>
-      <p class="instructor">Giảng viên: SRemote Academy</p>
-    </header>
+  <main class="demo-main-layout">
+    <div class="course-container">
+      <header class="course-header">
+        <span class="badge-tag">Khóa học JavaScript Thực Chiến</span>
+        <h2>Bài 04: Biến, Kiểu dữ liệu và Vòng lặp</h2>
+        <p class="instructor">Giảng viên: SRemote Academy • Tự động dừng tại mốc 15s & 45s</p>
+      </header>
 
-    <!-- Khung video bài giảng -->
-    <div class="video-wrapper">
-      <div id="video-slot" class="video-slot"></div>
+      <!-- Khung video bài giảng -->
+      <div class="video-wrapper">
+        <div id="video-slot" class="video-slot"></div>
 
-      <!-- Modal Trắc nghiệm (Mặc định ẩn) -->
-      <div id="quiz-overlay" class="quiz-overlay hidden">
-        <div class="quiz-card">
-          <div class="quiz-badge">⚡ Điểm Dừng Kiểm Tra Kiến Thức</div>
-          <h3 id="quiz-question" class="quiz-title">Đang nạp câu hỏi...</h3>
-          <div id="quiz-options" class="quiz-options"></div>
-          <div id="quiz-feedback" class="quiz-feedback"></div>
+        <!-- Modal Trắc nghiệm Flat 2.0 (Mặc định ẩn) -->
+        <div id="quiz-overlay" class="quiz-overlay hidden">
+          <div class="quiz-card">
+            <div class="quiz-badge">⚡ Điểm Dừng Kiểm Tra Kiến Thức</div>
+            <h3 id="quiz-question" class="quiz-title">Đang nạp câu hỏi...</h3>
+            <div id="quiz-options" class="quiz-options"></div>
+            <div id="quiz-feedback" class="quiz-feedback"></div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Thanh tiến độ học tập -->
-    <div class="progress-footer">
-      <span>Trạng thái: <b id="learning-status">Đang theo dõi bài giảng</b></span>
-      <span id="video-time">00:00</span>
+      <!-- Thanh tiến độ học tập -->
+      <div class="progress-footer">
+        <span>Trạng thái: <b id="learning-status">Đang theo dõi bài giảng</b></span>
+        <span id="video-time" class="time-counter">0s</span>
+      </div>
     </div>
-  </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>

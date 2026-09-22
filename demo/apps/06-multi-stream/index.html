@@ -3,35 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Multi-Stream Dashboard - SRemote Tutorial 06</title>
+  <title>App 06: Multi-Stream Dashboard - SRemote Demo</title>
+  <link rel="stylesheet" href="../common.css">
   <link rel="stylesheet" href="style.css">
+  <script src="../common.js"></script>
 </head>
 <body>
-  <!-- Top Navigation Header -->
-  <nav style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0f172a; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
-    <a href="../../index.html" style="color:#38bdf8; text-decoration:none; font-weight:600;">⬅️ Về Demo Hub</a>
-    <span style="color:#94a3b8; font-weight:500;">Live Demo: 06-multi-stream</span>
-    <a href="../../../docs/index.html?path=content/guides/vi/blueprints/06-multi-stream.md" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">📖 Xem Tutorial</a>
-  </nav>
 
-  <div class="dashboard-wrapper">
-    <!-- Thanh điều khiển tổng -->
-    <header class="dashboard-header">
-      <div>
-        <h1>📺 Multi-Camera Esports Center</h1>
-        <p class="subtitle">Nhấp vào một màn hình để nghe Solo Audio của góc quay đó</p>
-      </div>
-      <div class="master-actions">
-        <button id="btn-mute-all" class="btn btn-warning">🔇 Mute Tất Cả</button>
-        <button id="btn-toggle-all" class="btn btn-primary">⏯ Phát/Dừng Tất Cả</button>
-      </div>
-    </header>
+  <main class="demo-main-layout">
+    <div class="dashboard-wrapper">
+      <header class="dashboard-header">
+        <div>
+          <h1>📺 Multi-Camera Esports Center</h1>
+          <p class="subtitle">Bấm vào bất kỳ màn hình nào để mở Solo Audio của góc quay đó</p>
+        </div>
+        <div class="master-actions">
+          <button id="btn-mute-all" class="btn-flat">🔇 Mute Tất Cả</button>
+          <button id="btn-toggle-all" class="btn-flat btn-flat-primary">⏯ Phát/Dừng Tất Cả</button>
+        </div>
+      </header>
 
-    <!-- Lưới 4 màn hình Grid 2x2 -->
-    <div class="stream-grid" id="stream-grid">
-      <!-- 4 ô màn hình sẽ được render động hoặc dựng sẵn -->
+      <!-- Lưới 4 màn hình Grid 2x2 -->
+      <div class="stream-grid" id="stream-grid"></div>
     </div>
-  </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>

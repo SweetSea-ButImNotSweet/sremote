@@ -1,36 +1,46 @@
 import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
 import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
 
+// Khởi tạo Top Bar chuẩn Flat 2.0
+if (window.setupDemoTopBar) {
+  window.setupDemoTopBar({
+    appNumber: '10',
+    title: 'Audio-Driven Slide Deck',
+    subtitle: 'Đồng bộ lật trang slide tự động theo mốc thời gian âm thanh thuyết minh (Cue points)',
+    tutorialLink: '../../tutorials/10-audio-slide-sync.html',
+  });
+}
+
 // Danh sách các Slide kèm mốc thời gian (Cue points)
 const slidesData = [
   {
     id: 1,
     startTime: 0,
-    title: "1. Tổng Quan Về Kiến Trúc Phân Tán",
-    desc: "Tại sao các hệ thống monolithic truyền thống gặp khó khăn khi mở rộng và cách thức microservices giải quyết bài toán này.",
-    icon: "🌐"
+    title: '1. Tổng Quan Về Kiến Trúc Phân Tán',
+    desc: 'Tại sao các hệ thống monolithic truyền thống gặp khó khăn khi mở rộng và cách thức microservices giải quyết bài toán này.',
+    icon: '🌐',
   },
   {
     id: 2,
     startTime: 20, // Bắt đầu tại giây 20
-    title: "2. Giao Thức Event-Driven Messaging",
-    desc: "Sử dụng Message Broker (Kafka / RabbitMQ) để tách rời sự phụ thuộc trực tiếp giữa các dịch vụ độc lập.",
-    icon: "⚡"
+    title: '2. Giao Thức Event-Driven Messaging',
+    desc: 'Sử dụng Message Broker (Kafka / RabbitMQ) để tách rời sự phụ thuộc trực tiếp giữa các dịch vụ độc lập.',
+    icon: '⚡',
   },
   {
     id: 3,
     startTime: 50, // Bắt đầu tại giây 50
-    title: "3. Database Per Service Pattern",
-    desc: "Mỗi dịch vụ sở hữu cơ sở dữ liệu riêng biệt để đảm bảo tính độc lập và khả năng triển khai linh hoạt.",
-    icon: "🗄️"
+    title: '3. Database Per Service Pattern',
+    desc: 'Mỗi dịch vụ sở hữu cơ sở dữ liệu riêng biệt để đảm bảo tính độc lập và khả năng triển khai linh hoạt.',
+    icon: '🗄️',
   },
   {
     id: 4,
     startTime: 85, // Bắt đầu tại giây 85
-    title: "4. Tổng Kết & Q&A Thảo Luận",
-    desc: "Tóm lược các nguyên lý cốt lõi và bắt đầu phần giải đáp câu hỏi của người tham dự.",
-    icon: "💡"
-  }
+    title: '4. Tổng Kết & Q&A Thảo Luận',
+    desc: 'Tóm lược các nguyên lý cốt lõi và bắt đầu phần giải đáp câu hỏi của người tham dự.',
+    icon: '💡',
+  },
 ];
 
 let currentSlideIndex = 0;
@@ -41,7 +51,6 @@ const slideGraphicEl = document.getElementById('slide-graphic');
 const slideCounterEl = document.getElementById('slide-counter');
 const thumbnailsBarEl = document.getElementById('thumbnails-bar');
 
-
 async function initSlideDeck() {
   renderThumbnails();
   displaySlide(0);
@@ -49,7 +58,7 @@ async function initSlideDeck() {
   // Gắn audio stream thuyết minh vào slot
   await youtube.mount('#audio-slot', {
     videoId: 'jfKfPfyJRdk', // Audio stream mẫu
-    playerVars: { controls: 1, autoplay: 0 }
+    playerVars: { controls: 1, autoplay: 0 },
   });
 
   console.log('✅ Bộ trình chiếu đã sẵn sàng!');
@@ -65,7 +74,7 @@ function renderThumbnails() {
     div.innerHTML = `
       <div class="thumb-num">SLIDE ${slide.id}</div>
       <div class="thumb-title">${slide.title}</div>
-      <div class="thumb-time">⏱ Bắt đầu: ${slide.startTime}s</div>
+      <div class="thumb-time">${window.DemoIcons ? window.DemoIcons.clock : '⏱'} ${slide.startTime}s</div>
     `;
 
     // Nhấp vào Thumbnail -> Tua âm thanh tới đúng mốc slide đó!
@@ -94,7 +103,6 @@ function displaySlide(index) {
   if (activeThumb) activeThumb.classList.add('active');
 }
 
-
 function setupTimeTracking() {
   sremote.on('timeupdate', ({ currentTime }) => {
     // Tìm slide phù hợp nhất với thời gian hiện tại
@@ -116,5 +124,3 @@ function setupTimeTracking() {
 
 // Khởi chạy
 initSlideDeck();
-
-

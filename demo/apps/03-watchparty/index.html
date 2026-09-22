@@ -3,54 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WatchParty SyncTheater - SRemote Tutorial 03</title>
+  <title>App 03: WatchParty SyncTheater - SRemote Demo</title>
+  <link rel="stylesheet" href="../common.css">
   <link rel="stylesheet" href="style.css">
+  <script src="../common.js"></script>
 </head>
 <body>
-  <!-- Top Navigation Header -->
-  <nav style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0f172a; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
-    <a href="../../index.html" style="color:#38bdf8; text-decoration:none; font-weight:600;">⬅️ Về Demo Hub</a>
-    <span style="color:#94a3b8; font-weight:500;">Live Demo: 03-watchparty</span>
-    <a href="../../../docs/index.html?path=content/guides/vi/blueprints/03-watchparty.md" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">📖 Xem Tutorial</a>
-  </nav>
 
-  <div class="watchparty-app">
-    <header class="app-header">
-      <h1>🎬 SRemote WatchParty SyncTheater</h1>
-      <div class="room-status">
-        <span class="status-dot"></span>
-        <span id="sync-status">Phòng: #movie-night-2026 | Kênh đã kết nối</span>
-      </div>
-    </header>
+  <main class="demo-main-layout">
+    <div class="watchparty-container">
+      <header class="theater-header">
+        <div>
+          <h1 class="theater-title">🎬 WatchParty SyncTheater</h1>
+          <p class="theater-subtitle">Đồng bộ hai màn hình thời gian thực qua BroadcastChannel</p>
+        </div>
+        <div class="room-status-badge">
+          <span class="status-dot"></span>
+          <span>Phòng: #movie-sync</span>
+        </div>
+      </header>
 
-    <div class="theater-grid">
-      <!-- Cột 1: Màn hình của Host -->
-      <div class="screen-card">
-        <div class="screen-badge host-badge">👑 Chủ Phòng (Host Controller)</div>
-        <div id="host-player" class="video-box"></div>
-        <div class="screen-info">
-          <span>Thời gian: <b id="host-time">00:00</b></span>
-          <span id="host-state" class="state-pill">Paused</span>
+      <div class="theater-grid">
+        <!-- Host Screen -->
+        <div class="screen-card">
+          <div class="screen-badge host-badge">👑 Chủ Phòng (Host Controller)</div>
+          <div id="host-player" class="video-box"></div>
+          <div class="screen-footer">
+            <span>Thời gian: <b id="host-time" class="time-val">00:00</b></span>
+            <span id="host-state" class="state-pill">Paused</span>
+          </div>
+        </div>
+
+        <!-- Guest Screen -->
+        <div class="screen-card">
+          <div class="screen-badge guest-badge">👥 Khách Xem (Synced Guest)</div>
+          <div id="guest-player" class="video-box"></div>
+          <div class="screen-footer">
+            <span>Thời gian: <b id="guest-time" class="time-val">00:00</b></span>
+            <span id="guest-state" class="state-pill">Syncing</span>
+          </div>
         </div>
       </div>
 
-      <!-- Cột 2: Màn hình của Guest -->
-      <div class="screen-card">
-        <div class="screen-badge guest-badge">👥 Khách Xem (Synced Guest)</div>
-        <div id="guest-player" class="video-box"></div>
-        <div class="screen-info">
-          <span>Thời gian: <b id="guest-time">00:00</b></span>
-          <span id="guest-state" class="state-pill">Syncing</span>
-        </div>
+      <!-- Realtime Packet Logs -->
+      <div class="logs-card">
+        <div class="logs-header">📡 Nhật ký đồng bộ gói tin (Real-time BroadcastChannel Logs):</div>
+        <div id="log-list" class="log-list"></div>
       </div>
     </div>
-
-    <!-- Nhật ký đồng bộ thời gian thực -->
-    <div class="logs-console">
-      <div class="logs-title">📡 Nhật ký đồng bộ gói tin (Real-time Sync Logs):</div>
-      <div id="log-list" class="log-list"></div>
-    </div>
-  </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>

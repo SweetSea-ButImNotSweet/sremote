@@ -3,40 +3,50 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Gym HIIT Audio Ducking - SRemote Tutorial 11</title>
+  <title>App 11: Smart Gym HIIT Audio Ducking - SRemote Demo</title>
+  <link rel="stylesheet" href="../common.css">
   <link rel="stylesheet" href="style.css">
+  <script src="../common.js"></script>
 </head>
 <body>
-  <!-- Top Navigation Header -->
-  <nav style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0f172a; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
-    <a href="../../index.html" style="color:#38bdf8; text-decoration:none; font-weight:600;">⬅️ Về Demo Hub</a>
-    <span style="color:#94a3b8; font-weight:500;">Live Demo: 11-gym-ducking</span>
-    <a href="../../../docs/index.html?path=content/guides/vi/blueprints/11-gym-ducking.md" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">📖 Xem Tutorial</a>
-  </nav>
 
-  <div class="gym-app">
-    <!-- Thẻ trạng thái Hiệp tập / Nghỉ ngơi -->
-    <div class="phase-card" id="phase-card">
-      <div class="round-indicator" id="round-indicator">HIỆP 1 / 8</div>
-      <div class="phase-name" id="phase-name">CHUẨN BỊ</div>
-      <div class="timer-countdown" id="timer-countdown">05</div>
-    </div>
-
-    <!-- Nút điều khiển tập luyện -->
-    <div class="controls-row">
-      <button id="btn-start-workout" class="btn btn-start">🔥 Bắt Đầu Tập</button>
-      <button id="btn-pause-workout" class="btn btn-pause">⏸ Tạm Dừng</button>
-    </div>
-
-    <!-- Khung nhạc nền Gym Workout -->
-    <div class="music-section">
-      <div class="music-header">
-        <span>🎧 Nhạc nền phòng Gym: Workout EDM Remix</span>
-        <span id="ducking-status" class="ducking-badge">Bình thường (100%)</span>
+  <main class="demo-main-layout">
+    <div class="gym-app">
+      <!-- Thẻ trạng thái Hiệp tập / Nghỉ ngơi -->
+      <div class="phase-card prepare-phase" id="phase-card">
+        <div class="round-indicator" id="round-indicator">HIỆP 1 / 8</div>
+        <div class="phase-name" id="phase-name">CHUẨN BỊ</div>
+        <div class="timer-countdown" id="timer-countdown">05</div>
       </div>
-      <div id="workout-music-slot" class="music-slot"></div>
+
+      <!-- Nút điều khiển tập luyện -->
+      <div class="controls-row">
+        <button id="btn-start-workout" class="btn btn-primary btn-large">
+          <span class="btn-icon" id="start-icon"></span>
+          <span>Bắt Đầu Tập</span>
+        </button>
+        <button id="btn-pause-workout" class="btn btn-secondary btn-large">
+          <span class="btn-icon" id="pause-icon"></span>
+          <span>Tạm Dừng</span>
+        </button>
+      </div>
+
+      <!-- Khung nhạc nền Gym Workout & Audio Ducking Status -->
+      <div class="music-section flat-card">
+        <div class="music-header">
+          <div class="music-title-wrap">
+            <span class="music-note-icon">🎧</span>
+            <div>
+              <strong>Nhạc nền Gym EDM Remix</strong>
+              <div class="music-sub">Tự động giảm âm lượng (Ducking) còn 20% khi có tiếng đếm nhịp</div>
+            </div>
+          </div>
+          <span id="ducking-status" class="ducking-badge">Bình thường (100%)</span>
+        </div>
+        <div id="workout-music-slot" class="music-slot"></div>
+      </div>
     </div>
-  </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>

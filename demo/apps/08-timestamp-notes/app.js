@@ -1,7 +1,14 @@
 import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
 import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
 
-// Lấy danh sách ghi chú từ localStorage hoặc mảng rỗng
+if (window.setupDemoTopBar) {
+  window.setupDemoTopBar({
+    appName: 'App 08: Lecture Timestamped Notes',
+    tutorialPath: 'content/guides/vi/blueprints/08-timestamp-notes.md'
+  });
+}
+
+const Icons = window.DemoIcons || { trash: '✕' };
 let notes = JSON.parse(localStorage.getItem('lecture_notes_v1') || '[]');
 
 const currentClockEl = document.getElementById('current-clock');
@@ -17,21 +24,18 @@ function formatTime(seconds) {
 
 async function initLecture() {
   await youtube.mount('#video-embed-slot', {
-    videoId: '8hly31xKli0', // CS50 Algorithms Lecture
+    videoId: '8hly31xKli0',
     playerVars: { controls: 1, autoplay: 0 }
   });
 
-  console.log('✅ Bài giảng đã kết nối SRemote!');
   renderNotes();
   setupEventListeners();
 }
-
 
 async function saveCurrentNote() {
   const text = noteInput.value.trim();
   if (!text) return;
 
-  // Chụp chính xác giây hiện tại của video qua SRemote
   const currentTime = await sremote.getCurrentTime();
 
   const newNote = {
@@ -40,23 +44,19 @@ async function saveCurrentNote() {
     text: text
   };
 
-  // Sắp xếp các ghi chú theo thứ tự thời gian tăng dần
   notes.push(newNote);
   notes.sort((a, b) => a.time - b.time);
-
-  // Lưu vào localStorage
   localStorage.setItem('lecture_notes_v1', JSON.stringify(notes));
 
   noteInput.value = '';
   renderNotes();
 }
 
-
 function renderNotes() {
   notesListEl.innerHTML = '';
 
   if (notes.length === 0) {
-    notesListEl.innerHTML = '<li style="color: #64748b; font-size: 13px;">Chưa có ghi chú nào. Hãy vừa xem vừa ghi chép nhé!</li>';
+    notesListEl.innerHTML = '<li style="color: var(--text-muted); font-size: 13px;">Chưa có ghi chú nào. Hãy vừa xem vừa ghi chép nhé!</li>';
     return;
   }
 
@@ -67,21 +67,19 @@ function renderNotes() {
     li.innerHTML = `
       <div class="note-top-bar">
         <span class="time-tag">⏱ ${formatTime(note.time)}</span>
-        <button class="btn-del" title="Xóa ghi chú">✕</button>
+        <button class="btn-del" title="Xóa ghi chú">${Icons.trash}</button>
       </div>
       <div class="note-body">${note.text}</div>
     `;
 
-    // Click vào cả card -> Tua video tới mốc đó ngay lập tức
     li.addEventListener('click', async (e) => {
-      if (e.target.classList.contains('btn-del')) return;
-      console.log(`⏩ Đang tua video tới mốc ${note.time}s...`);
+      if (e.target.closest('.btn-del')) return;
       await sremote.seekTo(note.time);
       await sremote.play();
     });
 
-    // Nút xóa ghi chú
-    li.querySelector('.btn-del').addEventListener('click', () => {
+    li.querySelector('.btn-del').addEventListener('click', (e) => {
+      e.stopPropagation();
       notes = notes.filter(n => n.id !== note.id);
       localStorage.setItem('lecture_notes_v1', JSON.stringify(notes));
       renderNotes();
@@ -92,10 +90,8 @@ function renderNotes() {
 }
 
 function setupEventListeners() {
-  // Bấm nút lưu ghi chú
   btnAddNote.addEventListener('click', saveCurrentNote);
 
-  // Phím tắt Ctrl + Enter trong ô nhập liệu
   noteInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
@@ -103,11 +99,9 @@ function setupEventListeners() {
     }
   });
 
-  // Lắng nghe timeline video để cập nhật đồng hồ và highlight ghi chú
   sremote.on('timeupdate', ({ currentTime }) => {
-    currentClockEl.textContent = `Mốc hiện tại: ${formatTime(currentTime)}`;
+    currentClockEl.textContent = `Mốc: ${formatTime(currentTime)}`;
 
-    // Tìm ghi chú gần nhất trước hoặc bằng currentTime
     const active = [...notes].reverse().find(n => currentTime >= n.time && currentTime < n.time + 15);
 
     document.querySelectorAll('.note-card').forEach(el => el.classList.remove('active-note'));
@@ -118,7 +112,4 @@ function setupEventListeners() {
   });
 }
 
-// Khởi chạy
 initLecture();
-
-
