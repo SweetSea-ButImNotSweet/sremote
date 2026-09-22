@@ -182,12 +182,34 @@ Complete broad-spectrum platform coverage and prepare for enterprise integration
 
 ---
 
-## 🏆 Post-7.0 (v7.1+) — Innovation Contests, Commercial Outreach & Monetization
+## 🛠️ Version 7.1 — Real-Life Mock Use-Cases & Vertical Showcase Suite
 
-Once the platform is battle-tested, fully documented, and proven across web & desktop:
+Build a comprehensive suite of real-world end-user application mockups demonstrating SRemote as the core media coordination engine across distinct industries:
+
+- [ ] **EduSync LMS (EdTech Showcase)**:
+  - Mock interactive e-learning platform embedding YouTube/Vimeo lecture streams.
+  - SRemote enforces study discipline: auto-pauses when students switch tabs to answer quizzes, synchronizes note timestamps, and prevents forward scrubbing until checkpoints are passed.
+- [ ] **SyncTheater (Social & Watch Party Showcase)**:
+  - Virtual cinema room synchronizing cross-origin player playback among multiple users via WebSockets/WebRTC.
+  - SRemote captures frame-accurate playback events and rebroadcasts sub-100ms sync commands across viewer iframes.
+- [ ] **LyricalFlow (Karaoke & Language Learning Showcase)**:
+  - Real-time lyrics scrolling and singing coach app driven by Spotify, SoundCloud, or YouTube embeds.
+  - SRemote provides frame-accurate `timeupdate` callbacks without cross-origin blockage to render word-by-word karaoke highlights.
+- [ ] **FocusDeck (Productivity & Ambient Audio Showcase)**:
+  - Desktop-style Pomodoro productivity dashboard with embedded Lo-fi streaming widgets.
+  - Automatic audio ducking and auto-pause when timers expire without requiring focus on the source tab.
+- [ ] **VoiceMedia / A11y Controller (Accessibility Showcase)**:
+  - Hands-free, voice/shortcut-driven media controller designed for visually impaired or motor-disabled users.
+  - Seamlessly translates global accessibility triggers into unified commands across any video provider on page.
+
+---
+
+## 🏆 Version 7.2 — Innovation Contests (Cuộc thi Sáng tạo KHCN), Commercial Outreach & Monetization
+
+Once the platform is battle-tested, fully documented, and backed by the real-world mock showcases in v7.1:
 
 - [ ] **Science & Tech Innovation Competitions (Cuộc thi Sáng tạo KHCN)**:
-  - Prepare technical solution dossier & presentation highlighting SRemote's cross-origin media coordination architecture (SOP handling, FSM MessagePort transport, Selective Event Fallback, accessibility & educational impact).
+  - Prepare technical solution dossier & live presentation leveraging the v7.1 vertical showcases as living proof of concept (SOP handling, FSM MessagePort transport, Selective Event Fallback, accessibility & educational impact).
   - Submit SRemote to regional and national Science & Technology Innovation competitions.
 - [ ] **Outreach & Client Acquisition**:
   - Actively pitch and onboard prospective enterprise clients, e-learning platforms, and accessibility software creators.

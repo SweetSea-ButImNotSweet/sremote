@@ -7,7 +7,7 @@ const i18nDocs = {
   vi: {
     pageTitle: 'SRemote - Hướng dẫn sử dụng & Tra cứu API',
     homeBtn: 'Trang chủ',
-    cookbookBtn: '⚡ Hướng dẫn triển khai (Cookbook)',
+    cookbookBtn: '⚡ Mẫu code (Code Samples)',
     demoBtn: '▶ Mở Demo Live',
     searchPlaceholder: '🔍 Tìm nhanh API hoặc tài liệu...',
     langTitle: 'Ngôn ngữ:',
@@ -203,6 +203,10 @@ function scrollToHashElement(hash) {
 }
 
 function getDefaultDocPath(lang) {
+  const isApiPage = window.location.pathname.includes('api.html');
+  if (isApiPage) {
+    return lang === 'en' ? 'content/api/en/README.md' : 'content/api/vi/README.md';
+  }
   return lang === 'en' ? 'content/guides/en/quickstart/5-minute-quickstart.md' : 'content/guides/vi/quickstart/5-minute-quickstart.md';
 }
 

@@ -20,7 +20,9 @@
       brandTitle: 'SRemote',
       home: 'Trang chủ',
       docs: 'Hướng dẫn sử dụng',
-      cookbook: 'Hướng dẫn triển khai',
+      api: 'Tài liệu API',
+      codeSamples: 'Mẫu code',
+      cookbook: 'Mẫu code',
       demo: 'Live Demo',
       changelog: 'Changelog',
       install: 'Cài đặt Userscript',
@@ -41,8 +43,10 @@
     en: {
       brandTitle: 'SRemote',
       home: 'Home',
-      docs: 'Documentation',
-      cookbook: 'Integration Recipes',
+      docs: 'User Guide',
+      api: 'API Reference',
+      codeSamples: 'Code Samples',
+      cookbook: 'Code Samples',
       demo: 'Live Demo',
       changelog: 'Changelog',
       install: 'Install Userscript',
@@ -122,7 +126,8 @@
 
       const path = window.location.pathname.replace(/\\/g, '/');
       if (path.endsWith('/demo/') || path.endsWith('/demo/index.html')) return 'demo';
-      if (path.endsWith('/docs/recipes.html') || path.includes('recipes.html')) return 'cookbook';
+      if (path.includes('code-samples.html') || path.includes('recipes.html')) return 'code-samples';
+      if (path.includes('/docs/api.html')) return 'api';
       if (path.includes('/docs/')) return 'docs';
       if (path.includes('changelog.html')) return 'changelog';
       return 'home';
@@ -135,7 +140,8 @@
 
       const homeHref = `${base}index.html`;
       const docsHref = `${base}docs/index.html`;
-      const cookbookHref = `${base}docs/recipes.html`;
+      const apiHref = `${base}docs/api.html`;
+      const codeSamplesHref = `${base}docs/code-samples.html`;
       const demoHref = `${base}demo/index.html`;
       const changelogHref = `${base}changelog.html`;
 
@@ -164,11 +170,19 @@
                 <span class="nav-text">${dict.docs}</span>
               </a>
 
-              <a href="${cookbookHref}" class="header-nav-link ${active === 'cookbook' || active === 'recipes' ? 'active' : ''}" data-nav="cookbook">
+              <a href="${apiHref}" class="header-nav-link ${active === 'api' ? 'active' : ''}" data-nav="api">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="16 18 22 12 16 6"></polyline>
+                  <polyline points="8 6 2 12 8 18"></polyline>
+                </svg>
+                <span class="nav-text">${dict.api}</span>
+              </a>
+
+              <a href="${codeSamplesHref}" class="header-nav-link ${active === 'code-samples' || active === 'cookbook' || active === 'recipes' ? 'active' : ''}" data-nav="code-samples">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                 </svg>
-                <span class="nav-text">${dict.cookbook}</span>
+                <span class="nav-text">${dict.codeSamples || dict.cookbook}</span>
               </a>
 
               <a href="${demoHref}" class="header-nav-link ${active === 'demo' ? 'active' : ''}" data-nav="demo">
