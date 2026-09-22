@@ -1,42 +1,44 @@
-# Blueprint 06: Trung Tâm Điều Hành Đa Kênh Stream (Multi-Stream Command Center)
+# Tutorial 06: Bàn Điều Khiển 4 Màn Hình Livestream Song Song (Multi-Stream Dashboard)
 
-Bài hướng dẫn này sẽ hướng dẫn bạn xây dựng trang **Command Center theo dõi 4 luồng phát trực tiếp (Live Streams) đồng thời** (e.g. Esports đa góc máy, camera an ninh, hoặc sự kiện âm nhạc nhiều sân khấu): cung cấp tính năng **Solo Audio** (bật tiếng kênh chỉ định thì 3 kênh còn lại tự động Mute), và nút **Master Mute All** để dập tắt toàn bộ âm thanh chỉ với 1 click thông qua namespace `sremote.instances`.
+Trong các sự kiện thể thao lớn (World Cup, F1), giải đấu Esports (League of Legends, CS:GO) hoặc hệ thống giám sát an ninh (CCTV), người dùng thường có nhu cầu **theo dõi cùng lúc 4 góc máy quay (Multiple Camera Angles)** trên một màn hình duy nhất.
+
+Tuy nhiên, nếu bật cả 4 luồng video cùng phát âm thanh thì người nghe sẽ bị "loạn cào cào" vì tiếng ồn chồng chéo.
+
+Trong tutorial này, chúng ta sẽ xây dựng một **Multi-Stream Command Center**:
+- Hiển thị lưới Grid 2x2 chứa 4 màn hình livestream độc lập.
+- Tính năng **"Solo Audio (Nghe Độc Quyền)"**: Nhấp vào bất kỳ màn hình nào, màn hình đó sẽ mở âm thanh 100%, đồng thời 3 màn hình còn lại sẽ **tự động tắt tiếng (Mute)** mà hình ảnh vẫn tiếp tục chạy mượt mà.
+- Nút tổng chỉ huy: **"Mute All"** và **"Pause All"**.
 
 ---
 
-## 1. Bài toán Thực tế & Mục tiêu
+## 🎯 Mục tiêu Bạn Sẽ Đạt Được
 
-Khi người dùng theo dõi một trận chung kết Esports hoặc giải đua xe F1:
-- Họ muốn mở 4 góc máy cùng lúc trên một màn hình: Góc tổng thể, Góc camera tuyển thủ A, Góc camera tuyển thủ B và Góc bản đồ chiến thuật.
-- Nếu cả 4 kênh đều phát tiếng, âm thanh sẽ bị nhiễu loạn và không thể nghe được gì.
-- Yêu cầu đặt ra:
-  1. Tất cả 4 video phải **phát đồng thời về mặt hình ảnh (Video playing)**.
-  2. Về mặt âm thanh: Chỉ **duy nhất 1 kênh được phép bật tiếng (Unmute)** tại một thời điểm (Chế độ Solo Audio).
-  3. Cung cấp nút dập tắt toàn bộ âm thanh khẩn cấp (Mute All).
+Sau bài học này, bạn sẽ nắm vững:
+1. Cách quản lý đồng thời một mảng gồm nhiều đối tượng `SRemoteClient` độc lập trên cùng 1 trang.
+2. **Kỹ thuật Solo Audio Pattern (Master/Solo Channel)**: Điều khiển trạng thái âm thanh có điều kiện giữa nhiều player.
+3. Kỹ thuật điều khiển hàng loạt (Batch Operations) bằng `Promise.all()`.
+4. Thiết kế giao diện phản hồi trực quan với viền phát sáng (Glow Border) cho màn hình đang được Solo Audio.
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor User as 👤 Người xem
-    participant UI as 🖥️ Multi-Stream Dashboard
-    participant Instances as 🗂️ sremote.instances
-    participant Stream1 as 📺 Stream 1 (Cam Chính)
-    participant Stream2 as 📺 Stream 2 (Cam Tuyển thủ)
-
-    Note over Stream1,Stream2: Cả 2 video đều đang chạy hình ảnh...
-    User->>UI: Bấm "Solo Audio" ở Stream 2
-    UI->>Instances: sremote('stream-2').unmute()
-    UI->>Instances: sremote('stream-1').mute()
-    Instances->>Stream2: Bật tiếng kênh 2 (Volume = 1.0)
-    Instances->>Stream1: Tắt tiếng kênh 1 (Muted)
-    UI-->>User: Đổi màu nút Solo Audio kênh 2 sang Xanh lá ✅
+flowchart TD
+    subgraph Multi_Stream_Dashboard ["Lưới 4 Màn Hình Livestream"]
+        M1["Màn hình 1 (Chính)"]
+        M2["Màn hình 2 (Góc quay Flycam)"]
+        M3["Màn hình 3 (Khoang lái Driver)"]
+        M4["Màn hình 4 (Bàn bình luận viên)"]
+    end
+    User["👤 Người xem click Màn hình 3"] -->|"Kích hoạt Solo Audio"| M3
+    M3 -->|"sremote.setVolume(1.0) & Highlight viền xanh"| M3
+    M3 -->|"Tự động tắt tiếng các luồng còn lại"| M1 & M2 & M4
 ```
 
 ---
 
-## 2. Mã Nguồn Đầy Đủ (Full Working Project)
+## Bước 1: Khởi Tạo Lưới Grid 2x2 & Thanh Điều Khiển Tổng
 
-### Bước 1: Giao diện Lưới 4 Màn Hình (`index.html`)
+Hãy tạo file `index.html`. Chúng ta thiết kế:
+- Thanh công cụ điều khiển tổng ở trên cùng: Nút `Mute All`, `Unmute All`, `Tạm dừng tất cả`.
+- Lưới 4 ô (`#stream-grid`), mỗi ô chứa slot video, nhãn tên camera và nút bật Solo Audio riêng.
 
 ```html
 <!DOCTYPE html>
@@ -44,59 +46,27 @@ sequenceDiagram
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Multi-Stream Command Center - SRemote Blueprint 06</title>
+  <title>Multi-Stream Dashboard - SRemote Tutorial 06</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="dashboard">
-    <div class="top-bar">
-      <h2>📺 Esports Multi-View Command Center</h2>
-      <div class="top-actions">
-        <button id="btn-mute-all" class="btn btn-danger">🔇 Mute Toàn Bộ</button>
-        <button id="btn-unmute-first" class="btn btn-primary">🔊 Mặc định (Kênh 1)</button>
+  <div class="dashboard-wrapper">
+    <!-- Thanh điều khiển tổng -->
+    <header class="dashboard-header">
+      <div>
+        <h1>📺 Multi-Camera Esports Center</h1>
+        <p class="subtitle">Nhấp vào một màn hình để nghe Solo Audio của góc quay đó</p>
       </div>
-    </div>
-
-    <!-- Lưới 4 màn hình stream -->
-    <div class="stream-grid">
-      
-      <!-- Kênh 1 -->
-      <div class="stream-card" id="card-stream-1">
-        <div class="stream-header">
-          <span>Kênh 1: Camera Toàn Cảnh</span>
-          <button class="solo-btn active" data-target="stream-1">🎧 Solo Audio</button>
-        </div>
-        <div id="player-stream-1" class="stream-slot"></div>
+      <div class="master-actions">
+        <button id="btn-mute-all" class="btn btn-warning">🔇 Mute Tất Cả</button>
+        <button id="btn-toggle-all" class="btn btn-primary">⏯ Phát/Dừng Tất Cả</button>
       </div>
+    </header>
 
-      <!-- Kênh 2 -->
-      <div class="stream-card" id="card-stream-2">
-        <div class="stream-header">
-          <span>Kênh 2: Góc Tuyển Thủ A</span>
-          <button class="solo-btn" data-target="stream-2">🎧 Solo Audio</button>
-        </div>
-        <div id="player-stream-2" class="stream-slot"></div>
-      </div>
-
-      <!-- Kênh 3 -->
-      <div class="stream-card" id="card-stream-3">
-        <div class="stream-header">
-          <span>Kênh 3: Góc Tuyển Thủ B</span>
-          <button class="solo-btn" data-target="stream-3">🎧 Solo Audio</button>
-        </div>
-        <div id="player-stream-3" class="stream-slot"></div>
-      </div>
-
-      <!-- Kênh 4 -->
-      <div class="stream-card" id="card-stream-4">
-        <div class="stream-header">
-          <span>Kênh 4: Bản Đồ Chiến Thuật</span>
-          <button class="solo-btn" data-target="stream-4">🎧 Solo Audio</button>
-        </div>
-        <div id="player-stream-4" class="stream-slot"></div>
-      </div>
-
+    <!-- Lưới 4 màn hình Grid 2x2 -->
+    <div class="stream-grid" id="stream-grid">
+      <!-- 4 ô màn hình sẽ được render động hoặc dựng sẵn -->
     </div>
   </div>
 
@@ -105,206 +75,284 @@ sequenceDiagram
 </html>
 ```
 
----
-
-### Bước 2: Thiết kế Lưới Đa Kênh Grid (`style.css`)
+Và định dạng bằng `style.css`:
 
 ```css
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  background: #09090b;
-  color: #f4f4f5;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 16px;
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-.dashboard {
-  max-width: 1300px;
+body {
+  background: #090d16;
+  color: #f1f5f9;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: 24px;
+}
+
+.dashboard-wrapper {
+  max-width: 1200px;
   margin: 0 auto;
 }
 
-.top-bar {
+.dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.top-actions {
+.subtitle {
+  color: #94a3b8;
+  font-size: 13.5px;
+  margin-top: 4px;
+}
+
+.master-actions {
   display: flex;
   gap: 10px;
 }
 
 .btn {
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 8px;
   border: none;
+  font-size: 13.5px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.btn-danger { background: #ef4444; color: #fff; }
-.btn-danger:hover { background: #dc2626; }
-
-.btn-primary { background: #0284c7; color: #fff; }
-.btn-primary:hover { background: #0369a1; }
-
-.stream-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
+.btn-primary {
+  background: #0284c7;
+  color: #fff;
 }
 
-@media (max-width: 768px) {
-  .stream-grid { grid-template-columns: 1fr; }
+.btn-primary:hover {
+  background: #0369a1;
+}
+
+.btn-warning {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.btn-warning:hover {
+  background: #475569;
+}
+
+/* Lưới Grid 2x2 */
+.stream-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
 .stream-card {
-  background: #18181b;
-  border: 1px solid #27272a;
+  background: #111827;
   border-radius: 10px;
   overflow: hidden;
-  transition: border-color 0.2s;
+  border: 2px solid transparent;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.stream-card.has-audio {
-  border-color: #22c55e;
-  box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+/* Viền phát sáng khi màn hình đang được Solo Audio */
+.stream-card.solo-active {
+  border-color: #38bdf8;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
 }
 
-.stream-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
-  background: #27272a;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.solo-btn {
-  background: #3f3f46;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d4d4d8;
-  padding: 4px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.solo-btn:hover {
-  background: #52525b;
-}
-
-.solo-btn.active {
-  background: #22c55e;
-  color: #052e16;
-  border-color: #4ade80;
-}
-
-.stream-slot {
+.stream-video-slot {
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #000;
 }
+
+.stream-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #0f172a;
+}
+
+.camera-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.solo-btn {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.stream-card.solo-active .solo-btn {
+  background: #0284c7;
+  color: #fff;
+  border-color: #38bdf8;
+}
 ```
 
 ---
 
-### Bước 3: Logic Điều Phối Âm Thanh Đa Instance (`app.js`)
+## Bước 2: Định Nghĩa Danh Sách 4 Camera & Render DOM Động
+
+Mở file `app.js`. Chúng ta định nghĩa mảng 4 camera gồm tên góc quay và `videoId` tương ứng:
 
 ```javascript
-import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
+import { SRemoteClient } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
 import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
 
-// Danh sách các instance ID
-const streamConfigs = [
-  { id: 'stream-1', slot: '#player-stream-1', videoId: 'jfKfPfyJRdk' },
-  { id: 'stream-2', slot: '#player-stream-2', videoId: 'dQw4w9WgXcQ' },
-  { id: 'stream-3', slot: '#player-stream-3', videoId: '4xDzrJKXOOY' },
-  { id: 'stream-4', slot: '#player-stream-4', videoId: '76979871' }
+// Cấu hình 4 luồng video độc lập
+const streamsData = [
+  { id: 'cam-1', name: 'Camera 1: Toàn Cảnh Sân Vận Động', videoId: 'jfKfPfyJRdk' },
+  { id: 'cam-2', name: 'Camera 2: Góc Quay Flycam Trên Cao', videoId: 'dQw4w9WgXcQ' },
+  { id: 'cam-3', name: 'Camera 3: Khoang Lái Tuyển Thủ', videoId: '4xDzrJKXOOY' },
+  { id: 'cam-4', name: 'Camera 4: Bàn Bình Luận Viên', videoId: 'M7lc1UVf-VE' }
 ];
 
-const soloButtons = document.querySelectorAll('.solo-btn');
+// Mảng lưu trữ các instance SRemoteClient
+const activeStreams = [];
 
-// 1. Khởi tạo đồng thời 4 luồng stream
-for (const config of streamConfigs) {
-  await youtube.mount(config.slot, {
-    videoId: config.videoId,
-    playerVars: { controls: 1, autoplay: 1 }
-  });
+const streamGrid = document.getElementById('stream-grid');
+const btnMuteAll = document.getElementById('btn-mute-all');
+const btnToggleAll = document.getElementById('btn-toggle-all');
 
-  // Gán nhãn ngữ nghĩa cố định cho từng instance
-  sremote.instances.assign(config.slot, config.id);
-}
-
-// 2. Hàm kích hoạt Solo Audio cho một kênh chỉ định
-async function activateSoloAudio(activeId) {
-  for (const config of streamConfigs) {
-    if (config.id === activeId) {
-      // Bật tiếng kênh được chọn
-      await sremote(config.id).unmute();
-      await sremote(config.id).volume(1.0);
-    } else {
-      // Tắt tiếng tất cả các kênh còn lại
-      await sremote(config.id).mute();
-    }
-
-    // Cập nhật giao diện thẻ stream
-    const cardEl = document.getElementById(`card-${config.id}`);
-    cardEl.classList.toggle('has-audio', config.id === activeId);
-  }
-
-  // Cập nhật trạng thái active cho nút Solo
-  soloButtons.forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-target') === activeId);
-  });
-}
-
-// 3. Bắt sự kiện click vào các nút Solo Audio
-soloButtons.forEach(btn => {
-  btn.addEventListener('click', async () => {
-    const targetId = btn.getAttribute('data-target');
-    await activateSoloAudio(targetId);
-  });
+// Render 4 card ra giao diện
+streamsData.forEach((stream, index) => {
+  const card = document.createElement('div');
+  card.className = `stream-card ${index === 0 ? 'solo-active' : ''}`;
+  card.id = `card-${stream.id}`;
+  card.innerHTML = `
+    <div id="slot-${stream.id}" class="stream-video-slot"></div>
+    <div class="stream-footer">
+      <span class="camera-label">🎥 ${stream.name}</span>
+      <button class="solo-btn" id="btn-solo-${stream.id}">🔊 Solo Audio</button>
+    </div>
+  `;
+  streamGrid.appendChild(card);
 });
-
-// 4. Nút Mute Toàn Bộ
-document.getElementById('btn-mute-all').addEventListener('click', async () => {
-  for (const config of streamConfigs) {
-    await sremote(config.id).mute();
-    document.getElementById(`card-${config.id}`).classList.remove('has-audio');
-  }
-  soloButtons.forEach(btn => btn.classList.remove('active'));
-});
-
-// 5. Nút Bật lại Kênh 1
-document.getElementById('btn-unmute-first').addEventListener('click', async () => {
-  await activateSoloAudio('stream-1');
-});
-
-// Mặc định ban đầu: Chỉ mở tiếng Kênh 1
-activateSoloAudio('stream-1');
 ```
 
 ---
 
-## 3. Deep Dive: `sremote(instanceId)` và Polymorphic Selector
+## Bước 3: Khởi Tạo Độc Lập 4 SRemote Client
 
-1. **`sremote.instances.assign(slot, instanceId)`**:  
-   Mặc định, SRemote cấp phát một ID ngẫu nhiên cho mỗi iframe được mount (ví dụ `sv_youtube_a1b2`). Bằng cách gọi `.assign('#player-stream-1', 'stream-1')`, bạn liên kết trực tiếp một ID dễ nhớ vào phần tử đó.
-2. **Cú pháp Fluent Selector `sremote('stream-1').mute()`**:  
-   Từ SRemote 4.0, bạn có thể truyền thẳng `instanceId` hoặc DOM selector vào `sremote(...)` để gửi lệnh tới đích danh một player cụ thể mà không ảnh hưởng tới các player khác trên trang.
+Mỗi thẻ iframe cần có một đối tượng `SRemoteClient` riêng để điều khiển. Chúng ta duyệt qua từng camera và khởi tạo song song:
+
+```javascript
+async function initMultiStreams() {
+  console.log('⚡ Đang khởi tạo 4 luồng video song song...');
+
+  for (let i = 0; i < streamsData.length; i++) {
+    const data = streamsData[i];
+    
+    // Mount YouTube vào slot tương ứng
+    const handle = await youtube.mount(`#slot-${data.id}`, {
+      videoId: data.videoId,
+      playerVars: { controls: 0, autoplay: 1 }
+    });
+
+    // Tạo SRemoteClient riêng gắn với iframe này
+    const client = new SRemoteClient({ target: handle.iframe });
+
+    activeStreams.push({
+      id: data.id,
+      client: client,
+      card: document.getElementById(`card-${data.id}`)
+    });
+
+    // Gắn sự kiện click vào nút Solo Audio hoặc click vào cả khung hình
+    document.getElementById(`btn-solo-${data.id}`).addEventListener('click', () => {
+      setSoloAudio(data.id);
+    });
+  }
+
+  // Mặc định ban đầu: Chỉ mở tiếng Camera 1, tắt tiếng 3 camera còn lại
+  await setSoloAudio('cam-1');
+  console.log('✅ Cả 4 camera đã sẵn sàng!');
+}
+```
 
 ---
 
-## 4. Xử lý Tình huống Biên & Tối ưu UX
+## Bước 4: Lập Trình Tính Năng Solo Audio (Nghe Độc Quyền)
 
-- **Tiết kiệm tài nguyên mạng khi mở 4 video**:  
-  Với các luồng livestream độ phân giải cao, mở 4 video cùng lúc có thể gây lag máy người dùng. Với các kênh đang bị Mute, bạn có thể cân nhắc giảm kích thước hiển thị hoặc thiết lập chất lượng thấp hơn (e.g. 360p) qua `playerVars`.
+Khi người dùng kích hoạt Solo Audio cho một Camera (ví dụ `cam-3`):
+1. Tìm client của `cam-3` và đặt `setVolume(1)`.
+2. Duyệt qua tất cả các client còn lại và đặt `setVolume(0)`.
+3. Cập nhật class CSS `.solo-active` để viền của camera đó phát sáng.
+
+```javascript
+async function setSoloAudio(targetCamId) {
+  console.log(`🎧 Đang kích hoạt Solo Audio cho: ${targetCamId}`);
+
+  // Thực hiện song song để đảm bảo tốc độ phản hồi tức thì
+  await Promise.all(activeStreams.map(async (stream) => {
+    if (stream.id === targetCamId) {
+      // Bật tiếng 100% cho camera được chọn
+      await stream.client.setVolume(1);
+      stream.card.classList.add('solo-active');
+      stream.card.querySelector('.solo-btn').textContent = '🔊 Đang Nghe';
+    } else {
+      // Tắt tiếng tất cả các camera khác
+      await stream.client.setVolume(0);
+      stream.card.classList.remove('solo-active');
+      stream.card.querySelector('.solo-btn').textContent = '🔇 Solo Audio';
+    }
+  }));
+}
+```
+
+---
+
+## Bước 5: Lập Trình Lệnh Tổng Chỉ Huy (Batch Controls)
+
+Thực hiện đồng loạt lệnh lên toàn bộ 4 màn hình bằng `Promise.all`:
+
+```javascript
+// 1. Tắt tiếng toàn bộ 4 màn hình
+btnMuteAll.addEventListener('click', async () => {
+  console.log('🔇 Đang mute toàn bộ các luồng...');
+  await Promise.all(activeStreams.map(async (s) => {
+    await s.client.setVolume(0);
+    s.card.classList.remove('solo-active');
+    s.card.querySelector('.solo-btn').textContent = '🔇 Bật Tiếng';
+  }));
+});
+
+// 2. Play / Pause đồng loạt cả 4 màn hình
+let areAllPlaying = true;
+btnToggleAll.addEventListener('click', async () => {
+  areAllPlaying = !areAllPlaying;
+  console.log(`⏯ Đang chuyển trạng thái toàn bộ sang: ${areAllPlaying ? 'Play' : 'Pause'}`);
+  
+  await Promise.all(activeStreams.map(async (s) => {
+    if (areAllPlaying) {
+      await s.client.play();
+    } else {
+      await s.client.pause();
+    }
+  }));
+});
+
+// Khởi chạy hệ thống
+initMultiStreams();
+```
+
+---
+
+## 💡 Bài Tập Thử Thách Mở Rộng
+
+1. **Phóng to Toàn màn hình (Full Grid / Maximize)**: Thêm nút ⛶ Phóng to ở mỗi camera để mở rộng camera đó chiếm 100% diện tích dashboard, tạm ẩn 3 camera còn lại.
+2. **Kéo Thả Đổi Vị Trí (Drag & Drop Cameras)**: Sử dụng HTML5 Drag and Drop API để người xem tự do tráo đổi vị trí của các góc quay theo ý muốn.

@@ -1,43 +1,49 @@
-# Blueprint 10: Trình Chiếu Slide Đồng Bộ Âm Thanh (Audio-Driven Slide Deck)
+# Tutorial 10: Bộ Trình Chiếu Slide Thuyết Trình Tự Động Lật Theo Giọng Nói (Audio-Driven Slide Deck)
 
-Bài hướng dẫn này sẽ hướng dẫn bạn xây dựng ứng dụng **Thuyết trình / Slide Deck tự động lật trang theo bài nói (Audio-Driven Slide Deck)**: khi file âm thanh podcast hoặc bài giảng video chạy tới mốc thời gian nào, trang slide tương ứng sẽ **tự động chuyển trang và kích hoạt hiệu ứng hoạt cảnh** thông qua **SRemote**.
+Trong các buổi đào tạo nội bộ của doanh nghiệp hoặc khóa học trực tuyến bán tự động, việc kết hợp giữa **file âm thanh thuyết minh (Voiceover / Audio)** và **bộ Slide trình chiếu** là giải pháp cực kỳ tiết kiệm băng thông so với việc render một file video MP4 cồng kềnh.
+
+Để có trải nghiệm mượt mà, bài toán đặt ra là:
+- Khi diễn giả nói đến phần nội dung nào trong file âm thanh, **Slide tương ứng phải tự động lật trang (Auto-Flip)**.
+- Người nghe có thể bấm vào mục lục slide bất kỳ để **tua ngược âm thanh** đến đúng thời điểm diễn giả bắt đầu giải thích slide đó (2-way Navigation).
+
+Trong bài hướng dẫn này, chúng ta sẽ xây dựng một **Audio-Driven Slide Deck** hoàn chỉnh bằng **SRemote**.
 
 ---
 
-## 1. Bài toán Thực tế & Mục tiêu
+## 🎯 Mục tiêu Bạn Sẽ Đạt Được
 
-Khi xây dựng các trang thuyết trình sản phẩm (Keynote Showcase), bài giảng e-learning hoặc webinar:
-- Diễn giả nói đến đâu thì slide minh họa bên cạnh phải lật trang đến đó.
-- Nếu người nghe kéo thanh tua lùi lại 30 giây để nghe lại một ý quan trọng, slide cũng phải **tự động nhảy ngược về trang trước tương ứng**.
-- Thay vì bắt lập trình viên phải viết các hàm đếm giờ `setInterval` phức tạp dễ bị lệch nhịp, SRemote cung cấp sự kiện `timeupdate` với độ chính xác cao để đồng bộ bảng mốc tín hiệu (Cues Table).
+Sau bài học này, bạn sẽ nắm vững:
+1. Cách định nghĩa siêu dữ liệu dòng thời gian (**Timeline Cue Points / Slide Metadata**).
+2. Thuật toán tìm kiếm nhị phân hoặc `findLast()` để xác định slide đang kích hoạt theo `currentTime`.
+3. Cơ chế đồng bộ 2 chiều:
+   - Âm thanh chạy ➔ Tự động kích hoạt hiệu ứng chuyển slide.
+   - Bấm vào thumbnail của slide ➔ Tua âm thanh đến đúng mốc giây bắt đầu của slide đó.
+4. Xây dựng thanh tiến độ (Progress Indicator) riêng cho từng slide.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Listener as 👤 Người nghe
-    participant Audio as 🎙️ Podcast / YouTube Audio (SRemote)
-    participant SyncEngine as ⚙️ Slide Sync Engine
-    participant SlideUI as 🖥️ Slide Deck (DOM)
+    participant Deck as 📊 Slide Deck Viewer
+    participant SDK as ⚡ SRemote Client
+    participant Audio as 🎙️ Audio Stream
 
-    Note over Audio: Diễn giả đang thuyết trình...
-    Audio->>SyncEngine: timeupdate (currentTime = 15.2s)
-    SyncEngine->>SyncEngine: Tra cứu bảng mốc: 15s ➔ Slide 2
-    SyncEngine->>SlideUI: Kích hoạt Trang 2: "Sơ đồ Kiến trúc"
+    Audio->>SDK: timeupdate (currentTime: 24.5s)
+    SDK->>Deck: Tìm mốc: Giây 24.5s thuộc về Slide 2!
+    Deck->>Deck: Kích hoạt hiệu ứng lật sang Slide 2
 
-    Audio->>SyncEngine: timeupdate (currentTime = 45.0s)
-    SyncEngine->>SyncEngine: Tra cứu bảng mốc: 45s ➔ Slide 3
-    SyncEngine->>SlideUI: Kích hoạt Trang 3: "Biểu đồ Hiệu năng"
-
-    Listener->>Audio: Kéo tua lùi về 05.0s
-    Audio->>SyncEngine: timeupdate (currentTime = 5.0s)
-    SyncEngine->>SlideUI: Tự động nhảy lùi về lại Trang 1!
+    Note over Listener,Deck: Người nghe muốn xem lại Slide 1...
+    Listener->>Deck: Nhấp chuột vào Thumbnail Slide 1
+    Deck->>SDK: sremote.seekTo(slide1.startTime = 0s)
+    SDK->>Audio: Tua âm thanh về giây 0
+    Audio-->>Deck: Tự động chuyển slide về Slide 1
 ```
 
 ---
 
-## 2. Mã Nguồn Đầy Đủ (Full Working Project)
+## Bước 1: Khởi Tạo Giao Diện Slide Deck & Bộ Điều Khiển Âm Thanh
 
-### Bước 1: Giao diện Slide & Khung Âm Thanh (`index.html`)
+Hãy tạo file `index.html`:
 
 ```html
 <!DOCTYPE html>
@@ -45,67 +51,37 @@ sequenceDiagram
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Audio-Driven Slide Deck - SRemote Blueprint 10</title>
+  <title>Audio-Driven Slide Deck - SRemote Tutorial 10</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="presentation-layout">
-    <!-- Khung trình chiếu Slide lớn bên trái -->
-    <div class="slide-viewport">
-      <div class="slide-deck" id="slide-deck">
-        
-        <!-- Slide 1 -->
-        <div class="slide-card active" data-slide="0">
-          <span class="slide-num">Trang 1 / 3</span>
-          <h2>🚀 Giới thiệu Kiến trúc SRemote</h2>
-          <p>Giải pháp toàn diện vượt rào Same-Origin Policy trong trình duyệt web.</p>
-          <div class="slide-graphic">📦 Monorepo Overview</div>
-        </div>
+  <div class="deck-app">
+    <!-- Header thông tin bài thuyết trình -->
+    <header class="deck-header">
+      <div>
+        <h2>📊 Kiến Trúc Microservices & Event-Driven</h2>
+        <p class="meta">Thuyết trình bởi: Tech Lead • Tự động lật slide theo giọng đọc</p>
+      </div>
+      <div class="slide-counter" id="slide-counter">Slide 1 / 4</div>
+    </header>
 
-        <!-- Slide 2 -->
-        <div class="slide-card" data-slide="1">
-          <span class="slide-num">Trang 2 / 3</span>
-          <h2>⚡ Giao Thức MessageChannel & FSM</h2>
-          <p>Kênh truyền thông hai chiều bảo mật cao giữa trang cha và thẻ iframe.</p>
-          <div class="slide-graphic">🌉 Dual-Engine Bridge</div>
-        </div>
-
-        <!-- Slide 3 -->
-        <div class="slide-card" data-slide="2">
-          <span class="slide-num">Trang 3 / 3</span>
-          <h2>🎯 Kết Luận & Ứng Dụng Thực Tế</h2>
-          <p>Tương thích 22 nền tảng media hàng đầu thế giới mà không cần proprietary SDK.</p>
-          <div class="slide-graphic">🏆 Universal Standards</div>
-        </div>
-
+    <!-- Màn hình hiển thị Slide chính -->
+    <div class="slide-stage">
+      <div id="active-slide-card" class="slide-card">
+        <h1 id="slide-title" class="slide-title">Đang nạp slide...</h1>
+        <p id="slide-desc" class="slide-desc"></p>
+        <div id="slide-graphic" class="slide-graphic"></div>
       </div>
     </div>
 
-    <!-- Cột bên phải: Audio Player & Timeline mốc thời gian -->
-    <div class="audio-sidebar">
-      <div class="sidebar-header">
-        <h3>🎙️ Bản thu âm bài giảng</h3>
-        <p>Slide sẽ tự động chuyển trang khớp theo giọng nói diễn giả.</p>
-      </div>
-
-      <!-- Khung nhúng âm thanh podcast/video YouTube -->
+    <!-- Khung phát âm thanh thuyết minh (Voiceover Slot) -->
+    <div class="audio-control-panel">
       <div id="audio-slot" class="audio-slot"></div>
-
-      <!-- Mục lục timeline các slide -->
-      <div class="cues-list">
-        <h4>Mốc nội dung (Timeline Cues):</h4>
-        <div class="cue-item active" data-index="0" data-time="0">
-          <span>00:00</span> Giới thiệu kiến trúc tổng thể
-        </div>
-        <div class="cue-item" data-index="1" data-time="15">
-          <span>00:15</span> Giao thức MessageChannel
-        </div>
-        <div class="cue-item" data-index="2" data-time="45">
-          <span>00:45</span> Kết luận & Ứng dụng
-        </div>
-      </div>
     </div>
+
+    <!-- Thanh thumbnail danh sách tất cả các slide (Bấm để nhảy) -->
+    <div class="thumbnails-bar" id="thumbnails-bar"></div>
   </div>
 
   <script type="module" src="app.js"></script>
@@ -113,232 +89,304 @@ sequenceDiagram
 </html>
 ```
 
----
-
-### Bước 2: Thiết kế Giao diện Keynote (`style.css`)
+Và định dạng chuyển slide mượt mà bằng `style.css`:
 
 ```css
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 body {
   background: #090d16;
   color: #f1f5f9;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  min-height: 100vh;
   padding: 24px;
-}
-
-.presentation-layout {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-@media (max-width: 860px) {
-  .presentation-layout { grid-template-columns: 1fr; }
-}
-
-.slide-viewport {
-  background: #131b2e;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  aspect-ratio: 16 / 10;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.8);
-}
-
-.slide-card {
-  position: absolute;
-  inset: 0;
-  padding: 40px;
   display: flex;
-  flex-direction: column;
   justify-content: center;
+}
+
+.deck-app {
+  max-width: 900px;
+  width: 100%;
+}
+
+.deck-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  text-align: center;
-  opacity: 0;
-  transform: scale(0.96);
-  pointer-events: none;
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 14px;
 }
 
-.slide-card.active {
-  opacity: 1;
-  transform: scale(1);
-  pointer-events: auto;
+.deck-header h2 {
+  font-size: 22px;
 }
 
-.slide-num {
-  font-size: 12px;
-  text-transform: uppercase;
-  color: #38bdf8;
-  font-weight: bold;
-  margin-bottom: 12px;
-}
-
-.slide-card h2 {
-  font-size: 28px;
-  color: #f8fafc;
-  margin-bottom: 12px;
-}
-
-.slide-card p {
-  font-size: 16px;
+.meta {
+  font-size: 13px;
   color: #94a3b8;
-  max-width: 500px;
-  margin-bottom: 24px;
 }
 
-.slide-graphic {
-  width: 260px;
-  height: 140px;
-  background: rgba(56, 189, 248, 0.1);
-  border: 2px dashed #38bdf8;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
-  color: #38bdf8;
+.slide-counter {
+  background: #0284c7;
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.audio-sidebar {
-  background: #131b2e;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar-header h3 { font-size: 16px; margin-bottom: 4px; }
-.sidebar-header p { font-size: 12.5px; color: #94a3b8; margin-bottom: 16px; }
-
-.audio-slot {
+/* Sân khấu trình chiếu Slide */
+.slide-stage {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #000;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
   overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
   margin-bottom: 20px;
 }
 
-.cues-list h4 {
-  font-size: 13px;
-  color: #94a3b8;
-  text-transform: uppercase;
-  margin-bottom: 10px;
+.slide-card {
+  text-align: center;
+  max-width: 600px;
+  animation: fadeIn 0.4s ease-out;
 }
 
-.cue-item {
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
-  font-size: 13px;
-  margin-bottom: 6px;
+.slide-title {
+  font-size: 32px;
+  color: #38bdf8;
+  margin-bottom: 16px;
+  line-height: 1.3;
+}
+
+.slide-desc {
+  font-size: 16px;
+  color: #cbd5e1;
+  line-height: 1.6;
+}
+
+.slide-graphic {
+  font-size: 48px;
+  margin-top: 24px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.audio-control-panel {
+  background: #111827;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.audio-slot {
+  width: 100%;
+  height: 80px;
+}
+
+/* Thanh Thumbnails */
+.thumbnails-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.thumb-item {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 10px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   transition: all 0.2s;
 }
 
-.cue-item span {
-  font-family: monospace;
-  font-weight: bold;
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.15);
-  padding: 2px 6px;
-  border-radius: 4px;
+.thumb-item:hover {
+  background: #334155;
 }
 
-.cue-item:hover { background: rgba(255, 255, 255, 0.06); }
-
-.cue-item.active {
-  background: rgba(2, 132, 199, 0.2);
+.thumb-item.active {
   border-color: #38bdf8;
+  background: rgba(2, 132, 199, 0.2);
+}
+
+.thumb-num {
+  font-size: 11px;
+  color: #38bdf8;
+  font-weight: bold;
+}
+
+.thumb-title {
+  font-size: 12.5px;
   font-weight: 600;
+  color: #f1f5f9;
+  margin: 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thumb-time {
+  font-size: 11px;
+  color: #64748b;
 }
 ```
 
 ---
 
-### Bước 3: Logic Đồng Bộ Slide & Bảng Mốc Thời Gian (`app.js`)
+## Bước 2: Định Nghĩa Siêu Dữ Liệu Timeline Cues Của Slide
+
+Tạo file `app.js`. Chúng ta định nghĩa mảng `slides` chứa thời điểm bắt đầu (`startTime`) của từng slide trong bài thuyết trình:
 
 ```javascript
 import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
 import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
 
-// Bảng ánh xạ mốc thời gian (giây) -> chỉ mục Slide
-const timelineCues = [
-  { time: 0, slideIndex: 0 },
-  { time: 15, slideIndex: 1 },
-  { time: 45, slideIndex: 2 }
+// Danh sách các Slide kèm mốc thời gian (Cue points)
+const slidesData = [
+  {
+    id: 1,
+    startTime: 0,
+    title: "1. Tổng Quan Về Kiến Trúc Phân Tán",
+    desc: "Tại sao các hệ thống monolithic truyền thống gặp khó khăn khi mở rộng và cách thức microservices giải quyết bài toán này.",
+    icon: "🌐"
+  },
+  {
+    id: 2,
+    startTime: 20, // Bắt đầu tại giây 20
+    title: "2. Giao Thức Event-Driven Messaging",
+    desc: "Sử dụng Message Broker (Kafka / RabbitMQ) để tách rời sự phụ thuộc trực tiếp giữa các dịch vụ độc lập.",
+    icon: "⚡"
+  },
+  {
+    id: 3,
+    startTime: 50, // Bắt đầu tại giây 50
+    title: "3. Database Per Service Pattern",
+    desc: "Mỗi dịch vụ sở hữu cơ sở dữ liệu riêng biệt để đảm bảo tính độc lập và khả năng triển khai linh hoạt.",
+    icon: "🗄️"
+  },
+  {
+    id: 4,
+    startTime: 85, // Bắt đầu tại giây 85
+    title: "4. Tổng Kết & Q&A Thảo Luận",
+    desc: "Tóm lược các nguyên lý cốt lõi và bắt đầu phần giải đáp câu hỏi của người tham dự.",
+    icon: "💡"
+  }
 ];
 
-let currentActiveIndex = -1;
+let currentSlideIndex = 0;
 
-const slideCards = document.querySelectorAll('.slide-card');
-const cueItems = document.querySelectorAll('.cue-item');
-
-// Hàm kích hoạt hiển thị slide chỉ định
-function setActiveSlide(index) {
-  if (currentActiveIndex === index) return;
-  currentActiveIndex = index;
-
-  slideCards.forEach((card, i) => {
-    card.classList.toggle('active', i === currentActiveIndex);
-  });
-
-  cueItems.forEach((item, i) => {
-    item.classList.toggle('active', i === currentActiveIndex);
-  });
-}
-
-// 1. Mount YouTube video/audio
-await youtube.mount('#audio-slot', {
-  videoId: 'dQw4w9WgXcQ',
-  playerVars: { controls: 1 }
-});
-
-// 2. Lắng nghe sự kiện timeupdate để tự động khớp slide
-sremote.on('timeupdate', ({ state }) => {
-  const currentTime = state.currentTime || 0;
-
-  // Tìm mốc thời gian phù hợp nhất (lấy mốc lớn nhất mà currentTime >= cue.time)
-  const matchedCue = [...timelineCues]
-    .reverse()
-    .find(cue => currentTime >= cue.time);
-
-  if (matchedCue) {
-    setActiveSlide(matchedCue.slideIndex);
-  }
-});
-
-// 3. Cho phép người dùng bấm vào mốc timeline để tua video
-cueItems.forEach(item => {
-  item.addEventListener('click', async () => {
-    const time = parseFloat(item.getAttribute('data-time'));
-    await sremote.seekTo(time);
-    await sremote.play();
-  });
-});
-
-// Khởi tạo ở slide 0
-setActiveSlide(0);
+const slideTitleEl = document.getElementById('slide-title');
+const slideDescEl = document.getElementById('slide-desc');
+const slideGraphicEl = document.getElementById('slide-graphic');
+const slideCounterEl = document.getElementById('slide-counter');
+const thumbnailsBarEl = document.getElementById('thumbnails-bar');
 ```
 
 ---
 
-## 3. Deep Dive: Giải Thuật Tìm Mốc Ngược (Reverse Search)
+## Bước 3: Nạp Âm Thanh & Render Thumbnails Slide
 
 ```javascript
-const matchedCue = [...timelineCues]
-  .reverse()
-  .find(cue => currentTime >= cue.time);
+async function initSlideDeck() {
+  renderThumbnails();
+  displaySlide(0);
+
+  // Gắn audio stream thuyết minh vào slot
+  await youtube.mount('#audio-slot', {
+    videoId: 'jfKfPfyJRdk', // Audio stream mẫu
+    playerVars: { controls: 1, autoplay: 0 }
+  });
+
+  console.log('✅ Bộ trình chiếu đã sẵn sàng!');
+  setupTimeTracking();
+}
+
+function renderThumbnails() {
+  thumbnailsBarEl.innerHTML = '';
+  slidesData.forEach((slide, index) => {
+    const div = document.createElement('div');
+    div.className = `thumb-item ${index === 0 ? 'active' : ''}`;
+    div.id = `thumb-${slide.id}`;
+    div.innerHTML = `
+      <div class="thumb-num">SLIDE ${slide.id}</div>
+      <div class="thumb-title">${slide.title}</div>
+      <div class="thumb-time">⏱ Bắt đầu: ${slide.startTime}s</div>
+    `;
+
+    // Nhấp vào Thumbnail -> Tua âm thanh tới đúng mốc slide đó!
+    div.addEventListener('click', async () => {
+      console.log(`⏩ Người dùng nhấp vào Slide ${slide.id} -> Tua về ${slide.startTime}s`);
+      await sremote.seekTo(slide.startTime);
+      await sremote.play();
+    });
+
+    thumbnailsBarEl.appendChild(div);
+  });
+}
+
+function displaySlide(index) {
+  currentSlideIndex = index;
+  const slide = slidesData[index];
+
+  slideTitleEl.textContent = slide.title;
+  slideDescEl.textContent = slide.desc;
+  slideGraphicEl.textContent = slide.icon;
+  slideCounterEl.textContent = `Slide ${slide.id} / ${slidesData.length}`;
+
+  // Highlight thumbnail tương ứng
+  document.querySelectorAll('.thumb-item').forEach(el => el.classList.remove('active'));
+  const activeThumb = document.getElementById(`thumb-${slide.id}`);
+  if (activeThumb) activeThumb.classList.add('active');
+}
 ```
-Bằng cách sao chép mảng và đảo ngược (`.reverse()`), khi `currentTime = 25s`, hàm `.find()` sẽ kiểm tra từ mốc 45s (không thỏa mãn) ➔ mốc 15s (thỏa mãn `25 >= 15`), và dừng ngay lập tức. Giải thuật này đảm bảo độ phức tạp $O(N)$ cực kỳ nhẹ nhàng ngay cả khi bài thuyết trình có hàng trăm slide.
+
+---
+
+## Bước 4: Lập Trình Thuật Toán Tự Động Lật Slide Theo `timeupdate`
+
+Khi SRemote bắn sự kiện `timeupdate`, chúng ta duyệt từ cuối mảng `slidesData` về đầu (hoặc dùng `findLast`) để tìm slide có `startTime <= currentTime`:
+
+```javascript
+function setupTimeTracking() {
+  sremote.on('timeupdate', ({ currentTime }) => {
+    // Tìm slide phù hợp nhất với thời gian hiện tại
+    let targetIndex = 0;
+    for (let i = slidesData.length - 1; i >= 0; i--) {
+      if (currentTime >= slidesData[i].startTime) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    // Nếu phát hiện chuyển sang slide mới -> Cập nhật hiển thị
+    if (targetIndex !== currentSlideIndex) {
+      console.log(`🔄 Tự động lật sang Slide ${slidesData[targetIndex].id} tại giây ${currentTime.toFixed(1)}s`);
+      displaySlide(targetIndex);
+    }
+  });
+}
+
+// Khởi chạy
+initSlideDeck();
+```
+
+---
+
+## 💡 Bài Tập Thử Thách Mở Rộng
+
+1. **Hiệu ứng chuyển trang 3D (Page Flip Effect)**: Bổ sung thư viện CSS 3D Transform để khi lật slide có hiệu ứng trang sách mở ra chân thực.
+2. **Xuất bản PDF Handout**: Tích hợp nút in tài liệu bài giảng ra file PDF với đầy đủ nội dung của 4 slide.

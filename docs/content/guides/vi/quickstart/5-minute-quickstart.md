@@ -2,11 +2,7 @@
 
 Chào mừng bạn đến với **SRemote**! Hướng dẫn này sẽ giúp bạn hiểu rõ cách thức tích hợp SRemote vào ứng dụng web của mình một cách nhanh chóng và chuẩn xác nhất.
 
-> [!TIP]
-> **Bạn thích trải nghiệm hướng dẫn từng bước trực quan?**  
-> Hãy mở **[🧙 Trình Hướng Dẫn Tích Hợp Tương Tác (Interactive Wizard)](wizard.html)** với thanh tiến trình Stepper, sơ đồ Mermaid tự động định vị bước và 11 bài toán ứng dụng thực tế có sẵn code mẫu để chạy ngay!
 
----
 
 ## 1. Bản chất & Cơ chế Tích hợp
 
@@ -134,6 +130,6 @@ export function VideoPlayer({ videoId }) {
 
 ## 3. Các Bước Tiếp Theo
 
-- **Trải nghiệm từng bước với 11 ứng dụng thực tế**: Mở ngay [🧙 Interactive Integration Wizard](wizard.html) để xem các bài toán: WatchParty, LMS Quiz, Pomodoro Lo-fi, Multi-Streamer, Phím tắt bàn phím, Playlist queue...
+- **Khám phá 11 bài hướng dẫn ứng dụng thực tế (A-Z)**: Xem danh mục **Blueprints** ở thanh bên trái bao gồm: [Custom Player Controls](../blueprints/01-simple-player.md), [Hàng đợi Playlist/Podcast](../blueprints/02-playlist-queue.md), [WatchParty Sync](../blueprints/03-watchparty.md), [Khóa video trắc nghiệm EdTech](../blueprints/04-edtech-quiz.md), [Pomodoro Lo-fi Audio Ducking](../blueprints/05-pomodoro-lofi.md)...
 - **Tra cứu nền tảng**: Xem [Ma trận tương thích 22 dịch vụ](../advanced/compatibility-matrix.md).
 - **Tra cứu hàm & sự kiện**: Mở [Tài liệu API Reference](../../api.html).

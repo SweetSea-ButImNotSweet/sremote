@@ -1,43 +1,41 @@
-# Blueprint 08: Ghi Chú Bài Giảng Kèm Mốc Giây (Timestamped Notes)
+# Tutorial 08: Trình Ghi Chú Bài Giảng Đính Kèm Mốc Thời Gian (Lecture Timestamped Notes)
 
-Bài hướng dẫn này sẽ hướng dẫn bạn xây dựng ứng dụng **Ghi chú bài giảng video thông minh (Notion-style Timestamped Notes)**: học viên vừa xem bài giảng vừa gõ ghi chú, hệ thống tự động gắn kèm mốc thời gian hiện tại (`currentTime`). Khi nhấp chuột vào bất kỳ ghi chú nào, video sẽ **tự động tua ngay tới đúng giây đó** thông qua **SRemote**.
+Khi xem các video bài giảng kỹ thuật dài 2 - 3 tiếng trên YouTube, sinh viên và lập trình viên thường có thói quen vừa xem vừa ghi chép. Các công cụ ghi chú thông minh hiện đại (như Notion, Roam Research hay Otter.ai) đều có tính năng **Timestamped Notes**:
+- Khi học viên bấm nút "Tạo ghi chú" (hoặc phím tắt), hệ thống **tự động chụp lại chính xác mốc thời gian đang phát** (ví dụ `04:15`).
+- Khi bấm vào tag `[04:15]`, video lập tức tự động tua đến đúng giây đó để học viên ôn lại kiến thức.
+- Khi video phát lướt qua mốc `04:15`, ghi chú tương ứng sẽ **tự động đổi màu highlight** trên màn hình để thu hút sự chú ý.
+
+Trong bài hướng dẫn này, chúng ta sẽ xây dựng ứng dụng ghi chú bài giảng thông minh này từ A đến Z với **SRemote**.
 
 ---
 
-## 1. Bài toán Thực tế & Mục tiêu
+## 🎯 Mục tiêu Bạn Sẽ Đạt Được
 
-Khi học trực tuyến (Coursera, Udemy, YouTube Education):
-- Bài giảng kéo dài 45 phút - 1 tiếng, chứa rất nhiều công thức hoặc khái niệm phức tạp.
-- Học viên cần ghi lại: *"Đoạn này thầy giải thích về State Machine rất hay"* nhưng sau này muốn xem lại thì không biết nó nằm ở phút thứ mấy.
-- Với ứng dụng này:
-  1. Khi bấm nút "Thêm ghi chú", SRemote lập tức chụp lại `currentTime` (ví dụ `04:12`).
-  2. Dòng ghi chú được lưu vào danh sách với thẻ mốc thời gian `[04:12]`.
-  3. Bấm vào mốc `[04:12]`, video sẽ tự động gọi `sremote.seekTo(252)` và phát ngay lập tức.
+Sau bài học này, bạn sẽ nắm vững:
+1. Cách lấy thời gian hiện tại chính xác `await sremote.getCurrentTime()` theo thời gian thực.
+2. Thiết kế cấu trúc dữ liệu ghi chú có gắn mốc `timestamp` và lưu bền vững vào `localStorage`.
+3. **Cơ chế Tương Tác 2 Chiều**:
+   - Nhấp vào ghi chú ➔ Tua video (`sremote.seekTo()`).
+   - Video đang phát ➔ Tự động highlight ghi chú đang khớp thời gian (`sremote.on('timeupdate')`).
+4. Phím tắt tiện lợi `Ctrl + Enter` (hoặc `Cmd + Enter`) để lưu ghi chú nhanh mà không cần rời tay khỏi bàn phím.
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor Student as 👨‍🎓 Học viên
-    participant UI as 🖥️ Notes Interface
-    participant SDK as ⚡ SRemote Client
-    participant Video as 📺 Video Bài Giảng
+flowchart LR
+    subgraph UI ["Giao diện 2 Cột"]
+        Video["Video Bài Giảng"]
+        Notes["Cột Ghi Chú Notion"]
+    end
 
-    Student->>UI: Gõ "Giải thuật FSM" & Bấm "Thêm ghi chú"
-    UI->>SDK: sremote.getState()
-    SDK-->>UI: Trả về { currentTime: 145.2 } (02:25)
-    UI->>UI: Thêm dòng "[02:25] Giải thuật FSM" vào danh sách
-    
-    Note over Student,UI: Học viên học tiếp sang phút thứ 10:00...
-    Student->>UI: Bấm vào thẻ mốc "[02:25]" trong ghi chú
-    UI->>SDK: sremote.seekTo(145) & sremote.play()
-    SDK->>Video: Lập tức nhảy video về 02:25 và phát!
+    User["👤 Học viên bấm Ghi Chú"] -->|"Chụp mốc sremote.getCurrentTime()"| Notes
+    Notes -->|"Click tag [04:15]"| Video
+    Video -->|"timeupdate chạm mốc 04:15"| Notes
 ```
 
 ---
 
-## 2. Mã Nguồn Đầy Đủ (Full Working Project)
+## Bước 1: Khởi Tạo Layout 2 Cột (Video Bên Trái, Sổ Ghi Chép Bên Phải)
 
-### Bước 1: Giao diện 2 Cột (Video & Ghi Chú) (`index.html`)
+Tạo file `index.html`:
 
 ```html
 <!DOCTYPE html>
@@ -45,38 +43,37 @@ sequenceDiagram
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Timestamped Notes - SRemote Blueprint 08</title>
+  <title>Lecture Timestamped Notes - SRemote Tutorial 08</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <div class="app-layout">
-    <!-- Cột trái: Màn hình video bài giảng -->
+    <!-- CỘT BÊN TRÁI: Video bài giảng -->
     <div class="video-column">
-      <div id="lecture-screen" class="lecture-screen"></div>
-      <div class="video-caption">
-        <h3>Bài giảng: Kiến trúc Hệ thống Phân tán</h3>
-        <p>Mẹo: Nhấp vào mốc thời gian màu xanh bên phải để tua video đến đúng vị trí.</p>
-      </div>
+      <header class="lecture-header">
+        <h2>📚 CS50: Giới Thiệu Thuật Toán Sắp Xếp</h2>
+        <span class="lecture-meta">Đại học Harvard • Bài giảng trực tuyến</span>
+      </header>
+      <div id="video-embed-slot" class="video-embed-slot"></div>
     </div>
 
-    <!-- Cột phải: Khung ghi chú thông minh -->
+    <!-- CỘT BÊN PHẢI: Sổ ghi chép thông minh -->
     <div class="notes-column">
       <div class="notes-header">
-        <h3>📝 Ghi chú của bạn</h3>
-        <span id="notes-count" class="badge">0 ghi chú</span>
+        <h3>📝 Sổ Ghi Chép Bài Học</h3>
+        <span id="current-clock" class="clock-badge">Mốc hiện tại: 00:00</span>
       </div>
 
-      <!-- Form nhập ghi chú mới -->
+      <!-- Khung nhập ghi chú nhanh -->
       <div class="note-input-box">
-        <textarea id="note-text" placeholder="Nhập nội dung ghi chú tại thời điểm đang xem..."></textarea>
-        <button id="btn-save-note" class="btn-save">
-          <span>📌 Gắn mốc thời gian hiện tại</span>
-        </button>
+        <textarea id="note-input" placeholder="Gõ ghi chú tại đây... (Bấm Ctrl + Enter để lưu nhanh)"></textarea>
+        <button id="btn-add-note" class="btn-primary">Ghi mốc này</button>
       </div>
 
-      <!-- Danh sách các ghi chú đã lưu -->
-      <div class="notes-list-container">
+      <!-- Danh sách các ghi chú đã tạo -->
+      <div class="notes-list-wrapper">
+        <div class="list-title">Ghi chú đã lưu (Nhấp để tua):</div>
         <ul id="notes-list" class="notes-list"></ul>
       </div>
     </div>
@@ -87,221 +84,305 @@ sequenceDiagram
 </html>
 ```
 
----
-
-### Bước 2: Thiết kế Giao diện 2 Cột Hiện Đại (`style.css`)
+Và định dạng bằng `style.css`:
 
 ```css
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 body {
-  background: #0f172a;
-  color: #f8fafc;
+  background: #090d16;
+  color: #f1f5f9;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 24px;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app-layout {
   display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  gap: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-@media (max-width: 860px) {
-  .app-layout { grid-template-columns: 1fr; }
+  grid-template-columns: 1.2fr 0.8fr;
+  height: 100vh;
 }
 
 .video-column {
-  background: #1e293b;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.lecture-screen {
+.lecture-header {
+  margin-bottom: 16px;
+}
+
+.lecture-header h2 {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.lecture-meta {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.video-embed-slot {
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
 }
-
-.video-caption {
-  padding: 16px 20px;
-}
-
-.video-caption h3 { font-size: 17px; margin-bottom: 4px; }
-.video-caption p { font-size: 13px; color: #94a3b8; }
 
 .notes-column {
-  background: #1e293b;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0f172a;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 48px);
-  max-height: 620px;
+  overflow-y: auto;
 }
 
 .notes-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 16px;
 }
 
-.badge {
+.clock-badge {
+  background: #1e293b;
+  color: #38bdf8;
+  padding: 4px 10px;
+  border-radius: 6px;
   font-size: 12px;
-  background: #334155;
-  padding: 2px 8px;
-  border-radius: 12px;
-  color: #94a3b8;
+  font-weight: 600;
 }
 
 .note-input-box {
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
 }
 
-.note-input-box textarea {
+textarea {
   width: 100%;
-  height: 60px;
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  padding: 10px;
+  height: 70px;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
   color: #fff;
-  font-size: 13px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13.5px;
   resize: none;
-  outline: none;
 }
 
-.btn-save {
-  width: 100%;
-  margin-top: 8px;
-  padding: 8px;
+textarea:focus {
+  outline: none;
+  border-color: #38bdf8;
+}
+
+.btn-primary {
+  align-self: flex-end;
   background: #0284c7;
   color: #fff;
   border: none;
+  padding: 8px 16px;
   border-radius: 6px;
+  cursor: pointer;
   font-size: 13px;
   font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: #0369a1;
+}
+
+.list-title {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 12px;
+}
+
+.notes-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.note-card {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.btn-save:hover { background: #0369a1; }
-
-.notes-list-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px 20px;
-}
-
-.notes-list { list-style: none; }
-
-.note-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
-  transition: all 0.2s;
-}
-
 .note-card:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(56, 189, 248, 0.3);
+  background: #334155;
 }
 
-.note-meta {
+/* Đổi màu highlight khi video đang phát tới mốc của ghi chú này */
+.note-card.active-note {
+  border-color: #38bdf8;
+  background: rgba(2, 132, 199, 0.15);
+}
+
+.note-top-bar {
   display: flex;
   justify-content: space-between;
   margin-bottom: 6px;
 }
 
-.timestamp-btn {
-  background: rgba(2, 132, 199, 0.2);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.4);
+.time-tag {
+  background: #0284c7;
+  color: #fff;
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 11.5px;
   font-weight: bold;
+}
+
+.btn-del {
+  background: none;
+  border: none;
+  color: #64748b;
   cursor: pointer;
-  font-family: monospace;
+  font-size: 12px;
 }
 
-.timestamp-btn:hover {
-  background: #0284c7;
-  color: #fff;
+.btn-del:hover {
+  color: #f87171;
 }
 
-.note-content {
-  font-size: 13.5px;
-  color: #cbd5e1;
-  line-height: 1.5;
+.note-body {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #e2e8f0;
 }
 ```
 
 ---
 
-### Bước 3: Logic Chụp Timestamp & Điều Hướng (`app.js`)
+## Bước 2: Nạp Video & Quản Lý State Danh Sách Ghi Chú
+
+Mở file `app.js`. Chúng ta định dạng thời gian giây sang `mm:ss`, tải các ghi chú đã lưu từ `localStorage` và nạp video qua SRemote:
 
 ```javascript
 import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
 import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
 
+// Lấy danh sách ghi chú từ localStorage hoặc mảng rỗng
+let notes = JSON.parse(localStorage.getItem('lecture_notes_v1') || '[]');
+
+const currentClockEl = document.getElementById('current-clock');
+const noteInput = document.getElementById('note-input');
+const btnAddNote = document.getElementById('btn-add-note');
 const notesListEl = document.getElementById('notes-list');
-const noteTextEl = document.getElementById('note-text');
-const btnSave = document.getElementById('btn-save-note');
-const notesCountEl = document.getElementById('notes-count');
 
-// Mảng lưu trữ danh sách ghi chú
-let notes = JSON.parse(localStorage.getItem('my_lecture_notes') || '[]');
-
-function formatTime(sec) {
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// 1. Gắn YouTube video bài giảng
-await youtube.mount('#lecture-screen', {
-  videoId: 'dQw4w9WgXcQ',
-  playerVars: { controls: 1 }
-});
+async function initLecture() {
+  await youtube.mount('#video-embed-slot', {
+    videoId: '8hly31xKli0', // CS50 Algorithms Lecture
+    playerVars: { controls: 1, autoplay: 0 }
+  });
 
-// 2. Render danh sách ghi chú
-function renderNotes() {
-  notesListEl.innerHTML = '';
-  notesCountEl.textContent = `${notes.length} ghi chú`;
+  console.log('✅ Bài giảng đã kết nối SRemote!');
+  renderNotes();
+  setupEventListeners();
+}
+```
 
-  // Sắp xếp ghi chú theo thứ tự thời gian tăng dần
+---
+
+## Bước 3: Chụp Mốc Thời Gian Thực & Lưu Ghi Chú
+
+Khi người dùng bấm "Ghi mốc này" hoặc bấm `Ctrl + Enter`:
+1. Đọc thời gian chính xác: `const time = await sremote.getCurrentTime()`.
+2. Tạo một object ghi chú mới gồm: `id`, `time`, `text`.
+3. Đẩy vào mảng và lưu vào `localStorage`.
+
+```javascript
+async function saveCurrentNote() {
+  const text = noteInput.value.trim();
+  if (!text) return;
+
+  // Chụp chính xác giây hiện tại của video qua SRemote
+  const currentTime = await sremote.getCurrentTime();
+
+  const newNote = {
+    id: Date.now(),
+    time: Math.floor(currentTime),
+    text: text
+  };
+
+  // Sắp xếp các ghi chú theo thứ tự thời gian tăng dần
+  notes.push(newNote);
   notes.sort((a, b) => a.time - b.time);
 
-  notes.forEach((item, index) => {
+  // Lưu vào localStorage
+  localStorage.setItem('lecture_notes_v1', JSON.stringify(notes));
+
+  noteInput.value = '';
+  renderNotes();
+}
+```
+
+---
+
+## Bước 4: Render Ghi Chú & Kỹ Thuật Tương Tác 2 Chiều
+
+### 1. Click vào ghi chú ➔ Tua video:
+Khi người dùng bấm vào card ghi chú, ta gọi `await sremote.seekTo(note.time)` và `await sremote.play()`.
+
+### 2. Video phát ➔ Highlight ghi chú đang hoạt động:
+Lắng nghe `sremote.on('timeupdate')`, so sánh thời gian hiện tại với mốc của các ghi chú để gắn class `.active-note`.
+
+```javascript
+function renderNotes() {
+  notesListEl.innerHTML = '';
+
+  if (notes.length === 0) {
+    notesListEl.innerHTML = '<li style="color: #64748b; font-size: 13px;">Chưa có ghi chú nào. Hãy vừa xem vừa ghi chép nhé!</li>';
+    return;
+  }
+
+  notes.forEach((note) => {
     const li = document.createElement('li');
     li.className = 'note-card';
+    li.id = `note-${note.id}`;
     li.innerHTML = `
-      <div class="note-meta">
-        <button class="timestamp-btn" data-time="${item.time}">⏱ ${formatTime(item.time)}</button>
-        <button class="del-btn" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:11px;" data-index="${index}">Xóa</button>
+      <div class="note-top-bar">
+        <span class="time-tag">⏱ ${formatTime(note.time)}</span>
+        <button class="btn-del" title="Xóa ghi chú">✕</button>
       </div>
-      <div class="note-content">${item.text}</div>
+      <div class="note-body">${note.text}</div>
     `;
 
-    // Khi bấm vào nút Timestamp: tua video tới đúng giây đó
-    li.querySelector('.timestamp-btn').addEventListener('click', async () => {
-      await sremote.seekTo(item.time);
+    // Click vào cả card -> Tua video tới mốc đó ngay lập tức
+    li.addEventListener('click', async (e) => {
+      if (e.target.classList.contains('btn-del')) return;
+      console.log(`⏩ Đang tua video tới mốc ${note.time}s...`);
+      await sremote.seekTo(note.time);
       await sremote.play();
     });
 
-    // Xóa ghi chú
-    li.querySelector('.del-btn').addEventListener('click', () => {
-      notes.splice(index, 1);
-      localStorage.setItem('my_lecture_notes', JSON.stringify(notes));
+    // Nút xóa ghi chú
+    li.querySelector('.btn-del').addEventListener('click', () => {
+      notes = notes.filter(n => n.id !== note.id);
+      localStorage.setItem('lecture_notes_v1', JSON.stringify(notes));
       renderNotes();
     });
 
@@ -309,35 +390,40 @@ function renderNotes() {
   });
 }
 
-// 3. Xử lý lưu ghi chú mới
-btnSave.addEventListener('click', async () => {
-  const text = noteTextEl.value.trim();
-  if (!text) return;
+function setupEventListeners() {
+  // Bấm nút lưu ghi chú
+  btnAddNote.addEventListener('click', saveCurrentNote);
 
-  // Lấy chính xác thời điểm giây hiện tại từ SRemote
-  const state = await sremote.getState();
-  const currentTime = Math.round(state.currentTime || 0);
+  // Phím tắt Ctrl + Enter trong ô nhập liệu
+  noteInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      saveCurrentNote();
+    }
+  });
 
-  notes.push({ time: currentTime, text });
-  localStorage.setItem('my_lecture_notes', JSON.stringify(notes));
+  // Lắng nghe timeline video để cập nhật đồng hồ và highlight ghi chú
+  sremote.on('timeupdate', ({ currentTime }) => {
+    currentClockEl.textContent = `Mốc hiện tại: ${formatTime(currentTime)}`;
 
-  noteTextEl.value = '';
-  renderNotes();
-});
+    // Tìm ghi chú gần nhất trước hoặc bằng currentTime
+    const active = [...notes].reverse().find(n => currentTime >= n.time && currentTime < n.time + 15);
 
-renderNotes();
+    document.querySelectorAll('.note-card').forEach(el => el.classList.remove('active-note'));
+    if (active) {
+      const el = document.getElementById(`note-${active.id}`);
+      if (el) el.classList.add('active-note');
+    }
+  });
+}
+
+// Khởi chạy
+initLecture();
 ```
 
 ---
 
-## 3. Deep Dive: Độ Chính Xác của `sremote.getState()`
+## 💡 Bài Tập Thử Thách Mở Rộng
 
-Khi người dùng bấm "Gắn mốc thời gian hiện tại", hàm `await sremote.getState()` trả về snapshot tức thời của video player:
-```typescript
-interface MediaState {
-  currentTime: number; // Ví dụ 145.24 giây
-  duration: number;
-  paused: boolean;
-}
-```
-Bằng cách làm tròn `Math.round(currentTime)`, ta có một mốc số nguyên giây chuẩn xác mà người học có thể nhấp chuột vào bất cứ lúc nào để xem lại phần giảng dạy.
+1. **Xuất file Markdown (Export to .md)**: Thêm nút "Xuất file ghi chú" để tải về file `.md` chứa toàn bộ các mốc `[04:15](https://youtube.com/watch?v=...&t=255s)` để lưu trữ vào Obsidian hoặc Notion.
+2. **Ảnh chụp khung hình (Thumbnail Snapshot)**: Khi tạo ghi chú, lưu thêm ảnh thumbnail của video tại thời điểm đó để xem trước trực quan.

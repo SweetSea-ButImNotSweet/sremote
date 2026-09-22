@@ -1,15 +1,19 @@
-# Blueprint 02: Quản lý Danh sách phát & Hàng đợi Podcast (Playlist Queue)
+# Tutorial 02: Xây dựng Trình Phát Hàng Đợi Playlist & Podcast (Continuous Playback)
 
-Bài hướng dẫn này sẽ dẫn dắt bạn xây dựng một ứng dụng nghe nhạc / podcast hoàn chỉnh có **danh sách bài hát (Tracklist)**, hiển thị track đang phát, hỗ trợ chuyển bài thủ công (Next / Previous) và **tự động chuyển sang bài tiếp theo khi bài hiện tại kết thúc** thông qua **SRemote**.
+Trong các ứng dụng nghe nhạc và podcast hiện đại (như Spotify, Apple Podcasts hay SoundCloud), trải nghiệm nghe liên tục (**Continuous Playback**) là cốt lõi: Khi một bài hát hoặc tập podcast kết thúc, hệ thống phải tự động nạp tập tiếp theo, highlight vị trí tương ứng trên danh sách và tiếp tục phát mượt mà mà không cần người dùng thao tác.
+
+Trong bài hướng dẫn này, chúng ta sẽ xây dựng tính năng đó từ con số 0 với **SRemote**.
 
 ---
 
-## 1. Bài toán Thực tế & Mục tiêu
+## 🎯 Mục tiêu Bạn Sẽ Đạt Được
 
-Khi xây dựng các web app âm nhạc (như Spotify web clone, audio course, hoặc podcast hub), một trải nghiệm không thể thiếu là:
-- Người dùng nghe hết một tập podcast hoặc bài hát thì bài tiếp theo phải **tự động nạp và phát liền mạch (Continuous Playback)**.
-- Giao diện danh sách bài hát (Playlist) phải tự động đánh dấu (highlight) bài đang được phát.
-- Người dùng có thể nhấp vào bất kỳ bài nào trong danh sách để phát ngay, hoặc bấm nút Next / Prev.
+Sau bài học này, bạn sẽ nắm vững:
+1. Cách tổ chức cấu trúc dữ liệu cho một hàng đợi phát nhạc (Queue State).
+2. Xử lý **Vòng đời Player (Lifecycle & Memory Leak)**: Hủy bỏ instance cũ an toàn bằng `destroy()` trước khi mount bài mới.
+3. Bắt sự kiện kết thúc bài `ended` từ SRemote để tự động chuyển bài kế tiếp.
+4. Cơ chế điều hướng Next / Previous với toán tử modulo tuần hoàn.
+5. Cách đối phó với chính sách chặn **Autoplay Policy** khắt khe của trình duyệt.
 
 ```mermaid
 sequenceDiagram
@@ -18,27 +22,30 @@ sequenceDiagram
     participant UI as 🖥️ Playlist UI
     participant Queue as 🗂️ Queue Manager (JS)
     participant SDK as ⚡ SRemote Client
-    participant Player as 🎵 YouTube/Spotify Embed
+    participant Player as 🎵 YouTube/Embed
 
-    User->>UI: Bấm vào Bài số 2
-    UI->>Queue: loadTrack(1)
-    Queue->>Player: youtube.mount(videoId: track2.id)
-    Player-->>SDK: Sẵn sàng & Tự động phát
-    Queue->>UI: Highlight dòng Bài số 2 (Active state)
+    User->>UI: Bấm vào bài hát bất kỳ
+    UI->>Queue: loadTrack(index)
+    Queue->>Player: destroy() bài cũ -> mount() bài mới
+    Player-->>SDK: Đang phát...
+    Queue->>UI: Highlight dòng bài hát hiện tại
 
-    Note over Player,SDK: Bài số 2 phát đến hết thời lượng...
-    Player->>SDK: Sự kiện 'ended'
-    SDK->>Queue: Kích hoạt callback sremote.on('ended')
-    Queue->>Queue: Tăng index bài tiếp theo (index = 2)
-    Queue->>Player: Tự động mount và phát Bài số 3!
-    Queue->>UI: Chuyển highlight sang Bài số 3
+    Note over Player,SDK: Bài hát phát đến giây cuối cùng...
+    Player->>SDK: Bắn sự kiện 'ended'
+    SDK->>Queue: Callback sremote.on('ended')
+    Queue->>Queue: Tăng index bài tiếp theo
+    Queue->>Player: Tự động mount & phát bài mới!
+    Queue->>UI: Dịch chuyển highlight sang dòng mới
 ```
 
 ---
 
-## 2. Mã Nguồn Đầy Đủ (Full Working Project)
+## Bước 1: Khởi Tạo Cấu Trúc Dữ Liệu & Giao Diện Playlist
 
-### Bước 1: Giao diện Playlist (`index.html`)
+Hãy tạo file `index.html`. Chúng ta thiết kế một giao diện gồm 3 khu vực:
+1. Khung hiển thị thông tin bài đang phát (Header).
+2. Các nút điều hướng cơ bản: `⏮ Bài trước`, `▶ Phát/Dừng`, `Bài tiếp ⏭`.
+3. Danh sách hàng đợi các bài hát (`<ul id="track-list">`).
 
 ```html
 <!DOCTYPE html>
@@ -46,32 +53,32 @@ sequenceDiagram
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Playlist & Podcast Queue - SRemote Blueprint 02</title>
+  <title>Playlist & Podcast Queue - SRemote Tutorial 02</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <div class="podcast-app">
-    <!-- Khung phát media ẩn hoặc thu nhỏ -->
+    <!-- 1. Vùng hiển thị player & Metadata bài đang phát -->
     <div class="player-header">
       <div id="media-embed-slot" class="media-embed-slot"></div>
       <div class="now-playing-info">
         <span class="badge">Đang phát</span>
-        <h2 id="current-title" class="track-title">Đang nạp danh sách...</h2>
+        <h2 id="current-title" class="track-title">Đang nạp dữ liệu...</h2>
         <p id="current-artist" class="track-artist">---</p>
       </div>
     </div>
 
-    <!-- Thanh điều khiển điều hướng -->
+    <!-- 2. Thanh điều hướng nhanh -->
     <div class="nav-controls">
-      <button id="btn-prev" class="ctrl-btn" title="Bài trước">⏮ Bài trước</button>
-      <button id="btn-toggle-play" class="ctrl-btn btn-primary" title="Phát / Dừng">▶ Phát</button>
-      <button id="btn-next" class="ctrl-btn" title="Bài tiếp theo">Bài tiếp theo ⏭</button>
+      <button id="btn-prev" class="ctrl-btn">⏮ Trước</button>
+      <button id="btn-toggle-play" class="ctrl-btn btn-primary">▶ Phát</button>
+      <button id="btn-next" class="ctrl-btn">Sau ⏭</button>
     </div>
 
-    <!-- Danh sách hàng đợi bài hát (Tracklist) -->
+    <!-- 3. Danh sách bài hát trong Queue -->
     <div class="playlist-section">
-      <h3 class="section-title">Hàng đợi phát (Queue)</h3>
+      <h3 class="section-title">Danh sách bài hát</h3>
       <ul id="track-list" class="track-list"></ul>
     </div>
   </div>
@@ -81,9 +88,7 @@ sequenceDiagram
 </html>
 ```
 
----
-
-### Bước 2: Thiết kế Giao diện Flat Dark (`style.css`)
+Và định dạng giao diện bằng file `style.css`:
 
 ```css
 * {
@@ -96,14 +101,14 @@ body {
   background: #090d16;
   color: #f1f5f9;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 30px 16px;
+  padding: 40px 16px;
   display: flex;
   justify-content: center;
 }
 
 .podcast-app {
   width: 100%;
-  max-width: 680px;
+  max-width: 640px;
   background: #111827;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -155,13 +160,13 @@ body {
   justify-content: center;
   align-items: center;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 14px 20px;
   background: #0f172a;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .ctrl-btn {
-  padding: 8px 16px;
+  padding: 8px 18px;
   background: #1e293b;
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #f8fafc;
@@ -192,7 +197,7 @@ body {
 }
 
 .section-title {
-  font-size: 14px;
+  font-size: 13px;
   color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -244,13 +249,15 @@ body {
 
 ---
 
-### Bước 3: Logic Quản lý Hàng đợi & Chuyển bài (`app.js`)
+## Bước 2: Thiết Lập Danh Sách Dữ Liệu & Render Tracklist
+
+Mở file `app.js`. Chúng ta định nghĩa mảng `playlist` chứa danh sách các bài hát/podcast và hàm render danh sách ra DOM:
 
 ```javascript
 import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
 import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
 
-// Danh sách phát mẫu (Tracklist)
+// 1. Dữ liệu Playlist mẫu
 const playlist = [
   { id: 'jfKfPfyJRdk', title: 'Tập 1: Lofi Beats to Relax / Study to', artist: 'Lofi Girl', duration: 'Live' },
   { id: 'dQw4w9WgXcQ', title: 'Tập 2: Never Gonna Give You Up', artist: 'Rick Astley', duration: '03:32' },
@@ -260,7 +267,7 @@ const playlist = [
 let currentIndex = 0;
 let currentMountHandle = null;
 
-// Lấy các phần tử DOM
+// Lấy DOM elements
 const currentTitleEl = document.getElementById('current-title');
 const currentArtistEl = document.getElementById('current-artist');
 const trackListEl = document.getElementById('track-list');
@@ -268,7 +275,7 @@ const btnTogglePlay = document.getElementById('btn-toggle-play');
 const btnNext = document.getElementById('btn-next');
 const btnPrev = document.getElementById('btn-prev');
 
-// 1. Render danh sách các bài hát trong Queue
+// 2. Hàm render danh sách ra UI
 function renderTracklist() {
   trackListEl.innerHTML = '';
   playlist.forEach((track, index) => {
@@ -282,7 +289,7 @@ function renderTracklist() {
       <div class="track-item-duration">${track.duration}</div>
     `;
 
-    // Nhấp vào bài bất kỳ trong danh sách -> phát ngay bài đó
+    // Nhấp vào bài bất kỳ trong danh sách -> phát bài đó
     li.addEventListener('click', () => {
       if (currentIndex !== index) {
         loadTrack(index, true);
@@ -292,23 +299,37 @@ function renderTracklist() {
     trackListEl.appendChild(li);
   });
 }
+```
 
-// 2. Hàm nạp và phát một bài hát cụ thể theo vị trí Index
+---
+
+## Bước 3: Nạp Bài Hát & Xử Lý Vòng Đời Tránh Rò Rỉ Bộ Nhớ (`destroy()`)
+
+Khi đổi từ bài 1 sang bài 2, nhiều lập trình viên chỉ đơn giản là gọi lại hàm `mount()` đè lên DOM.  
+> [!CAUTION]
+> Nếu không dọn dẹp player cũ, các bộ lắng nghe sự kiện `postMessage` ngầm của iframe cũ vẫn còn chạy, gây xung đột sự kiện và rò rỉ RAM nghiêm trọng!
+
+Hàm `mount` của SRemote trả về một đối tượng chứa phương thức `.destroy()`. Hãy luôn gọi nó trước khi mount bài mới:
+
+```javascript
 async function loadTrack(index, autoPlay = true) {
   currentIndex = index;
   const track = playlist[currentIndex];
 
-  // Cập nhật thông tin giao diện
+  // Cập nhật thông tin trên header & highlight tracklist
   currentTitleEl.textContent = track.title;
   currentArtistEl.textContent = track.artist;
   renderTracklist();
 
-  // Hủy instance cũ trước khi mount bài mới để giải phóng bộ nhớ
+  // 1. DỌN DẸP INSTANCE CŨ TRƯỚC KHI TẠO MỚI (Tránh memory leak)
   if (currentMountHandle) {
+    console.log('🧹 Đang hủy player cũ...');
     currentMountHandle.destroy();
+    currentMountHandle = null;
   }
 
-  // Mount player mới
+  // 2. Khởi tạo player mới
+  console.log(`🎵 Đang nạp track [${index + 1}]: ${track.title}`);
   currentMountHandle = await youtube.mount('#media-embed-slot', {
     videoId: track.id,
     playerVars: {
@@ -317,19 +338,38 @@ async function loadTrack(index, autoPlay = true) {
     }
   });
 }
+```
 
-// 3. Tự động chuyển bài khi kết thúc (Sự kiện 'ended')
+---
+
+## Bước 4: Lập Trình Tự Động Chuyển Bài với Sự Kiện `ended`
+
+Đây chính là chìa khóa của **Continuous Playback**:
+- SRemote phát ra sự kiện `ended` khi bài hát phát tới giây cuối cùng.
+- Khi nhận sự kiện, ta tăng `currentIndex` lên 1 và tự động gọi `loadTrack`.
+
+```javascript
+// Lắng nghe sự kiện kết thúc bài hát từ SRemote
 sremote.on('ended', () => {
-  console.log('✅ Bài hát kết thúc. Đang tự động chuyển bài tiếp theo...');
+  console.log('🎉 Bài hiện tại đã hết! Đang tự động nạp bài kế tiếp...');
   const nextIndex = (currentIndex + 1) % playlist.length;
-  loadTrack(nextIndex, true);
+  loadTrack(nextIndex, true); // true = tự động phát
 });
 
 // Đồng bộ trạng thái nút Play / Pause
 sremote.on('play', () => { btnTogglePlay.textContent = '⏸ Tạm dừng'; });
 sremote.on('pause', () => { btnTogglePlay.textContent = '▶ Tiếp tục'; });
+```
 
-// 4. Xử lý các nút điều hướng
+---
+
+## Bước 5: Lập Trình Nút Next, Previous & Bẫy Autoplay Policy
+
+### 1. Thuật toán Tuần Hoàn với Toán Tử Modulo (`%`)
+- Đi tới bài tiếp theo: `(currentIndex + 1) % playlist.length`.
+- Lùi về bài trước: `(currentIndex - 1 + playlist.length) % playlist.length` (cộng thêm `length` để tránh ra số âm).
+
+```javascript
 btnTogglePlay.addEventListener('click', async () => {
   await sremote.toggle();
 });
@@ -343,27 +383,113 @@ btnPrev.addEventListener('click', () => {
   const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
   loadTrack(prevIndex, true);
 });
+```
 
-// Nạp bài đầu tiên khi vào trang
+### 2. Bẫy Autoplay của Trình Duyệt:
+- Khi người dùng vừa tải trang web, trình duyệt **cấm tự động phát có âm thanh** nếu chưa có tương tác (User Gesture).
+- Vì vậy, bài hát đầu tiên ta truyền `autoPlay = false`:
+```javascript
+// Khởi tạo trang: Nạp bài đầu tiên nhưng KHÔNG tự động phát
+loadTrack(0, false);
+```
+- Khi người dùng đã chủ động bấm nút "▶ Phát" bài đầu tiên, trình duyệt đã ghi nhận hành động, và các bài chuyển tự động tiếp theo sẽ được phép tự động phát thoải mái!
+
+---
+
+## Bước 6: Toàn Bộ Mã Nguồn Hoàn Chỉnh (`app.js`)
+
+```javascript
+import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
+import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
+
+const playlist = [
+  { id: 'jfKfPfyJRdk', title: 'Tập 1: Lofi Beats to Relax / Study to', artist: 'Lofi Girl', duration: 'Live' },
+  { id: 'dQw4w9WgXcQ', title: 'Tập 2: Never Gonna Give You Up', artist: 'Rick Astley', duration: '03:32' },
+  { id: '4xDzrJKXOOY', title: 'Tập 3: Synthwave Chill Radio', artist: 'Lofi Records', duration: 'Live' }
+];
+
+let currentIndex = 0;
+let currentMountHandle = null;
+
+const currentTitleEl = document.getElementById('current-title');
+const currentArtistEl = document.getElementById('current-artist');
+const trackListEl = document.getElementById('track-list');
+const btnTogglePlay = document.getElementById('btn-toggle-play');
+const btnNext = document.getElementById('btn-next');
+const btnPrev = document.getElementById('btn-prev');
+
+function renderTracklist() {
+  trackListEl.innerHTML = '';
+  playlist.forEach((track, index) => {
+    const li = document.createElement('li');
+    li.className = `track-item ${index === currentIndex ? 'active' : ''}`;
+    li.innerHTML = `
+      <div>
+        <div class="track-item-title">${index + 1}. ${track.title}</div>
+        <div style="font-size: 12px; color: #94a3b8;">${track.artist}</div>
+      </div>
+      <div class="track-item-duration">${track.duration}</div>
+    `;
+
+    li.addEventListener('click', () => {
+      if (currentIndex !== index) {
+        loadTrack(index, true);
+      }
+    });
+
+    trackListEl.appendChild(li);
+  });
+}
+
+async function loadTrack(index, autoPlay = true) {
+  currentIndex = index;
+  const track = playlist[currentIndex];
+
+  currentTitleEl.textContent = track.title;
+  currentArtistEl.textContent = track.artist;
+  renderTracklist();
+
+  if (currentMountHandle) {
+    currentMountHandle.destroy();
+  }
+
+  currentMountHandle = await youtube.mount('#media-embed-slot', {
+    videoId: track.id,
+    playerVars: {
+      autoplay: autoPlay ? 1 : 0,
+      controls: 1
+    }
+  });
+}
+
+// Lắng nghe sự kiện kết thúc từ SRemote
+sremote.on('ended', () => {
+  const nextIndex = (currentIndex + 1) % playlist.length;
+  loadTrack(nextIndex, true);
+});
+
+sremote.on('play', () => { btnTogglePlay.textContent = '⏸ Tạm dừng'; });
+sremote.on('pause', () => { btnTogglePlay.textContent = '▶ Tiếp tục'; });
+
+btnTogglePlay.addEventListener('click', () => sremote.toggle());
+
+btnNext.addEventListener('click', () => {
+  const nextIndex = (currentIndex + 1) % playlist.length;
+  loadTrack(nextIndex, true);
+});
+
+btnPrev.addEventListener('click', () => {
+  const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+  loadTrack(prevIndex, true);
+});
+
+// Khởi chạy
 loadTrack(0, false);
 ```
 
 ---
 
-## 3. Deep Dive: Giải thích Kỹ thuật
+## 💡 Bài Tập Thử Thách Mở Rộng
 
-1. **`currentMountHandle.destroy()` trước khi mount bài mới**:  
-   Khi đổi video YouTube trong cùng một container bằng cách nạp lại thẻ iframe, nếu không gọi hàm `.destroy()` do SRemote trả về thì các trình lắng nghe sự kiện của video cũ vẫn tồn tại ngầm trong bộ nhớ (Event Listener Leak). Hàm `destroy()` sẽ gỡ sạch toàn bộ listeners và dọn dẹp DOM an toàn.
-2. **Xử lý vòng lặp danh sách tuần hoàn**:  
-   Sử dụng toán tử modulo `% playlist.length` giúp chỉ mục bài hát luôn hợp lệ:
-   - Bài cuối cùng Next ➔ quay về bài 0.
-   - Bài đầu tiên Prev ➔ nhảy về bài cuối `(index - 1 + length) % length`.
-
----
-
-## 4. Xử lý Tình huống Biên & Tối ưu UX
-
-- **Chặn Autoplay khi chuyển bài**:  
-  Sau khi người dùng đã chủ động bấm Play bài đầu tiên (đã có user-gesture), trình duyệt sẽ cho phép các bài tiếp theo tự động phát có tiếng mà không bị chặn.
-- **Tập stream trực tiếp (Livestream duration = Live)**:  
-  Các video livestream (như Lofi Girl) sẽ không bao giờ phát ra sự kiện `ended`. Bạn có thể cung cấp thêm nút bỏ qua tập livestream nếu cần.
+1. **Shuffle (Trộn bài ngẫu nhiên)**: Thêm nút 🔀 Shuffle để chọn ngẫu nhiên một bài trong danh sách thay vì chỉ số tuần tự `index + 1`.
+2. **Repeat One (Lặp lại một bài)**: Thêm nút 🔂 để khi nhận sự kiện `ended`, player sẽ tua lại từ đầu `sremote.seekTo(0)` và phát lại chính bài đó thay vì chuyển bài mới.

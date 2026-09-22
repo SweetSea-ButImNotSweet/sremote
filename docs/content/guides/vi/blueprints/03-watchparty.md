@@ -1,39 +1,41 @@
-# Blueprint 03: Phòng Xem Phim Chung (WatchParty / SyncTheater)
+# Tutorial 03: Xây dựng Rạp Chiếu Phim Trực Tuyến Đồng Bộ (WatchParty SyncTheater)
 
-Bài hướng dẫn này sẽ hướng dẫn bạn xây dựng hoàn chỉnh tính năng **Phòng xem phim chung (WatchParty)**: đồng bộ trạng thái phát (`play`), tạm dừng (`pause`) và tua (`seek`) giữa nhiều người xem theo thời gian thực, đồng thời áp dụng cơ chế **bù trừ độ lệch thời gian (Drift Compensation)** để tất cả mọi người đều xem cùng một khung hình.
+Tính năng **WatchParty (Cùng xem phim từ xa)** là một trong những trải nghiệm thú vị và thách thức nhất trong lập trình web đa phương tiện. Khi một người bấm Tạm dừng để đi vệ sinh hoặc tua lại một cảnh ấn tượng, tất cả người xem trong phòng đều phải đồng bộ theo ngay lập tức.
+
+Trong bài hướng dẫn thực chiến này, chúng ta sẽ tự tay dựng một ứng dụng WatchParty hoàn chỉnh hoạt động theo thời gian thực (Real-time) bằng **SRemote** và **BroadcastChannel API**.
 
 ---
 
-## 1. Bài toán Thực tế & Mục tiêu
+## 🎯 Mục tiêu Bạn Sẽ Đạt Được
 
-Khi xây dựng các tính năng xem phim hoặc nghe nhạc cùng bạn bè từ xa:
-- Nếu một người bấm tạm dừng (để đi lấy nước), tất cả người xem trong phòng đều phải dừng lại.
-- Nếu người chủ phòng (Host) tua tới phút 10:00, tất cả thành viên khác phải nhảy ngay tới phút 10:00.
-- **Thách thức lớn nhất**: Tránh vòng lặp phản hồi vô tận (Echo Loop). Khi A gửi lệnh Pause đến B, máy B nhận lệnh Pause rồi lại phát tiếp một tín hiệu Pause ngược lại cho A! SRemote và cờ `isBroadcasting` sẽ giải quyết triệt để vấn đề này.
+Sau bài học này, bạn sẽ nắm vững:
+1. Cách thiết lập kênh truyền thông tin đồng bộ thời gian thực giữa các tab hoặc giữa Host và Guest.
+2. **Kỹ thuật chống bẫy Vòng Lặp Vô Tận (Ping-Pong Echo Loop)**: Ngăn chặn hiện tượng sự kiện đồng bộ bị dội ngược qua lại giữa các máy.
+3. **Cơ chế Bù trừ Độ trễ & Đồng hồ Lệch (Clock Drift & Seek Sync)**: Chỉ can thiệp tua video (`seekTo`) khi độ lệch thời gian thực sự vượt ngưỡng cho phép (Threshold), tránh giật lag khung hình.
+4. Quản lý quyền: Host (Chủ phòng điều khiển) và Member (Khách xem đồng bộ).
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Alice as 👤 Alice (Host)
-    participant AppA as 💻 App Alice (SRemote)
-    participant Channel as 🌐 Kênh Sync (BroadcastChannel / WS)
-    participant AppB as 💻 App Bob (SRemote)
-    actor Bob as 👤 Bob (Khách)
+    participant Host as 👑 Chủ phòng (Host)
+    participant Channel as 📡 Kênh BroadcastChannel
+    participant Guest as 👥 Người xem (Guest)
 
-    Alice->>AppA: Bấm Tua tới 02:15 (135s)
-    AppA->>AppA: sremote.seekTo(135)
-    AppA->>Channel: Gửi gói { type: 'SEEK', time: 135, sender: 'alice' }
-    Channel->>AppB: Nhận gói { type: 'SEEK', time: 135, sender: 'alice' }
-    AppB->>AppB: Kiểm tra sender !== 'bob'
-    AppB->>AppB: sremote.seekTo(135)
-    AppB-->>Bob: Video Bob tự động nhảy tới 02:15 mượt mà!
+    Host->>Host: Bấm Tạm dừng (Pause)
+    Host->>Channel: Gửi gói tin: { type: 'PAUSE', time: 45.2 }
+    Channel->>Guest: Nhận gói tin { type: 'PAUSE', time: 45.2 }
+    Note over Guest: Bật cờ isRemoteAction = true
+    Guest->>Guest: SRemote.pause() & tua về 45.2s nếu lệch
+    Note over Guest: Tắt cờ isRemoteAction (Không gửi ngược lại)
 ```
 
 ---
 
-## 2. Mã Nguồn Đầy Đủ (Full Working Project)
+## Bước 1: Khởi Tạo Giao Diện 2 Khung Nhìn (Host & Guest)
 
-### Bước 1: Giao diện Phòng WatchParty (`index.html`)
+Để bạn dễ dàng kiểm thử ngay trên **cùng một máy tính**, chúng ta sẽ dựng một giao diện chia đôi: 1 bên giả lập **Host** và 1 bên giả lập **Guest**.
+
+Hãy tạo file `index.html`:
 
 ```html
 <!DOCTYPE html>
@@ -41,36 +43,46 @@ sequenceDiagram
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WatchParty SyncTheater - SRemote Blueprint 03</title>
+  <title>WatchParty SyncTheater - SRemote Tutorial 03</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="theater-container">
-    <div class="theater-header">
-      <h2>🎬 WatchParty SyncTheater</h2>
-      <span class="room-status" id="room-status">📡 Đang kết nối phòng...</span>
-    </div>
+  <div class="watchparty-app">
+    <header class="app-header">
+      <h1>🎬 SRemote WatchParty SyncTheater</h1>
+      <div class="room-status">
+        <span class="status-dot"></span>
+        <span id="sync-status">Phòng: #movie-night-2026 | Kênh đã kết nối</span>
+      </div>
+    </header>
 
-    <!-- Màn chiếu video -->
-    <div id="theater-screen" class="theater-screen"></div>
+    <div class="theater-grid">
+      <!-- Cột 1: Màn hình của Host -->
+      <div class="screen-card">
+        <div class="screen-badge host-badge">👑 Chủ Phòng (Host Controller)</div>
+        <div id="host-player" class="video-box"></div>
+        <div class="screen-info">
+          <span>Thời gian: <b id="host-time">00:00</b></span>
+          <span id="host-state" class="state-pill">Paused</span>
+        </div>
+      </div>
 
-    <!-- Thanh điều khiển phòng chung -->
-    <div class="controls-row">
-      <button id="btn-sync-play" class="btn btn-play">▶ Phát chung</button>
-      <button id="btn-sync-pause" class="btn btn-pause">⏸ Dừng chung</button>
-      <button id="btn-sync-seek-back" class="btn btn-seek">⏪ -10s</button>
-      <button id="btn-sync-seek-forward" class="btn btn-seek">⏩ +15s</button>
-      
-      <div class="sync-drift-box">
-        Độ lệch thời gian: <span id="drift-ms" class="drift-ms">0ms</span>
+      <!-- Cột 2: Màn hình của Guest -->
+      <div class="screen-card">
+        <div class="screen-badge guest-badge">👥 Khách Xem (Synced Guest)</div>
+        <div id="guest-player" class="video-box"></div>
+        <div class="screen-info">
+          <span>Thời gian: <b id="guest-time">00:00</b></span>
+          <span id="guest-state" class="state-pill">Syncing</span>
+        </div>
       </div>
     </div>
 
     <!-- Nhật ký đồng bộ thời gian thực -->
-    <div class="log-section">
-      <h3>Nhật ký sự kiện phòng:</h3>
-      <div id="event-log" class="event-log"></div>
+    <div class="logs-console">
+      <div class="logs-title">📡 Nhật ký đồng bộ gói tin (Real-time Sync Logs):</div>
+      <div id="log-list" class="log-list"></div>
     </div>
   </div>
 
@@ -79,249 +91,315 @@ sequenceDiagram
 </html>
 ```
 
----
-
-### Bước 2: Thiết kế Giao diện Cinema Dark (`style.css`)
+Và định kiểu bằng file `style.css`:
 
 ```css
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 body {
-  background: #0b0f19;
-  color: #f8fafc;
+  background: #090d16;
+  color: #f1f5f9;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 24px 16px;
-  display: flex;
-  justify-content: center;
+  padding: 24px;
 }
 
-.theater-container {
-  width: 100%;
-  max-width: 860px;
-  background: #131b2e;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+.watchparty-app {
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
-.theater-header {
+.app-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  background: #1e293b;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.room-status {
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+.status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: #10b981;
+  border-radius: 50%;
+  margin-right: 6px;
+  box-shadow: 0 0 10px #10b981;
 }
 
-.theater-screen {
+.theater-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.screen-card {
+  background: #111827;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.screen-badge {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.host-badge {
+  background: #8b5cf6;
+  color: #fff;
+}
+
+.guest-badge {
+  background: #0284c7;
+  color: #fff;
+}
+
+.video-box {
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #000;
 }
 
-.controls-row {
+.screen-info {
   display: flex;
-  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  padding: 14px 20px;
-  background: #0f172a;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13.5px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-  color: #fff;
-}
-
-.btn-play { background: #22c55e; }
-.btn-play:hover { background: #16a34a; }
-
-.btn-pause { background: #eab308; color: #111; }
-.btn-pause:hover { background: #ca8a04; }
-
-.btn-seek { background: #3b82f6; }
-.btn-seek:hover { background: #2563eb; }
-
-.sync-drift-box {
-  margin-left: auto;
-  font-size: 12px;
-  color: #94a3b8;
-}
-
-.drift-ms {
-  font-weight: bold;
-  color: #38bdf8;
-}
-
-.log-section {
-  padding: 16px 20px;
-}
-
-.log-section h3 {
+  padding: 12px 16px;
   font-size: 13px;
-  color: #94a3b8;
-  margin-bottom: 8px;
+  background: #0f172a;
+}
+
+.state-pill {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #334155;
+  font-size: 11px;
   text-transform: uppercase;
 }
 
-.event-log {
-  height: 120px;
-  background: #090d16;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 10px;
-  overflow-y: auto;
+.logs-console {
+  background: #030712;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   font-family: monospace;
   font-size: 12px;
-  color: #cbd5e1;
+}
+
+.logs-title {
+  color: #94a3b8;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.log-list {
+  max-height: 140px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .log-item {
-  margin-bottom: 4px;
+  color: #38bdf8;
 }
 ```
 
 ---
 
-### Bước 3: Logic Đồng bộ Thời gian thực & Chống Lặp (`app.js`)
+## Bước 2: Thiết Lập Kênh Đồng Bộ Thời Gian Thực Với `BroadcastChannel`
+
+Thay vì phải thiết lập server Node.js và WebSocket phức tạp chỉ để học nguyên lý, trình duyệt hiện đại cung cấp sẵn **`BroadcastChannel API`** cho phép các tab hoặc iframe trên cùng trình duyệt gửi nhận gói tin cho nhau với độ trễ gần như bằng 0 (Zero Latency).
+
+Tạo file `app.js` và khởi tạo kênh:
 
 ```javascript
-import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
+import { SRemoteClient } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
 import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
 
-// Tạo ID định danh ngẫu nhiên cho người dùng này
-const clientId = 'user_' + Math.random().toString(36).substring(2, 7);
-const channelName = 'watchparty_global_room_1';
+// Tạo kênh đồng bộ chung
+const syncChannel = new BroadcastChannel('watchparty_theater_room');
 
-// Sử dụng BroadcastChannel để mô phỏng đồng bộ thời gian thực (giữa các tab trình duyệt)
-// Với ứng dụng production, bạn chỉ cần thay bằng WebSocket hoặc Socket.io!
-const syncChannel = new BroadcastChannel(channelName);
-
-// Cờ chống vòng lặp (Echo Suppression Flag)
-let isProcessingRemoteCommand = false;
-
-const logEl = document.getElementById('event-log');
-const driftEl = document.getElementById('drift-ms');
-
-function addLog(msg) {
-  const time = new Date().toLocaleTimeString();
+// Hàm ghi log ra giao diện
+const logList = document.getElementById('log-list');
+function logMessage(text) {
   const div = document.createElement('div');
   div.className = 'log-item';
-  div.textContent = `[${time}] ${msg}`;
-  logEl.prepend(div);
+  div.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+  logList.prepend(div);
 }
-
-// 1. Khởi tạo player YouTube
-await youtube.mount('#theater-screen', {
-  videoId: 'dQw4w9WgXcQ',
-  playerVars: { controls: 1 }
-});
-
-document.getElementById('room-status').textContent = `📡 Phòng: ${channelName} (${clientId})`;
-addLog(`Đã tham gia phòng với tư cách: ${clientId}`);
-
-// 2. Gửi tín hiệu đồng bộ ra toàn phòng
-function sendSync(action, time = null) {
-  if (isProcessingRemoteCommand) return; // Nếu đang thực thi lệnh từ xa thì không gửi lại
-
-  const payload = {
-    action,
-    time,
-    sender: clientId,
-    sentAt: Date.now()
-  };
-
-  syncChannel.postMessage(payload);
-  addLog(`📤 Bạn đã gửi lệnh: ${action}${time !== null ? ` tại ${Math.round(time)}s` : ''}`);
-}
-
-// Bắt các nút bấm của người dùng cục bộ:
-document.getElementById('btn-sync-play').onclick = async () => {
-  await sremote.play();
-  sendSync('PLAY');
-};
-
-document.getElementById('btn-sync-pause').onclick = async () => {
-  await sremote.pause();
-  sendSync('PAUSE');
-};
-
-document.getElementById('btn-sync-seek-forward').onclick = async () => {
-  const current = (await sremote.getState()).currentTime;
-  const target = current + 15;
-  await sremote.seekTo(target);
-  sendSync('SEEK', target);
-};
-
-document.getElementById('btn-sync-seek-back').onclick = async () => {
-  const current = (await sremote.getState()).currentTime;
-  const target = Math.max(0, current - 10);
-  await sremote.seekTo(target);
-  sendSync('SEEK', target);
-};
-
-// 3. Tiếp nhận và thực thi tín hiệu từ các thành viên khác trong phòng
-syncChannel.onmessage = async (event) => {
-  const { action, time, sender, sentAt } = event.data;
-
-  // Bỏ qua nếu tin nhắn do chính mình gửi
-  if (sender === clientId) return;
-
-  // Tính toán độ trễ mạng ước tính
-  const latency = Date.now() - sentAt;
-  driftEl.textContent = `${latency}ms`;
-
-  isProcessingRemoteCommand = true;
-  addLog(`📥 Nhận từ [${sender}]: ${action}${time !== null ? ` tại ${Math.round(time)}s` : ''} (trễ ${latency}ms)`);
-
-  try {
-    if (action === 'PLAY') {
-      await sremote.play();
-    } else if (action === 'PAUSE') {
-      await sremote.pause();
-    } else if (action === 'SEEK' && typeof time === 'number') {
-      // Cơ chế bù trừ độ lệch thời gian (Drift Compensation):
-      // Nếu video đang phát trong lúc gói tin di chuyển, cộng thêm thời gian di chuyển
-      const compensatedTime = time + (latency / 1000);
-      await sremote.seekTo(compensatedTime);
-    }
-  } finally {
-    // Mở khóa cờ sau khi hoàn tất lệnh từ xa
-    setTimeout(() => {
-      isProcessingRemoteCommand = false;
-    }, 400);
-  }
-};
 ```
 
 ---
 
-## 3. Deep Dive: Giải thích Kỹ thuật
+## Bước 3: Khởi Tạo 2 Client SRemote Độc Lập Cho Host & Guest
 
-1. **Khử vòng lặp lặp lại (Echo Loop Suppression)**:  
-   Nếu không có cờ `isProcessingRemoteCommand`, khi User A gửi `PLAY`, User B nhận được và gọi `sremote.play()`. Lệnh này có thể kích hoạt event `play` trên máy B, khiến máy B lại gửi một gói tin `PLAY` trả ngược về cho A, tạo thành vòng lặp mạng làm đơ trình duyệt. Cờ này đảm bảo rằng các hành động do tín hiệu từ xa kích hoạt sẽ **không được phát ngược lại ra mạng**.
-2. **Bù trừ độ trễ mạng (Drift Compensation)**:  
-   Gói tin mạng di chuyển mất `latency` mili-giây. Thay vì tua về đúng vị trí `time` của thời điểm gửi, ta lấy `time + (latency / 1000)` để người nhận được đồng bộ chính xác tới khung hình mà người gửi đang xem ở thời điểm hiện tại.
+Chúng ta khởi tạo 2 instance riêng biệt:
+- Client của Host gắn vào `#host-player`.
+- Client của Guest gắn vào `#guest-player` (tắt tiếng `mute: 1` để không bị vang âm thanh 2 lần trên cùng 1 máy).
+
+```javascript
+let hostClient = null;
+let guestClient = null;
+
+async function initTheater() {
+  logMessage('⚡ Đang khởi tạo phòng chiếu phim...');
+
+  // 1. Mount Host Player
+  const hostHandle = await youtube.mount('#host-player', {
+    videoId: 'dQw4w9WgXcQ',
+    playerVars: { controls: 1 }
+  });
+  // Tạo client riêng cho Host
+  hostClient = new SRemoteClient({ target: hostHandle.iframe });
+
+  // 2. Mount Guest Player
+  const guestHandle = await youtube.mount('#guest-player', {
+    videoId: 'dQw4w9WgXcQ',
+    playerVars: { controls: 0 } // Guest không cần controls để tránh thao tác nhầm
+  });
+  // Tạo client riêng cho Guest
+  guestClient = new SRemoteClient({ target: guestHandle.iframe });
+
+  // Tắt tiếng Guest để tránh dội âm trên cùng 1 máy
+  await guestClient.setVolume(0);
+
+  logMessage('✅ Cả 2 màn hình đã kết nối SRemote thành công!');
+  setupSyncLogic();
+}
+```
 
 ---
 
-## 4. Xử lý Tình huống Biên & Tối ưu UX
+## Bước 4: Giải Quyết Bẫy Vòng Lặp Vô Tận (Echo Loop) & Bù Lệch Thời Gian
 
-- **Thành viên mới vào phòng giữa chừng**:  
-  Khi có thành viên mới gia nhập, Host có thể định kỳ (mỗi 10 giây) phát một gói tin `SYNC_HEARTBEAT` chứa `{ currentTime, isPlaying }`. Máy người mới sẽ tự động tua và phát khớp theo phòng mà không cần bấm thủ công.
+### 1. Bẫy Echo Loop là gì?
+Nếu Host Play ➔ gửi gói tin qua Guest ➔ Guest thực hiện Play ➔ Guest lại vô tình phát ra sự kiện `play` và gửi ngược lại Host ➔ Hai bên dội gói tin qua lại vô tận làm đơ trình duyệt!
+
+### 2. Giải pháp: Biến cờ `isRemoteAction`
+Khi Guest nhận được lệnh đồng bộ từ mạng và chuẩn bị gọi `guestClient.play()`, ta bật cờ `isRemoteAction = true`. Khi đó, sự kiện `play` nội bộ của Guest sẽ bị bỏ qua và không gửi đi đâu cả.
+
+### 3. Ngưỡng dung sai độ lệch thời gian (Drift Threshold):
+Mạng internet luôn có độ trễ 100ms - 300ms. Nếu Host ở giây 10.2s mà Guest ở giây 10.5s thì **không được gọi `seekTo`**, vì gọi tua liên tục sẽ khiến video bị khựng (Buffering). Chỉ khi độ lệch `|hostTime - guestTime| > 1.5s` ta mới thực hiện tua bù!
+
+Thêm hàm `setupSyncLogic()` vào `app.js`:
+
+```javascript
+let isRemoteAction = false;
+
+function setupSyncLogic() {
+  const hostTimeEl = document.getElementById('host-time');
+  const guestTimeEl = document.getElementById('guest-time');
+  const hostStateEl = document.getElementById('host-state');
+  const guestStateEl = document.getElementById('guest-state');
+
+  // ==========================================
+  // PHÍA HOST: Lắng nghe hành động và gửi gói tin
+  // ==========================================
+  
+  hostClient.on('play', async () => {
+    hostStateEl.textContent = 'Playing';
+    const currentTime = await hostClient.getCurrentTime();
+    logMessage(`👑 Host bấm Play tại giây ${currentTime.toFixed(1)} -> Gửi gói tin`);
+    
+    syncChannel.postMessage({
+      action: 'PLAY',
+      time: currentTime
+    });
+  });
+
+  hostClient.on('pause', async () => {
+    hostStateEl.textContent = 'Paused';
+    const currentTime = await hostClient.getCurrentTime();
+    logMessage(`👑 Host bấm Pause tại giây ${currentTime.toFixed(1)} -> Gửi gói tin`);
+
+    syncChannel.postMessage({
+      action: 'PAUSE',
+      time: currentTime
+    });
+  });
+
+  hostClient.on('seeked', async ({ currentTime }) => {
+    logMessage(`👑 Host tua video tới ${currentTime.toFixed(1)}s -> Gửi gói tin`);
+    syncChannel.postMessage({
+      action: 'SEEK',
+      time: currentTime
+    });
+  });
+
+  hostClient.on('timeupdate', ({ currentTime }) => {
+    hostTimeEl.textContent = `${currentTime.toFixed(1)}s`;
+  });
+
+  // ==========================================
+  // PHÍA GUEST: Nhận gói tin và đồng bộ video
+  // ==========================================
+
+  guestClient.on('timeupdate', ({ currentTime }) => {
+    guestTimeEl.textContent = `${currentTime.toFixed(1)}s`;
+  });
+
+  syncChannel.onmessage = async (event) => {
+    const { action, time } = event.data;
+    const currentGuestTime = await guestClient.getCurrentTime();
+    const timeDelta = Math.abs(currentGuestTime - time);
+
+    logMessage(`👥 Guest nhận lệnh: [${action}] mốc ${time.toFixed(1)}s (Lệch: ${timeDelta.toFixed(2)}s)`);
+
+    // Bật cờ chặn Echo Loop
+    isRemoteAction = true;
+
+    if (action === 'PLAY') {
+      guestStateEl.textContent = 'Playing';
+      // Nếu lệch quá 1.5 giây thì mới tua lại cho khớp
+      if (timeDelta > 1.5) {
+        await guestClient.seekTo(time);
+      }
+      await guestClient.play();
+    } 
+    else if (action === 'PAUSE') {
+      guestStateEl.textContent = 'Paused';
+      await guestClient.pause();
+      if (timeDelta > 0.5) {
+        await guestClient.seekTo(time);
+      }
+    } 
+    else if (action === 'SEEK') {
+      await guestClient.seekTo(time);
+    }
+
+    // Tắt cờ sau khi lệnh thực thi xong
+    setTimeout(() => {
+      isRemoteAction = false;
+    }, 200);
+  };
+}
+```
+
+---
+
+## Bước 5: Kiểm Thử Thực Tế
+
+Khởi chạy bằng cách gọi `initTheater()` ở cuối file `app.js`:
+
+```javascript
+initTheater();
+```
+
+Bây giờ bạn mở trang trên trình duyệt:
+1. Bấm nút **Play** trên khung hình của Host: Màn hình của Guest sẽ lập tức chạy theo.
+2. Bấm nút **Pause** hoặc **Tua đến phút 01:30** trên Host: Màn hình Guest sẽ tự động nhảy đến đúng mốc 01:30 mà không có bất kỳ hiện tượng giật vòng lặp nào!
+
+---
+
+## 💡 Bài Tập Thử Thách Mở Rộng
+
+1. **Thay thế bằng Socket.io / WebRTC DataChannel**: Thay vì `BroadcastChannel` (chỉ chạy trên cùng trình duyệt), hãy tích hợp thêm một máy chủ WebSocket để bạn bè ở hai đầu đất nước có thể xem phim cùng nhau.
+2. **Nút "Đồng bộ lại" (Resync Button)**: Tạo một nút bấm bên phía Guest để nếu Guest bị rớt mạng lag, bấm nút sẽ đọc thời gian của Host và tua thẳng tới mốc hiện tại.

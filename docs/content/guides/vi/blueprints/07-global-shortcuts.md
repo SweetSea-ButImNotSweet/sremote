@@ -1,55 +1,44 @@
-# Blueprint 07: Bộ Phím Tắt Toàn Cục & Trợ Năng (Global Keyboard Shortcuts & A11y)
+# Tutorial 07: Hệ Thống Phím Tắt Toàn Cục (Accessibility & Global Keyboard Shortcuts)
 
-Bài hướng dẫn này sẽ hướng dẫn bạn xây dựng hệ thống **phím tắt bàn phím toàn cầu (Global Keyboard Shortcuts)** điều khiển mọi player nhúng trên website mà **người dùng không cần phải click chuột focus vào bên trong thẻ iframe**.
+Khi nhúng video từ YouTube, Vimeo hoặc Spotify vào trang web qua thẻ `<iframe>`, một vấn đề gây ức chế hàng đầu cho người dùng là:
+- Khi người dùng đang duyệt web hoặc đọc bình luận ở trang cha, việc bấm phím **Space**, **K**, **J**, **L** hay **M** hoàn toàn **không có tác dụng** vì con trỏ bàn phím (Focus) không nằm bên trong thẻ iframe!
+- Muốn bấm phím tắt, người dùng bắt buộc phải rê chuột nhấp đúng vào khung hình video để trao focus cho iframe.
+
+Trong bài hướng dẫn này, chúng ta sẽ xây dựng một **Hệ thống Phím Tắt Toàn Cục chuẩn Desktop / VLC**:
+- Điều khiển video mọi lúc mọi nơi trên trang cha mà không cần focus vào iframe.
+- Bắt trọn bộ phím quen thuộc: `Space/K` (Play/Pause), `J/L` (Tua lùi/tới 10s), `M` (Mute), `ArrowUp/Down` (Tăng giảm volume).
+- **Kỹ thuật Input Guard (Bộ Lọc Chống Nuốt Phím)**: Đảm bảo khi người dùng đang gõ văn bản trong `<input>` hay `<textarea>` tìm kiếm, phím Space sẽ gõ ra dấu cách chứ không làm dừng video!
+- Hiển thị thông báo OSD (On-Screen Display Toast) phản hồi trực quan khi bấm phím.
 
 ---
 
-## 1. Bài toán Thực tế & Mục tiêu
+## 🎯 Mục tiêu Bạn Sẽ Đạt Được
 
-Khi người dùng xem video nhúng iframe trên web:
-- Nếu con trỏ chuột đang ở ngoài trang chính, bấm phím `Space` sẽ làm trình duyệt cuộn trang xuống đáy thay vì dừng video!
-- Để bấm phím `J` / `K` / `L` như trên YouTube, người dùng buộc phải nhấp chuột vào bên trong video.
-- Nhưng khi đã click vào iframe, các phím tắt khác của trang web cha lại bị vô hiệu hóa!
-- **Giải pháp**: Lắng nghe sự kiện `keydown` ở cấp độ `window` của trang web cha, xử lý thông minh để tránh bắt nhầm khi người dùng đang gõ văn bản (`<input>`, `<textarea>`) và chuyển tiếp lệnh trực tiếp tới SRemote.
+Sau bài học này, bạn sẽ nắm vững:
+1. Cơ chế bắt sự kiện bàn phím toàn cục trên đối tượng `window` với `keydown`.
+2. **Kỹ thuật Input Guard với `document.activeElement`**: Phân biệt ngữ cảnh người dùng đang gõ phím hay đang điều khiển media.
+3. Kỹ thuật tua thời gian tương đối (`relative seek`: $currentTime \pm 10s$) kết hợp đọc thời gian thực từ SRemote.
+4. Xây dựng thông báo OSD mờ ảo xuất hiện giữa màn hình tương tự như YouTube Player chính chủ.
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor User as 👤 Người dùng
-    participant Window as 🌐 Window (Trang Web Cha)
-    participant SDK as ⚡ SRemote Client
-    participant Iframe as 📺 Embedded Iframe Video
-
-    User->>Window: Bấm phím Space
-    Window->>Window: Kiểm tra document.activeElement có phải input?
-    Note over Window: Không phải input -> e.preventDefault()
-    Window->>SDK: sremote.toggle()
-    SDK->>Iframe: Dừng / Phát video ngay lập tức!
-    
-    User->>Window: Bấm phím 'L'
-    Window->>SDK: sremote.seek(10) (Tua tiến 10 giây)
-    SDK->>Iframe: Tua tiến 10 giây
+flowchart TD
+    A["Người dùng bấm phím bất kỳ (keydown)"] --> B{"Input Guard Check:<br>Có đang gõ trong input/textarea?"}
+    B -- "Đang gõ văn bản" --> C["Bỏ qua (Giữ nguyên hành vi gõ chữ)"]
+    B -- "Không gõ" --> D{"Phím được bấm là gì?"}
+    D -- "Space / K" --> E["sremote.toggle() & Show OSD"]
+    D -- "J / L" --> F["sremote.seekTo(cur ± 10s) & Show OSD"]
+    D -- "M" --> G["Toggle Mute & Show OSD"]
+    D -- "Arrow Up/Down" --> H["Tăng/Giảm âm lượng 5%"]
 ```
 
 ---
 
-## 2. Bảng Phím Tắt Chuẩn Cần Cài Đặt
+## Bước 1: Khởi Tạo Giao Diện & Khung Nhập Liệu Thử Nghiệm
 
-| Phím tắt | Tác vụ | Lệnh SRemote tương ứng |
-| :--- | :--- | :--- |
-| **`Space`** hoặc **`K`** | Đảo trạng thái Play / Pause | `sremote.toggle()` |
-| **`J`** hoặc **`←`** | Tua lùi 10 giây | `sremote.seek(-10)` |
-| **`L`** hoặc **`→`** | Tua tiến 10 giây | `sremote.seek(10)` |
-| **`M`** | Tắt / Bật tiếng (Mute) | `sremote.toggleMuted()` |
-| **`↑` (ArrowUp)** | Tăng âm lượng thêm 10% | `sremote.volume(current + 0.1)` |
-| **`↓` (ArrowDown)** | Giảm âm lượng 10% | `sremote.volume(current - 0.1)` |
-| **`0` .. `9`** | Nhảy tới 0% .. 90% thời lượng | `sremote.seekTo((key / 10) * duration)` |
-
----
-
-## 3. Mã Nguồn Đầy Đủ (Full Working Project)
-
-### Bước 1: Giao diện Trang (`index.html`)
+Hãy tạo file `index.html`. Chúng ta thiết kế:
+1. Khung hiển thị video có nhúng thông báo OSD (Toast overlay) ở giữa.
+2. Bảng chú thích danh sách các phím tắt hỗ trợ.
+3. Một ô `<textarea>` bình luận để kiểm thử tính năng **Input Guard**.
 
 ```html
 <!DOCTYPE html>
@@ -57,35 +46,43 @@ sequenceDiagram
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Global Keyboard Shortcuts - SRemote Blueprint 07</title>
+  <title>Global Keyboard Shortcuts - SRemote Tutorial 07</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <div class="shortcut-app">
-    <h2>⌨️ Phím Tắt Toàn Cục & Trợ Năng (A11y)</h2>
-    <p class="subtitle">Bấm bất kỳ phím nào dưới đây mà không cần click chuột vào video!</p>
+    <header class="app-header">
+      <h1>⌨️ Phím Tắt Toàn Cục (VLC & YouTube Style)</h1>
+      <p>Điều khiển video từ bất kỳ đâu trên trang mà không cần click vào iframe!</p>
+    </header>
 
-    <div id="video-frame" class="video-frame"></div>
-
-    <!-- Bảng tra cứu phím tắt trực quan trên màn hình -->
-    <div class="shortcut-guide">
-      <div class="shortcut-pill"><kbd>Space</kbd> hoặc <kbd>K</kbd> <span>Play / Pause</span></div>
-      <div class="shortcut-pill"><kbd>J</kbd> / <kbd>←</kbd> <span>Tua lùi 10s</span></div>
-      <div class="shortcut-pill"><kbd>L</kbd> / <kbd>→</kbd> <span>Tua tiến 10s</span></div>
-      <div class="shortcut-pill"><kbd>M</kbd> <span>Bật / Tắt tiếng</span></div>
-      <div class="shortcut-pill"><kbd>↑</kbd> / <kbd>↓</kbd> <span>Tăng / Giảm Volume</span></div>
-      <div class="shortcut-pill"><kbd>0</kbd> .. <kbd>9</kbd> <span>Nhảy tới % thời lượng</span></div>
+    <!-- Khung video kèm màn hình OSD -->
+    <div class="video-stage">
+      <div id="video-container" class="video-container"></div>
+      <!-- OSD Toast thông báo khi bấm phím -->
+      <div id="osd-toast" class="osd-toast hidden">▶ Play</div>
     </div>
 
-    <!-- Ô thử nghiệm gõ văn bản -->
-    <div class="input-test-box">
-      <label>Thử gõ vào đây (Phím tắt sẽ tự động nhường chỗ cho bạn gõ chữ):</label>
-      <input type="text" placeholder="Nhập văn bản thử nghiệm...">
-    </div>
+    <div class="meta-section">
+      <!-- Bảng danh sách phím tắt -->
+      <div class="cheatsheet-card">
+        <h3>Danh mục phím tắt hỗ trợ:</h3>
+        <ul class="shortcut-list">
+          <li><kbd>Space</kbd> hoặc <kbd>K</kbd>: Phát / Tạm dừng</li>
+          <li><kbd>J</kbd> / <kbd>L</kbd>: Tua lùi 10s / Tua tới 10s</li>
+          <li><kbd>M</kbd>: Bật / Tắt tiếng (Mute toggle)</li>
+          <li><kbd>↑</kbd> / <kbd>↓</kbd>: Tăng / Giảm 10% âm lượng</li>
+        </ul>
+      </div>
 
-    <!-- Thông báo nổi Toast khi bấm phím -->
-    <div id="shortcut-toast" class="shortcut-toast"></div>
+      <!-- Khung thử nghiệm Input Guard -->
+      <div class="input-guard-test">
+        <h3>Kiểm thử Input Guard:</h3>
+        <p class="hint-text">Nhấp vào ô bên dưới và gõ phím Space. Bạn sẽ thấy dấu cách gõ bình thường chứ không làm dừng video!</p>
+        <textarea id="comment-box" placeholder="Gõ thử vào đây để test phím Space..."></textarea>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="app.js"></script>
@@ -93,224 +90,292 @@ sequenceDiagram
 </html>
 ```
 
----
-
-### Bước 2: Thiết kế Giao diện Phím Tắt (`style.css`)
+Và định dạng bằng `style.css`:
 
 ```css
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 body {
-  background: #0f172a;
-  color: #f8fafc;
+  background: #090d16;
+  color: #f1f5f9;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 30px 16px;
+  padding: 30px 20px;
   display: flex;
   justify-content: center;
 }
 
 .shortcut-app {
+  max-width: 800px;
   width: 100%;
-  max-width: 760px;
-  background: #1e293b;
-  border-radius: 14px;
-  padding: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  position: relative;
 }
 
-h2 { font-size: 20px; margin-bottom: 6px; }
-.subtitle { font-size: 13.5px; color: #94a3b8; margin-bottom: 18px; }
+.app-header {
+  margin-bottom: 20px;
+}
 
-.video-frame {
+.app-header h1 {
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+
+.app-header p {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.video-stage {
+  position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #000;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
-  margin-bottom: 20px;
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
+  margin-bottom: 24px;
 }
 
-.shortcut-guide {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-  margin-bottom: 20px;
+.video-container {
+  width: 100%;
+  height: 100%;
 }
 
-.shortcut-pill {
-  background: #0f172a;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 12.5px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-kbd {
-  background: #334155;
+/* OSD (On-Screen Display) Toast */
+.osd-toast {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(6px);
   color: #38bdf8;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
+  padding: 12px 24px;
+  border-radius: 30px;
+  font-size: 16px;
   font-weight: bold;
-  font-size: 11.5px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 10;
 }
 
-.input-test-box {
+.osd-toast.hidden {
+  opacity: 0;
+  transform: translate(-50%, -40%);
+}
+
+.meta-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.cheatsheet-card, .input-guard-test {
   background: #111827;
-  padding: 14px;
-  border-radius: 8px;
-  font-size: 13px;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+h3 {
+  font-size: 15px;
+  color: #e2e8f0;
+  margin-bottom: 12px;
+}
+
+.shortcut-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13.5px;
   color: #94a3b8;
 }
 
-.input-test-box input {
-  width: 100%;
-  margin-top: 8px;
-  padding: 8px 12px;
-  border-radius: 6px;
+kbd {
   background: #1e293b;
-  border: 1px solid #334155;
-  color: #fff;
-  outline: none;
-}
-
-.shortcut-toast {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(2, 132, 199, 0.9);
-  color: #fff;
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-size: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: #38bdf8;
+  font-family: monospace;
   font-weight: bold;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s, transform 0.2s;
-  transform: translateY(-8px);
 }
 
-.shortcut-toast.show {
-  opacity: 1;
-  transform: translateY(0);
+.hint-text {
+  font-size: 12.5px;
+  color: #94a3b8;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+textarea {
+  width: 100%;
+  height: 80px;
+  background: #090d16;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #f1f5f9;
+  padding: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  resize: none;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: #38bdf8;
 }
 ```
 
 ---
 
-### Bước 3: Logic Bắt Phím Toàn Cục & Bảo Vệ Input (`app.js`)
+## Bước 2: Nạp Video & Xây Dựng Hàm Hiển Thị OSD Toast
+
+Mở file `app.js`. Đầu tiên, kết nối player và viết hàm tiện ích `showOSD(text)` để hiển thị nhãn nổi giữa màn hình và tự động biến mất sau 1 giây:
 
 ```javascript
 import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
 import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
 
-const toastEl = document.getElementById('shortcut-toast');
-let toastTimer = null;
+const osdToast = document.getElementById('osd-toast');
+let osdTimeout = null;
 
-function showToast(msg) {
-  clearTimeout(toastTimer);
-  toastEl.textContent = msg;
-  toastEl.classList.add('show');
-  toastTimer = setTimeout(() => {
-    toastEl.classList.remove('show');
-  }, 1200);
+// Hàm hiển thị OSD Toast nổi giữa màn hình
+function showOSD(text) {
+  osdToast.textContent = text;
+  osdToast.classList.remove('hidden');
+
+  if (osdTimeout) {
+    clearTimeout(osdTimeout);
+  }
+
+  osdTimeout = setTimeout(() => {
+    osdToast.classList.add('hidden');
+  }, 1000);
 }
 
-// 1. Mount YouTube player
-await youtube.mount('#video-frame', {
-  videoId: 'dQw4w9WgXcQ',
-  playerVars: { controls: 1 }
-});
-
-// 2. Lắng nghe phím bấm trên toàn trang
-window.addEventListener('keydown', async (e) => {
-  // QUAN TRỌNG: Không can thiệp nếu người dùng đang nhập liệu vào form/input!
-  const activeEl = document.activeElement;
-  const isInputActive = activeEl && (
-    activeEl.tagName === 'INPUT' ||
-    activeEl.tagName === 'TEXTAREA' ||
-    activeEl.isContentEditable
-  );
-
-  if (isInputActive) return;
-
-  // Bắt phím số từ 0 đến 9: Nhảy tới 0% .. 90% thời lượng
-  if (e.code.startsWith('Digit')) {
-    const digit = parseInt(e.code.replace('Digit', ''), 10);
-    if (!isNaN(digit)) {
-      e.preventDefault();
-      const state = await sremote.getState();
-      const targetTime = (digit / 10) * (state.duration || 100);
-      await sremote.seekTo(targetTime);
-      showToast(`⏩ Nhảy tới ${digit * 10}% (${Math.round(targetTime)}s)`);
-      return;
-    }
-  }
-
-  switch (e.code) {
-    case 'Space':
-    case 'KeyK':
-      e.preventDefault(); // Ngăn trình duyệt cuộn trang
-      await sremote.toggle();
-      const isPaused = (await sremote.getState()).paused;
-      showToast(isPaused ? '⏸ Tạm dừng' : '▶ Đang phát');
-      break;
-
-    case 'KeyJ':
-    case 'ArrowLeft':
-      e.preventDefault();
-      await sremote.seek(-10);
-      showToast('⏪ Tua lùi 10 giây');
-      break;
-
-    case 'KeyL':
-    case 'ArrowRight':
-      e.preventDefault();
-      await sremote.seek(10);
-      showToast('⏩ Tua tiến 10 giây');
-      break;
-
-    case 'KeyM':
-      e.preventDefault();
-      await sremote.toggleMuted();
-      const isMuted = (await sremote.getState()).muted;
-      showToast(isMuted ? '🔇 Đã tắt tiếng' : '🔊 Đã bật tiếng');
-      break;
-
-    case 'ArrowUp':
-      e.preventDefault();
-      const curVolUp = (await sremote.getState()).volume || 1.0;
-      const newVolUp = Math.min(1.0, curVolUp + 0.1);
-      await sremote.volume(newVolUp);
-      showToast(`🔊 Âm lượng: ${Math.round(newVolUp * 100)}%`);
-      break;
-
-    case 'ArrowDown':
-      e.preventDefault();
-      const curVolDown = (await sremote.getState()).volume || 1.0;
-      const newVolDown = Math.max(0.0, curVolDown - 0.1);
-      await sremote.volume(newVolDown);
-      showToast(`🔉 Âm lượng: ${Math.round(newVolDown * 100)}%`);
-      break;
-  }
-});
+// Khởi tạo Player
+async function initPlayer() {
+  await youtube.mount('#video-container', {
+    videoId: 'M7lc1UVf-VE',
+    playerVars: { controls: 1, autoplay: 0 }
+  });
+  console.log('✅ Player sẵn sàng nhận phím tắt toàn cục!');
+  setupGlobalShortcuts();
+}
 ```
 
 ---
 
-## 4. Deep Dive: Chống Xung Đột Nhập Liệu (Input Guard)
+## Bước 3: Lập Trình Input Guard (Bộ Lọc Chống Nuốt Phím)
 
-Đoạn mã:
+> [!IMPORTANT]
+> Đây là lỗi cực kỳ phổ biến: Nếu bạn chỉ viết `window.addEventListener('keydown', e => { if (e.code === 'Space') sremote.toggle(); })`, mỗi khi người dùng gõ phím cách trong ô bình luận, video sẽ bị dừng lại liên tục!
+
+Chúng ta kiểm tra xem con trỏ bàn phím có đang nằm trong bất kỳ ô nhập liệu nào hay không:
+
 ```javascript
-const isInputActive = activeEl && (
-  activeEl.tagName === 'INPUT' ||
-  activeEl.tagName === 'TEXTAREA' ||
-  activeEl.isContentEditable
-);
-if (isInputActive) return;
+function isUserTyping() {
+  const activeEl = document.activeElement;
+  if (!activeEl) return false;
+
+  const tag = activeEl.tagName.toLowerCase();
+  const isInputOrTextarea = tag === 'input' || tag === 'textarea';
+  const isContentEditable = activeEl.isContentEditable;
+
+  return isInputOrTextarea || isContentEditable;
+}
 ```
-Là nguyên tắc số 1 khi xây dựng phím tắt toàn cục. Nếu thiếu đoạn kiểm tra này, khi người dùng gõ phím `Space` vào ô tìm kiếm hoặc bình luận bên dưới, video sẽ bị dừng lại liên tục, tạo ra trải nghiệm người dùng cực kỳ tồi tệ.
+
+---
+
+## Bước 4: Lập Trình Bộ Phím Tắt Chuẩn VLC / YouTube
+
+Bây giờ ta bắt sự kiện trên `window`:
+- Nếu `isUserTyping()` trả về `true` ➔ Không làm gì cả.
+- Ngược lại ➔ Xử lý từng phím bấm tương ứng:
+
+```javascript
+function setupGlobalShortcuts() {
+  window.addEventListener('keydown', async (e) => {
+    // 1. Kiểm tra Input Guard
+    if (isUserTyping()) {
+      return; // Người dùng đang gõ chữ, bỏ qua phím tắt media!
+    }
+
+    const key = e.key.toLowerCase();
+
+    // 2. Phím Space hoặc K: Play / Pause
+    if (e.code === 'Space' || key === 'k') {
+      e.preventDefault(); // Ngăn trình duyệt cuộn trang xuống dưới khi bấm Space
+      await sremote.toggle();
+      const state = await sremote.getState();
+      showOSD(state === 'playing' ? '▶ Play' : '⏸ Pause');
+    }
+
+    // 3. Phím J: Tua lùi 10 giây
+    else if (key === 'j') {
+      e.preventDefault();
+      const cur = await sremote.getCurrentTime();
+      const target = Math.max(0, cur - 10);
+      await sremote.seekTo(target);
+      showOSD(`⏪ -10s (${Math.floor(target)}s)`);
+    }
+
+    // 4. Phím L: Tua tới 10 giây
+    else if (key === 'l') {
+      e.preventDefault();
+      const cur = await sremote.getCurrentTime();
+      const dur = await sremote.getDuration();
+      const target = Math.min(dur || 9999, cur + 10);
+      await sremote.seekTo(target);
+      showOSD(`⏩ +10s (${Math.floor(target)}s)`);
+    }
+
+    // 5. Phím M: Bật / Tắt tiếng (Mute)
+    else if (key === 'm') {
+      e.preventDefault();
+      const curVol = await sremote.getVolume();
+      if (curVol > 0) {
+        window._lastVol = curVol;
+        await sremote.setVolume(0);
+        showOSD('🔇 Mute');
+      } else {
+        const restore = window._lastVol || 0.8;
+        await sremote.setVolume(restore);
+        showOSD(`🔊 Âm lượng: ${Math.round(restore * 100)}%`);
+      }
+    }
+
+    // 6. Phím Mũi tên Lên / Xuống: Tăng giảm 10% âm lượng
+    else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const curVol = await sremote.getVolume();
+      const nextVol = Math.min(1, curVol + 0.1);
+      await sremote.setVolume(nextVol);
+      showOSD(`🔊 Âm lượng: ${Math.round(nextVol * 100)}%`);
+    }
+    else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const curVol = await sremote.getVolume();
+      const nextVol = Math.max(0, curVol - 0.1);
+      await sremote.setVolume(nextVol);
+      showOSD(`🔉 Âm lượng: ${Math.round(nextVol * 100)}%`);
+    }
+  });
+}
+
+// Khởi chạy
+initPlayer();
+```
+
+---
+
+## 💡 Bài Tập Thử Thách Mở Rộng
+
+1. **Phím tắt Tốc độ phát (`<` và `>` / `Shift + ,` và `Shift + .`)**: Bổ sung phím tắt tăng giảm tốc độ phát từ 0.5x, 1x, 1.5x đến 2x bằng lệnh `sremote.setPlaybackRate()`.
+2. **Phím số `0` đến `9`**: Bấm số `1` tua đến 10% thời lượng video, phím `5` tua đến 50%, phím `0` tua về đầu video (chuẩn YouTube).
