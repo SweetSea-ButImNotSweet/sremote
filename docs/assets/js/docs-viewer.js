@@ -424,6 +424,22 @@ function interceptContentLinks(container, currentDocPath) {
       return;
     }
 
+    // Handle SVG xlink:href or href with hash inside Mermaid
+    const xlinkHref = a.getAttribute('xlink:href');
+    if (xlinkHref && xlinkHref.startsWith('#')) {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        const hash = xlinkHref;
+        if (history.pushState) {
+          history.pushState(null, null, hash);
+        } else {
+          location.hash = hash;
+        }
+        scrollToHashElement(hash);
+      });
+      return;
+    }
+
     // Handle ?path=... query parameter links or .md file links
     const isDocQuery = href.startsWith('?path=') || href.includes('?path=');
     const isMdFile = href.endsWith('.md') || href.includes('.md#') || href.includes('.md?');

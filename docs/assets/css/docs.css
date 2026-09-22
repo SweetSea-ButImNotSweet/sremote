@@ -223,3 +223,273 @@
 .matrix-table td.no::before   { content: "❌"; }
 .matrix-table td.na::before   { content: "➖"; }
 
+/* ==========================================================================
+   Mermaid Clickable Interactive Nodes & Scroll Targets
+   ========================================================================== */
+.mermaid a {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.mermaid a:hover text,
+.mermaid a:hover span {
+  fill: #38bdf8 !important;
+  color: #38bdf8 !important;
+  font-weight: bold;
+}
+
+.mermaid a:hover rect,
+.mermaid a:hover circle,
+.mermaid a:hover polygon,
+.mermaid a:hover path {
+  stroke: #38bdf8 !important;
+  stroke-width: 2.5px !important;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
+  transition: all 0.2s ease;
+}
+
+/* Highlight target section on anchor jump */
+.highlight-target {
+  animation: targetPulse 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes targetPulse {
+  0% {
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.8), 0 0 20px rgba(56, 189, 248, 0.4);
+    background-color: rgba(56, 189, 248, 0.08);
+  }
+  70% {
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4), 0 0 10px rgba(56, 189, 248, 0.2);
+    background-color: rgba(56, 189, 248, 0.04);
+  }
+  100% {
+    box-shadow: none;
+    background-color: transparent;
+  }
+}
+
+/* ==========================================================================
+   Interactive Stepper Wizard UI
+   ========================================================================== */
+.sremote-wizard {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0 32px;
+  backdrop-filter: blur(8px);
+}
+
+.wizard-stepper-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.wizard-step-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted, #94a3b8);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.wizard-step-btn:hover {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+}
+
+.wizard-step-btn.completed {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+.wizard-step-btn.active {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
+}
+
+.wizard-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.wizard-step-btn.completed .wizard-step-num {
+  background: #22c55e;
+  color: #fff;
+}
+
+.wizard-step-btn.active .wizard-step-num {
+  background: #fff;
+  color: #0284c7;
+}
+
+/* Dynamic Mermaid Diagram Box inside Wizard */
+.wizard-mermaid-card {
+  background: #0b1120;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.wizard-mermaid-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #38bdf8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+/* Step Content Panes */
+.wizard-step-pane {
+  display: none;
+}
+
+.wizard-step-pane.active {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Wizard Navigation Footer */
+.wizard-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.wizard-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.wizard-nav-prev {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+}
+
+.wizard-nav-prev:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.wizard-nav-prev:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.wizard-nav-next {
+  background: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.3);
+}
+
+.wizard-nav-next:hover {
+  background: #0369a1;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.5);
+}
+
+/* Branch Selector Grid at Step 4 */
+.wizard-branch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.wizard-branch-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.wizard-branch-card:hover {
+  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.4);
+  transform: translateY(-2px);
+}
+
+.wizard-branch-card.active {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: #38bdf8;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+}
+
+.wizard-branch-title {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.wizard-branch-card.active .wizard-branch-title {
+  color: #38bdf8;
+}
+
+.wizard-branch-desc {
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+  line-height: 1.4;
+}
+
+.wizard-branch-content-pane {
+  display: none;
+}
+
+.wizard-branch-content-pane.active {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+

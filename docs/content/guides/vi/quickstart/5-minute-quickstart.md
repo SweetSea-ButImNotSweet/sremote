@@ -1,115 +1,139 @@
-# Bắt đầu trong 5 phút với SRemote
+# Bắt đầu nhanh với SRemote trong 5 phút
 
-Chào mừng bạn đến với **SRemote**! Hướng dẫn này sẽ giúp bạn nhúng và điều khiển một trình phát media (video/audio) bên thứ ba trên trang web của bạn chỉ trong vòng chưa đầy 5 phút.
+Chào mừng bạn đến với **SRemote**! Hướng dẫn này sẽ giúp bạn hiểu rõ cách thức tích hợp SRemote vào ứng dụng web của mình một cách nhanh chóng và chuẩn xác nhất.
+
+> [!TIP]
+> **Bạn thích trải nghiệm hướng dẫn từng bước trực quan?**  
+> Hãy mở **[🧙 Trình Hướng Dẫn Tích Hợp Tương Tác (Interactive Wizard)](wizard.html)** với thanh tiến trình Stepper, sơ đồ Mermaid tự động định vị bước và 11 bài toán ứng dụng thực tế có sẵn code mẫu để chạy ngay!
 
 ---
 
-## 1. Cài đặt các gói cần thiết
+## 1. Bản chất & Cơ chế Tích hợp
 
-SRemote cung cấp hai gói thư viện phối hợp hoàn hảo cho frontend hiện đại:
-- **`@sremote/sdk`**: Universal Client SDK để điều khiển, quản lý sự kiện và kết nối media.
-- **`@sremote/ready2use`**: Bộ sưu tập 22 trình phát định sẵn (YouTube, Vimeo, Spotify, SoundCloud, Twitch, TikTok...).
+SRemote được thiết kế nhằm thống nhất việc điều khiển mọi loại media player trên web:
 
-Cài đặt bằng trình quản lý gói ưa thích của bạn:
+```mermaid
+flowchart LR
+    subgraph WebApp["Ứng dụng Web của bạn"]
+        App["Giao diện Web / Frontend"]
+        SDK["@sremote/sdk (Unified Controller)"]
+        App --> SDK
+    end
 
-```bash
-# npm
-npm install @sremote/sdk @sremote/ready2use
+    subgraph Players["Trình phát Media mục tiêu"]
+        R2U["22 Nền tảng (YouTube, Spotify...)"]
+        DOM["HTML5 &lt;video&gt; / &lt;audio&gt; cùng trang"]
+        Cross["Iframe Cross-Origin (Bilibili, Kick...)"]
+    end
 
-# pnpm
-pnpm add @sremote/sdk @sremote/ready2use
-
-# yarn
-yarn add @sremote/sdk @sremote/ready2use
+    SDK -->|"@sremote/ready2use"| R2U
+    SDK -->|"Chế độ dom-direct"| DOM
+    SDK -.->|"Userscript MessageBridge"| Cross
 ```
 
 ---
 
-## 2. Nhúng và điều khiển trình phát đầu tiên
+## 2. Quy trình Tích hợp 3 Bước Chuẩn
 
-Hãy thử nhúng một video YouTube vào trang web và điều khiển nó thông qua `sremote`:
+### Bước 1: Chuẩn bị Container hoặc Thẻ Iframe
 
-### HTML:
-Tạo một container chứa player trong file HTML của bạn:
+#### A. Nền tảng phổ biến (YouTube, Vimeo, Spotify... qua `@sremote/ready2use`):
+Chỉ cần tạo một thẻ `<div>` trống làm vùng chứa (container):
 ```html
 <div id="player-box" style="width: 100%; max-width: 720px; aspect-ratio: 16/9;"></div>
-
-<div style="margin-top: 12px; display: flex; gap: 8px;">
-  <button id="btn-play">▶ Phát</button>
-  <button id="btn-pause">⏸ Tạm dừng</button>
-  <button id="btn-seek">⏩ Tua 10s</button>
-</div>
 ```
 
-### JavaScript:
+#### B. Thẻ Iframe Cross-Origin không có SDK (Bilibili, Kick, Rumble...):
+Thẻ iframe bắt buộc phải được cấp quyền qua thuộc tính `allow`:
+```html
+<iframe
+  id="video-frame"
+  src="https://player.bilibili.com/player.html?bvid=BV1xx411c7mD"
+  allow="autoplay; encrypted-media; fullscreen"
+  style="width: 100%; height: 450px; border: none;">
+</iframe>
+```
+
+---
+
+### Bước 2: Cài đặt Gói Thư viện
+
+Tùy vào kịch bản sử dụng:
+
+```bash
+# 1. Nhúng các nền tảng phổ biến (Khuyên dùng cho 90% nhu cầu)
+npm install @sremote/sdk @sremote/ready2use
+
+# 2. Hoặc chỉ điều khiển media nội bộ / phối hợp Userscript
+npm install @sremote/sdk
+```
+
+Hoặc sử dụng trực tiếp qua CDN (ES Modules):
+```html
+<script type="module">
+  import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
+  import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
+</script>
+```
+
+---
+
+### Bước 3: Khởi tạo & Điều khiển
+
+#### Triển khai với `@sremote/ready2use` (YouTube):
 ```javascript
 import { sremote } from '@sremote/sdk';
 import { youtube } from '@sremote/ready2use';
 
-// 1. Gắn YouTube Player vào container bằng mount()
-// (Hàm mount tự động đăng ký adapter vào sremote và kích hoạt player)
+// 1. Gắn player vào container
 await youtube.mount('#player-box', {
   videoId: 'dQw4w9WgXcQ',
-  playerVars: {
-    autoplay: 0,
-    controls: 1
-  }
+  playerVars: { controls: 1, autoplay: 0 }
 });
 
-// 2. Điều khiển tự nhiên và trực tiếp qua sremote:
-document.getElementById('btn-play').onclick = async () => {
-  await sremote.play();
-};
+// 2. Điều khiển thông qua API chuẩn HTML5 Media
+await sremote.play();
+await sremote.seek(15);      // Tua tiến 15 giây
+await sremote.volume(0.8);   // Âm lượng 80%
 
-document.getElementById('btn-pause').onclick = async () => {
-  await sremote.pause();
-};
-
-document.getElementById('btn-seek').onclick = async () => {
-  await sremote.seek(10); // Tua tiến 10 giây so với thời điểm hiện tại
-};
-
-// 3. Lắng nghe tiến độ phát theo thời gian thực
+// 3. Lắng nghe tiến độ phát
 sremote.on('timeupdate', ({ state }) => {
   console.log(`⏱️ Thời gian: ${Math.round(state.currentTime)}s / ${Math.round(state.duration)}s`);
 });
 ```
 
-> [!TIP]
-> **Điều khiển Scoped độc lập theo từng Component (Tùy chọn):**  
-> Nếu bạn xây dựng ứng dụng với React / Vue và muốn giữ bộ điều khiển cục bộ chỉ trong phạm vi một component riêng biệt mà không gọi qua `sremote` toàn cục, hàm `mount()` cũng trả về sẵn một bộ điều khiển scoped:
-> ```javascript
-> const { remote, destroy } = await youtube.mount('#player-box', { videoId: '...' });
-> await remote.play();
-> await remote.seekTo(30);
-> ```
+#### Quản lý Lifecycle an toàn trong React:
+```jsx
+import React, { useEffect, useRef } from 'react';
+import { youtube } from '@sremote/ready2use';
 
----
+export function VideoPlayer({ videoId }) {
+  const containerRef = useRef(null);
 
-## 3. Điều gì vừa diễn ra ngầm phía dưới?
+  useEffect(() => {
+    let instance = null;
 
-Khi bạn gọi `youtube.mount('#player-box', { videoId: ... })`:
-1. **Tải SDK tự động**: `@sremote/ready2use` tự động nạp SDK chính thức của nền tảng (ví dụ `iframe_api` của YouTube).
-2. **Khởi tạo DOM**: Thẻ `<iframe>` được tạo ra với đầy đủ các thuộc tính bảo mật và cấp quyền cần thiết (`allow="autoplay; encrypted-media..."`).
-3. **Chuẩn hóa Adapter**: Một Adapter theo **chuẩn HTML5 Media Element** được tạo ra để đồng nhất mọi phương thức phát (`play()`, `pause()`, `seek()`, `seekTo()`, `volume()`).
-4. **Tự động liên kết vào `sremote`**: Adapter tự động đăng ký vào client `sremote`. Vì vậy, bạn chỉ cần gọi `sremote.play()` hay `sremote.seek()` là lệnh sẽ được thực thi ngay lập tức.
+    async function init() {
+      // mount() trả về đối tượng { remote, destroy }
+      instance = await youtube.mount(containerRef.current, { videoId });
+    }
 
----
+    init();
 
-## 4. Dọn dẹp tài nguyên (Cleanup)
+    // Dọn dẹp thẻ iframe và listeners khi component unmount
+    return () => {
+      if (instance) instance.destroy();
+    };
+  }, [videoId]);
 
-Khi người dùng chuyển trang hoặc component trong React / Vue / Svelte bị unmount, chỉ cần gọi hàm `destroy`:
-
-```javascript
-const yt = await youtube.mount('#player-box', { videoId: '...' });
-
-// Khi component unmount:
-yt.destroy();
+  return <div ref={containerRef} style={{ width: '100%', aspectRatio: '16/9' }} />;
+}
 ```
-Hàm `destroy()` sẽ tự động hủy player, gỡ bỏ các event listener ngầm và dọn dẹp sạch sẽ DOM container.
 
 ---
 
-## ⏭️ Bước tiếp theo
-- Khám phá [Kiến trúc tổng quan của SRemote](../concepts/architecture-overview.md) để hiểu rõ cách hoạt động của hệ sinh thái.
-- Hoặc đi thẳng vào [Use-case 1: Nhúng và điều khiển 22 nền tảng](../use-cases/01-popular-players-ready2use.md).
+## 3. Các Bước Tiếp Theo
+
+- **Trải nghiệm từng bước với 11 ứng dụng thực tế**: Mở ngay [🧙 Interactive Integration Wizard](wizard.html) để xem các bài toán: WatchParty, LMS Quiz, Pomodoro Lo-fi, Multi-Streamer, Phím tắt bàn phím, Playlist queue...
+- **Tra cứu nền tảng**: Xem [Ma trận tương thích 22 dịch vụ](../advanced/compatibility-matrix.md).
+- **Tra cứu hàm & sự kiện**: Mở [Tài liệu API Reference](../../api.html).
