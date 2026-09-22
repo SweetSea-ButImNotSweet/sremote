@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lecture Timestamped Notes - SRemote Tutorial 08</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <nav style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0f172a; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+    <a href="../../index.html" style="color:#38bdf8; text-decoration:none; font-weight:600;">⬅️ Về Demo Hub</a>
+    <span style="color:#94a3b8; font-weight:500;">Live Demo: 08-timestamp-notes</span>
+    <a href="../../../docs/index.html?path=content/guides/vi/blueprints/08-timestamp-notes.md" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">📖 Xem Tutorial</a>
+  </nav>
+
+  <div class="app-layout">
+    <!-- CỘT BÊN TRÁI: Video bài giảng -->
+    <div class="video-column">
+      <header class="lecture-header">
+        <h2>📚 CS50: Giới Thiệu Thuật Toán Sắp Xếp</h2>
+        <span class="lecture-meta">Đại học Harvard • Bài giảng trực tuyến</span>
+      </header>
+      <div id="video-embed-slot" class="video-embed-slot"></div>
+    </div>
+
+    <!-- CỘT BÊN PHẢI: Sổ ghi chép thông minh -->
+    <div class="notes-column">
+      <div class="notes-header">
+        <h3>📝 Sổ Ghi Chép Bài Học</h3>
+        <span id="current-clock" class="clock-badge">Mốc hiện tại: 00:00</span>
+      </div>
+
+      <!-- Khung nhập ghi chú nhanh -->
+      <div class="note-input-box">
+        <textarea id="note-input" placeholder="Gõ ghi chú tại đây... (Bấm Ctrl + Enter để lưu nhanh)"></textarea>
+        <button id="btn-add-note" class="btn-primary">Ghi mốc này</button>
+      </div>
+
+      <!-- Danh sách các ghi chú đã tạo -->
+      <div class="notes-list-wrapper">
+        <div class="list-title">Ghi chú đã lưu (Nhấp để tua):</div>
+        <ul id="notes-list" class="notes-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Playlist & Podcast Queue - SRemote Tutorial 02</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <nav style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0f172a; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+    <a href="../../index.html" style="color:#38bdf8; text-decoration:none; font-weight:600;">⬅️ Về Demo Hub</a>
+    <span style="color:#94a3b8; font-weight:500;">Live Demo: 02-playlist-queue</span>
+    <a href="../../../docs/index.html?path=content/guides/vi/blueprints/02-playlist-queue.md" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">📖 Xem Tutorial</a>
+  </nav>
+
+  <div class="podcast-app">
+    <!-- 1. Vùng hiển thị player & Metadata bài đang phát -->
+    <div class="player-header">
+      <div id="media-embed-slot" class="media-embed-slot"></div>
+      <div class="now-playing-info">
+        <span class="badge">Đang phát</span>
+        <h2 id="current-title" class="track-title">Đang nạp dữ liệu...</h2>
+        <p id="current-artist" class="track-artist">---</p>
+      </div>
+    </div>
+
+    <!-- 2. Thanh điều hướng nhanh -->
+    <div class="nav-controls">
+      <button id="btn-prev" class="ctrl-btn">⏮ Trước</button>
+      <button id="btn-toggle-play" class="ctrl-btn btn-primary">▶ Phát</button>
+      <button id="btn-next" class="ctrl-btn">Sau ⏭</button>
+    </div>
+
+    <!-- 3. Danh sách bài hát trong Queue -->
+    <div class="playlist-section">
+      <h3 class="section-title">Danh sách bài hát</h3>
+      <ul id="track-list" class="track-list"></ul>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

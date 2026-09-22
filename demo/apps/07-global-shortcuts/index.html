@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Keyboard Shortcuts - SRemote Tutorial 07</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <nav style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0f172a; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+    <a href="../../index.html" style="color:#38bdf8; text-decoration:none; font-weight:600;">⬅️ Về Demo Hub</a>
+    <span style="color:#94a3b8; font-weight:500;">Live Demo: 07-global-shortcuts</span>
+    <a href="../../../docs/index.html?path=content/guides/vi/blueprints/07-global-shortcuts.md" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">📖 Xem Tutorial</a>
+  </nav>
+
+  <div class="shortcut-app">
+    <header class="app-header">
+      <h1>⌨️ Phím Tắt Toàn Cục (VLC & YouTube Style)</h1>
+      <p>Điều khiển video từ bất kỳ đâu trên trang mà không cần click vào iframe!</p>
+    </header>
+
+    <!-- Khung video kèm màn hình OSD -->
+    <div class="video-stage">
+      <div id="video-container" class="video-container"></div>
+      <!-- OSD Toast thông báo khi bấm phím -->
+      <div id="osd-toast" class="osd-toast hidden">▶ Play</div>
+    </div>
+
+    <div class="meta-section">
+      <!-- Bảng danh sách phím tắt -->
+      <div class="cheatsheet-card">
+        <h3>Danh mục phím tắt hỗ trợ:</h3>
+        <ul class="shortcut-list">
+          <li><kbd>Space</kbd> hoặc <kbd>K</kbd>: Phát / Tạm dừng</li>
+          <li><kbd>J</kbd> / <kbd>L</kbd>: Tua lùi 10s / Tua tới 10s</li>
+          <li><kbd>M</kbd>: Bật / Tắt tiếng (Mute toggle)</li>
+          <li><kbd>↑</kbd> / <kbd>↓</kbd>: Tăng / Giảm 10% âm lượng</li>
+        </ul>
+      </div>
+
+      <!-- Khung thử nghiệm Input Guard -->
+      <div class="input-guard-test">
+        <h3>Kiểm thử Input Guard:</h3>
+        <p class="hint-text">Nhấp vào ô bên dưới và gõ phím Space. Bạn sẽ thấy dấu cách gõ bình thường chứ không làm dừng video!</p>
+        <textarea id="comment-box" placeholder="Gõ thử vào đây để test phím Space..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

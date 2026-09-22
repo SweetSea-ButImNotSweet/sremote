@@ -1,0 +1,140 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #090d16;
+  color: #f1f5f9;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.gym-app {
+  max-width: 480px;
+  width: 100%;
+}
+
+.phase-card {
+  background: #1e293b;
+  border-radius: 20px;
+  padding: 36px 20px;
+  text-align: center;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  margin-bottom: 24px;
+  transition: all 0.3s;
+}
+
+/* Đổi màu đỏ rực khi vào hiệp tập cường độ cao */
+.phase-card.work-phase {
+  background: linear-gradient(180deg, #991b1b, #450a0a);
+  border-color: #ef4444;
+}
+
+/* Đổi màu xanh lá khi vào hiệp nghỉ ngơi */
+.phase-card.rest-phase {
+  background: linear-gradient(180deg, #065f46, #022c22);
+  border-color: #10b981;
+}
+
+.round-indicator {
+  font-size: 14px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.phase-name {
+  font-size: 32px;
+  font-weight: 900;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.timer-countdown {
+  font-size: 88px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.controls-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.btn {
+  flex: 1;
+  padding: 14px;
+  border-radius: 10px;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-start {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+.btn-start:hover {
+  background: #0284c7;
+  color: #fff;
+}
+
+.btn-pause {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+.btn-pause:hover {
+  background: #475569;
+}
+
+.music-section {
+  background: #111827;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.music-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  color: #94a3b8;
+  margin-bottom: 12px;
+}
+
+.ducking-badge {
+  background: #1e293b;
+  color: #38bdf8;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.ducking-badge.active {
+  background: #f59e0b;
+  color: #000;
+  font-weight: 700;
+}
+
+.music-slot {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}

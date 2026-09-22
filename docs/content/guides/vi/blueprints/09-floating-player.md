@@ -10,6 +10,9 @@ Trải nghiệm chuẩn mực trong thiết kế web hiện đại là **Sticky 
 
 Trong tutorial này, chúng ta sẽ xây dựng tính năng này bằng **IntersectionObserver API** và **SRemote**.
 
+> [!TIP]
+> **Trải nghiệm ngay bản demo hoạt động thực tế**: Mở [🚀 Live Demo: 09-floating-player](../../../../demo/apps/09-floating-player/index.html) để tương tác trực tiếp trên trình duyệt.
+
 ---
 
 ## 🎯 Mục tiêu Bạn Sẽ Đạt Được

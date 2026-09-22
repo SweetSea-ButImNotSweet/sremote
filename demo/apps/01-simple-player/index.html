@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Media Player - SRemote Tutorial 01</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <nav style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0f172a; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+    <a href="../../index.html" style="color:#38bdf8; text-decoration:none; font-weight:600;">⬅️ Về Demo Hub</a>
+    <span style="color:#94a3b8; font-weight:500;">Live Demo: 01-simple-player</span>
+    <a href="../../../docs/index.html?path=content/guides/vi/blueprints/01-simple-player.md" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">📖 Xem Tutorial</a>
+  </nav>
+
+  <div class="player-wrapper">
+    <!-- 1. Vùng hiển thị video nhúng -->
+    <div id="video-container" class="video-container"></div>
+
+    <!-- 2. Thanh điều khiển tự chế -->
+    <div class="controls-bar">
+      <!-- Nút Play/Pause -->
+      <button id="btn-play" class="btn-ctrl" aria-label="Play/Pause">▶</button>
+
+      <!-- Đồng hồ thời gian -->
+      <span id="time-display" class="time-text">00:00 / 00:00</span>
+
+      <!-- Thanh Scrubber tua video -->
+      <input type="range" id="seek-bar" class="slider seek-slider" min="0" max="100" value="0" step="0.1">
+
+      <!-- Nút Mute & Thanh âm lượng -->
+      <button id="btn-mute" class="btn-ctrl" aria-label="Mute/Unmute">🔊</button>
+      <input type="range" id="volume-bar" class="slider volume-slider" min="0" max="1" value="1" step="0.05">
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

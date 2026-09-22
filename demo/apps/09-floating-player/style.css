@@ -1,0 +1,137 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #090d16;
+  color: #cbd5e1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.7;
+  padding: 40px 20px;
+}
+
+.article-container {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.category {
+  color: #38bdf8;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.article-header h1 {
+  font-size: 32px;
+  color: #f8fafc;
+  margin: 8px 0;
+  line-height: 1.3;
+}
+
+.meta {
+  color: #64748b;
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+.paragraph {
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+/* 1. KHUNG NEO GIỮ CHỖ (Tránh giật trang khi video bay ra) */
+.video-anchor {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 32px 0;
+  background: #020617;
+  border-radius: 12px;
+}
+
+/* 2. KHUNG CHỨA VIDEO CHÍNH */
+.player-box {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.media-embed-slot {
+  width: 100%;
+  height: 100%;
+}
+
+.mini-controls {
+  display: none; /* Mặc định ẩn khi ở vị trí bình thường */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.8), transparent);
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
+/* 3. TRẠNG THÁI FLOATING PIP KHI CUỘN XUỐNG DƯỚI */
+.player-box.floating-pip {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 320px;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 20px 30px rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  animation: slideUp 0.3s ease-out;
+}
+
+.player-box.floating-pip .mini-controls {
+  display: flex; /* Hiện thanh điều khiển khi đang nổi */
+}
+
+.mini-btn {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.mini-title {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.close-btn:hover {
+  background: #ef4444;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dummy-content-box {
+  margin-top: 40px;
+  background: #1e293b;
+  padding: 24px;
+  border-radius: 12px;
+}
+
+.extra-scroll-space {
+  height: 800px;
+}

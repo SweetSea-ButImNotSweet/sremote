@@ -8,6 +8,9 @@ Trong các nền tảng học trực tuyến (E-Learning / LMS như Coursera, Ud
 
 Trong bài hướng dẫn này, chúng ta sẽ tự tay lập trình tính năng này từng bước bằng **SRemote**.
 
+> [!TIP]
+> **Trải nghiệm ngay bản demo hoạt động thực tế**: Mở [🚀 Live Demo: 04-edtech-quiz](../../../../demo/apps/04-edtech-quiz/index.html) để tương tác trực tiếp trên trình duyệt.
+
 ---
 
 ## 🎯 Mục tiêu Bạn Sẽ Đạt Được

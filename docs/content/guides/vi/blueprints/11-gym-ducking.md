@@ -7,6 +7,9 @@ Trong các ứng dụng phòng tập thể hình thông minh (Smart Gym App) hay
 
 Trong tutorial này, chúng ta sẽ xây dựng ứng dụng đếm giờ HIIT chuyên nghiệp này bằng **Web Audio API** và **SRemote**.
 
+> [!TIP]
+> **Trải nghiệm ngay bản demo hoạt động thực tế**: Mở [🚀 Live Demo: 11-gym-ducking](../../../../demo/apps/11-gym-ducking/index.html) để tương tác trực tiếp trên trình duyệt.
+
 ---
 
 ## 🎯 Mục tiêu Bạn Sẽ Đạt Được

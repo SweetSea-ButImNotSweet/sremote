@@ -8,6 +8,9 @@ Trong tutorial này, chúng ta sẽ xây dựng một ứng dụng Pomodoro Lo-f
 - Đếm ngược 25 phút làm việc đồng bộ với luồng nhạc Lo-fi Girl.
 - **Thuật toán Giảm Âm Lượng Mượt Mà (Volume Ramping / Fade-out Ducking)**: Trong 5 giây cuối cùng trước khi hết giờ, âm lượng nhạc sẽ tự động hạ dần đều từ 100% về 0% một cách êm ái trước khi tiếng chuông êm dịu vang lên.
 
+> [!TIP]
+> **Trải nghiệm ngay bản demo hoạt động thực tế**: Mở [🚀 Live Demo: 05-pomodoro-lofi](../../../../demo/apps/05-pomodoro-lofi/index.html) để tương tác trực tiếp trên trình duyệt.
+
 ---
 
 ## 🎯 Mục tiêu Bạn Sẽ Đạt Được

@@ -4,6 +4,9 @@ Trong các ứng dụng nghe nhạc và podcast hiện đại (như Spotify, App
 
 Trong bài hướng dẫn này, chúng ta sẽ xây dựng tính năng đó từ con số 0 với **SRemote**.
 
+> [!TIP]
+> **Trải nghiệm ngay bản demo hoạt động thực tế**: Mở [🚀 Live Demo: 02-playlist-queue](../../../../demo/apps/02-playlist-queue/index.html) để tương tác trực tiếp trên trình duyệt.
+
 ---
 
 ## 🎯 Mục tiêu Bạn Sẽ Đạt Được

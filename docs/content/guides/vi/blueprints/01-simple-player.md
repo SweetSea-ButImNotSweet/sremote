@@ -2,6 +2,9 @@
 
 Chào mừng bạn đến với bài hướng dẫn thực hành đầu tiên! Trong bài học này, chúng ta sẽ không dùng bộ điều khiển mặc định của YouTube hay trình duyệt, mà sẽ **tự tay xây dựng một giao diện Custom Media Player hoàn chỉnh** bằng HTML/CSS và JavaScript thuần, kết nối và điều khiển mượt mà thông qua **SRemote**.
 
+> [!TIP]
+> **Trải nghiệm ngay bản demo hoạt động thực tế**: Mở [🚀 Live Demo: 01-simple-player](../../../../demo/apps/01-simple-player/index.html) để tương tác trực tiếp trên trình duyệt.
+
 ---
 
 ## 🎯 Mục tiêu Bạn Sẽ Đạt Được

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pomodoro Lo-fi Audio Ducking - SRemote Tutorial 05</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <nav style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0f172a; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+    <a href="../../index.html" style="color:#38bdf8; text-decoration:none; font-weight:600;">⬅️ Về Demo Hub</a>
+    <span style="color:#94a3b8; font-weight:500;">Live Demo: 05-pomodoro-lofi</span>
+    <a href="../../../docs/index.html?path=content/guides/vi/blueprints/05-pomodoro-lofi.md" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">📖 Xem Tutorial</a>
+  </nav>
+
+  <div class="pomodoro-card">
+    <div class="mode-badge" id="mode-badge">🎯 Chế độ Tập trung</div>
+    
+    <!-- Đồng hồ đếm ngược lớn -->
+    <div class="timer-display" id="timer-display">25:00</div>
+
+    <!-- Nút điều khiển -->
+    <div class="btn-group">
+      <button id="btn-start" class="btn btn-primary">Bắt đầu</button>
+      <button id="btn-pause" class="btn btn-secondary">Tạm dừng</button>
+      <button id="btn-reset" class="btn btn-secondary">Đặt lại</button>
+    </div>
+
+    <!-- Khung nhạc Lo-fi nhúng -->
+    <div class="lofi-container">
+      <div class="lofi-header">
+        <span>🎵 Nhạc nền: Lofi Girl Radio</span>
+        <span id="volume-indicator" class="volume-tag">Âm lượng: 100%</span>
+      </div>
+      <div id="lofi-player-slot" class="player-slot"></div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -8,6 +8,9 @@ Trong các buổi đào tạo nội bộ của doanh nghiệp hoặc khóa học
 
 Trong bài hướng dẫn này, chúng ta sẽ xây dựng một **Audio-Driven Slide Deck** hoàn chỉnh bằng **SRemote**.
 
+> [!TIP]
+> **Trải nghiệm ngay bản demo hoạt động thực tế**: Mở [🚀 Live Demo: 10-audio-slide](../../../../demo/apps/10-audio-slide/index.html) để tương tác trực tiếp trên trình duyệt.
+
 ---
 
 ## 🎯 Mục tiêu Bạn Sẽ Đạt Được

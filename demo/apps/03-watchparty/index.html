@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WatchParty SyncTheater - SRemote Tutorial 03</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <nav style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0f172a; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+    <a href="../../index.html" style="color:#38bdf8; text-decoration:none; font-weight:600;">⬅️ Về Demo Hub</a>
+    <span style="color:#94a3b8; font-weight:500;">Live Demo: 03-watchparty</span>
+    <a href="../../../docs/index.html?path=content/guides/vi/blueprints/03-watchparty.md" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">📖 Xem Tutorial</a>
+  </nav>
+
+  <div class="watchparty-app">
+    <header class="app-header">
+      <h1>🎬 SRemote WatchParty SyncTheater</h1>
+      <div class="room-status">
+        <span class="status-dot"></span>
+        <span id="sync-status">Phòng: #movie-night-2026 | Kênh đã kết nối</span>
+      </div>
+    </header>
+
+    <div class="theater-grid">
+      <!-- Cột 1: Màn hình của Host -->
+      <div class="screen-card">
+        <div class="screen-badge host-badge">👑 Chủ Phòng (Host Controller)</div>
+        <div id="host-player" class="video-box"></div>
+        <div class="screen-info">
+          <span>Thời gian: <b id="host-time">00:00</b></span>
+          <span id="host-state" class="state-pill">Paused</span>
+        </div>
+      </div>
+
+      <!-- Cột 2: Màn hình của Guest -->
+      <div class="screen-card">
+        <div class="screen-badge guest-badge">👥 Khách Xem (Synced Guest)</div>
+        <div id="guest-player" class="video-box"></div>
+        <div class="screen-info">
+          <span>Thời gian: <b id="guest-time">00:00</b></span>
+          <span id="guest-state" class="state-pill">Syncing</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nhật ký đồng bộ thời gian thực -->
+    <div class="logs-console">
+      <div class="logs-title">📡 Nhật ký đồng bộ gói tin (Real-time Sync Logs):</div>
+      <div id="log-list" class="log-list"></div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

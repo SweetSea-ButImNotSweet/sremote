@@ -7,6 +7,9 @@ Khi xem các video bài giảng kỹ thuật dài 2 - 3 tiếng trên YouTube, s
 
 Trong bài hướng dẫn này, chúng ta sẽ xây dựng ứng dụng ghi chú bài giảng thông minh này từ A đến Z với **SRemote**.
 
+> [!TIP]
+> **Trải nghiệm ngay bản demo hoạt động thực tế**: Mở [🚀 Live Demo: 08-timestamp-notes](../../../../demo/apps/08-timestamp-notes/index.html) để tương tác trực tiếp trên trình duyệt.
+
 ---
 
 ## 🎯 Mục tiêu Bạn Sẽ Đạt Được

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sticky Floating Mini-Player - SRemote Tutorial 09</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <nav style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0f172a; border-bottom:1px solid rgba(255,255,255,0.08); font-size:13px; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+    <a href="../../index.html" style="color:#38bdf8; text-decoration:none; font-weight:600;">⬅️ Về Demo Hub</a>
+    <span style="color:#94a3b8; font-weight:500;">Live Demo: 09-floating-player</span>
+    <a href="../../../docs/index.html?path=content/guides/vi/blueprints/09-floating-player.md" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">📖 Xem Tutorial</a>
+  </nav>
+
+  <article class="article-container">
+    <header class="article-header">
+      <span class="category">Công Nghệ & AI</span>
+      <h1>Kỷ Nguyên Đa Phương Tiện Web: Cách Thức Tối Ưu Trải Nghiệm Người Dùng</h1>
+      <p class="meta">Đăng ngày 22/09/2026 • 8 phút đọc</p>
+    </header>
+
+    <p class="paragraph">
+      Trải nghiệm video trên trình duyệt đã trải qua một chặng đường dài từ thời kỳ Flash Player cho đến HTML5 Media Source Extensions và các giao thức đồng bộ thời gian thực hiện đại. Ngày nay, người dùng đòi hỏi sự liền mạch tuyệt đối khi duyệt qua các nội dung bài viết dài...
+    </p>
+
+    <!-- Khung Neo Giữ Chỗ (Placeholder Sentinel) -->
+    <div id="video-anchor" class="video-anchor">
+      <!-- Thẻ chứa Video thực tế -->
+      <div id="pip-player-box" class="player-box">
+        <div id="media-embed-slot" class="media-embed-slot"></div>
+        <!-- Thanh điều khiển thu nhỏ khi ở chế độ Floating -->
+        <div class="mini-controls">
+          <button id="btn-mini-toggle" class="mini-btn">⏸</button>
+          <span class="mini-title">Đang phát nổi PiP</span>
+          <button id="btn-mini-close" class="mini-btn close-btn" title="Đóng & Tạm dừng">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="paragraph">
+      Khi một đoạn video phỏng vấn hoặc bài giảng minh họa nằm ở giữa bài báo, nếu người dùng muốn vừa theo dõi bình luận hoặc tài liệu tham khảo bên dưới, việc bị che khuất tầm nhìn video là một rào cản lớn...
+    </p>
+
+    <p class="paragraph">
+      Giải pháp Picture-in-Picture tự động (Floating Sticky Widget) thông qua IntersectionObserver giúp theo dõi tỷ lệ hiển thị của phần tử trên khung nhìn mà không gây hao tốn tài nguyên CPU như các hàm lắng nghe sự kiện window.onscroll cũ kỹ...
+    </p>
+
+    <div class="dummy-content-box">
+      <h3>Nội Dung Thảo Luận Chi Tiết</h3>
+      <p>Cuộn xuống tiếp để kiểm tra trải nghiệm Video bay xuống góc phải màn hình nhé! 👇</p>
+      <div class="extra-scroll-space"></div>
+    </div>
+  </article>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -3,615 +3,586 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SRemote Demo - Developer Test Harness</title>
-  <meta name="description" content="Developer test harness for SRemote userscript cross-frame media controller">
+  <title>SRemote Demo Showcase - Live Interactive Demos & Sandbox</title>
+  <meta name="description" content="Khám phá các bản demo tương tác thực tế từ SRemote: SDKless Sandbox 6-slot và 11 ứng dụng thực chiến từ A-Z.">
   <link rel="stylesheet" href="../assets/css/header.css">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="../style.css">
   <script src="../assets/js/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #090d16;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .showcase-container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+      width: 100%;
+    }
+    .showcase-header {
+      margin-bottom: 32px;
+      text-align: center;
+    }
+    .showcase-badge {
+      display: inline-block;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+    .showcase-title {
+      font-size: 32px;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 10px;
+      letter-spacing: -0.5px;
+    }
+    .showcase-subtitle {
+      font-size: 15px;
+      color: #94a3b8;
+      max-width: 680px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Featured Banner: SDKless Sandbox */
+    .featured-banner {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.6);
+      position: relative;
+      overflow: hidden;
+    }
+    .featured-banner::before {
+      content: '';
+      position: absolute;
+      top: 0; right: 0; width: 260px; height: 100%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.12), transparent 70%);
+      pointer-events: none;
+    }
+    .featured-info {
+      max-width: 680px;
+    }
+    .featured-tag {
+      font-size: 11px;
+      color: #38bdf8;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .featured-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 8px;
+    }
+    .featured-desc {
+      font-size: 14px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+    .btn-launch-sandbox {
+      background: #0284c7;
+      color: #fff;
+      border: 1px solid #38bdf8;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      text-decoration: none;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+    }
+    .btn-launch-sandbox:hover {
+      background: #0369a1;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.6);
+    }
+
+    /* Section Header */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 12px;
+    }
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-count {
+      font-size: 12px;
+      background: #1e293b;
+      color: #38bdf8;
+      padding: 3px 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* 11 Apps Grid */
+    .apps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+    .app-card {
+      background: #111827;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+    .app-card:hover {
+      border-color: rgba(56, 189, 248, 0.5);
+      background: #151f33;
+      transform: translateY(-3px);
+      box-shadow: 0 16px 24px -8px rgba(0, 0, 0, 0.6);
+    }
+    .app-card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .app-icon {
+      font-size: 26px;
+      width: 46px;
+      height: 46px;
+      background: #1e293b;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+    }
+    .app-meta {
+      flex: 1;
+    }
+    .app-num {
+      font-size: 11px;
+      color: #38bdf8;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .app-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-top: 2px;
+      line-height: 1.35;
+    }
+    .app-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 18px;
+      flex: 1;
+    }
+    .app-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .app-tag {
+      background: #1e293b;
+      color: #cbd5e1;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .app-actions {
+      display: flex;
+      gap: 8px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .btn-action-primary {
+      flex: 1.3;
+      background: #0284c7;
+      color: #fff;
+      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-action-primary:hover {
+      background: #0369a1;
+    }
+    .btn-action-docs {
+      flex: 1;
+      background: #1e293b;
+      color: #94a3b8;
+      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    .btn-action-docs:hover {
+      background: #334155;
+      color: #f1f5f9;
+    }
+    @media (max-width: 768px) {
+      .featured-banner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .apps-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-  <!-- Shared Header Component -->
-  <sremote-header active="demo"></sremote-header>
 
-  <!-- Main Content -->
-  <main class="main-container">
-    <!-- Global Toolbar -->
-    <header class="global-toolbar" aria-label="Global Controls">
-      <div class="toolbar-section">
-        <span class="toolbar-label" data-i18n="toolbar.exclusive_mode">Độc quyền (Exclusive):</span>
-        <div class="exclusive-btn-group" id="exclusive-btn-group" role="radiogroup" aria-label="Exclusive Mode Selection">
-          <button type="button" class="btn btn-sm btn-exclusive active" data-mode="null" data-i18n="toolbar.exclusive_off">Tắt</button>
-          <button type="button" class="btn btn-sm btn-exclusive" data-mode="auto" data-i18n="toolbar.exclusive_auto">Auto</button>
-          <button type="button" class="btn btn-sm btn-exclusive" data-mode="slot_1">1</button>
-          <button type="button" class="btn btn-sm btn-exclusive" data-mode="slot_2">2</button>
-          <button type="button" class="btn btn-sm btn-exclusive" data-mode="slot_3">3</button>
-          <button type="button" class="btn btn-sm btn-exclusive" data-mode="slot_4">4</button>
-          <button type="button" class="btn btn-sm btn-exclusive" data-mode="slot_5">5</button>
-          <button type="button" class="btn btn-sm btn-exclusive" data-mode="slot_6">6</button>
-        </div>
-      </div>
+  <!-- Shared Header -->
+  <sremote-header active="demo" base-path="../"></sremote-header>
 
-      <div class="toolbar-section toolbar-actions">
-        <button type="button" class="btn btn-sm btn-action" id="global-play-all" data-i18n="toolbar.play_all">Phát tất cả</button>
-        <button type="button" class="btn btn-sm btn-action" id="global-pause-all" data-i18n="toolbar.pause_all">Dừng tất cả</button>
-        <button type="button" class="btn btn-sm btn-action" id="global-mute-all" data-i18n="toolbar.mute_all">Tắt tiếng tất cả</button>
-        <button type="button" class="btn btn-sm btn-action" id="global-unmute-all" data-i18n="toolbar.unmute_all">Bật tiếng tất cả</button>
-      </div>
-
-      <div class="toolbar-section toolbar-filter">
-        <label for="slot-filter-select" class="toolbar-label" data-i18n="toolbar.filter_view">Hiển thị:</label>
-        <select id="slot-filter-select" class="select-input select-filter">
-          <option value="all" data-i18n="toolbar.view_all" selected>Tất cả 6 Slots</option>
-          <option value="active" data-i18n="toolbar.view_active">Chỉ Slot đang chạy</option>
-          <option value="1-3" data-i18n="toolbar.view_1_3">Slot 1-3</option>
-          <option value="4-6" data-i18n="toolbar.view_4_6">Slot 4-6</option>
-        </select>
-      </div>
+  <main class="showcase-container">
+    <!-- Showcase Header -->
+    <header class="showcase-header">
+      <span class="showcase-badge">Live Interactive Showcase</span>
+      <h1 class="showcase-title">Trung Tâm Trải Nghiệm SRemote</h1>
+      <p class="showcase-subtitle">
+        Khám phá sức mạnh điều khiển media đa nền tảng thông qua môi trường Sandbox 6-Slot và 11 ứng dụng thực tế chạy trực tiếp trên trình duyệt.
+      </p>
     </header>
 
-    <div class="slots-grid" id="slots-grid">
-      <!-- Slot 1 -->
-      <section class="slot-panel" id="slot-panel-1" aria-labelledby="slot-heading-1">
-        <div class="slot-header">
-          <h2 class="slot-title" id="slot-heading-1" data-i18n="slot.title" data-i18n-params='{"number":1}'>Slot 1</h2>
-          <span class="slot-badge badge-idle" id="badge-1" data-i18n="badge.idle">Chưa nạp</span>
-        </div>
+    <!-- Featured Banner: SDKless Sandbox -->
+    <section class="featured-banner">
+      <div class="featured-info">
+        <div class="featured-tag">🔥 Developer Multi-Frame Environment</div>
+        <h2 class="featured-title">SDKless Sandbox (6-Slot Userscript Harness)</h2>
+        <p class="featured-desc">
+          Bàn kiểm thử độc lập 6 slot iframe: Thử nghiệm nạp bất kỳ liên kết video bên thứ 3 nào (kể cả những bên không hề tích hợp SDK) và điều khiển tập trung thông qua SRemote Userscript & MessageBridge.
+        </p>
+      </div>
+      <a href="sdkless-sandbox/index.html" class="btn-launch-sandbox">
+        <span>⚡ Mở SDKless Sandbox</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </section>
 
-        <form class="slot-url-row" id="form-1" onsubmit="return false;">
-          <label for="url-input-1" class="visually-hidden" data-i18n="slot.url_label" data-i18n-params='{"number":1}'>URL iframe Slot 1</label>
-          <input
-            type="url"
-            id="url-input-1"
-            class="url-input"
-            data-i18n-placeholder="slot.url_placeholder"
-            placeholder="Nhập URL iframe..."
-            value="../docs/demo-frames/sample-player.html"
-            autocomplete="off"
-            spellcheck="false"
-          >
-          <button type="button" class="btn btn-primary" id="load-btn-1" data-i18n="slot.btn_load">Load</button>
-        </form>
-
-        <div class="iframe-container" id="iframe-container-1">
-          <div class="iframe-placeholder" id="placeholder-1" data-i18n="slot.placeholder_slot1">Chưa tải iframe. Nhấn "Load" để nạp.</div>
-        </div>
-
-        <!-- Slot Controls Group -->
-        <div class="slot-controls">
-          <!-- Seek / Progress Slider Row -->
-          <div class="seek-row">
-            <label for="seek-range-1" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
-            <input type="range" id="seek-range-1" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
-            <span class="slider-val time-val" id="time-val-1">0:00 / 0:00</span>
-          </div>
-
-          <!-- Action Control Buttons -->
-          <div class="controls-row" id="controls-1">
-            <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-1" data-i18n="controls.play" disabled>▶ Play</button>
-            <button type="button" class="btn btn-ctrl" id="seek-back-btn-1" data-i18n="controls.seek_back" disabled>-10s</button>
-            <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-1" data-i18n="controls.seek_fwd" disabled>+10s</button>
-            <button type="button" class="btn btn-ctrl" id="mute-btn-1" data-i18n="controls.mute" disabled>Mute</button>
-            <button type="button" class="btn btn-ctrl" id="pip-btn-1" data-i18n="controls.pip" disabled>PiP</button>
-            <button type="button" class="btn btn-ctrl" id="fs-btn-1" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
-          </div>
-
-          <!-- Volume & Playback Rate Row -->
-          <div class="sliders-row">
-            <div class="slider-group vol-group">
-              <label for="vol-range-1" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
-              <input type="range" id="vol-range-1" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
-              <span class="slider-val" id="vol-val-1">100%</span>
-            </div>
-
-            <div class="slider-group rate-group">
-              <label for="rate-select-1" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
-              <select id="rate-select-1" class="select-input" disabled>
-                <option value="0.5">0.5x</option>
-                <option value="0.75">0.75x</option>
-                <option value="1" selected>1.0x</option>
-                <option value="1.25">1.25x</option>
-                <option value="1.5">1.5x</option>
-                <option value="2">2.0x</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="status-panel" id="status-panel-1" aria-live="polite">
-          <div class="status-row">
-            <span class="status-label" data-i18n="status.connection_label">Kết nối:</span>
-            <span class="status-text" id="conn-state-1">Chờ nạp iframe</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label" data-i18n="status.media_label">Media:</span>
-            <span class="status-text" id="media-state-1">--</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Slot 2 -->
-      <section class="slot-panel" id="slot-panel-2" aria-labelledby="slot-heading-2">
-        <div class="slot-header">
-          <h2 class="slot-title" id="slot-heading-2" data-i18n="slot.title" data-i18n-params='{"number":2}'>Slot 2</h2>
-          <span class="slot-badge badge-idle" id="badge-2" data-i18n="badge.idle">Chưa nạp</span>
-        </div>
-
-        <form class="slot-url-row" id="form-2" onsubmit="return false;">
-          <label for="url-input-2" class="visually-hidden" data-i18n="slot.url_label" data-i18n-params='{"number":2}'>URL iframe Slot 2</label>
-          <input
-            type="url"
-            id="url-input-2"
-            class="url-input"
-            data-i18n-placeholder="slot.url_placeholder"
-            placeholder="Nhập URL iframe..."
-            value=""
-            autocomplete="off"
-            spellcheck="false"
-          >
-          <button type="button" class="btn btn-primary" id="load-btn-2" data-i18n="slot.btn_load">Load</button>
-        </form>
-
-        <div class="iframe-container" id="iframe-container-2">
-          <div class="iframe-placeholder" id="placeholder-2" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
-        </div>
-
-        <div class="slot-controls">
-          <div class="seek-row">
-            <label for="seek-range-2" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
-            <input type="range" id="seek-range-2" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
-            <span class="slider-val time-val" id="time-val-2">0:00 / 0:00</span>
-          </div>
-
-          <div class="controls-row" id="controls-2">
-            <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-2" data-i18n="controls.play" disabled>▶ Play</button>
-            <button type="button" class="btn btn-ctrl" id="seek-back-btn-2" data-i18n="controls.seek_back" disabled>-10s</button>
-            <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-2" data-i18n="controls.seek_fwd" disabled>+10s</button>
-            <button type="button" class="btn btn-ctrl" id="mute-btn-2" data-i18n="controls.mute" disabled>Mute</button>
-            <button type="button" class="btn btn-ctrl" id="pip-btn-2" data-i18n="controls.pip" disabled>PiP</button>
-            <button type="button" class="btn btn-ctrl" id="fs-btn-2" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
-          </div>
-
-          <div class="sliders-row">
-            <div class="slider-group vol-group">
-              <label for="vol-range-2" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
-              <input type="range" id="vol-range-2" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
-              <span class="slider-val" id="vol-val-2">100%</span>
-            </div>
-
-            <div class="slider-group rate-group">
-              <label for="rate-select-2" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
-              <select id="rate-select-2" class="select-input" disabled>
-                <option value="0.5">0.5x</option>
-                <option value="0.75">0.75x</option>
-                <option value="1" selected>1.0x</option>
-                <option value="1.25">1.25x</option>
-                <option value="1.5">1.5x</option>
-                <option value="2">2.0x</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="status-panel" id="status-panel-2" aria-live="polite">
-          <div class="status-row">
-            <span class="status-label" data-i18n="status.connection_label">Kết nối:</span>
-            <span class="status-text" id="conn-state-2">Chờ nạp iframe</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label" data-i18n="status.media_label">Media:</span>
-            <span class="status-text" id="media-state-2">--</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Slot 3 -->
-      <section class="slot-panel" id="slot-panel-3" aria-labelledby="slot-heading-3">
-        <div class="slot-header">
-          <h2 class="slot-title" id="slot-heading-3" data-i18n="slot.title" data-i18n-params='{"number":3}'>Slot 3</h2>
-          <span class="slot-badge badge-idle" id="badge-3" data-i18n="badge.idle">Chưa nạp</span>
-        </div>
-
-        <form class="slot-url-row" id="form-3" onsubmit="return false;">
-          <label for="url-input-3" class="visually-hidden" data-i18n="slot.url_label" data-i18n-params='{"number":3}'>URL iframe Slot 3</label>
-          <input
-            type="url"
-            id="url-input-3"
-            class="url-input"
-            data-i18n-placeholder="slot.url_placeholder"
-            placeholder="Nhập URL iframe..."
-            value=""
-            autocomplete="off"
-            spellcheck="false"
-          >
-          <button type="button" class="btn btn-primary" id="load-btn-3" data-i18n="slot.btn_load">Load</button>
-        </form>
-
-        <div class="iframe-container" id="iframe-container-3">
-          <div class="iframe-placeholder" id="placeholder-3" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
-        </div>
-
-        <div class="slot-controls">
-          <div class="seek-row">
-            <label for="seek-range-3" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
-            <input type="range" id="seek-range-3" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
-            <span class="slider-val time-val" id="time-val-3">0:00 / 0:00</span>
-          </div>
-
-          <div class="controls-row" id="controls-3">
-            <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-3" data-i18n="controls.play" disabled>▶ Play</button>
-            <button type="button" class="btn btn-ctrl" id="seek-back-btn-3" data-i18n="controls.seek_back" disabled>-10s</button>
-            <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-3" data-i18n="controls.seek_fwd" disabled>+10s</button>
-            <button type="button" class="btn btn-ctrl" id="mute-btn-3" data-i18n="controls.mute" disabled>Mute</button>
-            <button type="button" class="btn btn-ctrl" id="pip-btn-3" data-i18n="controls.pip" disabled>PiP</button>
-            <button type="button" class="btn btn-ctrl" id="fs-btn-3" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
-          </div>
-
-          <div class="sliders-row">
-            <div class="slider-group vol-group">
-              <label for="vol-range-3" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
-              <input type="range" id="vol-range-3" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
-              <span class="slider-val" id="vol-val-3">100%</span>
-            </div>
-
-            <div class="slider-group rate-group">
-              <label for="rate-select-3" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
-              <select id="rate-select-3" class="select-input" disabled>
-                <option value="0.5">0.5x</option>
-                <option value="0.75">0.75x</option>
-                <option value="1" selected>1.0x</option>
-                <option value="1.25">1.25x</option>
-                <option value="1.5">1.5x</option>
-                <option value="2">2.0x</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="status-panel" id="status-panel-3" aria-live="polite">
-          <div class="status-row">
-            <span class="status-label" data-i18n="status.connection_label">Kết nối:</span>
-            <span class="status-text" id="conn-state-3">Chờ nạp iframe</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label" data-i18n="status.media_label">Media:</span>
-            <span class="status-text" id="media-state-3">--</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Slot 4 -->
-      <section class="slot-panel" id="slot-panel-4" aria-labelledby="slot-heading-4">
-        <div class="slot-header">
-          <h2 class="slot-title" id="slot-heading-4" data-i18n="slot.title" data-i18n-params='{"number":4}'>Slot 4</h2>
-          <span class="slot-badge badge-idle" id="badge-4" data-i18n="badge.idle">Chưa nạp</span>
-        </div>
-
-        <form class="slot-url-row" id="form-4" onsubmit="return false;">
-          <label for="url-input-4" class="visually-hidden" data-i18n="slot.url_label" data-i18n-params='{"number":4}'>URL iframe Slot 4</label>
-          <input
-            type="url"
-            id="url-input-4"
-            class="url-input"
-            data-i18n-placeholder="slot.url_placeholder"
-            placeholder="Nhập URL iframe..."
-            value=""
-            autocomplete="off"
-            spellcheck="false"
-          >
-          <button type="button" class="btn btn-primary" id="load-btn-4" data-i18n="slot.btn_load">Load</button>
-        </form>
-
-        <div class="iframe-container" id="iframe-container-4">
-          <div class="iframe-placeholder" id="placeholder-4" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
-        </div>
-
-        <div class="slot-controls">
-          <div class="seek-row">
-            <label for="seek-range-4" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
-            <input type="range" id="seek-range-4" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
-            <span class="slider-val time-val" id="time-val-4">0:00 / 0:00</span>
-          </div>
-
-          <div class="controls-row" id="controls-4">
-            <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-4" data-i18n="controls.play" disabled>▶ Play</button>
-            <button type="button" class="btn btn-ctrl" id="seek-back-btn-4" data-i18n="controls.seek_back" disabled>-10s</button>
-            <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-4" data-i18n="controls.seek_fwd" disabled>+10s</button>
-            <button type="button" class="btn btn-ctrl" id="mute-btn-4" data-i18n="controls.mute" disabled>Mute</button>
-            <button type="button" class="btn btn-ctrl" id="pip-btn-4" data-i18n="controls.pip" disabled>PiP</button>
-            <button type="button" class="btn btn-ctrl" id="fs-btn-4" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
-          </div>
-
-          <div class="sliders-row">
-            <div class="slider-group vol-group">
-              <label for="vol-range-4" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
-              <input type="range" id="vol-range-4" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
-              <span class="slider-val" id="vol-val-4">100%</span>
-            </div>
-
-            <div class="slider-group rate-group">
-              <label for="rate-select-4" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
-              <select id="rate-select-4" class="select-input" disabled>
-                <option value="0.5">0.5x</option>
-                <option value="0.75">0.75x</option>
-                <option value="1" selected>1.0x</option>
-                <option value="1.25">1.25x</option>
-                <option value="1.5">1.5x</option>
-                <option value="2">2.0x</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="status-panel" id="status-panel-4" aria-live="polite">
-          <div class="status-row">
-            <span class="status-label" data-i18n="status.connection_label">Kết nối:</span>
-            <span class="status-text" id="conn-state-4">Chờ nạp iframe</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label" data-i18n="status.media_label">Media:</span>
-            <span class="status-text" id="media-state-4">--</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Slot 5 -->
-      <section class="slot-panel" id="slot-panel-5" aria-labelledby="slot-heading-5">
-        <div class="slot-header">
-          <h2 class="slot-title" id="slot-heading-5" data-i18n="slot.title" data-i18n-params='{"number":5}'>Slot 5</h2>
-          <span class="slot-badge badge-idle" id="badge-5" data-i18n="badge.idle">Chưa nạp</span>
-        </div>
-
-        <form class="slot-url-row" id="form-5" onsubmit="return false;">
-          <label for="url-input-5" class="visually-hidden" data-i18n="slot.url_label" data-i18n-params='{"number":5}'>Iframe URL Slot 5</label>
-          <input
-            type="url"
-            id="url-input-5"
-            class="url-input"
-            data-i18n-placeholder="slot.url_placeholder"
-            placeholder="Nhập URL iframe..."
-            value=""
-            autocomplete="off"
-            spellcheck="false"
-          >
-          <button type="button" class="btn btn-primary" id="load-btn-5" data-i18n="slot.btn_load">Load</button>
-        </form>
-
-        <div class="iframe-container" id="iframe-container-5">
-          <div class="iframe-placeholder" id="placeholder-5" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
-        </div>
-
-        <div class="slot-controls">
-          <div class="seek-row">
-            <label for="seek-range-5" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
-            <input type="range" id="seek-range-5" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
-            <span class="slider-val time-val" id="time-val-5">0:00 / 0:00</span>
-          </div>
-
-          <div class="controls-row" id="controls-5">
-            <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-5" data-i18n="controls.play" disabled>▶ Play</button>
-            <button type="button" class="btn btn-ctrl" id="seek-back-btn-5" data-i18n="controls.seek_back" disabled>-10s</button>
-            <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-5" data-i18n="controls.seek_fwd" disabled>+10s</button>
-            <button type="button" class="btn btn-ctrl" id="mute-btn-5" data-i18n="controls.mute" disabled>Mute</button>
-            <button type="button" class="btn btn-ctrl" id="pip-btn-5" data-i18n="controls.pip" disabled>PiP</button>
-            <button type="button" class="btn btn-ctrl" id="fs-btn-5" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
-          </div>
-
-          <div class="sliders-row">
-            <div class="slider-group vol-group">
-              <label for="vol-range-5" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
-              <input type="range" id="vol-range-5" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
-              <span class="slider-val" id="vol-val-5">100%</span>
-            </div>
-
-            <div class="slider-group rate-group">
-              <label for="rate-select-5" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
-              <select id="rate-select-5" class="select-input" disabled>
-                <option value="0.5">0.5x</option>
-                <option value="0.75">0.75x</option>
-                <option value="1" selected>1.0x</option>
-                <option value="1.25">1.25x</option>
-                <option value="1.5">1.5x</option>
-                <option value="2">2.0x</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="status-panel" id="status-panel-5" aria-live="polite">
-          <div class="status-row">
-            <span class="status-label" data-i18n="status.connection_label">Kết nối:</span>
-            <span class="status-text" id="conn-state-5">Chờ nạp iframe</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label" data-i18n="status.media_label">Media:</span>
-            <span class="status-text" id="media-state-5">--</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Slot 6 -->
-      <section class="slot-panel" id="slot-panel-6" aria-labelledby="slot-heading-6">
-        <div class="slot-header">
-          <h2 class="slot-title" id="slot-heading-6" data-i18n="slot.title" data-i18n-params='{"number":6}'>Slot 6</h2>
-          <span class="slot-badge badge-idle" id="badge-6" data-i18n="badge.idle">Chưa nạp</span>
-        </div>
-
-        <form class="slot-url-row" id="form-6" onsubmit="return false;">
-          <label for="url-input-6" class="visually-hidden" data-i18n="slot.url_label" data-i18n-params='{"number":6}'>URL iframe Slot 6</label>
-          <input
-            type="url"
-            id="url-input-6"
-            class="url-input"
-            data-i18n-placeholder="slot.url_placeholder"
-            placeholder="Nhập URL iframe..."
-            value=""
-            autocomplete="off"
-            spellcheck="false"
-          >
-          <button type="button" class="btn btn-primary" id="load-btn-6" data-i18n="slot.btn_load">Load</button>
-        </form>
-
-        <div class="iframe-container" id="iframe-container-6">
-          <div class="iframe-placeholder" id="placeholder-6" data-i18n="slot.placeholder_empty">Chưa tải iframe. Nhập URL và nhấn "Load".</div>
-        </div>
-
-        <div class="slot-controls">
-          <div class="seek-row">
-            <label for="seek-range-6" class="slider-label" data-i18n="controls.seek_label">Tua:</label>
-            <input type="range" id="seek-range-6" class="slider-input seek-slider" min="0" max="0" step="0.1" value="0" disabled>
-            <span class="slider-val time-val" id="time-val-6">0:00 / 0:00</span>
-          </div>
-
-          <div class="controls-row" id="controls-6">
-            <button type="button" class="btn btn-ctrl btn-toggle" id="toggle-btn-6" data-i18n="controls.play" disabled>▶ Play</button>
-            <button type="button" class="btn btn-ctrl" id="seek-back-btn-6" data-i18n="controls.seek_back" disabled>-10s</button>
-            <button type="button" class="btn btn-ctrl" id="seek-fwd-btn-6" data-i18n="controls.seek_fwd" disabled>+10s</button>
-            <button type="button" class="btn btn-ctrl" id="mute-btn-6" data-i18n="controls.mute" disabled>Mute</button>
-            <button type="button" class="btn btn-ctrl" id="pip-btn-6" data-i18n="controls.pip" disabled>PiP</button>
-            <button type="button" class="btn btn-ctrl" id="fs-btn-6" data-i18n="controls.fullscreen" disabled>Fullscreen</button>
-          </div>
-
-          <div class="sliders-row">
-            <div class="slider-group vol-group">
-              <label for="vol-range-6" class="slider-label" data-i18n="controls.vol_label">Vol:</label>
-              <input type="range" id="vol-range-6" class="slider-input" min="0" max="1" step="0.01" value="1" disabled>
-              <span class="slider-val" id="vol-val-6">100%</span>
-            </div>
-
-            <div class="slider-group rate-group">
-              <label for="rate-select-6" class="slider-label" data-i18n="controls.rate_label">Tốc độ:</label>
-              <select id="rate-select-6" class="select-input" disabled>
-                <option value="0.5">0.5x</option>
-                <option value="0.75">0.75x</option>
-                <option value="1" selected>1.0x</option>
-                <option value="1.25">1.25x</option>
-                <option value="1.5">1.5x</option>
-                <option value="2">2.0x</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="status-panel" id="status-panel-6" aria-live="polite">
-          <div class="status-row">
-            <span class="status-label" data-i18n="status.connection_label">Kết nối:</span>
-            <span class="status-text" id="conn-state-6">Chờ nạp iframe</span>
-          </div>
-          <div class="status-row">
-            <span class="status-label" data-i18n="status.media_label">Media:</span>
-            <span class="status-text" id="media-state-6">--</span>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <!-- Sample Links Section for Testing (Safe Copy & Paste) -->
-    <section class="samples-section" aria-labelledby="samples-heading">
-      <div class="samples-header">
-        <h2 class="samples-title" id="samples-heading" data-i18n="samples.title">Bảng URL Mẫu & Kiểm Thử (Copy & Paste)</h2>
-        <p class="samples-desc" data-i18n="samples.description">Danh sách URL phân loại theo từng dịch vụ. Bạn có thể sao chép liên kết bên dưới và dán vào ô URL của Slot bất kỳ để kiểm thử.</p>
+    <!-- 11 Apps Showcase Grid -->
+    <section>
+      <div class="section-header">
+        <h2 class="section-title">
+          <span>🛠️ 11 Ứng Dụng Thực Chiến (Full Working Apps)</span>
+          <span class="section-count">11 Projects</span>
+        </h2>
+        <span style="font-size: 13px; color: #94a3b8;">100% Vanilla JS • Chạy trực tiếp không cần build</span>
       </div>
 
-      <div class="samples-table-wrapper">
-        <table class="samples-table">
-          <thead>
-            <tr>
-              <th scope="col" class="service-col-head">
-                <span class="service-tag service-youtube">YouTube</span>
-              </th>
-              <th scope="col" class="service-col-head">
-                <span class="service-tag service-vimeo">Vimeo</span>
-              </th>
-              <th scope="col" class="service-col-head">
-                <span class="service-tag service-soundcloud">SoundCloud</span>
-              </th>
-              <th scope="col" class="service-col-head">
-                <span class="service-tag service-dailymotion">Dailymotion</span>
-              </th>
-              <th scope="col" class="service-col-head">
-                <span class="service-tag service-tiktok">TikTok</span>
-              </th>
-              <th scope="col" class="service-col-head highlight-col">
-                <span class="service-tag service-html5">HTML5 Video</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Row for URLs & Copy Actions -->
-            <tr class="samples-content-row">
-              <!-- YouTube Column -->
-              <td class="service-col-cell">
-                <div class="sample-links-list">
-                  <div class="sample-link-item">
-                    <code class="sample-url" id="sample-url-yt-1">https://www.youtube.com/watch?v=3oH34VkrIxg</code>
-                    <button type="button" class="btn btn-sm btn-copy" data-target="sample-url-yt-1" data-i18n="samples.btn_copy">Sao chép</button>
-                  </div>
-                  <div class="sample-link-item">
-                    <code class="sample-url" id="sample-url-yt-2">https://www.youtube.com/watch?v=KJI_3HaLtmc</code>
-                    <button type="button" class="btn btn-sm btn-copy" data-target="sample-url-yt-2" data-i18n="samples.btn_copy">Sao chép</button>
-                  </div>
-                  <div class="sample-link-item">
-                    <code class="sample-url" id="sample-url-yt-3">https://www.youtube.com/watch?v=H4d7PeX6NoM</code>
-                    <button type="button" class="btn btn-sm btn-copy" data-target="sample-url-yt-3" data-i18n="samples.btn_copy">Sao chép</button>
-                  </div>
-                  <div class="sample-link-item">
-                    <code class="sample-url" id="sample-url-yt-4">https://www.youtube.com/watch?v=A77p_8E7OFs</code>
-                    <button type="button" class="btn btn-sm btn-copy" data-target="sample-url-yt-4" data-i18n="samples.btn_copy">Sao chép</button>
-                  </div>
-                </div>
-              </td>
+      <div class="apps-grid">
+        <!-- 01. Simple Player -->
+        <article class="app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-icon">🎮</div>
+              <div class="app-meta">
+                <span class="app-num">App 01</span>
+                <h3 class="app-title">Simple Custom Player</h3>
+              </div>
+            </div>
+            <p class="app-desc">Bộ điều khiển tùy biến từ con số 0: Nút Play/Pause, Scrubber tua mượt chống giật con trỏ (Scrubber Fighting), điều chỉnh Volume và Mute toggle.</p>
+            <div class="app-tags">
+              <span class="app-tag">Controls</span>
+              <span class="app-tag">Smooth Scrubbing</span>
+              <span class="app-tag">State Sync</span>
+            </div>
+          </div>
+          <div class="app-actions">
+            <a href="apps/01-simple-player/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
+            <a href="../docs/index.html?path=content/guides/vi/blueprints/01-simple-player.md" class="btn-action-docs">📖 Tutorial</a>
+          </div>
+        </article>
 
-              <!-- Vimeo Column -->
-              <td class="service-col-cell">
-                <div class="sample-links-list">
-                  <span class="url-empty-hint">(Để trống - Tự điền link)</span>
-                </div>
-              </td>
+        <!-- 02. Playlist Queue -->
+        <article class="app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-icon">📜</div>
+              <div class="app-meta">
+                <span class="app-num">App 02</span>
+                <h3 class="app-title">Playlist & Podcast Queue</h3>
+              </div>
+            </div>
+            <p class="app-desc">Hàng đợi phát liên tục (Continuous Playback), bắt sự kiện ended tự nạp bài kế tiếp, xử lý dọn dẹp instance cũ bằng destroy() và lách Autoplay Policy.</p>
+            <div class="app-tags">
+              <span class="app-tag">Audio/Podcast</span>
+              <span class="app-tag">Ended Event</span>
+              <span class="app-tag">destroy()</span>
+            </div>
+          </div>
+          <div class="app-actions">
+            <a href="apps/02-playlist-queue/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
+            <a href="../docs/index.html?path=content/guides/vi/blueprints/02-playlist-queue.md" class="btn-action-docs">📖 Tutorial</a>
+          </div>
+        </article>
 
-              <!-- SoundCloud Column -->
-              <td class="service-col-cell">
-                <div class="sample-links-list">
-                  <span class="url-empty-hint">(Để trống - Tự điền link)</span>
-                </div>
-              </td>
+        <!-- 03. WatchParty -->
+        <article class="app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-icon">🎬</div>
+              <div class="app-meta">
+                <span class="app-num">App 03</span>
+                <h3 class="app-title">WatchParty SyncTheater</h3>
+              </div>
+            </div>
+            <p class="app-desc">Phòng xem phim đồng bộ thời gian thực cho nhiều người qua BroadcastChannel. Kỹ thuật chặn vòng lặp vô tận (Echo Loop) và bù trừ độ lệch thời gian.</p>
+            <div class="app-tags">
+              <span class="app-tag">Real-time</span>
+              <span class="app-tag">BroadcastChannel</span>
+              <span class="app-tag">Anti-Echo</span>
+            </div>
+          </div>
+          <div class="app-actions">
+            <a href="apps/03-watchparty/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
+            <a href="../docs/index.html?path=content/guides/vi/blueprints/03-watchparty.md" class="btn-action-docs">📖 Tutorial</a>
+          </div>
+        </article>
 
-              <!-- Dailymotion Column -->
-              <td class="service-col-cell">
-                <div class="sample-links-list">
-                  <span class="url-empty-hint">(Để trống - Tự điền link)</span>
-                </div>
-              </td>
+        <!-- 04. EdTech Quiz -->
+        <article class="app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-icon">🎓</div>
+              <div class="app-meta">
+                <span class="app-num">App 04</span>
+                <h3 class="app-title">EdTech Interactive Quiz</h3>
+              </div>
+            </div>
+            <p class="app-desc">Khóa video tại mốc 15s và 45s để bắt làm trắc nghiệm, chống gian lận tua lách bài tập qua seek guard, mở khóa phát tiếp khi trả lời đúng.</p>
+            <div class="app-tags">
+              <span class="app-tag">E-Learning</span>
+              <span class="app-tag">Checkpoints</span>
+              <span class="app-tag">Seek Guard</span>
+            </div>
+          </div>
+          <div class="app-actions">
+            <a href="apps/04-edtech-quiz/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
+            <a href="../docs/index.html?path=content/guides/vi/blueprints/04-edtech-quiz.md" class="btn-action-docs">📖 Tutorial</a>
+          </div>
+        </article>
 
-              <!-- TikTok Column -->
-              <td class="service-col-cell">
-                <div class="sample-links-list">
-                  <span class="url-empty-hint">(Để trống - Tự điền link)</span>
-                </div>
-              </td>
+        <!-- 05. Pomodoro Lo-fi -->
+        <article class="app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-icon">🍅</div>
+              <div class="app-meta">
+                <span class="app-num">App 05</span>
+                <h3 class="app-title">Pomodoro Lo-fi Audio Ducking</h3>
+              </div>
+            </div>
+            <p class="app-desc">Đồng hồ đếm ngược 25 phút Pomodoro đồng bộ nhạc Lo-fi Girl, giải thuật Fade-out giảm đều âm lượng về 0% trong 5s cuối tránh giật mình.</p>
+            <div class="app-tags">
+              <span class="app-tag">Productivity</span>
+              <span class="app-tag">Volume Ramping</span>
+              <span class="app-tag">Lo-fi</span>
+            </div>
+          </div>
+          <div class="app-actions">
+            <a href="apps/05-pomodoro-lofi/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
+            <a href="../docs/index.html?path=content/guides/vi/blueprints/05-pomodoro-lofi.md" class="btn-action-docs">📖 Tutorial</a>
+          </div>
+        </article>
 
-              <!-- HTML5 Video Column -->
-              <td class="service-col-cell highlight-col">
-                <div class="sample-links-list">
-                  <div class="sample-link-item">
-                    <code class="sample-url" id="sample-url-html5">../docs/demo-frames/sample-player.html</code>
-                    <button type="button" class="btn btn-sm btn-copy" data-target="sample-url-html5" data-i18n="samples.btn_copy">Sao chép</button>
-                  </div>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <!-- 06. Multi-Stream -->
+        <article class="app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-icon">📺</div>
+              <div class="app-meta">
+                <span class="app-num">App 06</span>
+                <h3 class="app-title">Multi-Stream Dashboard</h3>
+              </div>
+            </div>
+            <p class="app-desc">Bàn điều khiển 4 góc máy livestream giải đấu Esports: Tính năng Solo Audio mở tiếng độc quyền 1 góc quay và mute 3 góc còn lại, lệnh hàng loạt.</p>
+            <div class="app-tags">
+              <span class="app-tag">Esports</span>
+              <span class="app-tag">Solo Audio</span>
+              <span class="app-tag">Multi-Client</span>
+            </div>
+          </div>
+          <div class="app-actions">
+            <a href="apps/06-multi-stream/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
+            <a href="../docs/index.html?path=content/guides/vi/blueprints/06-multi-stream.md" class="btn-action-docs">📖 Tutorial</a>
+          </div>
+        </article>
 
-      <div class="samples-disclaimer" data-i18n="samples.disclaimer">
-        Lưu ý pháp lý: Các liên kết mẫu trên thuộc quyền sở hữu của các đơn vị/nền tảng tương ứng. SRemote là công cụ trung lập phục vụ kiểm thử và không lưu trữ hay phân phối nội dung có bản quyền.
+        <!-- 07. Global Shortcuts -->
+        <article class="app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-icon">⌨️</div>
+              <div class="app-meta">
+                <span class="app-num">App 07</span>
+                <h3 class="app-title">Global Keyboard Shortcuts</h3>
+              </div>
+            </div>
+            <p class="app-desc">Bắt phím Space, J, K, L, M, Mũi tên từ trang cha không cần click focus vào iframe, bộ lọc Input Guard chống nuốt phím khi gõ văn bản kèm OSD Toast.</p>
+            <div class="app-tags">
+              <span class="app-tag">Accessibility</span>
+              <span class="app-tag">Input Guard</span>
+              <span class="app-tag">OSD Toast</span>
+            </div>
+          </div>
+          <div class="app-actions">
+            <a href="apps/07-global-shortcuts/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
+            <a href="../docs/index.html?path=content/guides/vi/blueprints/07-global-shortcuts.md" class="btn-action-docs">📖 Tutorial</a>
+          </div>
+        </article>
+
+        <!-- 08. Timestamp Notes -->
+        <article class="app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-icon">📝</div>
+              <div class="app-meta">
+                <span class="app-num">App 08</span>
+                <h3 class="app-title">Lecture Timestamped Notes</h3>
+              </div>
+            </div>
+            <p class="app-desc">Sổ ghi chép bài giảng phong cách Notion: Bấm phím chụp mốc thời gian thực, lưu localStorage, nhấp vào note tua video và tự động highlight khi nghe.</p>
+            <div class="app-tags">
+              <span class="app-tag">EdTech/Notion</span>
+              <span class="app-tag">2-Way Sync</span>
+              <span class="app-tag">Storage</span>
+            </div>
+          </div>
+          <div class="app-actions">
+            <a href="apps/08-timestamp-notes/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
+            <a href="../docs/index.html?path=content/guides/vi/blueprints/08-timestamp-notes.md" class="btn-action-docs">📖 Tutorial</a>
+          </div>
+        </article>
+
+        <!-- 09. Floating Player -->
+        <article class="app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-icon">🎵</div>
+              <div class="app-meta">
+                <span class="app-num">App 09</span>
+                <h3 class="app-title">Sticky Mini-Player (PiP)</h3>
+              </div>
+            </div>
+            <p class="app-desc">Dùng IntersectionObserver theo dõi cuộn trang: Video tự động thu nhỏ và bay xuống góc phải màn hình không làm gián đoạn hay tải lại iframe.</p>
+            <div class="app-tags">
+              <span class="app-tag">UI/UX</span>
+              <span class="app-tag">IntersectionObserver</span>
+              <span class="app-tag">Floating PiP</span>
+            </div>
+          </div>
+          <div class="app-actions">
+            <a href="apps/09-floating-player/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
+            <a href="../docs/index.html?path=content/guides/vi/blueprints/09-floating-player.md" class="btn-action-docs">📖 Tutorial</a>
+          </div>
+        </article>
+
+        <!-- 10. Audio Slide Deck -->
+        <article class="app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-icon">📊</div>
+              <div class="app-meta">
+                <span class="app-num">App 10</span>
+                <h3 class="app-title">Audio-Driven Slide Deck</h3>
+              </div>
+            </div>
+            <p class="app-desc">Bộ trình chiếu tự động lật slide khớp theo timeline giọng nói thuyết minh, hỗ trợ click thumbnail tua ngược âm thanh đến đúng mốc giải thích.</p>
+            <div class="app-tags">
+              <span class="app-tag">Presentations</span>
+              <span class="app-tag">Timeline Cues</span>
+              <span class="app-tag">Auto-Flip</span>
+            </div>
+          </div>
+          <div class="app-actions">
+            <a href="apps/10-audio-slide/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
+            <a href="../docs/index.html?path=content/guides/vi/blueprints/10-audio-slide.md" class="btn-action-docs">📖 Tutorial</a>
+          </div>
+        </article>
+
+        <!-- 11. Gym Ducking -->
+        <article class="app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-icon">⏱️</div>
+              <div class="app-meta">
+                <span class="app-num">App 11</span>
+                <h3 class="app-title">Smart Gym HIIT Ducking</h3>
+              </div>
+            </div>
+            <p class="app-desc">Đồng hồ tập luyện TABATA/HIIT: Tạo tiếng còi bằng Web Audio API, tự động nén âm lượng nhạc nền xuống 20% khi còi kêu và hồi phục 100% hiệp mới.</p>
+            <div class="app-tags">
+              <span class="app-tag">Fitness</span>
+              <span class="app-tag">Web Audio API</span>
+              <span class="app-tag">Audio Ducking</span>
+            </div>
+          </div>
+          <div class="app-actions">
+            <a href="apps/11-gym-ducking/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
+            <a href="../docs/index.html?path=content/guides/vi/blueprints/11-gym-ducking.md" class="btn-action-docs">📖 Tutorial</a>
+          </div>
+        </article>
       </div>
     </section>
   </main>
 
-  <script src="../packages/wrapper/dist/index.global.js"></script>
-  <script src="i18n.js"></script>
-  <script src="script.js"></script>
 </body>
 </html>
-

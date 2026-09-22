@@ -10,6 +10,9 @@ Trong bài hướng dẫn này, chúng ta sẽ xây dựng một **Hệ thống 
 - **Kỹ thuật Input Guard (Bộ Lọc Chống Nuốt Phím)**: Đảm bảo khi người dùng đang gõ văn bản trong `<input>` hay `<textarea>` tìm kiếm, phím Space sẽ gõ ra dấu cách chứ không làm dừng video!
 - Hiển thị thông báo OSD (On-Screen Display Toast) phản hồi trực quan khi bấm phím.
 
+> [!TIP]
+> **Trải nghiệm ngay bản demo hoạt động thực tế**: Mở [🚀 Live Demo: 07-global-shortcuts](../../../../demo/apps/07-global-shortcuts/index.html) để tương tác trực tiếp trên trình duyệt.
+
 ---
 
 ## 🎯 Mục tiêu Bạn Sẽ Đạt Được

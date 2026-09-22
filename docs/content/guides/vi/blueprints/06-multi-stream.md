@@ -9,6 +9,9 @@ Trong tutorial này, chúng ta sẽ xây dựng một **Multi-Stream Command Cen
 - Tính năng **"Solo Audio (Nghe Độc Quyền)"**: Nhấp vào bất kỳ màn hình nào, màn hình đó sẽ mở âm thanh 100%, đồng thời 3 màn hình còn lại sẽ **tự động tắt tiếng (Mute)** mà hình ảnh vẫn tiếp tục chạy mượt mà.
 - Nút tổng chỉ huy: **"Mute All"** và **"Pause All"**.
 
+> [!TIP]
+> **Trải nghiệm ngay bản demo hoạt động thực tế**: Mở [🚀 Live Demo: 06-multi-stream](../../../../demo/apps/06-multi-stream/index.html) để tương tác trực tiếp trên trình duyệt.
+
 ---
 
 ## 🎯 Mục tiêu Bạn Sẽ Đạt Được
