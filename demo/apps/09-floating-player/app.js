@@ -2,10 +2,7 @@ import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
 import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
 
 if (window.setupDemoTopBar) {
-  window.setupDemoTopBar({
-    appName: 'App 09: Sticky Floating Mini-Player',
-    tutorialPath: 'content/guides/vi/blueprints/09-floating-player.md'
-  });
+  window.setupDemoTopBar({ appName: 'App 09: Sticky Floating Mini-Player', tutorialPath: 'content/guides/vi/blueprints/09-floating-player.md' });
 }
 
 const Icons = window.DemoIcons || { play: '▶', pause: '⏸' };
@@ -21,10 +18,7 @@ let isFloatingManuallyDismissed = false;
 let isCurrentlyPlaying = false;
 
 async function init() {
-  await youtube.mount('#media-embed-slot', {
-    videoId: 'dQw4w9WgXcQ',
-    playerVars: { controls: 1, autoplay: 0 }
-  });
+  await youtube.mount('#media-embed-slot', { videoId: 'dQw4w9WgXcQ', playerVars: { controls: 1, autoplay: 0 } });
 
   sremote.on('play', () => {
     isCurrentlyPlaying = true;
@@ -41,20 +35,21 @@ async function init() {
 }
 
 function setupIntersectionObserver() {
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        pipPlayerBox.classList.remove('floating-pip');
-        isFloatingManuallyDismissed = false;
-      } else {
-        if (isCurrentlyPlaying && !isFloatingManuallyDismissed) {
-          pipPlayerBox.classList.add('floating-pip');
+  const observer = new IntersectionObserver(
+    entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          pipPlayerBox.classList.remove('floating-pip');
+          isFloatingManuallyDismissed = false;
+        } else {
+          if (isCurrentlyPlaying && !isFloatingManuallyDismissed) {
+            pipPlayerBox.classList.add('floating-pip');
+          }
         }
-      }
-    });
-  }, {
-    threshold: 0.1
-  });
+      });
+    },
+    { threshold: 0.1 },
+  );
 
   observer.observe(videoAnchor);
 }

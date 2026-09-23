@@ -43,119 +43,149 @@ sequenceDiagram
 
 ---
 
-## Bước 1: Khởi Tạo Cấu Trúc Dữ Liệu & Giao Diện Playlist
+## Bước 1: Chuẩn Bị Giao Diện & Bộ Styling (HTML/CSS)
 
-Hãy tạo file `index.html`. Chúng ta thiết kế một giao diện gồm 3 khu vực:
-1. Khung hiển thị thông tin bài đang phát (Header).
-2. Các nút điều hướng cơ bản: `⏮ Bài trước`, `▶ Phát/Dừng`, `Bài tiếp ⏭`.
-3. Danh sách hàng đợi các bài hát (`<ul id="track-list">`).
+> [!TIP]
+> **🚀 Lối Tắt Tiết Kiệm Thời Gian (Khuyên Dùng)**  
+> Để tập trung vào thuật toán quản lý hàng đợi và điều khiển **SRemote SDK**, bạn hãy tải hoặc sao chép sẵn các file mẫu đã được căn chỉnh chuẩn theo hệ thống Flat 2.0 từ thư mục `demo/apps/02-playlist-queue`:
+> - 📄 **HTML mẫu**: [`index.html`](../../../../demo/apps/02-playlist-queue/index.html)
+> - 🎨 **CSS dùng chung (Design System & Variables)**: [`common.css`](../../../../demo/apps/common.css)
+> - 🎨 **CSS riêng của bài (Layout Queue & Playlist)**: [`style.css`](../../../../demo/apps/02-playlist-queue/style.css)
+>
+> *Cấu trúc thư mục làm việc khuyến nghị:*
+> ```text
+> my-playlist/
+> ├── common.css     <-- Tải từ demo/apps/common.css
+> ├── style.css      <-- Tải từ demo/apps/02-playlist-queue/style.css
+> ├── index.html     <-- Đã link sẵn common.css & style.css
+> └── app.js         <-- Nơi bạn sẽ viết toàn bộ code logic trong bài này!
+> ```
 
+### 🔑 Các Phần Tử DOM Trọng Tâm Cần Điều Khiển Trong JS
+Các `id` quan trọng mà file `app.js` sẽ kết nối và xử lý:
+
+| Phần tử DOM | `id` | Vai trò trong ứng dụng |
+| :--- | :--- | :--- |
+| `<div>` Slot Video | `#media-embed-slot` | Khung hiển thị rỗng để mount player hiện tại |
+| `<h2>` Tiêu đề | `#current-title` | Hiển thị tên bài hát / tập podcast đang phát |
+| `<p>` Nghệ sĩ | `#current-artist` | Hiển thị tên nghệ sĩ / tác giả |
+| `<button>` Prev | `#btn-prev` | Nút chuyển về bài trước đó trong hàng đợi |
+| `<button>` Play | `#btn-toggle-play` | Nút chuyển đổi trạng thái Play / Pause |
+| `<button>` Next | `#btn-next` | Nút chuyển sang bài tiếp theo |
+| `<ul>` Danh sách | `#track-list` | Danh sách hiển thị các bài hát trong Queue |
+
+<details>
+<summary><b>👀 Nhấn vào đây nếu bạn muốn xem hoặc tự viết toàn bộ mã HTML & CSS</b></summary>
+
+#### Mã nguồn `index.html`:
 ```html
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Playlist & Podcast Queue - SRemote Tutorial 02</title>
+  <title>App 02: Playlist & Podcast Queue - SRemote Demo</title>
+  <!-- 1. CSS Dùng chung: Biến theme, Typography, Buttons -->
+  <link rel="stylesheet" href="common.css">
+  <!-- 2. CSS Riêng của bài: Khung Playlist Card & Tracklist -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="podcast-app">
-    <!-- 1. Vùng hiển thị player & Metadata bài đang phát -->
-    <div class="player-header">
-      <div id="media-embed-slot" class="media-embed-slot"></div>
-      <div class="now-playing-info">
-        <span class="badge">Đang phát</span>
-        <h2 id="current-title" class="track-title">Đang nạp dữ liệu...</h2>
-        <p id="current-artist" class="track-artist">---</p>
+  <main class="demo-main-layout">
+    <div class="podcast-card">
+      <!-- 1. Vùng hiển thị player & Metadata bài đang phát -->
+      <div class="player-header">
+        <div id="media-embed-slot" class="media-embed-slot"></div>
+        <div class="now-playing-info">
+          <span class="badge-now-playing">Đang phát</span>
+          <h2 id="current-title" class="track-title">Đang nạp dữ liệu...</h2>
+          <p id="current-artist" class="track-artist">---</p>
+        </div>
+      </div>
+
+      <!-- 2. Thanh điều hướng nhanh Flat 2.0 -->
+      <div class="nav-controls">
+        <button id="btn-prev" class="btn-flat" title="Bài trước">⏮ Trước</button>
+        <button id="btn-toggle-play" class="btn-flat btn-flat-primary" title="Phát / Dừng">▶ Phát</button>
+        <button id="btn-next" class="btn-flat" title="Bài tiếp">Sau ⏭</button>
+      </div>
+
+      <!-- 3. Danh sách bài hát trong Queue -->
+      <div class="playlist-section">
+        <div class="playlist-header">
+          <h3 class="section-title">Hàng đợi phát (Queue)</h3>
+          <span class="track-count">3 bài</span>
+        </div>
+        <ul id="track-list" class="track-list"></ul>
       </div>
     </div>
-
-    <!-- 2. Thanh điều hướng nhanh -->
-    <div class="nav-controls">
-      <button id="btn-prev" class="ctrl-btn">⏮ Trước</button>
-      <button id="btn-toggle-play" class="ctrl-btn btn-primary">▶ Phát</button>
-      <button id="btn-next" class="ctrl-btn">Sau ⏭</button>
-    </div>
-
-    <!-- 3. Danh sách bài hát trong Queue -->
-    <div class="playlist-section">
-      <h3 class="section-title">Danh sách bài hát</h3>
-      <ul id="track-list" class="track-list"></ul>
-    </div>
-  </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>
 </html>
 ```
 
-Và định dạng giao diện bằng file `style.css`:
-
+#### Mã nguồn `style.css`:
 ```css
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: #090d16;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 40px 16px;
+.demo-main-layout {
+  flex: 1;
   display: flex;
+  align-items: center;
   justify-content: center;
+  padding: 30px 16px;
 }
 
-.podcast-app {
+.podcast-card {
   width: 100%;
-  max-width: 640px;
-  background: #111827;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  max-width: 680px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
-  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
 }
 
 .player-header {
   padding: 20px;
-  background: linear-gradient(180deg, #1f2937, #111827);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .media-embed-slot {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #000;
-  border-radius: 8px;
+  background-color: #000000;
+  border-radius: var(--radius-md);
   overflow: hidden;
   margin-bottom: 16px;
+  border: 1px solid var(--border-color);
 }
 
-.badge {
+.badge-now-playing {
   display: inline-block;
   padding: 3px 8px;
-  border-radius: 4px;
-  background: #0284c7;
-  color: #fff;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
   margin-bottom: 6px;
 }
 
 .track-title {
   font-size: 18px;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--text-main);
   margin-bottom: 4px;
 }
 
 .track-artist {
   font-size: 13.5px;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .nav-controls {
@@ -164,51 +194,40 @@ body {
   align-items: center;
   gap: 12px;
   padding: 14px 20px;
-  background: #0f172a;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.ctrl-btn {
-  padding: 8px 18px;
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #f8fafc;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.ctrl-btn:hover {
-  background: #334155;
-}
-
-.btn-primary {
-  background: #0284c7;
-  border-color: #38bdf8;
-  color: #fff;
-  font-weight: 600;
-}
-
-.btn-primary:hover {
-  background: #0369a1;
+  background-color: var(--bg-surface-elevated);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .playlist-section {
   padding: 20px;
+  background-color: var(--bg-surface);
+}
+
+.playlist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .section-title {
   font-size: 13px;
-  color: #94a3b8;
+  font-weight: 700;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 12px;
+}
+
+.track-count {
+  font-size: 12px;
+  color: var(--text-subtle);
 }
 
 .track-list {
   list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .track-item {
@@ -216,39 +235,41 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  border-radius: 8px;
-  margin-bottom: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
 }
 
 .track-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-focus);
 }
 
 .track-item.active {
-  background: rgba(2, 132, 199, 0.15);
-  border-color: rgba(56, 189, 248, 0.4);
+  background-color: var(--color-primary-light);
+  border-color: var(--color-primary);
 }
 
 .track-item-title {
   font-size: 14px;
   font-weight: 600;
-  color: #f8fafc;
+  color: var(--text-main);
 }
 
 .track-item.active .track-item-title {
-  color: #38bdf8;
+  color: var(--color-primary);
 }
 
 .track-item-duration {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-subtle);
   font-variant-numeric: tabular-nums;
 }
 ```
+</details>
+
+---
 
 ---
 

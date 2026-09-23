@@ -29,12 +29,40 @@ flowchart LR
 
 ---
 
-## Bước 1: Khởi Tạo Khung HTML Tối Giản & Styling Cơ Bản
+## Bước 1: Chuẩn Bị Giao Diện & Bộ Styling (HTML/CSS)
 
-Đầu tiên, hãy tạo một thư mục làm việc và tạo file `index.html`. Chúng ta cần:
-- Một thẻ `<div>` làm vị trí chứa video nhúng (Embed Slot).
-- Một thanh điều khiển (Control Bar) chứa nút Play, thanh Scrubber, đồng hồ thời gian và nút âm lượng.
+> [!TIP]
+> **🚀 Lối Tắt Tiết Kiệm Thời Gian (Khuyên Dùng)**  
+> Để tập trung 100% vào tư duy lập trình JavaScript và điều khiển **SRemote SDK**, bạn không cần gõ lại toàn bộ mã giao diện từ đầu. Hãy tải hoặc sao chép sẵn các file mẫu đã được căn chỉnh chuẩn theo hệ thống Flat 2.0 từ thư mục `demo/apps/01-simple-player`:
+> - 📄 **HTML mẫu**: [`index.html`](../../../../demo/apps/01-simple-player/index.html)
+> - 🎨 **CSS dùng chung (Design System & Variables)**: [`common.css`](../../../../demo/apps/common.css)
+> - 🎨 **CSS riêng của bài (Layout Player)**: [`style.css`](../../../../demo/apps/01-simple-player/style.css)
+>
+> *Cấu trúc thư mục làm việc khuyến nghị khi bạn tự thực hành:*
+> ```text
+> my-player/
+> ├── common.css     <-- Tải từ demo/apps/common.css
+> ├── style.css      <-- Tải từ demo/apps/01-simple-player/style.css
+> ├── index.html     <-- Đã link sẵn common.css & style.css
+> └── app.js         <-- Nơi bạn sẽ viết toàn bộ code logic trong bài này!
+> ```
 
+### 🔑 Các Phần Tử DOM Trọng Tâm Cần Điều Khiển Trong JS
+Cho dù bạn tự gõ hay tải file mẫu, hãy ghi nhớ các `id` quan trọng sau đây mà file `app.js` sẽ kết nối và xử lý:
+
+| Phần tử DOM | `id` | Vai trò trong ứng dụng |
+| :--- | :--- | :--- |
+| `<div>` Slot Video | `#video-container` | Khung hiển thị rỗng để SRemote gắn (mount) video iframe |
+| `<button>` Play | `#btn-play` | Nút chuyển đổi trạng thái Play / Pause |
+| `<span>` Đồng hồ | `#time-display` | Nhãn hiển thị thời gian phát (`00:00 / 00:00`) |
+| `<input type="range">` | `#seek-bar` | Thanh kéo tua video (Scrubber) mượt mà |
+| `<button>` Mute | `#btn-mute` | Nút bật / tắt tiếng |
+| `<input type="range">` | `#volume-bar` | Thanh trượt tăng giảm âm lượng (0 - 1) |
+
+<details>
+<summary><b>👀 Nhấn vào đây nếu bạn muốn xem hoặc tự viết toàn bộ mã HTML & CSS</b></summary>
+
+#### Mã nguồn `index.html`:
 ```html
 <!DOCTYPE html>
 <html lang="vi">
@@ -42,124 +70,102 @@ flowchart LR
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Custom Media Player - SRemote Tutorial 01</title>
+  <!-- 1. CSS Dùng chung: Biến màu sắc, Typography, Flat Button & Sliders -->
+  <link rel="stylesheet" href="common.css">
+  <!-- 2. CSS Riêng của bài: Khung thẻ Player Card -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="player-wrapper">
-    <!-- 1. Vùng hiển thị video nhúng -->
-    <div id="video-container" class="video-container"></div>
+  <main class="demo-main-layout">
+    <div class="player-card">
+      <!-- 1. Vùng hiển thị video nhúng -->
+      <div id="video-container" class="video-container"></div>
 
-    <!-- 2. Thanh điều khiển tự chế -->
-    <div class="controls-bar">
-      <!-- Nút Play/Pause -->
-      <button id="btn-play" class="btn-ctrl" aria-label="Play/Pause">▶</button>
+      <!-- 2. Thanh điều khiển Flat 2.0 -->
+      <div class="controls-bar">
+        <!-- Nút Play/Pause -->
+        <button id="btn-play" class="btn-flat btn-flat-primary btn-flat-icon" aria-label="Play/Pause">▶</button>
 
-      <!-- Đồng hồ thời gian -->
-      <span id="time-display" class="time-text">00:00 / 00:00</span>
+        <!-- Đồng hồ thời gian -->
+        <span id="time-display" class="time-text">00:00 / 00:00</span>
 
-      <!-- Thanh Scrubber tua video -->
-      <input type="range" id="seek-bar" class="slider seek-slider" min="0" max="100" value="0" step="0.1">
+        <!-- Thanh Scrubber tua video -->
+        <div class="seek-container">
+          <input type="range" id="seek-bar" class="flat-slider seek-slider" min="0" max="100" value="0" step="0.1">
+        </div>
 
-      <!-- Nút Mute & Thanh âm lượng -->
-      <button id="btn-mute" class="btn-ctrl" aria-label="Mute/Unmute">🔊</button>
-      <input type="range" id="volume-bar" class="slider volume-slider" min="0" max="1" value="1" step="0.05">
+        <!-- Nút Mute & Thanh âm lượng -->
+        <button id="btn-mute" class="btn-flat btn-flat-icon" aria-label="Mute/Unmute">🔊</button>
+        <div class="volume-container">
+          <input type="range" id="volume-bar" class="flat-slider volume-slider" min="0" max="1" value="1" step="0.05">
+        </div>
+      </div>
     </div>
-  </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>
 </html>
 ```
 
-Bây giờ, hãy tạo file `style.css` để định hình giao diện hiện đại với tông màu tối (Dark Mode):
-
+#### Mã nguồn `style.css` (Style riêng căn layout player):
 ```css
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: #0b0f19;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+.demo-main-layout {
+  flex: 1;
   display: flex;
-  justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  padding: 20px;
+  justify-content: center;
+  padding: 30px 16px;
 }
 
-.player-wrapper {
+.player-card {
   width: 100%;
-  max-width: 720px;
-  background: #1e293b;
-  border-radius: 12px;
+  max-width: 760px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
 }
 
 .video-container {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #000;
+  background-color: #000000;
 }
 
 .controls-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-  background: #0f172a;
-}
-
-.btn-ctrl {
-  background: #334155;
-  color: #fff;
-  border: none;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s, transform 0.1s;
-}
-
-.btn-ctrl:hover {
-  background: #38bdf8;
-  color: #0f172a;
-}
-
-.btn-ctrl:active {
-  transform: scale(0.95);
+  gap: 14px;
+  padding: 16px 20px;
+  background-color: var(--bg-surface);
+  border-top: 1px solid var(--border-color);
 }
 
 .time-text {
   font-size: 13px;
-  color: #94a3b8;
+  font-weight: 500;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.slider {
-  accent-color: #38bdf8;
-  cursor: pointer;
-}
-
-.seek-slider {
+.seek-container {
   flex: 1;
+  display: flex;
+  align-items: center;
 }
 
-.volume-slider {
-  width: 80px;
+.volume-container {
+  width: 90px;
+  display: flex;
+  align-items: center;
 }
 ```
+</details>
 
 ---
 

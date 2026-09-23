@@ -31,92 +31,114 @@ flowchart LR
 
 ---
 
-## Bước 1: Khởi Tạo Giao Diện Đồng Hồ Pomodoro Tối Giản
+## Bước 1: Chuẩn Bị Giao Diện & Bộ Styling (HTML/CSS)
 
-Hãy tạo file `index.html`. Giao diện gồm:
-- Thẻ hiển thị chế độ hiện tại: `TẬP TRUNG (FOCUS)` hoặc `NGHỈ NGƠI (BREAK)`.
-- Đồng hồ số kích thước lớn: `25:00`.
-- Các nút điều khiển: `Bắt đầu`, `Tạm dừng`, `Đặt lại (Reset)`.
-- Khung nhạc Lo-fi ẩn hoặc hiển thị thu nhỏ.
+> [!TIP]
+> **🚀 Lối Tắt Tiết Kiệm Thời Gian (Khuyên Dùng)**  
+> Để tập trung vào cơ chế chuyển trạng thái đồng hồ và kỹ thuật **Audio Ducking** (tự động hạ âm lượng mượt mà bằng SRemote SDK), bạn hãy lấy sẵn các file giao diện Flat 2.0 từ thư mục `demo/apps/05-pomodoro-lofi`:
+> - 📄 **HTML mẫu**: [`index.html`](../../../../demo/apps/05-pomodoro-lofi/index.html)
+> - 🎨 **CSS dùng chung (Design System & Variables)**: [`common.css`](../../../../demo/apps/common.css)
+> - 🎨 **CSS riêng của bài (Pomodoro Display & Controls)**: [`style.css`](../../../../demo/apps/05-pomodoro-lofi/style.css)
+>
+> *Cấu trúc thư mục làm việc khuyến nghị:*
+> ```text
+> my-pomodoro/
+> ├── common.css     <-- Tải từ demo/apps/common.css
+> ├── style.css      <-- Tải từ demo/apps/05-pomodoro-lofi/style.css
+> ├── index.html     <-- Đã link sẵn common.css & style.css
+> └── app.js         <-- Nơi bạn sẽ viết toàn bộ code logic trong bài này!
+> ```
 
+### 🔑 Các Phần Tử DOM Trọng Tâm Cần Điều Khiển Trong JS
+Các `id` quan trọng mà file `app.js` sẽ kết nối và xử lý:
+
+| Phần tử DOM | `id` | Vai trò trong ứng dụng |
+| :--- | :--- | :--- |
+| `<div>` Huy hiệu chế độ | `#mode-badge` | Hiển thị chế độ: Focus (Tập trung) hoặc Break (Nghỉ ngơi) |
+| `<div>` Đồng hồ số | `#timer-display` | Bộ số đếm ngược thời gian lớn (`25:00`) |
+| `<button>` Bắt đầu | `#btn-start` | Nút kích hoạt bộ đếm Pomodoro và phát nhạc Lo-fi |
+| `<button>` Tạm dừng | `#btn-pause` | Nút dừng đồng hồ đếm ngược |
+| `<button>` Đặt lại | `#btn-reset` | Đưa đồng hồ về mốc 25:00 mặc định |
+| `<span>` Chỉ số Volume | `#volume-indicator` | Nhãn trực quan hiển thị % âm lượng khi ducking |
+| `<div>` Slot Video Lo-fi | `#lofi-player-slot` | Vùng mount player YouTube stream phát nhạc nền |
+
+<details>
+<summary><b>👀 Nhấn vào đây nếu bạn muốn xem hoặc tự viết toàn bộ mã HTML & CSS</b></summary>
+
+#### Mã nguồn `index.html`:
 ```html
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pomodoro Lo-fi Audio Ducking - SRemote Tutorial 05</title>
+  <title>App 05: Pomodoro Lo-fi Audio Ducking - SRemote Demo</title>
+  <!-- 1. CSS Dùng chung: Biến theme, Typography, Flat buttons -->
+  <link rel="stylesheet" href="common.css">
+  <!-- 2. CSS Riêng của bài: Khung Pomodoro Card & Timer Display -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="pomodoro-card">
-    <div class="mode-badge" id="mode-badge">🎯 Chế độ Tập trung</div>
-    
-    <!-- Đồng hồ đếm ngược lớn -->
-    <div class="timer-display" id="timer-display">25:00</div>
+  <main class="demo-main-layout">
+    <div class="pomodoro-card">
+      <div class="mode-badge" id="mode-badge">🎯 Chế độ Tập trung</div>
+      
+      <!-- Đồng hồ đếm ngược Flat lớn -->
+      <div class="timer-display" id="timer-display">25:00</div>
 
-    <!-- Nút điều khiển -->
-    <div class="btn-group">
-      <button id="btn-start" class="btn btn-primary">Bắt đầu</button>
-      <button id="btn-pause" class="btn btn-secondary">Tạm dừng</button>
-      <button id="btn-reset" class="btn btn-secondary">Đặt lại</button>
-    </div>
-
-    <!-- Khung nhạc Lo-fi nhúng -->
-    <div class="lofi-container">
-      <div class="lofi-header">
-        <span>🎵 Nhạc nền: Lofi Girl Radio</span>
-        <span id="volume-indicator" class="volume-tag">Âm lượng: 100%</span>
+      <!-- Nút điều khiển Flat 2.0 -->
+      <div class="btn-group">
+        <button id="btn-start" class="btn-flat btn-flat-primary">Bắt đầu</button>
+        <button id="btn-pause" class="btn-flat">Tạm dừng</button>
+        <button id="btn-reset" class="btn-flat">Đặt lại</button>
       </div>
-      <div id="lofi-player-slot" class="player-slot"></div>
+
+      <!-- Khung nhạc Lo-fi nhúng -->
+      <div class="lofi-container">
+        <div class="lofi-header">
+          <span>🎵 Nhạc nền: Lofi Girl Radio</span>
+          <span id="volume-indicator" class="volume-tag">Âm lượng: 100%</span>
+        </div>
+        <div id="lofi-player-slot" class="player-slot"></div>
+      </div>
     </div>
-  </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>
 </html>
 ```
 
-Và định dạng bằng `style.css`:
-
+#### Mã nguồn `style.css`:
 ```css
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: #0f172a;
-  color: #f8fafc;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  min-height: 100vh;
+.demo-main-layout {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 30px 16px;
 }
 
 .pomodoro-card {
   width: 100%;
-  max-width: 480px;
-  background: #1e293b;
-  border-radius: 20px;
+  max-width: 500px;
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
   padding: 32px;
   text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
 }
 
 .mode-badge {
   display: inline-block;
   padding: 6px 14px;
-  border-radius: 20px;
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 20px;
 }
 
@@ -125,74 +147,49 @@ body {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: -2px;
-  color: #f1f5f9;
-  margin-bottom: 28px;
+  color: var(--text-main);
+  margin-bottom: 24px;
 }
 
 .btn-group {
   display: flex;
   justify-content: center;
   gap: 12px;
-  margin-bottom: 32px;
-}
-
-.btn {
-  padding: 12px 24px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: #38bdf8;
-  color: #0f172a;
-}
-
-.btn-primary:hover {
-  background: #0284c7;
-  color: #fff;
-}
-
-.btn-secondary {
-  background: #334155;
-  color: #f1f5f9;
-}
-
-.btn-secondary:hover {
-  background: #475569;
+  margin-bottom: 30px;
 }
 
 .lofi-container {
-  background: #0f172a;
-  border-radius: 12px;
+  background-color: var(--bg-surface-elevated);
+  border-radius: var(--radius-md);
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
 }
 
 .lofi-header {
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin-bottom: 12px;
 }
 
 .volume-tag {
-  color: #38bdf8;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
 .player-slot {
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  background: #000;
+  background-color: #000000;
+  border: 1px solid var(--border-color);
 }
 ```
+</details>
+
+---
 
 ---
 

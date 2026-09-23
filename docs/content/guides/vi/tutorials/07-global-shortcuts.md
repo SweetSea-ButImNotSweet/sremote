@@ -36,83 +36,99 @@ flowchart TD
 
 ---
 
-## Bước 1: Khởi Tạo Giao Diện & Khung Nhập Liệu Thử Nghiệm
+## Bước 1: Chuẩn Bị Giao Diện & Bộ Styling (HTML/CSS)
 
-Hãy tạo file `index.html`. Chúng ta thiết kế:
-1. Khung hiển thị video có nhúng thông báo OSD (Toast overlay) ở giữa.
-2. Bảng chú thích danh sách các phím tắt hỗ trợ.
-3. Một ô `<textarea>` bình luận để kiểm thử tính năng **Input Guard**.
+> [!TIP]
+> **🚀 Lối Tắt Tiết Kiệm Thời Gian (Khuyên Dùng)**  
+> Để tập trung vào xử lý bắt sự kiện phím toàn cục (Keyboard Event Listener), kỹ thuật chống xung đột gõ văn bản (**Input Guard**) và thông báo OSD qua **SRemote SDK**, bạn hãy lấy sẵn các file giao diện Flat 2.0 từ thư mục `demo/apps/07-global-shortcuts`:
+> - 📄 **HTML mẫu**: [`index.html`](../../../../demo/apps/07-global-shortcuts/index.html)
+> - 🎨 **CSS dùng chung (Design System & Variables)**: [`common.css`](../../../../demo/apps/common.css)
+> - 🎨 **CSS riêng của bài (Video Stage, Toast OSD & Keyboard Card)**: [`style.css`](../../../../demo/apps/07-global-shortcuts/style.css)
+>
+> *Cấu trúc thư mục làm việc khuyến nghị:*
+> ```text
+> my-shortcuts/
+> ├── common.css     <-- Tải từ demo/apps/common.css
+> ├── style.css      <-- Tải từ demo/apps/07-global-shortcuts/style.css
+> ├── index.html     <-- Đã link sẵn common.css & style.css
+> └── app.js         <-- Nơi bạn sẽ viết toàn bộ code logic trong bài này!
+> ```
 
+### 🔑 Các Phần Tử DOM Trọng Tâm Cần Điều Khiển Trong JS
+Các `id` quan trọng mà file `app.js` sẽ kết nối và xử lý:
+
+| Phần tử DOM | `id` | Vai trò trong ứng dụng |
+| :--- | :--- | :--- |
+| `<div>` Slot Video | `#video-container` | Khung hiển thị mount player video |
+| `<div>` OSD Toast | `#osd-toast` | Thông báo nổi giữa màn hình khi bấm phím tắt (`▶ Play`, `🔇 Mute`...) |
+| `<textarea>` Bình luận | `#comment-box` | Ô gõ text dùng để kiểm thử thuật toán Input Guard chống ngắt phím |
+
+<details>
+<summary><b>👀 Nhấn vào đây nếu bạn muốn xem hoặc tự viết toàn bộ mã HTML & CSS</b></summary>
+
+#### Mã nguồn `index.html`:
 ```html
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Global Keyboard Shortcuts - SRemote Tutorial 07</title>
+  <title>App 07: Global Keyboard Shortcuts - SRemote Demo</title>
+  <!-- 1. CSS Dùng chung: Biến theme, Flat inputs, Typography -->
+  <link rel="stylesheet" href="common.css">
+  <!-- 2. CSS Riêng của bài: Stage video & OSD Toast -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="shortcut-app">
-    <header class="app-header">
-      <h1>⌨️ Phím Tắt Toàn Cục (VLC & YouTube Style)</h1>
-      <p>Điều khiển video từ bất kỳ đâu trên trang mà không cần click vào iframe!</p>
-    </header>
+  <main class="demo-main-layout">
+    <div class="shortcut-app">
+      <header class="app-header">
+        <h1>⌨️ Phím Tắt Toàn Cục (VLC & YouTube Style)</h1>
+        <p>Điều khiển video từ bất kỳ đâu trên trang mà không cần click vào iframe!</p>
+      </header>
 
-    <!-- Khung video kèm màn hình OSD -->
-    <div class="video-stage">
-      <div id="video-container" class="video-container"></div>
-      <!-- OSD Toast thông báo khi bấm phím -->
-      <div id="osd-toast" class="osd-toast hidden">▶ Play</div>
-    </div>
-
-    <div class="meta-section">
-      <!-- Bảng danh sách phím tắt -->
-      <div class="cheatsheet-card">
-        <h3>Danh mục phím tắt hỗ trợ:</h3>
-        <ul class="shortcut-list">
-          <li><kbd>Space</kbd> hoặc <kbd>K</kbd>: Phát / Tạm dừng</li>
-          <li><kbd>J</kbd> / <kbd>L</kbd>: Tua lùi 10s / Tua tới 10s</li>
-          <li><kbd>M</kbd>: Bật / Tắt tiếng (Mute toggle)</li>
-          <li><kbd>↑</kbd> / <kbd>↓</kbd>: Tăng / Giảm 10% âm lượng</li>
-        </ul>
+      <div class="video-stage">
+        <div id="video-container" class="video-container"></div>
+        <div id="osd-toast" class="osd-toast hidden">▶ Play</div>
       </div>
 
-      <!-- Khung thử nghiệm Input Guard -->
-      <div class="input-guard-test">
-        <h3>Kiểm thử Input Guard:</h3>
-        <p class="hint-text">Nhấp vào ô bên dưới và gõ phím Space. Bạn sẽ thấy dấu cách gõ bình thường chứ không làm dừng video!</p>
-        <textarea id="comment-box" placeholder="Gõ thử vào đây để test phím Space..."></textarea>
+      <div class="meta-section">
+        <div class="card-box cheatsheet-card">
+          <h3>Danh mục phím tắt hỗ trợ:</h3>
+          <ul class="shortcut-list">
+            <li><kbd>Space</kbd> hoặc <kbd>K</kbd>: Phát / Tạm dừng</li>
+            <li><kbd>J</kbd> / <kbd>L</kbd>: Tua lùi 10s / Tua tới 10s</li>
+            <li><kbd>M</kbd>: Bật / Tắt tiếng (Mute toggle)</li>
+            <li><kbd>↑</kbd> / <kbd>↓</kbd>: Tăng / Giảm 10% âm lượng</li>
+          </ul>
+        </div>
+
+        <div class="card-box input-guard-test">
+          <h3>Kiểm thử Input Guard:</h3>
+          <p class="hint-text">Nhấp vào ô bên dưới và gõ phím Space. Bạn sẽ thấy phím Space gõ ra dấu cách bình thường chứ không làm dừng video!</p>
+          <textarea id="comment-box" class="flat-textarea" placeholder="Gõ thử vào đây để test phím Space..."></textarea>
+        </div>
       </div>
     </div>
-  </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>
 </html>
 ```
 
-Và định dạng bằng `style.css`:
-
+#### Mã nguồn `style.css`:
 ```css
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: #090d16;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 30px 20px;
+.demo-main-layout {
+  flex: 1;
+  padding: 30px 20px 40px;
   display: flex;
   justify-content: center;
 }
 
 .shortcut-app {
-  max-width: 800px;
+  max-width: 820px;
   width: 100%;
 }
 
@@ -121,23 +137,26 @@ body {
 }
 
 .app-header h1 {
-  font-size: 24px;
-  margin-bottom: 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 4px;
 }
 
 .app-header p {
-  color: #94a3b8;
-  font-size: 14px;
+  color: var(--text-muted);
+  font-size: 13.5px;
 }
 
 .video-stage {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #000;
-  border-radius: 12px;
+  background-color: #000000;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
   margin-bottom: 24px;
 }
 
@@ -146,20 +165,18 @@ body {
   height: 100%;
 }
 
-/* OSD (On-Screen Display) Toast */
 .osd-toast {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(6px);
-  color: #38bdf8;
+  background-color: rgba(15, 23, 42, 0.9);
+  color: var(--color-primary);
   padding: 12px 24px;
-  border-radius: 30px;
-  font-size: 16px;
-  font-weight: bold;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  border: 1px solid var(--border-color);
   pointer-events: none;
   transition: opacity 0.2s, transform 0.2s;
   z-index: 10;
@@ -176,16 +193,18 @@ body {
   gap: 20px;
 }
 
-.cheatsheet-card, .input-guard-test {
-  background: #111827;
+.card-box {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   padding: 20px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
-h3 {
+.card-box h3 {
   font-size: 15px;
-  color: #e2e8f0;
+  font-weight: 700;
+  color: var(--text-main);
   margin-bottom: 12px;
 }
 
@@ -195,44 +214,48 @@ h3 {
   flex-direction: column;
   gap: 8px;
   font-size: 13.5px;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 kbd {
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
   padding: 2px 7px;
-  border-radius: 4px;
-  color: #38bdf8;
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
   font-family: monospace;
-  font-weight: bold;
+  font-weight: 700;
+  font-size: 12px;
 }
 
 .hint-text {
   font-size: 12.5px;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin-bottom: 10px;
   line-height: 1.4;
 }
 
-textarea {
+.flat-textarea {
   width: 100%;
   height: 80px;
-  background: #090d16;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #f1f5f9;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
   padding: 10px;
   font-family: inherit;
   font-size: 13px;
   resize: none;
 }
 
-textarea:focus {
+.flat-textarea:focus {
   outline: none;
-  border-color: #38bdf8;
+  border-color: var(--border-focus);
 }
 ```
+</details>
+
+---
 
 ---
 

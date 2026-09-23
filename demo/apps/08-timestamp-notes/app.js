@@ -2,10 +2,7 @@ import { sremote } from 'https://cdn.jsdelivr.net/npm/@sremote/sdk/+esm';
 import { youtube } from 'https://cdn.jsdelivr.net/npm/@sremote/ready2use/+esm';
 
 if (window.setupDemoTopBar) {
-  window.setupDemoTopBar({
-    appName: 'App 08: Lecture Timestamped Notes',
-    tutorialPath: 'content/guides/vi/blueprints/08-timestamp-notes.md'
-  });
+  window.setupDemoTopBar({ appName: 'App 08: Lecture Timestamped Notes', tutorialPath: 'content/guides/vi/blueprints/08-timestamp-notes.md' });
 }
 
 const Icons = window.DemoIcons || { trash: '✕' };
@@ -23,10 +20,7 @@ function formatTime(seconds) {
 }
 
 async function initLecture() {
-  await youtube.mount('#video-embed-slot', {
-    videoId: '8hly31xKli0',
-    playerVars: { controls: 1, autoplay: 0 }
-  });
+  await youtube.mount('#video-embed-slot', { videoId: '8hly31xKli0', playerVars: { controls: 1, autoplay: 0 } });
 
   renderNotes();
   setupEventListeners();
@@ -38,11 +32,7 @@ async function saveCurrentNote() {
 
   const currentTime = await sremote.getCurrentTime();
 
-  const newNote = {
-    id: Date.now(),
-    time: Math.floor(currentTime),
-    text: text
-  };
+  const newNote = { id: Date.now(), time: Math.floor(currentTime), text: text };
 
   notes.push(newNote);
   notes.sort((a, b) => a.time - b.time);
@@ -60,7 +50,7 @@ function renderNotes() {
     return;
   }
 
-  notes.forEach((note) => {
+  notes.forEach(note => {
     const li = document.createElement('li');
     li.className = 'note-card';
     li.id = `note-${note.id}`;
@@ -72,13 +62,13 @@ function renderNotes() {
       <div class="note-body">${note.text}</div>
     `;
 
-    li.addEventListener('click', async (e) => {
+    li.addEventListener('click', async e => {
       if (e.target.closest('.btn-del')) return;
       await sremote.seekTo(note.time);
       await sremote.play();
     });
 
-    li.querySelector('.btn-del').addEventListener('click', (e) => {
+    li.querySelector('.btn-del').addEventListener('click', e => {
       e.stopPropagation();
       notes = notes.filter(n => n.id !== note.id);
       localStorage.setItem('lecture_notes_v1', JSON.stringify(notes));
@@ -92,7 +82,7 @@ function renderNotes() {
 function setupEventListeners() {
   btnAddNote.addEventListener('click', saveCurrentNote);
 
-  noteInput.addEventListener('keydown', (e) => {
+  noteInput.addEventListener('keydown', e => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       saveCurrentNote();

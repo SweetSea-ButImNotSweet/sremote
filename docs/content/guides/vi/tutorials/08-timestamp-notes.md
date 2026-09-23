@@ -36,22 +36,54 @@ flowchart LR
 
 ---
 
-## Bước 1: Khởi Tạo Layout 2 Cột (Video Bên Trái, Sổ Ghi Chép Bên Phải)
+## Bước 1: Chuẩn Bị Giao Diện & Bộ Styling (HTML/CSS)
 
-Tạo file `index.html`:
+> [!TIP]
+> **🚀 Lối Tắt Tiết Kiệm Thời Gian (Khuyên Dùng)**  
+> Để tập trung vào xử lý chụp mốc thời gian `getCurrentTime()`, cơ chế đồng bộ cuộn tự động (Active Auto-Scroll) và tương tác tua qua **SRemote SDK**, bạn hãy lấy sẵn các file giao diện Flat 2.0 từ thư mục `demo/apps/08-timestamp-notes`:
+> - 📄 **HTML mẫu**: [`index.html`](../../../../demo/apps/08-timestamp-notes/index.html)
+> - 🎨 **CSS dùng chung (Design System & Variables)**: [`common.css`](../../../../demo/apps/common.css)
+> - 🎨 **CSS riêng của bài (2-Column Layout, Notes List & Time Tags)**: [`style.css`](../../../../demo/apps/08-timestamp-notes/style.css)
+>
+> *Cấu trúc thư mục làm việc khuyến nghị:*
+> ```text
+> my-lecture-notes/
+> ├── common.css     <-- Tải từ demo/apps/common.css
+> ├── style.css      <-- Tải từ demo/apps/08-timestamp-notes/style.css
+> ├── index.html     <-- Đã link sẵn common.css & style.css
+> └── app.js         <-- Nơi bạn sẽ viết toàn bộ code logic trong bài này!
+> ```
 
+### 🔑 Các Phần Tử DOM Trọng Tâm Cần Điều Khiển Trong JS
+Các `id` quan trọng mà file `app.js` sẽ kết nối và xử lý:
+
+| Phần tử DOM | `id` | Vai trò trong ứng dụng |
+| :--- | :--- | :--- |
+| `<div>` Slot Video | `#video-embed-slot` | Khung hiển thị mount player bài giảng video |
+| `<span>` Đồng hồ hiện tại | `#current-clock` | Hiển thị giây hiện tại theo thời gian thực |
+| `<textarea>` Ghi chú | `#note-input` | Ô nhập nội dung bài học |
+| `<button>` Lưu mốc | `#btn-add-note` | Nút bấm chụp `getCurrentTime()` và lưu thẻ ghi chú |
+| `<ul>` Danh sách ghi chú | `#notes-list` | Vùng hiển thị các thẻ ghi chú gắn timestamp |
+
+<details>
+<summary><b>👀 Nhấn vào đây nếu bạn muốn xem hoặc tự viết toàn bộ mã HTML & CSS</b></summary>
+
+#### Mã nguồn `index.html`:
 ```html
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lecture Timestamped Notes - SRemote Tutorial 08</title>
+  <title>App 08: Lecture Timestamped Notes - SRemote Demo</title>
+  <!-- 1. CSS Dùng chung: Biến theme, Buttons, Typography -->
+  <link rel="stylesheet" href="common.css">
+  <!-- 2. CSS Riêng của bài: Layout 2 cột & Notes Card -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="app-layout">
+  <div class="notes-app-layout">
     <!-- CỘT BÊN TRÁI: Video bài giảng -->
     <div class="video-column">
       <header class="lecture-header">
@@ -65,13 +97,13 @@ Tạo file `index.html`:
     <div class="notes-column">
       <div class="notes-header">
         <h3>📝 Sổ Ghi Chép Bài Học</h3>
-        <span id="current-clock" class="clock-badge">Mốc hiện tại: 00:00</span>
+        <span id="current-clock" class="clock-badge">Mốc: 00:00</span>
       </div>
 
       <!-- Khung nhập ghi chú nhanh -->
       <div class="note-input-box">
-        <textarea id="note-input" placeholder="Gõ ghi chú tại đây... (Bấm Ctrl + Enter để lưu nhanh)"></textarea>
-        <button id="btn-add-note" class="btn-primary">Ghi mốc này</button>
+        <textarea id="note-input" class="note-textarea" placeholder="Gõ ghi chú tại đây... (Ctrl + Enter để lưu)"></textarea>
+        <button id="btn-add-note" class="btn-flat btn-flat-primary">Ghi mốc này</button>
       </div>
 
       <!-- Danh sách các ghi chú đã tạo -->
@@ -87,34 +119,22 @@ Tạo file `index.html`:
 </html>
 ```
 
-Và định dạng bằng `style.css`:
-
+#### Mã nguồn `style.css`:
 ```css
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: #090d16;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.app-layout {
+.notes-app-layout {
   display: grid;
   grid-template-columns: 1.2fr 0.8fr;
-  height: 100vh;
+  flex: 1;
+  height: calc(100vh - 55px);
+  overflow: hidden;
 }
 
 .video-column {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid var(--border-color);
+  background-color: var(--bg-page);
 }
 
 .lecture-header {
@@ -123,25 +143,28 @@ body {
 
 .lecture-header h2 {
   font-size: 20px;
+  font-weight: 700;
+  color: var(--text-main);
   margin-bottom: 4px;
 }
 
 .lecture-meta {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .video-embed-slot {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #000;
-  border-radius: 12px;
+  background-color: #000000;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
 }
 
 .notes-column {
-  background: #0f172a;
+  background-color: var(--bg-surface);
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -155,13 +178,20 @@ body {
   margin-bottom: 16px;
 }
 
+.notes-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
 .clock-badge {
-  background: #1e293b;
-  color: #38bdf8;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .note-input-box {
@@ -171,44 +201,28 @@ body {
   margin-bottom: 24px;
 }
 
-textarea {
+.note-textarea {
   width: 100%;
   height: 70px;
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #fff;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
   padding: 10px 12px;
   font-family: inherit;
   font-size: 13.5px;
   resize: none;
 }
 
-textarea:focus {
+.note-textarea:focus {
   outline: none;
-  border-color: #38bdf8;
-}
-
-.btn-primary {
-  align-self: flex-end;
-  background: #0284c7;
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  transition: background 0.2s;
-}
-
-.btn-primary:hover {
-  background: #0369a1;
+  border-color: var(--border-focus);
 }
 
 .list-title {
   font-size: 13px;
-  color: #94a3b8;
+  font-weight: 600;
+  color: var(--text-muted);
   margin-bottom: 12px;
 }
 
@@ -220,22 +234,21 @@ textarea:focus {
 }
 
 .note-card {
-  background: #1e293b;
-  border-radius: 8px;
+  background-color: var(--bg-surface-elevated);
+  border-radius: var(--radius-md);
   padding: 12px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .note-card:hover {
-  background: #334155;
+  border-color: var(--border-focus);
 }
 
-/* Đổi màu highlight khi video đang phát tới mốc của ghi chú này */
 .note-card.active-note {
-  border-color: #38bdf8;
-  background: rgba(2, 132, 199, 0.15);
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
 }
 
 .note-top-bar {
@@ -245,32 +258,35 @@ textarea:focus {
 }
 
 .time-tag {
-  background: #0284c7;
-  color: #fff;
+  background-color: var(--color-primary);
+  color: #ffffff;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 11.5px;
-  font-weight: bold;
+  font-weight: 700;
 }
 
 .btn-del {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-subtle);
   cursor: pointer;
   font-size: 12px;
 }
 
 .btn-del:hover {
-  color: #f87171;
+  color: var(--color-danger);
 }
 
 .note-body {
   font-size: 13px;
   line-height: 1.4;
-  color: #e2e8f0;
+  color: var(--text-main);
 }
 ```
+</details>
+
+---
 
 ---
 

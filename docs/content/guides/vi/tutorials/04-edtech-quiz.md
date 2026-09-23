@@ -36,70 +36,95 @@ flowchart TD
 
 ---
 
-## Bước 1: Khởi Tạo Giao Diện Bài Giảng & Modal Trắc Nghiệm Ẩn
+## Bước 1: Chuẩn Bị Giao Diện & Bộ Styling (HTML/CSS)
 
-Hãy tạo file `index.html`. Chúng ta thiết kế:
-1. Vùng chứa bài giảng (`#video-slot`).
-2. Một lớp phủ Modal mờ (`#quiz-overlay`) mặc định ẩn, chứa câu hỏi trắc nghiệm.
+> [!TIP]
+> **🚀 Lối Tắt Tiết Kiệm Thời Gian (Khuyên Dùng)**  
+> Để tập trung vào cơ chế ngắt video tự động (Time-gate checkpoint) và điều khiển **SRemote SDK**, bạn hãy tải hoặc sao chép sẵn các file giao diện Flat 2.0 từ thư mục `demo/apps/04-edtech-quiz`:
+> - 📄 **HTML mẫu**: [`index.html`](../../../../demo/apps/04-edtech-quiz/index.html)
+> - 🎨 **CSS dùng chung (Design System & Variables)**: [`common.css`](../../../../demo/apps/common.css)
+> - 🎨 **CSS riêng của bài (Course Player & Quiz Overlay)**: [`style.css`](../../../../demo/apps/04-edtech-quiz/style.css)
+>
+> *Cấu trúc thư mục làm việc khuyến nghị:*
+> ```text
+> my-edtech-quiz/
+> ├── common.css     <-- Tải từ demo/apps/common.css
+> ├── style.css      <-- Tải từ demo/apps/04-edtech-quiz/style.css
+> ├── index.html     <-- Đã link sẵn common.css & style.css
+> └── app.js         <-- Nơi bạn sẽ viết toàn bộ code logic trong bài này!
+> ```
 
+### 🔑 Các Phần Tử DOM Trọng Tâm Cần Điều Khiển Trong JS
+Các `id` quan trọng mà file `app.js` sẽ kết nối và xử lý:
+
+| Phần tử DOM | `id` | Vai trò trong ứng dụng |
+| :--- | :--- | :--- |
+| `<div>` Slot Video | `#video-slot` | Vùng mount player bài giảng video |
+| `<div>` Modal Quiz | `#quiz-overlay` | Lớp phủ làm mờ và khóa tương tác khi dừng kiểm tra |
+| `<h3>` Câu hỏi | `#quiz-question` | Thẻ hiển thị nội dung câu hỏi trắc nghiệm |
+| `<div>` Danh sách đáp án | `#quiz-options` | Vùng render các nút bấm chọn đáp án A, B, C, D |
+| `<div>` Thông báo | `#quiz-feedback` | Hiển thị thông báo khi trả lời đúng / sai |
+| `<b>` Trạng thái học | `#learning-status` | Hiển thị trạng thái học tập (Đang học / Bị khóa) |
+| `<span>` Đồng hồ giây | `#video-time` | Bộ đếm giây bài giảng hiện tại |
+
+<details>
+<summary><b>👀 Nhấn vào đây nếu bạn muốn xem hoặc tự viết toàn bộ mã HTML & CSS</b></summary>
+
+#### Mã nguồn `index.html`:
 ```html
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EdTech Interactive Video Quiz - SRemote Tutorial 04</title>
+  <title>App 04: EdTech Interactive Quiz - SRemote Demo</title>
+  <!-- 1. CSS Dùng chung: Biến theme, Badges, Typography -->
+  <link rel="stylesheet" href="common.css">
+  <!-- 2. CSS Riêng của bài: Khung video & Lớp phủ Quiz Overlay -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="course-container">
-    <header class="course-header">
-      <span class="course-tag">Khóa học JavaScript Cơ Bản</span>
-      <h2>Bài 04: Biến, Kiểu dữ liệu và Vòng lặp</h2>
-      <p class="instructor">Giảng viên: SRemote Academy</p>
-    </header>
+  <main class="demo-main-layout">
+    <div class="course-container">
+      <header class="course-header">
+        <span class="badge-tag">Khóa học JavaScript Thực Chiến</span>
+        <h2>Bài 04: Biến, Kiểu dữ liệu và Vòng lặp</h2>
+        <p class="instructor">Giảng viên: SRemote Academy • Tự động dừng tại mốc 15s & 45s</p>
+      </header>
 
-    <!-- Khung video bài giảng -->
-    <div class="video-wrapper">
-      <div id="video-slot" class="video-slot"></div>
+      <!-- Khung video bài giảng -->
+      <div class="video-wrapper">
+        <div id="video-slot" class="video-slot"></div>
 
-      <!-- Modal Trắc nghiệm (Mặc định ẩn) -->
-      <div id="quiz-overlay" class="quiz-overlay hidden">
-        <div class="quiz-card">
-          <div class="quiz-badge">⚡ Điểm Dừng Kiểm Tra Kiến Thức</div>
-          <h3 id="quiz-question" class="quiz-title">Đang nạp câu hỏi...</h3>
-          <div id="quiz-options" class="quiz-options"></div>
-          <div id="quiz-feedback" class="quiz-feedback"></div>
+        <!-- Modal Trắc nghiệm Flat 2.0 (Mặc định ẩn) -->
+        <div id="quiz-overlay" class="quiz-overlay hidden">
+          <div class="quiz-card">
+            <div class="quiz-badge">⚡ Điểm Dừng Kiểm Tra Kiến Thức</div>
+            <h3 id="quiz-question" class="quiz-title">Đang nạp câu hỏi...</h3>
+            <div id="quiz-options" class="quiz-options"></div>
+            <div id="quiz-feedback" class="quiz-feedback"></div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Thanh tiến độ học tập -->
-    <div class="progress-footer">
-      <span>Trạng thái: <b id="learning-status">Đang theo dõi bài giảng</b></span>
-      <span id="video-time">00:00</span>
+      <!-- Thanh tiến độ học tập -->
+      <div class="progress-footer">
+        <span>Trạng thái: <b id="learning-status">Đang theo dõi bài giảng</b></span>
+        <span id="video-time" class="time-counter">0s</span>
+      </div>
     </div>
-  </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>
 </html>
 ```
 
-Và định kiểu bằng file `style.css`:
-
+#### Mã nguồn `style.css`:
 ```css
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: #0b0f19;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+.demo-main-layout {
+  flex: 1;
   padding: 30px 16px;
   display: flex;
   justify-content: center;
@@ -107,43 +132,47 @@ body {
 
 .course-container {
   width: 100%;
-  max-width: 800px;
+  max-width: 820px;
 }
 
 .course-header {
   margin-bottom: 16px;
 }
 
-.course-tag {
+.badge-tag {
   display: inline-block;
   padding: 4px 8px;
-  border-radius: 4px;
-  background: #0284c7;
-  color: #fff;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
   margin-bottom: 8px;
 }
 
 .course-header h2 {
   font-size: 22px;
+  font-weight: 700;
+  color: var(--text-main);
   margin-bottom: 4px;
 }
 
 .instructor {
-  font-size: 13px;
-  color: #94a3b8;
+  font-size: 13.5px;
+  color: var(--text-muted);
 }
 
 .video-wrapper {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #000;
-  border-radius: 12px;
+  background-color: #000000;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
 }
 
 .video-slot {
@@ -151,18 +180,17 @@ body {
   height: 100%;
 }
 
-/* Modal lớp phủ trắc nghiệm */
+/* Modal lớp phủ trắc nghiệm Flat 2.0 */
 .quiz-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(11, 15, 25, 0.92);
-  backdrop-filter: blur(8px);
+  background-color: rgba(15, 23, 42, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
   z-index: 50;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.25s ease;
 }
 
 .quiz-overlay.hidden {
@@ -170,28 +198,29 @@ body {
 }
 
 .quiz-card {
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
   padding: 24px;
-  border-radius: 12px;
-  max-width: 500px;
+  border-radius: var(--radius-md);
+  max-width: 520px;
   width: 100%;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  box-shadow: var(--shadow-lg);
 }
 
 .quiz-badge {
-  color: #38bdf8;
+  color: var(--color-primary);
   font-size: 12px;
-  font-weight: bold;
+  font-weight: 700;
   text-transform: uppercase;
   margin-bottom: 8px;
 }
 
 .quiz-title {
   font-size: 16px;
+  font-weight: 600;
   line-height: 1.5;
   margin-bottom: 16px;
-  color: #f8fafc;
+  color: var(--text-main);
 }
 
 .quiz-options {
@@ -202,44 +231,56 @@ body {
 }
 
 .option-btn {
-  background: #334155;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
   padding: 12px 16px;
-  border-radius: 8px;
-  color: #f8fafc;
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
   text-align: left;
   cursor: pointer;
   font-size: 14px;
-  transition: all 0.2s;
+  font-weight: 500;
+  transition: all 0.18s ease;
 }
 
 .option-btn:hover {
-  background: #0284c7;
-  border-color: #38bdf8;
+  background-color: var(--color-primary-light);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .quiz-feedback {
   min-height: 20px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .quiz-feedback.error {
-  color: #f87171;
+  color: var(--color-danger);
 }
 
 .progress-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background: #111827;
-  border-radius: 8px;
-  margin-top: 12px;
+  padding: 12px 18px;
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-md);
+  margin-top: 14px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.time-counter {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text-main);
 }
 ```
+</details>
+
+---
 
 ---
 

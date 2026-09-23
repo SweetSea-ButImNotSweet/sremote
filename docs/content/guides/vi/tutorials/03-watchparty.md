@@ -34,172 +34,237 @@ sequenceDiagram
 
 ---
 
-## Bước 1: Khởi Tạo Giao Diện 2 Khung Nhìn (Host & Guest)
+## Bước 1: Chuẩn Bị Giao Diện & Bộ Styling (HTML/CSS)
 
-Để bạn dễ dàng kiểm thử ngay trên **cùng một máy tính**, chúng ta sẽ dựng một giao diện chia đôi: 1 bên giả lập **Host** và 1 bên giả lập **Guest**.
+> [!TIP]
+> **🚀 Lối Tắt Tiết Kiệm Thời Gian (Khuyên Dùng)**  
+> Để kiểm thử đồng bộ 2 màn hình (Host & Guest) và tập trung vào thuật toán gói tin BroadcastChannel với **SRemote SDK**, bạn hãy lấy sẵn các file giao diện Flat 2.0 từ thư mục `demo/apps/03-watchparty`:
+> - 📄 **HTML mẫu**: [`index.html`](../../../../demo/apps/03-watchparty/index.html)
+> - 🎨 **CSS dùng chung (Design System & Variables)**: [`common.css`](../../../../demo/apps/common.css)
+> - 🎨 **CSS riêng của bài (Theater Grid & Packet Logs)**: [`style.css`](../../../../demo/apps/03-watchparty/style.css)
+>
+> *Cấu trúc thư mục làm việc khuyến nghị:*
+> ```text
+> my-watchparty/
+> ├── common.css     <-- Tải từ demo/apps/common.css
+> ├── style.css      <-- Tải từ demo/apps/03-watchparty/style.css
+> ├── index.html     <-- Đã link sẵn common.css & style.css
+> └── app.js         <-- Nơi bạn sẽ viết toàn bộ code logic trong bài này!
+> ```
 
-Hãy tạo file `index.html`:
+### 🔑 Các Phần Tử DOM Trọng Tâm Cần Điều Khiển Trong JS
+Các `id` quan trọng mà file `app.js` sẽ kết nối và xử lý:
 
+| Phần tử DOM | `id` | Vai trò trong ứng dụng |
+| :--- | :--- | :--- |
+| `<div>` Màn hình Host | `#host-player` | Vùng mount player của Host (chủ phòng) |
+| `<b>` Giờ Host | `#host-time` | Đồng hồ thời gian thực của Host |
+| `<span>` Trạng thái Host | `#host-state` | Hiển thị Playing / Paused của Host |
+| `<div>` Màn hình Guest | `#guest-player` | Vùng mount player của Guest (người xem theo) |
+| `<b>` Giờ Guest | `#guest-time` | Đồng hồ thời gian thực của Guest |
+| `<span>` Trạng thái Guest | `#guest-state` | Hiển thị Syncing / Paused / In Sync |
+| `<div>` Log List | `#log-list` | Danh sách hiển thị các gói tin BroadcastChannel thời gian thực |
+
+<details>
+<summary><b>👀 Nhấn vào đây nếu bạn muốn xem hoặc tự viết toàn bộ mã HTML & CSS</b></summary>
+
+#### Mã nguồn `index.html`:
 ```html
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WatchParty SyncTheater - SRemote Tutorial 03</title>
+  <title>App 03: WatchParty SyncTheater - SRemote Demo</title>
+  <!-- 1. CSS Dùng chung: Biến theme, Flat buttons & badges -->
+  <link rel="stylesheet" href="common.css">
+  <!-- 2. CSS Riêng của bài: Grid chia đôi màn hình & Console Logs -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="watchparty-app">
-    <header class="app-header">
-      <h1>🎬 SRemote WatchParty SyncTheater</h1>
-      <div class="room-status">
-        <span class="status-dot"></span>
-        <span id="sync-status">Phòng: #movie-night-2026 | Kênh đã kết nối</span>
-      </div>
-    </header>
+  <main class="demo-main-layout">
+    <div class="watchparty-container">
+      <header class="theater-header">
+        <div>
+          <h1 class="theater-title">🎬 WatchParty SyncTheater</h1>
+          <p class="theater-subtitle">Đồng bộ hai màn hình thời gian thực qua BroadcastChannel</p>
+        </div>
+        <div class="room-status-badge">
+          <span class="status-dot"></span>
+          <span>Phòng: #movie-sync</span>
+        </div>
+      </header>
 
-    <div class="theater-grid">
-      <!-- Cột 1: Màn hình của Host -->
-      <div class="screen-card">
-        <div class="screen-badge host-badge">👑 Chủ Phòng (Host Controller)</div>
-        <div id="host-player" class="video-box"></div>
-        <div class="screen-info">
-          <span>Thời gian: <b id="host-time">00:00</b></span>
-          <span id="host-state" class="state-pill">Paused</span>
+      <div class="theater-grid">
+        <!-- Host Screen -->
+        <div class="screen-card">
+          <div class="screen-badge host-badge">👑 Chủ Phòng (Host Controller)</div>
+          <div id="host-player" class="video-box"></div>
+          <div class="screen-footer">
+            <span>Thời gian: <b id="host-time" class="time-val">00:00</b></span>
+            <span id="host-state" class="state-pill">Paused</span>
+          </div>
+        </div>
+
+        <!-- Guest Screen -->
+        <div class="screen-card">
+          <div class="screen-badge guest-badge">👥 Khách Xem (Synced Guest)</div>
+          <div id="guest-player" class="video-box"></div>
+          <div class="screen-footer">
+            <span>Thời gian: <b id="guest-time" class="time-val">00:00</b></span>
+            <span id="guest-state" class="state-pill">Syncing</span>
+          </div>
         </div>
       </div>
 
-      <!-- Cột 2: Màn hình của Guest -->
-      <div class="screen-card">
-        <div class="screen-badge guest-badge">👥 Khách Xem (Synced Guest)</div>
-        <div id="guest-player" class="video-box"></div>
-        <div class="screen-info">
-          <span>Thời gian: <b id="guest-time">00:00</b></span>
-          <span id="guest-state" class="state-pill">Syncing</span>
-        </div>
+      <!-- Realtime Packet Logs -->
+      <div class="logs-card">
+        <div class="logs-header">📡 Nhật ký đồng bộ gói tin (Real-time BroadcastChannel Logs):</div>
+        <div id="log-list" class="log-list"></div>
       </div>
     </div>
-
-    <!-- Nhật ký đồng bộ thời gian thực -->
-    <div class="logs-console">
-      <div class="logs-title">📡 Nhật ký đồng bộ gói tin (Real-time Sync Logs):</div>
-      <div id="log-list" class="log-list"></div>
-    </div>
-  </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>
 </html>
 ```
 
-Và định kiểu bằng file `style.css`:
-
+#### Mã nguồn `style.css`:
 ```css
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+.demo-main-layout {
+  flex: 1;
+  padding: 24px 20px 40px;
+  display: flex;
+  justify-content: center;
 }
 
-body {
-  background: #090d16;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 24px;
-}
-
-.watchparty-app {
+.watchparty-container {
   max-width: 1100px;
-  margin: 0 auto;
+  width: 100%;
 }
 
-.app-header {
+.theater-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.theater-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.theater-subtitle {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.room-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
 }
 
 .status-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  background: #10b981;
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-success);
   border-radius: 50%;
-  margin-right: 6px;
-  box-shadow: 0 0 10px #10b981;
 }
 
 .theater-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  gap: 20px;
   margin-bottom: 24px;
 }
 
 .screen-card {
-  background: #111827;
-  border-radius: 12px;
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
 }
 
 .screen-badge {
   padding: 10px 16px;
   font-size: 13px;
   font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .host-badge {
-  background: #8b5cf6;
-  color: #fff;
+  background-color: #8b5cf6;
+  color: #ffffff;
 }
 
 .guest-badge {
-  background: #0284c7;
-  color: #fff;
+  background-color: var(--color-primary);
+  color: #ffffff;
 }
 
 .video-box {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #000;
+  background-color: #000000;
 }
 
-.screen-info {
+.screen-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
   font-size: 13px;
-  background: #0f172a;
+  background-color: var(--bg-surface);
+  border-top: 1px solid var(--border-color);
+  color: var(--text-muted);
+}
+
+.time-val {
+  color: var(--text-main);
 }
 
 .state-pill {
   padding: 2px 8px;
-  border-radius: 4px;
-  background: #334155;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
   font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
+  color: var(--text-main);
 }
 
-.logs-console {
-  background: #030712;
-  border-radius: 8px;
+.logs-card {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-md);
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  font-family: monospace;
-  font-size: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
-.logs-title {
-  color: #94a3b8;
-  margin-bottom: 8px;
-  font-weight: bold;
+.logs-header {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
 }
 
 .log-list {
@@ -207,13 +272,18 @@ body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .log-item {
-  color: #38bdf8;
+  font-size: 12.5px;
+  font-family: monospace;
+  color: var(--border-focus);
 }
 ```
+</details>
+
+---
 
 ---
 

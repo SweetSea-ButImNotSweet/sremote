@@ -130,6 +130,6 @@ export function VideoPlayer({ videoId }) {
 
 ## 3. Các Bước Tiếp Theo
 
-- **Khám phá 11 bài hướng dẫn ứng dụng thực tế (A-Z)**: Xem danh mục **Blueprints** ở thanh bên trái bao gồm: [Custom Player Controls](../blueprints/01-simple-player.md), [Hàng đợi Playlist/Podcast](../blueprints/02-playlist-queue.md), [WatchParty Sync](../blueprints/03-watchparty.md), [Khóa video trắc nghiệm EdTech](../blueprints/04-edtech-quiz.md), [Pomodoro Lo-fi Audio Ducking](../blueprints/05-pomodoro-lofi.md)...
+- **Khám phá 11 bài hướng dẫn ứng dụng thực tế (A-Z)**: Xem danh mục **Tutorials** ở thanh bên trái bao gồm: [Custom Player Controls](../tutorials/01-simple-player.md), [Hàng đợi Playlist/Podcast](../tutorials/02-playlist-queue.md), [WatchParty Sync](../tutorials/03-watchparty.md), [Khóa video trắc nghiệm EdTech](../tutorials/04-edtech-quiz.md), [Pomodoro Lo-fi Audio Ducking](../tutorials/05-pomodoro-lofi.md)...
 - **Tra cứu nền tảng**: Xem [Ma trận tương thích 22 dịch vụ](../advanced/compatibility-matrix.md).
 - **Tra cứu hàm & sự kiện**: Mở [Tài liệu API Reference](../../api.html).
