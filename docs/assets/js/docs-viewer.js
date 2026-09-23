@@ -284,6 +284,9 @@ async function renderDoc(docPath, pushToHistory = true, targetHash = null) {
   // Update active TOC item
   highlightTOC(docPath);
 
+  // Update Tutorial Starter Files Download button visibility & state
+  updateTutorialDownloadButton(docPath);
+
   // Update URL query ?path=... and hash
   if (pushToHistory) {
     const newUrl = new URL(window.location.href);
@@ -623,6 +626,107 @@ if (tocContainer) {
   });
 }
 
+// Tutorial Starter Files Downloader Logic
+const tutorialMap = {
+  '01-simple-player': '01-simple-player',
+  '02-playlist-queue': '02-playlist-queue',
+  '03-watchparty': '03-watchparty',
+  '04-edtech-quiz': '04-edtech-quiz',
+  '05-pomodoro-lofi': '05-pomodoro-lofi',
+  '06-multi-stream': '06-multi-stream',
+  '07-global-shortcuts': '07-global-shortcuts',
+  '08-timestamp-notes': '08-timestamp-notes',
+  '09-floating-player': '09-floating-player',
+  '10-audio-slide': '10-audio-slide',
+  '11-gym-ducking': '11-gym-ducking',
+};
+
+let currentTutorialAppId = null;
+
+function updateTutorialDownloadButton(docPath) {
+  const container = document.getElementById('tutorial-dl-container');
+  if (!container) return;
+
+  // Match /tutorials/01-simple-player.md or similar
+  const match = docPath.match(/tutorials\/(0\d|1[0-1])-([a-z-]+)\.md/i);
+  if (match) {
+    const slug = `${match[1]}-${match[2]}`.toLowerCase();
+    if (tutorialMap[slug]) {
+      currentTutorialAppId = tutorialMap[slug];
+      container.style.display = 'inline-block';
+      return;
+    }
+  }
+
+  currentTutorialAppId = null;
+  container.style.display = 'none';
+  const menu = document.getElementById('tutorial-dl-menu');
+  if (menu) menu.classList.remove('show');
+}
+
+// Download file helper via Blob
+async function triggerFileDownload(url, filename) {
+  try {
+    const res = await fetch(url + '?t=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    console.error('Download failed:', err);
+    alert(`Không thể tải file: ${filename}. Vui lòng thử lại!`);
+  }
+}
+
+// Initialize Tutorial Download UI handlers
+function initTutorialDownloadHandlers() {
+  const dlBtn = document.getElementById('btn-tutorial-dl');
+  const menu = document.getElementById('tutorial-dl-menu');
+  if (!dlBtn || !menu) return;
+
+  dlBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    menu.classList.toggle('show');
+  });
+
+  document.addEventListener('click', () => {
+    menu.classList.remove('show');
+  });
+
+  menu.querySelectorAll('.tutorial-dl-item').forEach(item => {
+    item.addEventListener('click', async e => {
+      e.stopPropagation();
+      menu.classList.remove('show');
+      if (!currentTutorialAppId) return;
+
+      const type = item.getAttribute('data-type');
+      const baseAppUrl = `../demo/apps/${currentTutorialAppId}`;
+      const commonCssUrl = `../demo/apps/common.css`;
+
+      if (type === 'html') {
+        await triggerFileDownload(`${baseAppUrl}/index.html`, 'index.html');
+      } else if (type === 'style') {
+        await triggerFileDownload(`${baseAppUrl}/style.css`, 'style.css');
+      } else if (type === 'common') {
+        await triggerFileDownload(commonCssUrl, 'common.css');
+      } else if (type === 'all') {
+        // Sequentially download all 3 files
+        await triggerFileDownload(`${baseAppUrl}/index.html`, 'index.html');
+        await new Promise(r => setTimeout(r, 300));
+        await triggerFileDownload(`${baseAppUrl}/style.css`, 'style.css');
+        await new Promise(r => setTimeout(r, 300));
+        await triggerFileDownload(commonCssUrl, 'common.css');
+      }
+    });
+  });
+}
+
 // Copy link button handler
 const copyBtn = document.getElementById('btn-copy-link');
 if (copyBtn) {
@@ -652,6 +756,7 @@ window.addEventListener('popstate', () => {
 
 // Initial load based on ?path param or saved language
 document.addEventListener('DOMContentLoaded', () => {
+  initTutorialDownloadHandlers();
   const savedLang = localStorage.getItem('sremote_lang') || 'vi';
   const params = new URLSearchParams(window.location.search);
   const requestedPath = params.get('path');

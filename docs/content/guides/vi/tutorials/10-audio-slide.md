@@ -44,209 +44,29 @@ sequenceDiagram
 
 ---
 
-## Bước 1: Khởi Tạo Giao Diện Slide Deck & Bộ Điều Khiển Âm Thanh
+## Bước 1: Chuẩn Bị Giao Diện & Bộ Styling (HTML/CSS)
 
-Hãy tạo file `index.html`:
+> [!TIP]
+> **📥 Tải Nhanh Bộ Giao Diện Mẫu (Starter Kit)**  
+> Để bắt đầu ngay mà không cần mất thời gian gõ HTML & CSS, bạn hãy nhấp vào nút **`📥 Tải Starter Files`** ở thanh công cụ phía trên đầu trang tài liệu để tải về máy:
+> - `index.html`: Khung sườn màn hình Slide Stage & thanh Thumbnail Deck Flat 2.0.
+> - `style.css`: File định dạng layout cho Slide Card, Audio Panel & hiệu ứng chuyển slide.
+> - `common.css`: Hệ thống biến màu sắc và theme chung.
+>
+> Đặt các file trên vào cùng thư mục làm việc với file `app.js` của bạn.
 
-```html
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Audio-Driven Slide Deck - SRemote Tutorial 10</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
+### 🔑 Các Phần Tử DOM Trọng Tâm Cần Điều Khiển Trong JS
+Trong suốt bài hướng dẫn này, file `app.js` sẽ kết nối và điều khiển trực tiếp các phần tử có `id` sau:
 
-  <div class="deck-app">
-    <!-- Header thông tin bài thuyết trình -->
-    <header class="deck-header">
-      <div>
-        <h2>📊 Kiến Trúc Microservices & Event-Driven</h2>
-        <p class="meta">Thuyết trình bởi: Tech Lead • Tự động lật slide theo giọng đọc</p>
-      </div>
-      <div class="slide-counter" id="slide-counter">Slide 1 / 4</div>
-    </header>
-
-    <!-- Màn hình hiển thị Slide chính -->
-    <div class="slide-stage">
-      <div id="active-slide-card" class="slide-card">
-        <h1 id="slide-title" class="slide-title">Đang nạp slide...</h1>
-        <p id="slide-desc" class="slide-desc"></p>
-        <div id="slide-graphic" class="slide-graphic"></div>
-      </div>
-    </div>
-
-    <!-- Khung phát âm thanh thuyết minh (Voiceover Slot) -->
-    <div class="audio-control-panel">
-      <div id="audio-slot" class="audio-slot"></div>
-    </div>
-
-    <!-- Thanh thumbnail danh sách tất cả các slide (Bấm để nhảy) -->
-    <div class="thumbnails-bar" id="thumbnails-bar"></div>
-  </div>
-
-  <script type="module" src="app.js"></script>
-</body>
-</html>
-```
-
-Và định dạng chuyển slide mượt mà bằng `style.css`:
-
-```css
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: #090d16;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 24px;
-  display: flex;
-  justify-content: center;
-}
-
-.deck-app {
-  max-width: 900px;
-  width: 100%;
-}
-
-.deck-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 14px;
-}
-
-.deck-header h2 {
-  font-size: 22px;
-}
-
-.meta {
-  font-size: 13px;
-  color: #94a3b8;
-}
-
-.slide-counter {
-  background: #0284c7;
-  color: #fff;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-/* Sân khấu trình chiếu Slide */
-.slide-stage {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-  overflow: hidden;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-  margin-bottom: 20px;
-}
-
-.slide-card {
-  text-align: center;
-  max-width: 600px;
-  animation: fadeIn 0.4s ease-out;
-}
-
-.slide-title {
-  font-size: 32px;
-  color: #38bdf8;
-  margin-bottom: 16px;
-  line-height: 1.3;
-}
-
-.slide-desc {
-  font-size: 16px;
-  color: #cbd5e1;
-  line-height: 1.6;
-}
-
-.slide-graphic {
-  font-size: 48px;
-  margin-top: 24px;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.audio-control-panel {
-  background: #111827;
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.audio-slot {
-  width: 100%;
-  height: 80px;
-}
-
-/* Thanh Thumbnails */
-.thumbnails-bar {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-
-.thumb-item {
-  background: #1e293b;
-  border-radius: 8px;
-  padding: 10px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.2s;
-}
-
-.thumb-item:hover {
-  background: #334155;
-}
-
-.thumb-item.active {
-  border-color: #38bdf8;
-  background: rgba(2, 132, 199, 0.2);
-}
-
-.thumb-num {
-  font-size: 11px;
-  color: #38bdf8;
-  font-weight: bold;
-}
-
-.thumb-title {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #f1f5f9;
-  margin: 4px 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.thumb-time {
-  font-size: 11px;
-  color: #64748b;
-}
-```
+| Phần tử DOM | `id` | Vai trò trong ứng dụng |
+| :--- | :--- | :--- |
+| `<div>` Đếm số slide | `#slide-counter` | Nhãn hiển thị số thứ tự slide hiện tại (`Slide 1 / 4`) |
+| `<div>` Khung thẻ slide | `#active-slide-card` | Thẻ slide chính đang hiển thị nội dung |
+| `<h1>` Tiêu đề slide | `#slide-title` | Tiêu đề của slide đang kích hoạt |
+| `<p>` Mô tả slide | `#slide-desc` | Đoạn văn bản thuyết trình chi tiết của slide |
+| `<div>` Biểu đồ/Icon | `#slide-graphic` | Biểu tượng trực quan minh họa cho slide |
+| `<div>` Slot Audio | `#audio-slot` | Vùng mount player YouTube/SoundCloud phát giọng đọc thuyết minh |
+| `<div>` Thanh thumbnails | `#thumbnails-bar` | Lưới 4 thumbnail các slide bên dưới (nhấp để tua âm thanh và lật slide) |
 
 ---
 

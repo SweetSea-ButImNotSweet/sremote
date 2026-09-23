@@ -40,171 +40,22 @@ flowchart TD
 ## Bước 1: Chuẩn Bị Giao Diện & Bộ Styling (HTML/CSS)
 
 > [!TIP]
-> **🚀 Lối Tắt Tiết Kiệm Thời Gian (Khuyên Dùng)**  
-> Để tập trung vào cơ chế quản lý đồng thời đa player và thuật toán **Solo Audio** (tự động bật tiếng 1 luồng & tắt tiếng 3 luồng còn lại) qua **SRemote SDK**, bạn hãy lấy sẵn các file giao diện Flat 2.0 từ thư mục `demo/apps/06-multi-stream`:
-> - 📄 **HTML mẫu**: [`index.html`](../../../../demo/apps/06-multi-stream/index.html)
-> - 🎨 **CSS dùng chung (Design System & Variables)**: [`common.css`](../../../../demo/apps/common.css)
-> - 🎨 **CSS riêng của bài (Multi-Stream Grid 2x2)**: [`style.css`](../../../../demo/apps/06-multi-stream/style.css)
+> **📥 Tải Nhanh Bộ Giao Diện Mẫu (Starter Kit)**  
+> Để bắt đầu ngay mà không cần mất thời gian gõ HTML & CSS, bạn hãy nhấp vào nút **`📥 Tải Starter Files`** ở thanh công cụ phía trên đầu trang tài liệu để tải về máy:
+> - `index.html`: Khung sườn lưới 4 màn hình Grid 2x2 Flat 2.0.
+> - `style.css`: File định dạng layout cho Multi-Stream Grid & Viền Solo Active.
+> - `common.css`: Hệ thống biến màu sắc và theme chung.
 >
-> *Cấu trúc thư mục làm việc khuyến nghị:*
-> ```text
-> my-multi-stream/
-> ├── common.css     <-- Tải từ demo/apps/common.css
-> ├── style.css      <-- Tải từ demo/apps/06-multi-stream/style.css
-> ├── index.html     <-- Đã link sẵn common.css & style.css
-> └── app.js         <-- Nơi bạn sẽ viết toàn bộ code logic trong bài này!
-> ```
+> Đặt các file trên vào cùng thư mục làm việc với file `app.js` của bạn.
 
 ### 🔑 Các Phần Tử DOM Trọng Tâm Cần Điều Khiển Trong JS
-Các `id` quan trọng mà file `app.js` sẽ kết nối và xử lý:
+Trong suốt bài hướng dẫn này, file `app.js` sẽ kết nối và điều khiển trực tiếp các phần tử có `id` sau:
 
 | Phần tử DOM | `id` | Vai trò trong ứng dụng |
 | :--- | :--- | :--- |
 | `<button>` Mute All | `#btn-mute-all` | Nút tắt tiếng đồng loạt cả 4 luồng video |
 | `<button>` Play/Pause All | `#btn-toggle-all` | Nút đồng loạt phát hoặc tạm dừng cả 4 màn hình |
 | `<div>` Lưới Grid | `#stream-grid` | Khung lưới 2x2 render 4 ô camera đa luồng |
-
-<details>
-<summary><b>👀 Nhấn vào đây nếu bạn muốn xem hoặc tự viết toàn bộ mã HTML & CSS</b></summary>
-
-#### Mã nguồn `index.html`:
-```html
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>App 06: Multi-Stream Dashboard - SRemote Demo</title>
-  <!-- 1. CSS Dùng chung: Biến theme, Buttons, Typography -->
-  <link rel="stylesheet" href="common.css">
-  <!-- 2. CSS Riêng của bài: Lưới Grid 2x2 & Khung thẻ Stream Card -->
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <main class="demo-main-layout">
-    <div class="dashboard-wrapper">
-      <header class="dashboard-header">
-        <div>
-          <h1>📺 Multi-Camera Esports Center</h1>
-          <p class="subtitle">Bấm vào bất kỳ màn hình nào để mở Solo Audio của góc quay đó</p>
-        </div>
-        <div class="master-actions">
-          <button id="btn-mute-all" class="btn-flat">🔇 Mute Tất Cả</button>
-          <button id="btn-toggle-all" class="btn-flat btn-flat-primary">⏯ Phát/Dừng Tất Cả</button>
-        </div>
-      </header>
-
-      <!-- Lưới 4 màn hình Grid 2x2 -->
-      <div class="stream-grid" id="stream-grid"></div>
-    </div>
-  </main>
-
-  <script type="module" src="app.js"></script>
-</body>
-</html>
-```
-
-#### Mã nguồn `style.css`:
-```css
-.demo-main-layout {
-  flex: 1;
-  padding: 24px 20px 40px;
-  display: flex;
-  justify-content: center;
-}
-
-.dashboard-wrapper {
-  max-width: 1100px;
-  width: 100%;
-}
-
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.dashboard-header h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.subtitle {
-  color: var(--text-muted);
-  font-size: 13.5px;
-  margin-top: 4px;
-}
-
-.master-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.stream-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.stream-card {
-  background-color: var(--bg-surface);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 2px solid var(--border-color);
-  box-shadow: var(--shadow-md);
-  transition: all 0.2s ease;
-}
-
-.stream-card.solo-active {
-  border-color: var(--border-focus);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
-}
-
-.stream-video-slot {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background-color: #000000;
-}
-
-.stream-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
-  background-color: var(--bg-surface);
-  border-top: 1px solid var(--border-color);
-}
-
-.camera-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-main);
-}
-
-.solo-btn {
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-  padding: 5px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.stream-card.solo-active .solo-btn {
-  background-color: var(--color-primary);
-  color: #ffffff;
-  border-color: var(--color-primary);
-}
-```
-</details>
 
 ---
 

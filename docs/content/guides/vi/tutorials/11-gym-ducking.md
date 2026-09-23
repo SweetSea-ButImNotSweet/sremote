@@ -32,194 +32,30 @@ flowchart TD
 
 ---
 
-## Bước 1: Khởi Tạo Giao Diện Bộ Đếm HIIT & Vùng Phát Nhạc
+## Bước 1: Chuẩn Bị Giao Diện & Bộ Styling (HTML/CSS)
 
-Hãy tạo file `index.html`:
+> [!TIP]
+> **📥 Tải Nhanh Bộ Giao Diện Mẫu (Starter Kit)**  
+> Để bắt đầu ngay mà không cần mất thời gian gõ HTML & CSS, bạn hãy nhấp vào nút **`📥 Tải Starter Files`** ở thanh công cụ phía trên đầu trang tài liệu để tải về máy:
+> - `index.html`: Khung sườn bộ đếm hiệp tập HIIT Gym và ô phát nhạc Workout EDM Flat 2.0.
+> - `style.css`: File định dạng layout cho Phase Card, Countdown Timer & trạng thái màu sắc hiệp tập.
+> - `common.css`: Hệ thống biến màu sắc và theme chung.
+>
+> Đặt các file trên vào cùng thư mục làm việc với file `app.js` của bạn.
 
-```html
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Gym HIIT Audio Ducking - SRemote Tutorial 11</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
+### 🔑 Các Phần Tử DOM Trọng Tâm Cần Điều Khiển Trong JS
+Trong suốt bài hướng dẫn này, file `app.js` sẽ kết nối và điều khiển trực tiếp các phần tử có `id` sau:
 
-  <div class="gym-app">
-    <!-- Thẻ trạng thái Hiệp tập / Nghỉ ngơi -->
-    <div class="phase-card" id="phase-card">
-      <div class="round-indicator" id="round-indicator">HIỆP 1 / 8</div>
-      <div class="phase-name" id="phase-name">CHUẨN BỊ</div>
-      <div class="timer-countdown" id="timer-countdown">05</div>
-    </div>
-
-    <!-- Nút điều khiển tập luyện -->
-    <div class="controls-row">
-      <button id="btn-start-workout" class="btn btn-start">🔥 Bắt Đầu Tập</button>
-      <button id="btn-pause-workout" class="btn btn-pause">⏸ Tạm Dừng</button>
-    </div>
-
-    <!-- Khung nhạc nền Gym Workout -->
-    <div class="music-section">
-      <div class="music-header">
-        <span>🎧 Nhạc nền phòng Gym: Workout EDM Remix</span>
-        <span id="ducking-status" class="ducking-badge">Bình thường (100%)</span>
-      </div>
-      <div id="workout-music-slot" class="music-slot"></div>
-    </div>
-  </div>
-
-  <script type="module" src="app.js"></script>
-</body>
-</html>
-```
-
-Và định dạng bằng `style.css`:
-
-```css
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: #090d16;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.gym-app {
-  max-width: 480px;
-  width: 100%;
-}
-
-.phase-card {
-  background: #1e293b;
-  border-radius: 20px;
-  padding: 36px 20px;
-  text-align: center;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
-  margin-bottom: 24px;
-  transition: all 0.3s;
-}
-
-/* Đổi màu đỏ rực khi vào hiệp tập cường độ cao */
-.phase-card.work-phase {
-  background: linear-gradient(180deg, #991b1b, #450a0a);
-  border-color: #ef4444;
-}
-
-/* Đổi màu xanh lá khi vào hiệp nghỉ ngơi */
-.phase-card.rest-phase {
-  background: linear-gradient(180deg, #065f46, #022c22);
-  border-color: #10b981;
-}
-
-.round-indicator {
-  font-size: 14px;
-  font-weight: 700;
-  color: #94a3b8;
-  letter-spacing: 1px;
-  margin-bottom: 8px;
-}
-
-.phase-name {
-  font-size: 32px;
-  font-weight: 900;
-  text-transform: uppercase;
-  margin-bottom: 12px;
-}
-
-.timer-countdown {
-  font-size: 88px;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.controls-row {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.btn {
-  flex: 1;
-  padding: 14px;
-  border-radius: 10px;
-  border: none;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-start {
-  background: #38bdf8;
-  color: #0f172a;
-}
-
-.btn-start:hover {
-  background: #0284c7;
-  color: #fff;
-}
-
-.btn-pause {
-  background: #334155;
-  color: #f1f5f9;
-}
-
-.btn-pause:hover {
-  background: #475569;
-}
-
-.music-section {
-  background: #111827;
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.music-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12.5px;
-  color: #94a3b8;
-  margin-bottom: 12px;
-}
-
-.ducking-badge {
-  background: #1e293b;
-  color: #38bdf8;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-
-.ducking-badge.active {
-  background: #f59e0b;
-  color: #000;
-  font-weight: 700;
-}
-
-.music-slot {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: #000;
-  border-radius: 8px;
-  overflow: hidden;
-}
-```
+| Phần tử DOM | `id` | Vai trò trong ứng dụng |
+| :--- | :--- | :--- |
+| `<div>` Thẻ hiệp tập | `#phase-card` | Thẻ đổi màu nền theo giai đoạn: Chuẩn bị, Tập luyện (Sprint đỏ), Nghỉ ngơi (Xanh) |
+| `<div>` Chỉ số hiệp | `#round-indicator` | Hiển thị hiệp hiện tại (`HIỆP 1 / 8`) |
+| `<div>` Tên giai đoạn | `#phase-name` | Tên trạng thái tập luyện (`CHUẨN BỊ`, `NƯỚC RÚT`, `NGHỈ`) |
+| `<div>` Đồng hồ đếm ngược | `#timer-countdown` | Bộ số đếm ngược thời gian của từng hiệp |
+| `<button>` Bắt đầu tập | `#btn-start-workout` | Nút kích hoạt bài tập HIIT và phát nhạc nền Gym |
+| `<button>` Tạm dừng | `#btn-pause-workout` | Nút tạm dừng bộ đếm thời gian bài tập |
+| `<span>` Huy hiệu Ducking | `#ducking-status` | Trạng thái hiển thị khi nhạc nền bị giảm âm lượng để nhường tiếng còi beep |
+| `<div>` Slot Video Nhạc | `#workout-music-slot` | Vùng mount player YouTube phát nhạc nền sôi động |
 
 ---
 

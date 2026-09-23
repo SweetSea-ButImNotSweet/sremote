@@ -34,23 +34,16 @@ flowchart LR
 ## Bước 1: Chuẩn Bị Giao Diện & Bộ Styling (HTML/CSS)
 
 > [!TIP]
-> **🚀 Lối Tắt Tiết Kiệm Thời Gian (Khuyên Dùng)**  
-> Để tập trung vào cơ chế chuyển trạng thái đồng hồ và kỹ thuật **Audio Ducking** (tự động hạ âm lượng mượt mà bằng SRemote SDK), bạn hãy lấy sẵn các file giao diện Flat 2.0 từ thư mục `demo/apps/05-pomodoro-lofi`:
-> - 📄 **HTML mẫu**: [`index.html`](../../../../demo/apps/05-pomodoro-lofi/index.html)
-> - 🎨 **CSS dùng chung (Design System & Variables)**: [`common.css`](../../../../demo/apps/common.css)
-> - 🎨 **CSS riêng của bài (Pomodoro Display & Controls)**: [`style.css`](../../../../demo/apps/05-pomodoro-lofi/style.css)
+> **📥 Tải Nhanh Bộ Giao Diện Mẫu (Starter Kit)**  
+> Để bắt đầu ngay mà không cần mất thời gian gõ HTML & CSS, bạn hãy nhấp vào nút **`📥 Tải Starter Files`** ở thanh công cụ phía trên đầu trang tài liệu để tải về máy:
+> - `index.html`: Khung sườn đồng hồ Pomodoro Flat 2.0.
+> - `style.css`: File định dạng layout cho Pomodoro Display & Controls.
+> - `common.css`: Hệ thống biến màu sắc và theme chung.
 >
-> *Cấu trúc thư mục làm việc khuyến nghị:*
-> ```text
-> my-pomodoro/
-> ├── common.css     <-- Tải từ demo/apps/common.css
-> ├── style.css      <-- Tải từ demo/apps/05-pomodoro-lofi/style.css
-> ├── index.html     <-- Đã link sẵn common.css & style.css
-> └── app.js         <-- Nơi bạn sẽ viết toàn bộ code logic trong bài này!
-> ```
+> Đặt các file trên vào cùng thư mục làm việc với file `app.js` của bạn.
 
 ### 🔑 Các Phần Tử DOM Trọng Tâm Cần Điều Khiển Trong JS
-Các `id` quan trọng mà file `app.js` sẽ kết nối và xử lý:
+Trong suốt bài hướng dẫn này, file `app.js` sẽ kết nối và điều khiển trực tiếp các phần tử có `id` sau:
 
 | Phần tử DOM | `id` | Vai trò trong ứng dụng |
 | :--- | :--- | :--- |
@@ -61,133 +54,6 @@ Các `id` quan trọng mà file `app.js` sẽ kết nối và xử lý:
 | `<button>` Đặt lại | `#btn-reset` | Đưa đồng hồ về mốc 25:00 mặc định |
 | `<span>` Chỉ số Volume | `#volume-indicator` | Nhãn trực quan hiển thị % âm lượng khi ducking |
 | `<div>` Slot Video Lo-fi | `#lofi-player-slot` | Vùng mount player YouTube stream phát nhạc nền |
-
-<details>
-<summary><b>👀 Nhấn vào đây nếu bạn muốn xem hoặc tự viết toàn bộ mã HTML & CSS</b></summary>
-
-#### Mã nguồn `index.html`:
-```html
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>App 05: Pomodoro Lo-fi Audio Ducking - SRemote Demo</title>
-  <!-- 1. CSS Dùng chung: Biến theme, Typography, Flat buttons -->
-  <link rel="stylesheet" href="common.css">
-  <!-- 2. CSS Riêng của bài: Khung Pomodoro Card & Timer Display -->
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <main class="demo-main-layout">
-    <div class="pomodoro-card">
-      <div class="mode-badge" id="mode-badge">🎯 Chế độ Tập trung</div>
-      
-      <!-- Đồng hồ đếm ngược Flat lớn -->
-      <div class="timer-display" id="timer-display">25:00</div>
-
-      <!-- Nút điều khiển Flat 2.0 -->
-      <div class="btn-group">
-        <button id="btn-start" class="btn-flat btn-flat-primary">Bắt đầu</button>
-        <button id="btn-pause" class="btn-flat">Tạm dừng</button>
-        <button id="btn-reset" class="btn-flat">Đặt lại</button>
-      </div>
-
-      <!-- Khung nhạc Lo-fi nhúng -->
-      <div class="lofi-container">
-        <div class="lofi-header">
-          <span>🎵 Nhạc nền: Lofi Girl Radio</span>
-          <span id="volume-indicator" class="volume-tag">Âm lượng: 100%</span>
-        </div>
-        <div id="lofi-player-slot" class="player-slot"></div>
-      </div>
-    </div>
-  </main>
-
-  <script type="module" src="app.js"></script>
-</body>
-</html>
-```
-
-#### Mã nguồn `style.css`:
-```css
-.demo-main-layout {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 30px 16px;
-}
-
-.pomodoro-card {
-  width: 100%;
-  max-width: 500px;
-  background-color: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  padding: 32px;
-  text-align: center;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-lg);
-}
-
-.mode-badge {
-  display: inline-block;
-  padding: 6px 14px;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-primary-light);
-  color: var(--color-primary);
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 20px;
-}
-
-.timer-display {
-  font-size: 72px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -2px;
-  color: var(--text-main);
-  margin-bottom: 24px;
-}
-
-.btn-group {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 30px;
-}
-
-.lofi-container {
-  background-color: var(--bg-surface-elevated);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  border: 1px solid var(--border-color);
-}
-
-.lofi-header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-bottom: 12px;
-}
-
-.volume-tag {
-  color: var(--color-primary);
-  font-weight: 600;
-}
-
-.player-slot {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background-color: #000000;
-  border: 1px solid var(--border-color);
-}
-```
-</details>
 
 ---
 

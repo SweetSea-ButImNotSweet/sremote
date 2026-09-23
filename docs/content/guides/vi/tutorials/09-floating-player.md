@@ -33,207 +33,29 @@ flowchart TD
 
 ---
 
-## Bước 1: Khởi Tạo Trang Bài Báo Dài Chứa Khung Video
+## Bước 1: Chuẩn Bị Giao Diện & Bộ Styling (HTML/CSS)
 
-Hãy tạo file `index.html`. Chúng ta thiết kế một bài báo dài với nhiều đoạn văn bản để người dùng có thể cuộn trang thoải mái:
+> [!TIP]
+> **📥 Tải Nhanh Bộ Giao Diện Mẫu (Starter Kit)**  
+> Để bắt đầu ngay mà không cần mất thời gian gõ HTML & CSS, bạn hãy nhấp vào nút **`📥 Tải Starter Files`** ở thanh công cụ phía trên đầu trang tài liệu để tải về máy:
+> - `index.html`: Khung sườn trang bài báo dài kèm khung neo giữ chỗ (Sentinel Anchor) và Mini-Controls Flat 2.0.
+> - `style.css`: File định dạng hiệu ứng chuyển đổi mượt mà khi video bay nổi (Floating PiP) xuống góc màn hình.
+> - `common.css`: Hệ thống biến màu sắc và theme chung.
+>
+> Đặt các file trên vào cùng thư mục làm việc với file `app.js` của bạn.
 
-```html
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sticky Floating Mini-Player - SRemote Tutorial 09</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
+### 🔑 Các Phần Tử DOM Trọng Tâm Cần Điều Khiển Trong JS
+Trong suốt bài hướng dẫn này, file `app.js` sẽ kết nối và điều khiển trực tiếp các phần tử có `id` sau:
 
-  <article class="article-container">
-    <header class="article-header">
-      <span class="category">Công Nghệ & AI</span>
-      <h1>Kỷ Nguyên Đa Phương Tiện Web: Cách Thức Tối Ưu Trải Nghiệm Người Dùng</h1>
-      <p class="meta">Đăng ngày 22/09/2026 • 8 phút đọc</p>
-    </header>
+| Phần tử DOM | `id` | Vai trò trong ứng dụng |
+| :--- | :--- | :--- |
+| `<div>` Khung neo | `#video-anchor` | Vị trí neo giữ chỗ cố định trên trang bài viết để `IntersectionObserver` theo dõi |
+| `<div>` Hộp chứa Player | `#pip-player-box` | Hộp chứa video thực tế sẽ được thêm class `.floating-pip` để bay xuống góc màn hình |
+| `<div>` Slot Video | `#media-embed-slot` | Vùng mount player YouTube video |
+| `<button>` Mini Toggle | `#btn-mini-toggle` | Nút Play / Pause nhanh trên thanh điều khiển thu nhỏ khi đang ở chế độ nổi |
+| `<button>` Mini Close | `#btn-mini-close` | Nút đóng chế độ nổi PiP và tự động tạm dừng phát video |
 
-    <p class="paragraph">
-      Trải nghiệm video trên trình duyệt đã trải qua một chặng đường dài từ thời kỳ Flash Player cho đến HTML5 Media Source Extensions và các giao thức đồng bộ thời gian thực hiện đại. Ngày nay, người dùng đòi hỏi sự liền mạch tuyệt đối khi duyệt qua các nội dung bài viết dài...
-    </p>
-
-    <!-- Khung Neo Giữ Chỗ (Placeholder Sentinel) -->
-    <div id="video-anchor" class="video-anchor">
-      <!-- Thẻ chứa Video thực tế -->
-      <div id="pip-player-box" class="player-box">
-        <div id="media-embed-slot" class="media-embed-slot"></div>
-        <!-- Thanh điều khiển thu nhỏ khi ở chế độ Floating -->
-        <div class="mini-controls">
-          <button id="btn-mini-toggle" class="mini-btn">⏸</button>
-          <span class="mini-title">Đang phát nổi PiP</span>
-          <button id="btn-mini-close" class="mini-btn close-btn" title="Đóng & Tạm dừng">✕</button>
-        </div>
-      </div>
-    </div>
-
-    <p class="paragraph">
-      Khi một đoạn video phỏng vấn hoặc bài giảng minh họa nằm ở giữa bài báo, nếu người dùng muốn vừa theo dõi bình luận hoặc tài liệu tham khảo bên dưới, việc bị che khuất tầm nhìn video là một rào cản lớn...
-    </p>
-
-    <p class="paragraph">
-      Giải pháp Picture-in-Picture tự động (Floating Sticky Widget) thông qua IntersectionObserver giúp theo dõi tỷ lệ hiển thị của phần tử trên khung nhìn mà không gây hao tốn tài nguyên CPU như các hàm lắng nghe sự kiện window.onscroll cũ kỹ...
-    </p>
-
-    <div class="dummy-content-box">
-      <h3>Nội Dung Thảo Luận Chi Tiết</h3>
-      <p>Cuộn xuống tiếp để kiểm tra trải nghiệm Video bay xuống góc phải màn hình nhé! 👇</p>
-      <div class="extra-scroll-space"></div>
-    </div>
-  </article>
-
-  <script type="module" src="app.js"></script>
-</body>
-</html>
-```
-
-Và định dạng chuyển đổi CSS mượt mà bằng file `style.css`:
-
-```css
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: #090d16;
-  color: #cbd5e1;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  line-height: 1.7;
-  padding: 40px 20px;
-}
-
-.article-container {
-  max-width: 760px;
-  margin: 0 auto;
-}
-
-.category {
-  color: #38bdf8;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.article-header h1 {
-  font-size: 32px;
-  color: #f8fafc;
-  margin: 8px 0;
-  line-height: 1.3;
-}
-
-.meta {
-  color: #64748b;
-  font-size: 13px;
-  margin-bottom: 24px;
-}
-
-.paragraph {
-  font-size: 16px;
-  margin-bottom: 20px;
-}
-
-/* 1. KHUNG NEO GIỮ CHỖ (Tránh giật trang khi video bay ra) */
-.video-anchor {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  margin: 32px 0;
-  background: #020617;
-  border-radius: 12px;
-}
-
-/* 2. KHUNG CHỨA VIDEO CHÍNH */
-.player-box {
-  width: 100%;
-  height: 100%;
-  background: #000;
-  border-radius: 12px;
-  overflow: hidden;
-  position: relative;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-}
-
-.media-embed-slot {
-  width: 100%;
-  height: 100%;
-}
-
-.mini-controls {
-  display: none; /* Mặc định ẩn khi ở vị trí bình thường */
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding: 8px 12px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.8), transparent);
-  justify-content: space-between;
-  align-items: center;
-  z-index: 10;
-}
-
-/* 3. TRẠNG THÁI FLOATING PIP KHI CUỘN XUỐNG DƯỚI */
-.player-box.floating-pip {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 320px;
-  aspect-ratio: 16 / 9;
-  height: auto;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 20px 30px rgba(0, 0, 0, 0.8);
-  z-index: 9999;
-  animation: slideUp 0.3s ease-out;
-}
-
-.player-box.floating-pip .mini-controls {
-  display: flex; /* Hiện thanh điều khiển khi đang nổi */
-}
-
-.mini-btn {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  border-radius: 4px;
-  padding: 3px 8px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.mini-title {
-  font-size: 11px;
-  color: #94a3b8;
-  font-weight: 500;
-}
-
-.close-btn:hover {
-  background: #ef4444;
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.dummy-content-box {
-  margin-top: 40px;
-  background: #1e293b;
-  padding: 24px;
-  border-radius: 12px;
-}
-
-.extra-scroll-space {
-  height: 800px;
-}
-```
+---
 
 ---
 
