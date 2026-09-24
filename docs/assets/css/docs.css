@@ -1,4 +1,12 @@
-/* Tối ưu sidebar và TOC navigation */
+/* ==========================================================================
+   SRemote Docs & Tutorials - Flat 2.0 (2014-2015 Classic) Styling
+   - Inspired by Designmodo Flat UI Pro + Bootstrap 3 doc layout
+   - Clean sticky TOC sidebar, crisp search input, tactile dropdowns
+   - Distinct Flat 2.0 alerts / callouts (Peter River, Emerald, Alizarin, Sun Flower)
+   - Refined matrix tables and interactive mermaid diagram highlights
+   ========================================================================== */
+
+/* 1. Sticky Sidebar & Container */
 .sidebar {
   position: sticky;
   top: 20px;
@@ -12,6 +20,10 @@
   flex-direction: column;
   max-height: calc(100vh - 40px);
   margin-bottom: 0;
+  border-radius: var(--radius-md, 6px);
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-panel, #cbd5e1);
+  box-shadow: var(--elevation-1, 0 1px 3px rgba(0,0,0,0.08));
 }
 
 .sidebar .panel-body {
@@ -22,25 +34,100 @@
   padding: 12px;
 }
 
+/* 2. TOC Navigation & Search Input */
+.toc-search-box {
+  margin-bottom: 12px;
+}
+
+.toc-search-input {
+  width: 100%;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-family: var(--font-sans, sans-serif);
+  color: var(--text-main, #34495e);
+  background-color: var(--bg-surface-alt, #f8fafc);
+  border: 1px solid var(--border-color, #d5dbdb);
+  border-radius: var(--radius-sm, 4px);
+  outline: none;
+  transition: var(--transition-fast, all 0.15s ease-in-out);
+}
+
+.toc-search-input:focus {
+  border-color: var(--color-primary, #3498db);
+  background-color: var(--bg-surface, #ffffff);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
 .toc-nav {
   flex: 1;
   max-height: none !important;
   overflow-y: auto;
   margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
+.toc-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.toc-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted, #7f8c8d);
+  letter-spacing: 0.6px;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toc-item-count {
+  font-size: 10px;
+  background-color: var(--bg-surface-alt, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 10px;
+  padding: 1px 6px;
+  color: var(--text-muted, #7f8c8d);
+}
+
+.search-no-results {
+  padding: 16px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-muted, #7f8c8d);
+  font-style: italic;
+}
+
+/* 3. Header Action Buttons & Download Dropdown */
 .docs-header-btn-group {
   display: flex;
+  align-items: center;
   gap: 6px;
 }
 
 .btn-copy-url {
-  font-size: 11.5px;
-  padding: 3px 8px;
+  font-size: 12px;
+  padding: 4px 9px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-color, #d5dbdb);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-main, #34495e);
+  transition: var(--transition-fast, all 0.15s ease-in-out);
+}
+
+.btn-copy-url:hover {
+  background: var(--bg-surface-alt, #f8fafc);
+  border-color: var(--border-panel, #cbd5e1);
+  color: var(--color-primary, #3498db);
 }
 
 /* Tutorial Starter Files Download Dropdown */
@@ -50,10 +137,10 @@
   top: 100%;
   margin-top: 6px;
   background: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 8px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  min-width: 220px;
+  border: 1px solid var(--border-panel, #cbd5e1);
+  border-radius: var(--radius-md, 6px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+  min-width: 240px;
   padding: 6px;
   z-index: 100;
   display: none;
@@ -69,8 +156,8 @@
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--text-muted, #64748b);
-  padding: 6px 8px 4px;
+  color: var(--text-muted, #7f8c8d);
+  padding: 6px 10px 4px;
   letter-spacing: 0.5px;
 }
 
@@ -79,70 +166,62 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 6px 10px;
+  padding: 7px 10px;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm, 4px);
   font-size: 12.5px;
-  color: var(--text-main, #0f172a);
+  color: var(--text-main, #34495e);
   cursor: pointer;
   text-align: left;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: var(--transition-fast, all 0.15s ease-in-out);
 }
 
 .tutorial-dl-item:hover {
-  background-color: var(--color-primary-light, rgba(2, 132, 199, 0.1));
-  color: var(--color-primary, #0284c7);
+  background-color: var(--bg-surface-alt, #f8fafc);
+  color: var(--color-primary, #3498db);
 }
 
 .tutorial-dl-item .file-name {
   flex: 1;
-  font-family: monospace;
+  font-family: var(--font-mono, monospace);
   font-size: 12px;
 }
 
 .tutorial-dl-item .file-badge {
   font-size: 10px;
-  font-family: sans-serif;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(148, 163, 184, 0.2);
-  color: var(--text-muted, #64748b);
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--bg-surface-alt, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  color: var(--text-muted, #7f8c8d);
 }
 
 .tutorial-dl-divider {
   height: 1px;
-  background: var(--border-color, #e2e8f0);
+  background: var(--border-subtle, #e2e8f0);
   margin: 4px 0;
 }
 
 .download-all-item {
   font-weight: 600;
-  color: var(--color-primary, #0284c7);
+  color: var(--color-primary, #3498db);
 }
 
-.toc-item-count {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-left: auto;
-}
-
-.search-no-results {
-  padding: 12px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-/* GitHub Flavored Markdown Alerts */
+/* 4. GitHub Flavored Markdown Alerts (Flat 2.0 Solid Accent Style) */
 .markdown-body .gfm-alert {
-  padding: 10px 14px;
-  margin: 14px 0;
+  padding: 12px 16px;
+  margin: 16px 0;
   border-left: 4px solid;
-  border-radius: 3px;
-  font-size: 13px;
-  line-height: 1.5;
+  border-radius: var(--radius-xs, 2px);
+  font-size: 13.5px;
+  line-height: 1.6;
+  background-color: var(--bg-surface, #ffffff);
+  border-top: 1px solid var(--border-subtle, #e2e8f0);
+  border-right: 1px solid var(--border-subtle, #e2e8f0);
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+  box-shadow: var(--elevation-1, 0 1px 3px rgba(0,0,0,0.08));
 }
 
 .markdown-body .gfm-alert p:last-child {
@@ -154,72 +233,75 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 11.5px;
   letter-spacing: 0.5px;
 }
 
+/* Alert Variants: Flat 2.0 Palette */
 .markdown-body .gfm-alert-note {
-  border-color: #337ab7;
-  background-color: #edf5fa;
-  color: #1e395b;
+  border-left-color: var(--color-peter-river, #3498db);
 }
-.markdown-body .gfm-alert-note .gfm-alert-title { color: #337ab7; }
+.markdown-body .gfm-alert-note .gfm-alert-title {
+  color: var(--color-peter-river, #3498db);
+}
 
 .markdown-body .gfm-alert-tip {
-  border-color: #5cb85c;
-  background-color: #f1f9f1;
-  color: #275627;
+  border-left-color: var(--color-emerald, #2ecc71);
 }
-.markdown-body .gfm-alert-tip .gfm-alert-title { color: #5cb85c; }
+.markdown-body .gfm-alert-tip .gfm-alert-title {
+  color: var(--color-emerald, #2ecc71);
+}
 
 .markdown-body .gfm-alert-important {
-  border-color: #8250df;
-  background-color: #f7f2fc;
-  color: #3c1e70;
+  border-left-color: var(--color-amethyst, #9b59b6);
 }
-.markdown-body .gfm-alert-important .gfm-alert-title { color: #8250df; }
+.markdown-body .gfm-alert-important .gfm-alert-title {
+  color: var(--color-amethyst, #9b59b6);
+}
 
 .markdown-body .gfm-alert-warning {
-  border-color: #f0ad4e;
-  background-color: #fdf8e2;
-  color: #795500;
+  border-left-color: var(--color-orange, #f39c12);
 }
-.markdown-body .gfm-alert-warning .gfm-alert-title { color: #8a6d3b; }
+.markdown-body .gfm-alert-warning .gfm-alert-title {
+  color: var(--color-carrot, #e67e22);
+}
 
 .markdown-body .gfm-alert-caution {
-  border-color: #d9534f;
-  background-color: #fdf2f2;
-  color: #731b18;
+  border-left-color: var(--color-alizarin, #e74c3c);
 }
-.markdown-body .gfm-alert-caution .gfm-alert-title { color: #d9534f; }
+.markdown-body .gfm-alert-caution .gfm-alert-title {
+  color: var(--color-pomegranate, #c0392b);
+}
 
-/* Code block container tweaks (VSCode Dark Modern) */
+/* 5. Code Block Container Tweaks (Flat 2.0 Dark Modern) */
 .markdown-body pre {
   position: relative;
-  background-color: #1e1e1e !important;
-  padding: 14px 16px;
-  border: 1px solid #2d2d2d;
-  border-radius: 4px;
+  background-color: #2c3e50 !important;
+  padding: 14px 18px;
+  border: 1px solid var(--border-panel, #cbd5e1);
+  border-radius: var(--radius-md, 6px);
+  box-shadow: var(--elevation-1, 0 1px 3px rgba(0,0,0,0.08));
 }
 
 .markdown-body pre code {
-  color: #d4d4d4 !important;
+  color: #ecf0f1 !important;
   background: transparent !important;
   padding: 0 !important;
-  font-size: 12.5px;
-  font-family: 'Consolas', 'Courier New', Courier, monospace;
+  font-size: 13px;
+  font-family: var(--font-mono, monospace);
+  line-height: 1.5;
 }
 
 .markdown-body pre code.hljs {
   background: transparent !important;
   padding: 0 !important;
-  font-size: 12.5px;
-  color: #d4d4d4;
+  font-size: 13px;
+  color: #ecf0f1;
 }
 
-/* Smooth anchor targeting and offset */
+/* 6. Smooth Anchor Targeting & Highlight */
 .markdown-body h1,
 .markdown-body h2,
 .markdown-body h3,
@@ -229,23 +311,22 @@
   scroll-margin-top: 24px;
 }
 
-.markdown-body .highlight-target {
-  animation: targetFade 2s ease-out;
+.highlight-target {
+  animation: targetPulse 2s ease-out forwards;
 }
 
-@keyframes targetFade {
+@keyframes targetPulse {
   0% {
-    background-color: rgba(59, 130, 246, 0.25);
-    border-radius: 4px;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.8), 0 0 12px rgba(52, 152, 219, 0.3);
+    background-color: rgba(52, 152, 219, 0.08);
   }
   100% {
+    box-shadow: none;
     background-color: transparent;
   }
 }
 
-/* ==========================================================================
-   Matrix Tables (Compatibility & Service Matrix)
-   ========================================================================== */
+/* 7. Matrix Tables (Compatibility & Service Matrix) */
 .matrix-table-wrapper {
   overflow-x: auto;
   margin: 16px 0 24px;
@@ -255,17 +336,21 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 13.5px;
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-panel, #cbd5e1);
+  border-radius: var(--radius-sm, 4px);
 }
 
 .matrix-table thead tr {
-  background: rgba(255, 255, 255, 0.06);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.12);
+  background: var(--bg-panel-header, #f4f6f7);
+  border-bottom: 2px solid var(--border-panel, #cbd5e1);
   text-align: center;
 }
 
 .matrix-table th, 
 .matrix-table td {
-  padding: 8px 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
 }
 
 .matrix-table th.left,
@@ -274,21 +359,21 @@
 }
 
 .matrix-table tr.platform-start {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border-color, #d5dbdb);
 }
 
 .matrix-table tr.platform-end {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color, #d5dbdb);
 }
 
 .matrix-table td.platform-title {
   vertical-align: top;
-  font-weight: bold;
-  background: rgba(255, 255, 255, 0.02);
+  font-weight: 700;
+  color: var(--text-heading, #2c3e50);
+  background: var(--bg-surface-alt, #f8fafc);
   text-align: left;
 }
 
-/* Status Icons & Styling via CSS Pseudo-elements */
 .matrix-table td.ok,
 .matrix-table td.warn,
 .matrix-table td.no,
@@ -301,9 +386,7 @@
 .matrix-table td.no::before   { content: "❌"; }
 .matrix-table td.na::before   { content: "➖"; }
 
-/* ==========================================================================
-   Mermaid Clickable Interactive Nodes & Scroll Targets
-   ========================================================================== */
+/* 8. Mermaid Clickable Interactive Nodes */
 .mermaid a {
   cursor: pointer;
   text-decoration: none;
@@ -311,8 +394,8 @@
 
 .mermaid a:hover text,
 .mermaid a:hover span {
-  fill: #38bdf8 !important;
-  color: #38bdf8 !important;
+  fill: var(--color-primary, #3498db) !important;
+  color: var(--color-primary, #3498db) !important;
   font-weight: bold;
 }
 
@@ -320,28 +403,7 @@
 .mermaid a:hover circle,
 .mermaid a:hover polygon,
 .mermaid a:hover path {
-  stroke: #38bdf8 !important;
+  stroke: var(--color-primary, #3498db) !important;
   stroke-width: 2.5px !important;
-  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
   transition: all 0.2s ease;
-}
-
-/* Highlight target section on anchor jump */
-.highlight-target {
-  animation: targetPulse 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes targetPulse {
-  0% {
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.8), 0 0 20px rgba(56, 189, 248, 0.4);
-    background-color: rgba(56, 189, 248, 0.08);
-  }
-  70% {
-    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4), 0 0 10px rgba(56, 189, 248, 0.2);
-    background-color: rgba(56, 189, 248, 0.04);
-  }
-  100% {
-    box-shadow: none;
-    background-color: transparent;
-  }
 }

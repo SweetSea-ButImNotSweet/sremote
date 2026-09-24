@@ -5,53 +5,56 @@
 
 /* 1. Theme Variables */
 :root {
-  /* Default: Dark Theme */
-  --bg-page: #0f172a;
-  --bg-surface: #1e293b;
-  --bg-surface-elevated: #334155;
-  --bg-input: #090d16;
-  --border-color: rgba(255, 255, 255, 0.1);
-  --border-focus: #38bdf8;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-subtle: #64748b;
-  
-  /* Brand & Accent (Flat 2.0 Color Palette) */
-  --color-primary: #0284c7;
-  --color-primary-hover: #0369a1;
-  --color-primary-light: rgba(56, 189, 248, 0.15);
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-
-  /* Flat 2.0 Shadows (Subtle, Layered) */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
-
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-}
-
-[data-theme="light"] {
-  --bg-page: #f1f5f9;
+  /* Default: Flat 2.0 Light Theme */
+  --bg-page: #ebedef;
   --bg-surface: #ffffff;
   --bg-surface-elevated: #f8fafc;
   --bg-input: #f8fafc;
   --border-color: #cbd5e1;
-  --border-focus: #0284c7;
-  --text-main: #0f172a;
-  --text-muted: #475569;
-  --text-subtle: #94a3b8;
+  --border-focus: #3498db;
+  --text-main: #34495e;
+  --text-muted: #7f8c8d;
+  --text-subtle: #95a5a6;
 
-  --color-primary: #0284c7;
-  --color-primary-hover: #0369a1;
-  --color-primary-light: rgba(2, 132, 199, 0.1);
-  
+  /* Brand & Accent (Flat 2.0 Color Palette) */
+  --color-primary: #3498db;
+  --color-primary-hover: #2980b9;
+  --color-primary-light: rgba(52, 152, 219, 0.12);
+  --color-success: #2ecc71;
+  --color-warning: #f39c12;
+  --color-danger: #e74c3c;
+
+  /* Flat 2.0 Shadows */
   --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+}
+
+[data-theme="dark"] {
+  --bg-page: #1a252f;
+  --bg-surface: #2c3e50;
+  --bg-surface-elevated: #243342;
+  --bg-input: #1e2b37;
+  --border-color: #475d73;
+  --border-focus: #5dade2;
+  --text-main: #ecf0f1;
+  --text-muted: #bdc3c7;
+  --text-subtle: #7f8c8d;
+
+  --color-primary: #3498db;
+  --color-primary-hover: #2980b9;
+  --color-primary-light: rgba(52, 152, 219, 0.2);
+  --color-success: #27ae60;
+  --color-warning: #e67e22;
+  --color-danger: #c0392b;
+
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.55);
 }
 
 /* 2. Global Resets & Typography */
