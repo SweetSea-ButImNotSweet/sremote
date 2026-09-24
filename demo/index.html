@@ -3,295 +3,261 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SRemote Demo Showcase - Live Interactive Demos & Sandbox</title>
+  <title id="page-title">SRemote Demo Showcase - Live Interactive Demos & Sandbox</title>
   <meta name="description" content="Khám phá các bản demo tương tác thực tế từ SRemote: SDKless Sandbox 6-slot và 11 ứng dụng thực chiến từ A-Z.">
   <link rel="stylesheet" href="../assets/css/header.css">
   <link rel="stylesheet" href="../style.css">
   <script src="../assets/js/header.js" defer></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background-color: var(--bg-page);
-      color: var(--text-main);
-      font-family: var(--font-sans);
-      min-height: 100vh;
+    /* ==========================================================================
+       Flat 2.0 Showcase Stylesheet (2014-2015 Classic)
+       - Jumbotron page header with solid colors & bold typography
+       - Segmented Category Filter Pills
+       - 3-tier Panel Components (Heading, Body, Footer)
+       - Responsive multi-column layout with subtle tactile depth
+       ========================================================================== */
+
+    /* 1. Jumbotron Hero Header (Flat 2.0 Classic) */
+    .showcase-jumbotron {
+      background-color: var(--bg-surface);
+      border-bottom: 1px solid var(--border-panel);
+      padding: 40px 20px 36px;
+      margin-bottom: 28px;
+      box-shadow: var(--elevation-1);
+    }
+
+    .jumbotron-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 32px;
+    }
+
+    .jumbotron-text {
+      max-width: 760px;
+    }
+
+    .jumbotron-badge {
+      display: inline-block;
+      background-color: var(--bg-surface-alt);
+      color: var(--color-primary);
+      border: 1px solid var(--border-color);
+      padding: 3px 10px;
+      border-radius: var(--radius-xs);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 12px;
+    }
+
+    .jumbotron-title {
+      font-size: 30px;
+      font-weight: 800;
+      color: var(--text-heading);
+      letter-spacing: -0.5px;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .jumbotron-subtitle {
+      font-size: 14.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 0;
+    }
+
+    .jumbotron-actions {
       display: flex;
       flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
     }
+
+    /* 2. Main Content Container */
     .showcase-container {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 32px 20px 60px;
+      padding: 0 20px 60px;
       width: 100%;
     }
-    .showcase-header {
-      margin-bottom: 32px;
-      text-align: center;
-    }
-    .showcase-badge {
-      display: inline-block;
-      background: var(--bg-surface-alt);
-      color: var(--color-primary);
-      border: 1px solid var(--border-color);
-      padding: 4px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: 12px;
-      box-shadow: var(--elevation-1);
-    }
-    .showcase-title {
-      font-size: 28px;
-      font-weight: 800;
-      color: var(--text-heading);
-      margin-bottom: 8px;
-      letter-spacing: -0.5px;
-    }
-    .showcase-subtitle {
-      font-size: 14.5px;
-      color: var(--text-muted);
-      max-width: 700px;
-      margin: 0 auto;
-      line-height: 1.6;
-    }
 
-    /* Featured Banner: SDKless Sandbox (Flat 2.0 Card) */
-    .featured-banner {
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-panel);
-      border-left: 5px solid var(--color-primary);
-      border-radius: var(--radius-md);
-      padding: 24px 28px;
-      margin-bottom: 36px;
+    /* 3. Category Filter Toolbar (Flat UI 2015 Pills) */
+    .filter-toolbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-panel);
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      margin-bottom: 24px;
       box-shadow: var(--elevation-1);
-      transition: var(--transition-fast);
     }
-    .featured-banner:hover {
-      box-shadow: var(--elevation-2);
-    }
-    .featured-info {
-      max-width: 720px;
-    }
-    .featured-tag {
-      font-size: 11px;
-      color: var(--color-primary);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: 6px;
+
+    .filter-pills {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 6px;
     }
-    .featured-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--text-heading);
-      margin-bottom: 6px;
-    }
-    .featured-desc {
-      font-size: 13.5px;
-      color: var(--text-main);
-      line-height: 1.6;
-    }
-    .btn-launch-sandbox {
-      background-color: var(--color-primary);
-      color: #ffffff !important;
-      border: 1px solid var(--color-primary-dark);
-      padding: 10px 20px;
-      border-radius: var(--radius-sm);
-      font-weight: 700;
-      font-size: 13.5px;
-      text-decoration: none !important;
-      white-space: nowrap;
+
+    .filter-pill {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      box-shadow: var(--elevation-1);
+      gap: 6px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-main);
+      padding: 5px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      font-family: inherit;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
       transition: var(--transition-fast);
-    }
-    .btn-launch-sandbox:hover {
-      background-color: var(--color-primary-dark);
-      box-shadow: var(--elevation-2);
-      transform: translateY(-1px);
-    }
-    .btn-launch-sandbox:active {
-      transform: translateY(1px);
+      user-select: none;
     }
 
-    /* Section Header */
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      border-bottom: 2px solid var(--border-panel);
-      padding-bottom: 10px;
-    }
-    .section-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--text-heading);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .section-count {
-      font-size: 11px;
-      background-color: var(--bg-surface);
+    .filter-pill:hover {
+      background-color: var(--bg-surface-alt);
       color: var(--color-primary);
-      padding: 2px 8px;
+    }
+
+    .filter-pill.active {
+      background-color: var(--color-primary);
+      color: #ffffff;
+      border-color: var(--color-primary-dark);
+      box-shadow: var(--elevation-1);
+    }
+
+    .filter-pill .pill-badge {
+      font-size: 10px;
+      background-color: var(--bg-surface-alt);
+      color: var(--text-muted);
+      padding: 1px 6px;
       border-radius: 10px;
       border: 1px solid var(--border-color);
-      font-weight: 700;
     }
 
-    /* 11 Apps Grid */
-    .apps-grid {
+    .filter-pill.active .pill-badge {
+      background-color: var(--color-primary-dark);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .filter-meta-note {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* 4. Showcase Cards Grid (Flat 2.0 Panels) */
+    .showcase-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
       gap: 20px;
     }
-    .app-card {
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-panel);
-      border-radius: var(--radius-md);
-      padding: 20px;
+
+    .showcase-panel {
+      margin-bottom: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      transition: var(--transition-fast);
+    }
+
+    .showcase-panel:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--elevation-2);
+      border-color: var(--color-primary);
+    }
+
+    .showcase-panel.hidden {
+      display: none !important;
+    }
+
+    .panel-heading-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-heading);
+    }
+
+    .panel-app-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      background: var(--color-peter-river);
+      color: #ffffff;
+      border-radius: var(--radius-xs);
+      letter-spacing: 0.5px;
+    }
+
+    .showcase-panel-body {
+      padding: 16px;
+      flex: 1;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      box-shadow: var(--elevation-1);
-      transition: var(--transition-fast);
     }
-    .app-card:hover {
-      border-color: var(--color-primary);
-      box-shadow: var(--elevation-2);
-      transform: translateY(-2px);
-    }
-    .app-card-header {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-    .app-icon {
-      font-size: 22px;
-      width: 44px;
-      height: 44px;
-      background-color: var(--bg-surface-alt);
-      border-radius: var(--radius-sm);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid var(--border-color);
-      flex-shrink: 0;
-    }
-    .app-meta {
-      flex: 1;
-    }
-    .app-num {
-      font-size: 11px;
-      color: var(--color-primary);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .app-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text-heading);
-      margin-top: 2px;
-      line-height: 1.35;
-    }
-    .app-desc {
+
+    .app-description {
       font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.55;
-      margin-bottom: 16px;
-      flex: 1;
+      color: var(--text-main);
+      line-height: 1.6;
+      margin-bottom: 14px;
     }
-    .app-tags {
+
+    .app-tag-list {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 16px;
+      gap: 5px;
+      margin-bottom: 4px;
     }
-    .app-tag {
-      background-color: var(--bg-surface-alt);
-      color: var(--text-main);
+
+    .app-tag-item {
       font-size: 11px;
-      font-weight: 600;
-      padding: 2px 7px;
-      border-radius: var(--radius-xs);
+      background-color: var(--bg-surface-alt);
+      color: var(--text-muted);
       border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xs);
+      padding: 2px 7px;
+      font-weight: 600;
     }
-    .app-actions {
+
+    .showcase-panel-footer {
       display: flex;
       gap: 8px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border-subtle);
+      padding: 10px 16px;
+      background-color: var(--bg-panel-header);
+      border-top: 1px solid var(--border-panel);
     }
-    .btn-action-primary {
-      flex: 1.3;
-      background-color: var(--color-primary);
-      color: #ffffff !important;
-      border: 1px solid var(--color-primary-dark);
-      text-decoration: none !important;
-      padding: 7px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 12.5px;
-      font-weight: 600;
-      text-align: center;
-      transition: var(--transition-fast);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      box-shadow: var(--elevation-1);
-    }
-    .btn-action-primary:hover {
-      background-color: var(--color-primary-dark);
-      box-shadow: var(--elevation-2);
-      transform: translateY(-1px);
-    }
-    .btn-action-primary:active {
-      transform: translateY(1px);
-    }
-    .btn-action-docs {
+
+    .showcase-panel-footer .btn {
       flex: 1;
-      background-color: var(--bg-surface);
-      color: var(--text-main) !important;
-      text-decoration: none !important;
-      padding: 7px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 12.5px;
-      font-weight: 500;
-      text-align: center;
-      border: 1px solid var(--border-color);
-      transition: var(--transition-fast);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      box-shadow: var(--elevation-1);
     }
-    .btn-action-docs:hover {
-      background-color: var(--bg-surface-alt);
-      border-color: var(--border-panel);
-      color: var(--color-primary) !important;
-    }
-    @media (max-width: 768px) {
-      .featured-banner {
+
+    /* Responsive adjustments */
+    @media (max-width: 860px) {
+      .jumbotron-inner {
         flex-direction: column;
         align-items: flex-start;
       }
-      .apps-grid {
+      .jumbotron-actions {
+        width: 100%;
+        flex-direction: row;
+      }
+      .jumbotron-actions .btn {
+        flex: 1;
+      }
+      .showcase-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -299,300 +265,618 @@
 </head>
 <body>
 
-  <!-- Shared Header -->
+  <!-- Shared Header Component -->
   <sremote-header active="demo" base-path="../"></sremote-header>
 
-  <main class="showcase-container">
-    <!-- Showcase Header -->
-    <header class="showcase-header">
-      <span class="showcase-badge">Live Interactive Showcase</span>
-      <h1 class="showcase-title">Trung Tâm Trải Nghiệm SRemote</h1>
-      <p class="showcase-subtitle">
-        Khám phá sức mạnh điều khiển media đa nền tảng thông qua môi trường Sandbox 6-Slot và 11 ứng dụng thực tế chạy trực tiếp trên trình duyệt.
-      </p>
-    </header>
-
-    <!-- Featured Banner: SDKless Sandbox -->
-    <section class="featured-banner">
-      <div class="featured-info">
-        <div class="featured-tag">🔥 Developer Multi-Frame Environment</div>
-        <h2 class="featured-title">SDKless Sandbox (6-Slot Userscript Harness)</h2>
-        <p class="featured-desc">
-          Bàn kiểm thử độc lập 6 slot iframe: Thử nghiệm nạp bất kỳ liên kết video bên thứ 3 nào (kể cả những bên không hề tích hợp SDK) và điều khiển tập trung thông qua SRemote Userscript & MessageBridge.
+  <!-- Flat 2.0 Jumbotron Page Header -->
+  <header class="showcase-jumbotron">
+    <div class="jumbotron-inner">
+      <div class="jumbotron-text">
+        <span class="jumbotron-badge" id="txt-hero-badge">Live Interactive Showcase</span>
+        <h1 class="jumbotron-title" id="txt-hero-title">Trung Tâm Trải Nghiệm SRemote</h1>
+        <p class="jumbotron-subtitle" id="txt-hero-subtitle">
+          Khám phá sức mạnh điều khiển media đa nền tảng thông qua môi trường Sandbox 6-Slot và 11 ứng dụng thực chiến độc lập được xây dựng hoàn toàn bằng Vanilla JavaScript.
         </p>
       </div>
-      <a href="sdkless-sandbox/index.html" class="btn-launch-sandbox">
-        <span>⚡ Mở SDKless Sandbox</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </section>
-
-    <!-- 11 Apps Showcase Grid -->
-    <section>
-      <div class="section-header">
-        <h2 class="section-title">
-          <span>🛠️ 11 Ứng Dụng Thực Chiến (Full Working Apps)</span>
-          <span class="section-count">11 Projects</span>
-        </h2>
-        <span style="font-size: 13px; color: #94a3b8;">100% Vanilla JS • Chạy trực tiếp không cần build</span>
+      <div class="jumbotron-actions">
+        <a href="sdkless-sandbox/index.html" class="btn btn-primary btn-lg" id="btn-hero-sandbox">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          <span id="label-hero-sandbox">Mở SDKless Sandbox (6-Slot)</span>
+        </a>
+        <a href="../docs/index.html" class="btn btn-default btn-lg" id="btn-hero-docs">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          <span id="label-hero-docs">Xem Cẩm Nang Hướng Dẫn</span>
+        </a>
       </div>
+    </div>
+  </header>
 
-      <div class="apps-grid">
-        <!-- 01. Simple Player -->
-        <article class="app-card">
-          <div>
-            <div class="app-card-header">
-              <div class="app-icon">🎮</div>
-              <div class="app-meta">
-                <span class="app-num">App 01</span>
-                <h3 class="app-title">Simple Custom Player</h3>
-              </div>
-            </div>
-            <p class="app-desc">Bộ điều khiển tùy biến từ con số 0: Nút Play/Pause, Scrubber tua mượt chống giật con trỏ (Scrubber Fighting), điều chỉnh Volume và Mute toggle.</p>
-            <div class="app-tags">
-              <span class="app-tag">Controls</span>
-              <span class="app-tag">Smooth Scrubbing</span>
-              <span class="app-tag">State Sync</span>
-            </div>
-          </div>
-          <div class="app-actions">
-            <a href="apps/01-simple-player/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
-            <a href="../docs/index.html?path=content/guides/vi/blueprints/01-simple-player.md" class="btn-action-docs">📖 Tutorial</a>
-          </div>
-        </article>
-
-        <!-- 02. Playlist Queue -->
-        <article class="app-card">
-          <div>
-            <div class="app-card-header">
-              <div class="app-icon">📜</div>
-              <div class="app-meta">
-                <span class="app-num">App 02</span>
-                <h3 class="app-title">Playlist & Podcast Queue</h3>
-              </div>
-            </div>
-            <p class="app-desc">Hàng đợi phát liên tục (Continuous Playback), bắt sự kiện ended tự nạp bài kế tiếp, xử lý dọn dẹp instance cũ bằng destroy() và lách Autoplay Policy.</p>
-            <div class="app-tags">
-              <span class="app-tag">Audio/Podcast</span>
-              <span class="app-tag">Ended Event</span>
-              <span class="app-tag">destroy()</span>
-            </div>
-          </div>
-          <div class="app-actions">
-            <a href="apps/02-playlist-queue/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
-            <a href="../docs/index.html?path=content/guides/vi/blueprints/02-playlist-queue.md" class="btn-action-docs">📖 Tutorial</a>
-          </div>
-        </article>
-
-        <!-- 03. WatchParty -->
-        <article class="app-card">
-          <div>
-            <div class="app-card-header">
-              <div class="app-icon">🎬</div>
-              <div class="app-meta">
-                <span class="app-num">App 03</span>
-                <h3 class="app-title">WatchParty SyncTheater</h3>
-              </div>
-            </div>
-            <p class="app-desc">Phòng xem phim đồng bộ thời gian thực cho nhiều người qua BroadcastChannel. Kỹ thuật chặn vòng lặp vô tận (Echo Loop) và bù trừ độ lệch thời gian.</p>
-            <div class="app-tags">
-              <span class="app-tag">Real-time</span>
-              <span class="app-tag">BroadcastChannel</span>
-              <span class="app-tag">Anti-Echo</span>
-            </div>
-          </div>
-          <div class="app-actions">
-            <a href="apps/03-watchparty/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
-            <a href="../docs/index.html?path=content/guides/vi/blueprints/03-watchparty.md" class="btn-action-docs">📖 Tutorial</a>
-          </div>
-        </article>
-
-        <!-- 04. EdTech Quiz -->
-        <article class="app-card">
-          <div>
-            <div class="app-card-header">
-              <div class="app-icon">🎓</div>
-              <div class="app-meta">
-                <span class="app-num">App 04</span>
-                <h3 class="app-title">EdTech Interactive Quiz</h3>
-              </div>
-            </div>
-            <p class="app-desc">Khóa video tại mốc 15s và 45s để bắt làm trắc nghiệm, chống gian lận tua lách bài tập qua seek guard, mở khóa phát tiếp khi trả lời đúng.</p>
-            <div class="app-tags">
-              <span class="app-tag">E-Learning</span>
-              <span class="app-tag">Checkpoints</span>
-              <span class="app-tag">Seek Guard</span>
-            </div>
-          </div>
-          <div class="app-actions">
-            <a href="apps/04-edtech-quiz/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
-            <a href="../docs/index.html?path=content/guides/vi/blueprints/04-edtech-quiz.md" class="btn-action-docs">📖 Tutorial</a>
-          </div>
-        </article>
-
-        <!-- 05. Pomodoro Lo-fi -->
-        <article class="app-card">
-          <div>
-            <div class="app-card-header">
-              <div class="app-icon">🍅</div>
-              <div class="app-meta">
-                <span class="app-num">App 05</span>
-                <h3 class="app-title">Pomodoro Lo-fi Audio Ducking</h3>
-              </div>
-            </div>
-            <p class="app-desc">Đồng hồ đếm ngược 25 phút Pomodoro đồng bộ nhạc Lo-fi Girl, giải thuật Fade-out giảm đều âm lượng về 0% trong 5s cuối tránh giật mình.</p>
-            <div class="app-tags">
-              <span class="app-tag">Productivity</span>
-              <span class="app-tag">Volume Ramping</span>
-              <span class="app-tag">Lo-fi</span>
-            </div>
-          </div>
-          <div class="app-actions">
-            <a href="apps/05-pomodoro-lofi/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
-            <a href="../docs/index.html?path=content/guides/vi/blueprints/05-pomodoro-lofi.md" class="btn-action-docs">📖 Tutorial</a>
-          </div>
-        </article>
-
-        <!-- 06. Multi-Stream -->
-        <article class="app-card">
-          <div>
-            <div class="app-card-header">
-              <div class="app-icon">📺</div>
-              <div class="app-meta">
-                <span class="app-num">App 06</span>
-                <h3 class="app-title">Multi-Stream Dashboard</h3>
-              </div>
-            </div>
-            <p class="app-desc">Bàn điều khiển 4 góc máy livestream giải đấu Esports: Tính năng Solo Audio mở tiếng độc quyền 1 góc quay và mute 3 góc còn lại, lệnh hàng loạt.</p>
-            <div class="app-tags">
-              <span class="app-tag">Esports</span>
-              <span class="app-tag">Solo Audio</span>
-              <span class="app-tag">Multi-Client</span>
-            </div>
-          </div>
-          <div class="app-actions">
-            <a href="apps/06-multi-stream/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
-            <a href="../docs/index.html?path=content/guides/vi/blueprints/06-multi-stream.md" class="btn-action-docs">📖 Tutorial</a>
-          </div>
-        </article>
-
-        <!-- 07. Global Shortcuts -->
-        <article class="app-card">
-          <div>
-            <div class="app-card-header">
-              <div class="app-icon">⌨️</div>
-              <div class="app-meta">
-                <span class="app-num">App 07</span>
-                <h3 class="app-title">Global Keyboard Shortcuts</h3>
-              </div>
-            </div>
-            <p class="app-desc">Bắt phím Space, J, K, L, M, Mũi tên từ trang cha không cần click focus vào iframe, bộ lọc Input Guard chống nuốt phím khi gõ văn bản kèm OSD Toast.</p>
-            <div class="app-tags">
-              <span class="app-tag">Accessibility</span>
-              <span class="app-tag">Input Guard</span>
-              <span class="app-tag">OSD Toast</span>
-            </div>
-          </div>
-          <div class="app-actions">
-            <a href="apps/07-global-shortcuts/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
-            <a href="../docs/index.html?path=content/guides/vi/blueprints/07-global-shortcuts.md" class="btn-action-docs">📖 Tutorial</a>
-          </div>
-        </article>
-
-        <!-- 08. Timestamp Notes -->
-        <article class="app-card">
-          <div>
-            <div class="app-card-header">
-              <div class="app-icon">📝</div>
-              <div class="app-meta">
-                <span class="app-num">App 08</span>
-                <h3 class="app-title">Lecture Timestamped Notes</h3>
-              </div>
-            </div>
-            <p class="app-desc">Sổ ghi chép bài giảng phong cách Notion: Bấm phím chụp mốc thời gian thực, lưu localStorage, nhấp vào note tua video và tự động highlight khi nghe.</p>
-            <div class="app-tags">
-              <span class="app-tag">EdTech/Notion</span>
-              <span class="app-tag">2-Way Sync</span>
-              <span class="app-tag">Storage</span>
-            </div>
-          </div>
-          <div class="app-actions">
-            <a href="apps/08-timestamp-notes/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
-            <a href="../docs/index.html?path=content/guides/vi/blueprints/08-timestamp-notes.md" class="btn-action-docs">📖 Tutorial</a>
-          </div>
-        </article>
-
-        <!-- 09. Floating Player -->
-        <article class="app-card">
-          <div>
-            <div class="app-card-header">
-              <div class="app-icon">🎵</div>
-              <div class="app-meta">
-                <span class="app-num">App 09</span>
-                <h3 class="app-title">Sticky Mini-Player (PiP)</h3>
-              </div>
-            </div>
-            <p class="app-desc">Dùng IntersectionObserver theo dõi cuộn trang: Video tự động thu nhỏ và bay xuống góc phải màn hình không làm gián đoạn hay tải lại iframe.</p>
-            <div class="app-tags">
-              <span class="app-tag">UI/UX</span>
-              <span class="app-tag">IntersectionObserver</span>
-              <span class="app-tag">Floating PiP</span>
-            </div>
-          </div>
-          <div class="app-actions">
-            <a href="apps/09-floating-player/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
-            <a href="../docs/index.html?path=content/guides/vi/blueprints/09-floating-player.md" class="btn-action-docs">📖 Tutorial</a>
-          </div>
-        </article>
-
-        <!-- 10. Audio Slide Deck -->
-        <article class="app-card">
-          <div>
-            <div class="app-card-header">
-              <div class="app-icon">📊</div>
-              <div class="app-meta">
-                <span class="app-num">App 10</span>
-                <h3 class="app-title">Audio-Driven Slide Deck</h3>
-              </div>
-            </div>
-            <p class="app-desc">Bộ trình chiếu tự động lật slide khớp theo timeline giọng nói thuyết minh, hỗ trợ click thumbnail tua ngược âm thanh đến đúng mốc giải thích.</p>
-            <div class="app-tags">
-              <span class="app-tag">Presentations</span>
-              <span class="app-tag">Timeline Cues</span>
-              <span class="app-tag">Auto-Flip</span>
-            </div>
-          </div>
-          <div class="app-actions">
-            <a href="apps/10-audio-slide/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
-            <a href="../docs/index.html?path=content/guides/vi/blueprints/10-audio-slide.md" class="btn-action-docs">📖 Tutorial</a>
-          </div>
-        </article>
-
-        <!-- 11. Gym Ducking -->
-        <article class="app-card">
-          <div>
-            <div class="app-card-header">
-              <div class="app-icon">⏱️</div>
-              <div class="app-meta">
-                <span class="app-num">App 11</span>
-                <h3 class="app-title">Smart Gym HIIT Ducking</h3>
-              </div>
-            </div>
-            <p class="app-desc">Đồng hồ tập luyện TABATA/HIIT: Tạo tiếng còi bằng Web Audio API, tự động nén âm lượng nhạc nền xuống 20% khi còi kêu và hồi phục 100% hiệp mới.</p>
-            <div class="app-tags">
-              <span class="app-tag">Fitness</span>
-              <span class="app-tag">Web Audio API</span>
-              <span class="app-tag">Audio Ducking</span>
-            </div>
-          </div>
-          <div class="app-actions">
-            <a href="apps/11-gym-ducking/index.html" class="btn-action-primary">🚀 Chạy Live Demo</a>
-            <a href="../docs/index.html?path=content/guides/vi/blueprints/11-gym-ducking.md" class="btn-action-docs">📖 Tutorial</a>
-          </div>
-        </article>
+  <main class="showcase-container">
+    <!-- Category Filter Toolbar -->
+    <div class="filter-toolbar">
+      <nav class="filter-pills" role="tablist" aria-label="Demo category filter">
+        <button type="button" class="filter-pill active" data-category="all">
+          <span id="filter-label-all">Tất cả ứng dụng</span>
+          <span class="pill-badge" id="count-all">11</span>
+        </button>
+        <button type="button" class="filter-pill" data-category="controls">
+          <span id="filter-label-controls">Điều khiển Player</span>
+          <span class="pill-badge" id="count-controls">3</span>
+        </button>
+        <button type="button" class="filter-pill" data-category="playlist">
+          <span id="filter-label-playlist">Playlist & Hàng đợi</span>
+          <span class="pill-badge" id="count-playlist">2</span>
+        </button>
+        <button type="button" class="filter-pill" data-category="audio">
+          <span id="filter-label-audio">Audio & Đồng bộ Cues</span>
+          <span class="pill-badge" id="count-audio">3</span>
+        </button>
+        <button type="button" class="filter-pill" data-category="advanced">
+          <span id="filter-label-advanced">Nâng cao & Popout</span>
+          <span class="pill-badge" id="count-advanced">3</span>
+        </button>
+      </nav>
+      <div class="filter-meta-note" id="txt-meta-note">
+        100% Vanilla JS • Chạy trực tiếp trên trình duyệt
       </div>
-    </section>
+    </div>
+
+    <!-- 11 Apps Grid (Flat 2.0 Panels) -->
+    <div class="showcase-grid" id="apps-grid">
+
+      <!-- App 01: Simple Player -->
+      <article class="panel showcase-panel" data-category="controls" id="card-app-1">
+        <div class="panel-heading">
+          <div class="panel-heading-title">
+            <span class="panel-app-badge">App 01</span>
+            <span id="app-1-title">Simple Custom Player</span>
+          </div>
+          <span class="badge badge-default">Controls</span>
+        </div>
+        <div class="showcase-panel-body">
+          <p class="app-description" id="app-1-desc">
+            Bộ điều khiển tùy biến từ con số 0: Nút Play/Pause, Scrubber tua mượt chống giật con trỏ (Scrubber Fighting), điều chỉnh Volume và Mute toggle.
+          </p>
+          <div class="app-tag-list">
+            <span class="app-tag-item">Controls</span>
+            <span class="app-tag-item">Smooth Scrubbing</span>
+            <span class="app-tag-item">State Sync</span>
+          </div>
+        </div>
+        <div class="showcase-panel-footer">
+          <a href="apps/01-simple-player/index.html" class="btn btn-primary btn-sm app-run-btn">
+            <span>🚀</span> <span id="app-1-run">Chạy Live Demo</span>
+          </a>
+          <a href="../docs/index.html?path=content/guides/vi/blueprints/01-simple-player.md" class="btn btn-default btn-sm app-doc-btn">
+            <span>📖</span> <span id="app-1-doc">Tutorial</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- App 02: Playlist Queue -->
+      <article class="panel showcase-panel" data-category="playlist" id="card-app-2">
+        <div class="panel-heading">
+          <div class="panel-heading-title">
+            <span class="panel-app-badge">App 02</span>
+            <span id="app-2-title">Playlist & Podcast Queue</span>
+          </div>
+          <span class="badge badge-default">Playlist</span>
+        </div>
+        <div class="showcase-panel-body">
+          <p class="app-description" id="app-2-desc">
+            Hàng đợi phát liên tục (Continuous Playback), bắt sự kiện ended tự nạp bài kế tiếp, xử lý dọn dẹp instance cũ bằng destroy() và lách Autoplay Policy.
+          </p>
+          <div class="app-tag-list">
+            <span class="app-tag-item">Continuous Play</span>
+            <span class="app-tag-item">Queue Management</span>
+            <span class="app-tag-item">Destroy Lifecycle</span>
+          </div>
+        </div>
+        <div class="showcase-panel-footer">
+          <a href="apps/02-playlist-queue/index.html" class="btn btn-primary btn-sm app-run-btn">
+            <span>🚀</span> <span id="app-2-run">Chạy Live Demo</span>
+          </a>
+          <a href="../docs/index.html?path=content/guides/vi/blueprints/02-playlist-queue.md" class="btn btn-default btn-sm app-doc-btn">
+            <span>📖</span> <span id="app-2-doc">Tutorial</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- App 03: Watchparty Sync -->
+      <article class="panel showcase-panel" data-category="advanced" id="card-app-3">
+        <div class="panel-heading">
+          <div class="panel-heading-title">
+            <span class="panel-app-badge">App 03</span>
+            <span id="app-3-title">Watchparty Synchronizer</span>
+          </div>
+          <span class="badge badge-default">Advanced</span>
+        </div>
+        <div class="showcase-panel-body">
+          <p class="app-description" id="app-3-desc">
+            Phòng xem chung giữa 2 người (Host & Peer) giả lập mạng delay 50-300ms, thuật toán đồng bộ thời gian không gây giật giật (Desync threshold logic).
+          </p>
+          <div class="app-tag-list">
+            <span class="app-tag-item">Sync Logic</span>
+            <span class="app-tag-item">BroadcastChannel</span>
+            <span class="app-tag-item">Drift Correction</span>
+          </div>
+        </div>
+        <div class="showcase-panel-footer">
+          <a href="apps/03-watchparty/index.html" class="btn btn-primary btn-sm app-run-btn">
+            <span>🚀</span> <span id="app-3-run">Chạy Live Demo</span>
+          </a>
+          <a href="../docs/index.html?path=content/guides/vi/blueprints/03-watchparty.md" class="btn btn-default btn-sm app-doc-btn">
+            <span>📖</span> <span id="app-3-doc">Tutorial</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- App 04: EdTech Quiz -->
+      <article class="panel showcase-panel" data-category="audio" id="card-app-4">
+        <div class="panel-heading">
+          <div class="panel-heading-title">
+            <span class="panel-app-badge">App 04</span>
+            <span id="app-4-title">Interactive EdTech Video Quiz</span>
+          </div>
+          <span class="badge badge-default">Audio & Cues</span>
+        </div>
+        <div class="showcase-panel-body">
+          <p class="app-description" id="app-4-desc">
+            Video bài giảng tự động dừng tại mốc thời gian quy định (Cue point), hiện câu hỏi trắc nghiệm kiểm tra và khóa thanh tua không cho tua qua câu hỏi.
+          </p>
+          <div class="app-tag-list">
+            <span class="app-tag-item">EdTech</span>
+            <span class="app-tag-item">Time Trigger</span>
+            <span class="app-tag-item">Seek Interceptor</span>
+          </div>
+        </div>
+        <div class="showcase-panel-footer">
+          <a href="apps/04-edtech-quiz/index.html" class="btn btn-primary btn-sm app-run-btn">
+            <span>🚀</span> <span id="app-4-run">Chạy Live Demo</span>
+          </a>
+          <a href="../docs/index.html?path=content/guides/vi/blueprints/04-edtech-quiz.md" class="btn btn-default btn-sm app-doc-btn">
+            <span>📖</span> <span id="app-4-doc">Tutorial</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- App 05: Pomodoro Lofi -->
+      <article class="panel showcase-panel" data-category="audio" id="card-app-5">
+        <div class="panel-heading">
+          <div class="panel-heading-title">
+            <span class="panel-app-badge">App 05</span>
+            <span id="app-5-title">Pomodoro Lofi Ambient Mixer</span>
+          </div>
+          <span class="badge badge-default">Audio & Cues</span>
+        </div>
+        <div class="showcase-panel-body">
+          <p class="app-description" id="app-5-desc">
+            Đồng hồ học tập 25/5 phút kết hợp trộn 3 kênh âm thanh độc lập (Lofi Stream, Tiếng Mưa, Tiếng Quán Cà Phê) với bộ chỉnh âm lượng từng kênh riêng biệt.
+          </p>
+          <div class="app-tag-list">
+            <span class="app-tag-item">Multi-Audio</span>
+            <span class="app-tag-item">Timer</span>
+            <span class="app-tag-item">Independent Faders</span>
+          </div>
+        </div>
+        <div class="showcase-panel-footer">
+          <a href="apps/05-pomodoro-lofi/index.html" class="btn btn-primary btn-sm app-run-btn">
+            <span>🚀</span> <span id="app-5-run">Chạy Live Demo</span>
+          </a>
+          <a href="../docs/index.html?path=content/guides/vi/blueprints/05-pomodoro-lofi.md" class="btn btn-default btn-sm app-doc-btn">
+            <span>📖</span> <span id="app-5-doc">Tutorial</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- App 06: Multi Stream Surveillance -->
+      <article class="panel showcase-panel" data-category="advanced" id="card-app-6">
+        <div class="panel-heading">
+          <div class="panel-heading-title">
+            <span class="panel-app-badge">App 06</span>
+            <span id="app-6-title">Multi-Stream Grid Surveillance</span>
+          </div>
+          <span class="badge badge-default">Advanced</span>
+        </div>
+        <div class="showcase-panel-body">
+          <p class="app-description" id="app-6-desc">
+            Ma trận điều khiển 4 luồng camera/stream đồng thời (2x2 Grid). Tích hợp Master Controls điều khiển đồng loạt và thuật toán Audio Exclusive tự ngắt tiếng stream phụ.
+          </p>
+          <div class="app-tag-list">
+            <span class="app-tag-item">4-Grid Matrix</span>
+            <span class="app-tag-item">Master Controls</span>
+            <span class="app-tag-item">Audio Focus</span>
+          </div>
+        </div>
+        <div class="showcase-panel-footer">
+          <a href="apps/06-multi-stream/index.html" class="btn btn-primary btn-sm app-run-btn">
+            <span>🚀</span> <span id="app-6-run">Chạy Live Demo</span>
+          </a>
+          <a href="../docs/index.html?path=content/guides/vi/blueprints/06-multi-stream.md" class="btn btn-default btn-sm app-doc-btn">
+            <span>📖</span> <span id="app-6-doc">Tutorial</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- App 07: Global Shortcuts -->
+      <article class="panel showcase-panel" data-category="controls" id="card-app-7">
+        <div class="panel-heading">
+          <div class="panel-heading-title">
+            <span class="panel-app-badge">App 07</span>
+            <span id="app-7-title">Global Shortcuts HUD</span>
+          </div>
+          <span class="badge badge-default">Controls</span>
+        </div>
+        <div class="showcase-panel-body">
+          <p class="app-description" id="app-7-desc">
+            Hệ thống phím tắt toàn năng điều khiển qua iframe (Space, J/K/L, M, F, Mũi tên). Hỗ trợ hiển thị bảng HUD phím bấm trực quan và chặn bắt phím khi đang nhập input.
+          </p>
+          <div class="app-tag-list">
+            <span class="app-tag-item">Hotkeys</span>
+            <span class="app-tag-item">HUD Visualizer</span>
+            <span class="app-tag-item">Input Guard</span>
+          </div>
+        </div>
+        <div class="showcase-panel-footer">
+          <a href="apps/07-global-shortcuts/index.html" class="btn btn-primary btn-sm app-run-btn">
+            <span>🚀</span> <span id="app-7-run">Chạy Live Demo</span>
+          </a>
+          <a href="../docs/index.html?path=content/guides/vi/blueprints/07-global-shortcuts.md" class="btn btn-default btn-sm app-doc-btn">
+            <span>📖</span> <span id="app-7-doc">Tutorial</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- App 08: Timestamp Notes -->
+      <article class="panel showcase-panel" data-category="playlist" id="card-app-8">
+        <div class="panel-heading">
+          <div class="panel-heading-title">
+            <span class="panel-app-badge">App 08</span>
+            <span id="app-8-title">Video Timestamp Notes</span>
+          </div>
+          <span class="badge badge-default">Playlist</span>
+        </div>
+        <div class="showcase-panel-body">
+          <p class="app-description" id="app-8-desc">
+            Ứng dụng ghi chép đính kèm mốc thời gian thời gian thực. Bấm vào ghi chú để tua ngay đến mốc video, hỗ trợ lưu trữ cục bộ vào localStorage và xuất file Markdown.
+          </p>
+          <div class="app-tag-list">
+            <span class="app-tag-item">Productivity</span>
+            <span class="app-tag-item">Bookmark Cues</span>
+            <span class="app-tag-item">Export Markdown</span>
+          </div>
+        </div>
+        <div class="showcase-panel-footer">
+          <a href="apps/08-timestamp-notes/index.html" class="btn btn-primary btn-sm app-run-btn">
+            <span>🚀</span> <span id="app-8-run">Chạy Live Demo</span>
+          </a>
+          <a href="../docs/index.html?path=content/guides/vi/blueprints/08-timestamp-notes.md" class="btn btn-default btn-sm app-doc-btn">
+            <span>📖</span> <span id="app-8-doc">Tutorial</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- App 09: Floating PiP Player -->
+      <article class="panel showcase-panel" data-category="advanced" id="card-app-9">
+        <div class="panel-heading">
+          <div class="panel-heading-title">
+            <span class="panel-app-badge">App 09</span>
+            <span id="app-9-title">Floating Picture-in-Picture</span>
+          </div>
+          <span class="badge badge-default">Advanced</span>
+        </div>
+        <div class="showcase-panel-body">
+          <p class="app-description" id="app-9-desc">
+            Tự động kích hoạt khung phát nổi (PiP / Floating Widget) khi người dùng cuộn bài viết qua khỏi khung hình gốc, giữ nguyên trạng thái âm thanh và đồng bộ vị trí.
+          </p>
+          <div class="app-tag-list">
+            <span class="app-tag-item">IntersectionObserver</span>
+            <span class="app-tag-item">Floating Widget</span>
+            <span class="app-tag-item">Sticky Video</span>
+          </div>
+        </div>
+        <div class="showcase-panel-footer">
+          <a href="apps/09-floating-player/index.html" class="btn btn-primary btn-sm app-run-btn">
+            <span>🚀</span> <span id="app-9-run">Chạy Live Demo</span>
+          </a>
+          <a href="../docs/index.html?path=content/guides/vi/blueprints/09-floating-player.md" class="btn btn-default btn-sm app-doc-btn">
+            <span>📖</span> <span id="app-9-doc">Tutorial</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- App 10: Audio Slide Deck -->
+      <article class="panel showcase-panel" data-category="audio" id="card-app-10">
+        <div class="panel-heading">
+          <div class="panel-heading-title">
+            <span class="panel-app-badge">App 10</span>
+            <span id="app-10-title">Audio-Driven Slide Deck</span>
+          </div>
+          <span class="badge badge-default">Audio & Cues</span>
+        </div>
+        <div class="showcase-panel-body">
+          <p class="app-description" id="app-10-desc">
+            Bộ trình chiếu tự động lật slide khớp theo timeline giọng nói thuyết minh, hỗ trợ click thumbnail tua ngược âm thanh đến đúng mốc giải thích.
+          </p>
+          <div class="app-tag-list">
+            <span class="app-tag-item">Presentations</span>
+            <span class="app-tag-item">Timeline Cues</span>
+            <span class="app-tag-item">Auto-Flip</span>
+          </div>
+        </div>
+        <div class="showcase-panel-footer">
+          <a href="apps/10-audio-slide/index.html" class="btn btn-primary btn-sm app-run-btn">
+            <span>🚀</span> <span id="app-10-run">Chạy Live Demo</span>
+          </a>
+          <a href="../docs/index.html?path=content/guides/vi/blueprints/10-audio-slide.md" class="btn btn-default btn-sm app-doc-btn">
+            <span>📖</span> <span id="app-10-doc">Tutorial</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- App 11: Gym HIIT Ducking -->
+      <article class="panel showcase-panel" data-category="controls" id="card-app-11">
+        <div class="panel-heading">
+          <div class="panel-heading-title">
+            <span class="panel-app-badge">App 11</span>
+            <span id="app-11-title">Smart Gym HIIT Ducking</span>
+          </div>
+          <span class="badge badge-default">Controls</span>
+        </div>
+        <div class="showcase-panel-body">
+          <p class="app-description" id="app-11-desc">
+            Đồng hồ tập luyện TABATA/HIIT: Tạo tiếng còi bằng Web Audio API, tự động nén âm lượng nhạc nền xuống 20% khi còi kêu và hồi phục 100% hiệp mới.
+          </p>
+          <div class="app-tag-list">
+            <span class="app-tag-item">Fitness</span>
+            <span class="app-tag-item">Web Audio API</span>
+            <span class="app-tag-item">Audio Ducking</span>
+          </div>
+        </div>
+        <div class="showcase-panel-footer">
+          <a href="apps/11-gym-ducking/index.html" class="btn btn-primary btn-sm app-run-btn">
+            <span>🚀</span> <span id="app-11-run">Chạy Live Demo</span>
+          </a>
+          <a href="../docs/index.html?path=content/guides/vi/blueprints/11-gym-ducking.md" class="btn btn-default btn-sm app-doc-btn">
+            <span>📖</span> <span id="app-11-doc">Tutorial</span>
+          </a>
+        </div>
+      </article>
+
+    </div>
   </main>
 
+  <!-- Standard Footer (Shared Across Ecosystem) -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <p id="txt-footer">
+        SRemote Frame Controller &copy; 2026 sweetsea &bull; Giấy phép LGPL-3.0 &bull; Hỗ trợ mọi trình duyệt & Tampermonkey.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Script: Category Filter & Complete i18n Integration -->
+  <script>
+    (function initShowcaseApp() {
+      'use strict';
+
+      // 1. Bilingual Dictionary (EN / VI)
+      const i18nDict = {
+        vi: {
+          pageTitle: "SRemote Demo Showcase - Live Interactive Demos & Sandbox",
+          heroBadge: "Live Interactive Showcase",
+          heroTitle: "Trung Tâm Trải Nghiệm SRemote",
+          heroSubtitle: "Khám phá sức mạnh điều khiển media đa nền tảng thông qua môi trường Sandbox 6-Slot và 11 ứng dụng thực chiến độc lập được xây dựng hoàn toàn bằng Vanilla JavaScript.",
+          btnSandbox: "Mở SDKless Sandbox (6-Slot)",
+          btnDocs: "Xem Cẩm Nang Hướng Dẫn",
+          metaNote: "100% Vanilla JS • Chạy trực tiếp trên trình duyệt",
+          filterAll: "Tất cả ứng dụng",
+          filterControls: "Điều khiển Player",
+          filterPlaylist: "Playlist & Hàng đợi",
+          filterAudio: "Audio & Đồng bộ Cues",
+          filterAdvanced: "Nâng cao & Popout",
+          runBtn: "Chạy Live Demo",
+          docBtn: "Tutorial",
+          footer: "SRemote Frame Controller © 2026 sweetsea • Giấy phép LGPL-3.0 • Hỗ trợ mọi trình duyệt & Tampermonkey.",
+          apps: {
+            app1: {
+              title: "Simple Custom Player",
+              desc: "Bộ điều khiển tùy biến từ con số 0: Nút Play/Pause, Scrubber tua mượt chống giật con trỏ (Scrubber Fighting), điều chỉnh Volume và Mute toggle."
+            },
+            app2: {
+              title: "Playlist & Podcast Queue",
+              desc: "Hàng đợi phát liên tục (Continuous Playback), bắt sự kiện ended tự nạp bài kế tiếp, xử lý dọn dẹp instance cũ bằng destroy() và lách Autoplay Policy."
+            },
+            app3: {
+              title: "Watchparty Synchronizer",
+              desc: "Phòng xem chung giữa 2 người (Host & Peer) giả lập mạng delay 50-300ms, thuật toán đồng bộ thời gian không gây giật giật (Desync threshold logic)."
+            },
+            app4: {
+              title: "Interactive EdTech Video Quiz",
+              desc: "Video bài giảng tự động dừng tại mốc thời gian quy định (Cue point), hiện câu hỏi trắc nghiệm kiểm tra và khóa thanh tua không cho tua qua câu hỏi."
+            },
+            app5: {
+              title: "Pomodoro Lofi Ambient Mixer",
+              desc: "Đồng hồ học tập 25/5 phút kết hợp trộn 3 kênh âm thanh độc lập (Lofi Stream, Tiếng Mưa, Tiếng Quán Cà Phê) với bộ chỉnh âm lượng từng kênh riêng biệt."
+            },
+            app6: {
+              title: "Multi-Stream Grid Surveillance",
+              desc: "Ma trận điều khiển 4 luồng camera/stream đồng thời (2x2 Grid). Tích hợp Master Controls điều khiển đồng loạt và thuật toán Audio Exclusive tự ngắt tiếng stream phụ."
+            },
+            app7: {
+              title: "Global Shortcuts HUD",
+              desc: "Hệ thống phím tắt toàn năng điều khiển qua iframe (Space, J/K/L, M, F, Mũi tên). Hỗ trợ hiển thị bảng HUD phím bấm trực quan và chặn bắt phím khi đang nhập input."
+            },
+            app8: {
+              title: "Video Timestamp Notes",
+              desc: "Ứng dụng ghi chép đính kèm mốc thời gian thời gian thực. Bấm vào ghi chú để tua ngay đến mốc video, hỗ trợ lưu trữ cục bộ vào localStorage và xuất file Markdown."
+            },
+            app9: {
+              title: "Floating Picture-in-Picture",
+              desc: "Tự động kích hoạt khung phát nổi (PiP / Floating Widget) khi người dùng cuộn bài viết qua khỏi khung hình gốc, giữ nguyên trạng thái âm thanh và đồng bộ vị trí."
+            },
+            app10: {
+              title: "Audio-Driven Slide Deck",
+              desc: "Bộ trình chiếu tự động lật slide khớp theo timeline giọng nói thuyết minh, hỗ trợ click thumbnail tua ngược âm thanh đến đúng mốc giải thích."
+            },
+            app11: {
+              title: "Smart Gym HIIT Ducking",
+              desc: "Đồng hồ tập luyện TABATA/HIIT: Tạo tiếng còi bằng Web Audio API, tự động nén âm lượng nhạc nền xuống 20% khi còi kêu và hồi phục 100% hiệp mới."
+            }
+          }
+        },
+        en: {
+          pageTitle: "SRemote Demo Showcase - Live Interactive Demos & Sandbox",
+          heroBadge: "Live Interactive Showcase",
+          heroTitle: "SRemote Experience Center",
+          heroSubtitle: "Explore universal cross-frame media controller capabilities through the 6-Slot SDKless Sandbox and 11 real-world standalone applications built entirely with Vanilla JavaScript.",
+          btnSandbox: "Launch SDKless Sandbox (6-Slot)",
+          btnDocs: "Explore Documentation & Guides",
+          metaNote: "100% Vanilla JS • Runs directly in browser",
+          filterAll: "All Applications",
+          filterControls: "Player Controls",
+          filterPlaylist: "Playlist & Queue",
+          filterAudio: "Audio & Cue Triggers",
+          filterAdvanced: "Advanced & Popout",
+          runBtn: "Run Live Demo",
+          docBtn: "Tutorial",
+          footer: "SRemote Frame Controller © 2026 sweetsea • Licensed under LGPL-3.0 • Supports all modern browsers & Tampermonkey.",
+          apps: {
+            app1: {
+              title: "Simple Custom Player",
+              desc: "Custom player controls built from scratch: Play/Pause, smooth scrubbing without Scrubber Fighting, volume slider, and instant mute toggle."
+            },
+            app2: {
+              title: "Playlist & Podcast Queue",
+              desc: "Continuous playback queue listening for the 'ended' event to load the next track, proper lifecycle cleanup via destroy(), and seamless Autoplay Policy handling."
+            },
+            app3: {
+              title: "Watchparty Synchronizer",
+              desc: "Virtual room sync between Host & Peer simulating 50-300ms latency, featuring non-jittery time sync algorithms (Desync threshold logic)."
+            },
+            app4: {
+              title: "Interactive EdTech Video Quiz",
+              desc: "Educational lecture video pausing automatically at defined cue points, locking seek forward controls until multiple-choice questions are answered."
+            },
+            app5: {
+              title: "Pomodoro Lofi Ambient Mixer",
+              desc: "25/5-minute productivity timer mixing 3 independent audio sources (Lofi stream, gentle rain, cafe background) with individual channel faders."
+            },
+            app6: {
+              title: "Multi-Stream Grid Surveillance",
+              desc: "4-camera synchronous control matrix in a 2x2 grid with unified master playback controls and audio exclusive focus management."
+            },
+            app7: {
+              title: "Global Shortcuts HUD",
+              desc: "Universal keyboard shortcuts controlling embedded iframes (Space, J/K/L, M, F, Arrow keys) with visual HUD indicator and input focus guarding."
+            },
+            app8: {
+              title: "Video Timestamp Notes",
+              desc: "Live timestamped note-taking application. Click any note to jump directly to that video moment, with localStorage persistence and Markdown export."
+            },
+            app9: {
+              title: "Floating Picture-in-Picture",
+              desc: "Automatic floating widget (PiP) activation triggered when scrolling past the original video viewport, preserving audio state and playback position."
+            },
+            app10: {
+              title: "Audio-Driven Slide Deck",
+              desc: "Presentation slide deck auto-flipping synchronously with spoken narration cues, with clickable slide thumbnails seeking back to related topics."
+            },
+            app11: {
+              title: "Smart Gym HIIT Ducking",
+              desc: "TABATA/HIIT workout timer with Web Audio API whistles, dynamically ducking background music to 20% on countdown whistles and restoring full volume."
+            }
+          }
+        }
+      };
+
+      // 2. Language Application Logic
+      function applyLanguage(lang) {
+        const d = i18nDict[lang] || i18nDict.vi;
+        document.documentElement.lang = lang;
+        document.title = d.pageTitle;
+
+        // Header & Jumbotron
+        const elHeroBadge = document.getElementById('txt-hero-badge');
+        if (elHeroBadge) elHeroBadge.textContent = d.heroBadge;
+        const elHeroTitle = document.getElementById('txt-hero-title');
+        if (elHeroTitle) elHeroTitle.textContent = d.heroTitle;
+        const elHeroSubtitle = document.getElementById('txt-hero-subtitle');
+        if (elHeroSubtitle) elHeroSubtitle.textContent = d.heroSubtitle;
+        const elHeroSandbox = document.getElementById('label-hero-sandbox');
+        if (elHeroSandbox) elHeroSandbox.textContent = d.btnSandbox;
+        const elHeroDocs = document.getElementById('label-hero-docs');
+        if (elHeroDocs) elHeroDocs.textContent = d.btnDocs;
+        const elMetaNote = document.getElementById('txt-meta-note');
+        if (elMetaNote) elMetaNote.textContent = d.metaNote;
+
+        // Filter Pills
+        const elFilterAll = document.getElementById('filter-label-all');
+        if (elFilterAll) elFilterAll.textContent = d.filterAll;
+        const elFilterControls = document.getElementById('filter-label-controls');
+        if (elFilterControls) elFilterControls.textContent = d.filterControls;
+        const elFilterPlaylist = document.getElementById('filter-label-playlist');
+        if (elFilterPlaylist) elFilterPlaylist.textContent = d.filterPlaylist;
+        const elFilterAudio = document.getElementById('filter-label-audio');
+        if (elFilterAudio) elFilterAudio.textContent = d.filterAudio;
+        const elFilterAdvanced = document.getElementById('filter-label-advanced');
+        if (elFilterAdvanced) elFilterAdvanced.textContent = d.filterAdvanced;
+
+        // Footer
+        const elFooter = document.getElementById('txt-footer');
+        if (elFooter) elFooter.textContent = d.footer;
+
+        // 11 Apps Details
+        for (let i = 1; i <= 11; i++) {
+          const key = `app${i}`;
+          const appData = d.apps[key];
+          if (!appData) continue;
+
+          const titleEl = document.getElementById(`app-${i}-title`);
+          if (titleEl) titleEl.textContent = appData.title;
+
+          const descEl = document.getElementById(`app-${i}-desc`);
+          if (descEl) descEl.textContent = appData.desc;
+
+          const runEl = document.getElementById(`app-${i}-run`);
+          if (runEl) runEl.textContent = d.runBtn;
+
+          const docEl = document.getElementById(`app-${i}-doc`);
+          if (docEl) docEl.textContent = d.docBtn;
+        }
+      }
+
+      // Initial Language Detection (localStorage sync)
+      const initialLang = localStorage.getItem('sremote_lang') || localStorage.getItem('sremote_demo_lang') || 'vi';
+      applyLanguage(initialLang);
+
+      // Listen for language changes from <sremote-header>
+      window.addEventListener('i18n:changed', (e) => {
+        if (e.detail?.lang) {
+          applyLanguage(e.detail.lang);
+        }
+      });
+
+      // 3. Category Filter Logic
+      const filterButtons = document.querySelectorAll('.filter-pill');
+      const cards = document.querySelectorAll('.showcase-panel');
+
+      filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          filterButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+
+          const category = btn.getAttribute('data-category');
+          cards.forEach(card => {
+            if (category === 'all' || card.getAttribute('data-category') === category) {
+              card.classList.remove('hidden');
+            } else {
+              card.classList.add('hidden');
+            }
+          });
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
