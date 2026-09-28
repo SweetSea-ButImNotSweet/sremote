@@ -440,6 +440,17 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
     }
   }
 
+  // Subscribe to rawAdapter if it implements an event emitter contract (.on)
+  let unbindAdapterEvents = null;
+  if (typeof rawAdapter.on === 'function') {
+    unbindAdapterEvents = rawAdapter.on('*', payload => {
+      const eventName = payload?.event || payload?.type;
+      if (eventName) {
+        adapter.emit(eventName, payload);
+      }
+    });
+  }
+
   let lastTimeupdateAdapterLog = 0;
 
   adapter.emit = (event, payload = {}) => {
@@ -548,6 +559,12 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
 
   const origDestroy = typeof adapter.destroy === 'function' ? adapter.destroy.bind(adapter) : null;
   adapter.destroy = function () {
+    if (unbindAdapterEvents) {
+      try {
+        unbindAdapterEvents();
+      } catch {}
+      unbindAdapterEvents = null;
+    }
     if (unbindFallback) {
       try {
         unbindFallback();

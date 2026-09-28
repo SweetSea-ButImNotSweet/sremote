@@ -27,7 +27,7 @@ export class SRemoteClient {
     this.bridgeDriver = new BridgeDriver(driverOptions);
     this.userscriptDriver = this.bridgeDriver; // Alias for backward compatibility
     this.domDriver = new DomDriver(driverOptions);
-    this.adapterDriver = new AdapterDriver({ ...driverOptions, instanceManager: this.domDriver.instanceManager });
+    this.adapterDriver = new AdapterDriver({ ...driverOptions, instanceManager: this.domDriver.instanceManager, emitter: this.domDriver });
     this.mediaSessionDriver = new MediaSessionDriver(driverOptions);
 
     this.fsm = options.fsm || new HierarchicalFSM();

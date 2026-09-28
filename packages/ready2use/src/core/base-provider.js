@@ -144,13 +144,59 @@ export class BaseProvider {
       container.appendChild(targetElement);
     }
 
-    // 4. Create custom adapter
+    // 4. Create custom adapter with built-in event dispatcher
+    const listeners = new Map();
+    const emit = (event, payload = {}) => {
+      const ev = String(event || '').toLowerCase();
+      const handlers = listeners.get(ev);
+      if (handlers) {
+        for (const fn of handlers) {
+          try {
+            fn(payload);
+          } catch {}
+        }
+      }
+      const wildcard = listeners.get('*');
+      if (wildcard) {
+        for (const fn of wildcard) {
+          try {
+            fn({ ...payload, event: ev });
+          } catch {}
+        }
+      }
+    };
+
     const adapter = this.createAdapter(player, {
       options: opts,
       instanceId,
       element: targetElement,
       iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null),
+      emit,
     });
+
+    if (adapter) {
+      if (typeof adapter.emit !== 'function') {
+        adapter.emit = emit;
+      }
+      if (typeof adapter.on !== 'function') {
+        adapter.on = (ev, fn) => {
+          const key = String(ev || '').toLowerCase();
+          if (!listeners.has(key)) listeners.set(key, new Set());
+          listeners.get(key).add(fn);
+          return () => listeners.get(key)?.delete(fn);
+        };
+      }
+      if (typeof adapter.off !== 'function') {
+        adapter.off = (ev, fn) => {
+          const key = String(ev || '').toLowerCase();
+          if (fn) {
+            listeners.get(key)?.delete(fn);
+          } else {
+            listeners.delete(key);
+          }
+        };
+      }
+    }
 
     if (adapter && !adapter.capabilities) {
       adapter.capabilities = this.getCapabilities(adapter);

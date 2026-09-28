@@ -46,7 +46,21 @@ export class AdapterDriver {
     if (!rawAdapter || typeof rawAdapter !== 'object') return null;
     const targetId = customInstanceId || instance.generateId('adapter');
 
-    const wrapped = actions.wrapAdapter(rawAdapter, { instanceId: targetId, transactionTracker: this.transactionTracker, logger: this.logger });
+    const onEmit = (ev, payload) => {
+      if (this.options.emitter && typeof this.options.emitter.emit === 'function') {
+        this.options.emitter.emit(ev, payload);
+      }
+      if (this.instanceManager?.emitGlobalEvent) {
+        this.instanceManager.emitGlobalEvent(ev, payload);
+      }
+    };
+
+    const wrapped = actions.wrapAdapter(rawAdapter, {
+      instanceId: targetId,
+      transactionTracker: this.transactionTracker,
+      logger: this.logger,
+      onEmit,
+    });
 
     this.adaptersMap.set(targetId, wrapped);
 
