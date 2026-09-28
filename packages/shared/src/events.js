@@ -9,7 +9,6 @@ const PROGRAMMATIC_WINDOW_MS = 500;
 const ALMOST_END_THRESHOLD_SEC = 0.8;
 const ALMOST_END_MIN_DURATION_SEC = 3;
 const ALMOST_END_RESET_THRESHOLD_SEC = 1.5;
-const ENDED_DRIFT_TOLERANCE_SEC = 1.5;
 
 const sharedLastKnownDurationMap = new WeakMap();
 
@@ -317,16 +316,47 @@ export function bindMediaEvents(media, onEvent, options = {}) {
   let hasEmittedAlmostEnd = false;
   let lastTimeupdate = 0;
   let lastProgress = 0;
+  let trailingTimeupdateTimer = null;
+  let trailingProgressTimer = null;
   const boundListeners = [];
+
+  const triggerEvent = (evtName, eventObj) => {
+    const isProgrammatic = resolveIsProgrammatic({ eventName: evtName, instanceId, media, tracker: transactionTracker, timestampGetter: programmaticActionTimestampGetter });
+    onEvent(
+      evtName,
+      createEventPayload(evtName, {
+        source,
+        instanceId,
+        mediaType: media.tagName?.toLowerCase() ?? 'video',
+        state: extractMediaState(media),
+        isProgrammatic,
+        originalEvent: eventObj,
+      }),
+    );
+  };
 
   for (const evtName of targetEvents) {
     const listener = eventObj => {
       const isProgrammatic = resolveIsProgrammatic({ eventName: evtName, instanceId, media, tracker: transactionTracker, timestampGetter: programmaticActionTimestampGetter });
-
       const now = Date.now();
 
       if (evtName === 'timeupdate') {
-        if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) return;
+        const remaining = TIMEUPDATE_THROTTLE_MS - (now - lastTimeupdate);
+        if (remaining > 0) {
+          if (!trailingTimeupdateTimer) {
+            trailingTimeupdateTimer = setTimeout(() => {
+              trailingTimeupdateTimer = null;
+              lastTimeupdate = Date.now();
+              triggerEvent('timeupdate', eventObj);
+            }, remaining);
+          }
+          return;
+        }
+
+        if (trailingTimeupdateTimer) {
+          clearTimeout(trailingTimeupdateTimer);
+          trailingTimeupdateTimer = null;
+        }
         lastTimeupdate = now;
 
         const dur = Number.isFinite(media.duration) ? media.duration : null;
@@ -346,15 +376,31 @@ export function bindMediaEvents(media, onEvent, options = {}) {
       }
 
       if (evtName === 'progress') {
-        if (now - lastProgress < PROGRESS_THROTTLE_MS) return;
+        const remaining = PROGRESS_THROTTLE_MS - (now - lastProgress);
+        if (remaining > 0) {
+          if (!trailingProgressTimer) {
+            trailingProgressTimer = setTimeout(() => {
+              trailingProgressTimer = null;
+              lastProgress = Date.now();
+              triggerEvent('progress', eventObj);
+            }, remaining);
+          }
+          return;
+        }
+
+        if (trailingProgressTimer) {
+          clearTimeout(trailingProgressTimer);
+          trailingProgressTimer = null;
+        }
         lastProgress = now;
       }
 
       if (evtName === 'ended') {
         hasEmittedAlmostEnd = false;
-        const dur = Number.isFinite(media.duration) ? media.duration : null;
-        const curTime = media.currentTime || 0;
-        if (dur && dur > 0 && Math.abs(dur - curTime) > ENDED_DRIFT_TOLERANCE_SEC) return;
+        if (trailingTimeupdateTimer) {
+          clearTimeout(trailingTimeupdateTimer);
+          trailingTimeupdateTimer = null;
+        }
       }
 
       onEvent(
@@ -375,6 +421,14 @@ export function bindMediaEvents(media, onEvent, options = {}) {
   }
 
   return () => {
+    if (trailingTimeupdateTimer) {
+      clearTimeout(trailingTimeupdateTimer);
+      trailingTimeupdateTimer = null;
+    }
+    if (trailingProgressTimer) {
+      clearTimeout(trailingProgressTimer);
+      trailingProgressTimer = null;
+    }
     for (const { evtName, listener } of boundListeners) {
       try {
         media.removeEventListener(evtName, listener, true);
@@ -424,8 +478,9 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
   const adapter = Object.create(rawAdapter);
   const originalEmit = typeof rawAdapter.emit === 'function' ? rawAdapter.emit.bind(rawAdapter) : null;
 
-  // Track events handled explicitly by adapter to avoid duplicating fallback events
-  const handledEvents = new Set(Array.isArray(rawAdapter.handledEvents) ? rawAdapter.handledEvents.map(e => String(e).toLowerCase()) : []);
+  // Explicitly declared handled events by the adapter
+  const declaredHandledEvents = new Set(Array.isArray(rawAdapter.handledEvents) ? rawAdapter.handledEvents.map(e => String(e).toLowerCase()) : []);
+  const lastAdapterEmitTimeMap = new Map(); // event -> timestamp
 
   let unbindFallback = null;
   let programmaticActionTimestamp = 0;
@@ -455,7 +510,8 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
 
   adapter.emit = (event, payload = {}) => {
     const ev = String(event || '').toLowerCase();
-    handledEvents.add(ev);
+    const now = Date.now();
+    lastAdapterEmitTimeMap.set(ev, now);
 
     try {
       originalEmit?.(event, payload);
@@ -470,7 +526,6 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
     const state = extractMediaState(adapter);
     const fullPayload = createEventPayload(ev, { source, instanceId, mediaType: 'adapter', isProgrammatic, ...(state ? { state } : {}), ...payloadObj });
 
-    const now = Date.now();
     const shouldLogAdapterEvent = ev !== 'timeupdate' || now - lastTimeupdateAdapterLog >= TIMEUPDATE_LOG_THROTTLE_MS;
     if (ev === 'timeupdate' && shouldLogAdapterEvent) {
       lastTimeupdateAdapterLog = now;
@@ -536,21 +591,29 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
       unbindFallback = bindMediaEvents(
         targetMediaEl,
         (evtName, payload) => {
-          // Only forward if the adapter has not explicitly emitted this event itself
-          if (!handledEvents.has(evtName.toLowerCase())) {
-            const state = extractMediaState(adapter) || payload.state;
-            const forwarded = { ...payload, source: 'adapter-dom-fallback', instanceId, state };
-            defaultLogger.scope('event').debug(`Adapter fallback emit -> ${evtName}`, forwarded);
-            try {
-              onEmit?.(evtName, forwarded);
-            } catch {}
+          const evNorm = evtName.toLowerCase();
+          // Do not forward if adapter explicitly declares handling this event
+          if (declaredHandledEvents.has(evNorm)) {
+            return;
           }
+          // Do not duplicate if adapter itself emitted this event within the last 300ms
+          const lastEmit = lastAdapterEmitTimeMap.get(evNorm) || 0;
+          if (Date.now() - lastEmit < 300) {
+            return;
+          }
+
+          const state = extractMediaState(adapter) || payload.state;
+          const forwarded = { ...payload, source: 'adapter-dom-fallback', instanceId, state };
+          defaultLogger.scope('event').debug(`Adapter fallback emit -> ${evtName}`, forwarded);
+          try {
+            onEmit?.(evtName, forwarded);
+          } catch {}
         },
         {
           instanceId,
           source: 'adapter-dom-fallback',
           events: allowedFallbackEvents,
-          excludedEvents: handledEvents,
+          excludedEvents: declaredHandledEvents,
           programmaticActionTimestampGetter: () => programmaticActionTimestamp,
         },
       );

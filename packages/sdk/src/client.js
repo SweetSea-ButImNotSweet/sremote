@@ -37,7 +37,7 @@ export class SRemoteClient {
 
     this.mode = 'detecting'; // 'userscript' | 'dom-direct' | 'unsupported'
     this._readyPromise = null;
-    this._listeners = new Set(); // { event, handler, key, unbindDom, unbindUserscript }
+    this._setupInternalEventHub();
 
     this.instances = {
       list: key => {
@@ -190,25 +190,6 @@ export class SRemoteClient {
 
   isUserscriptAvailable() {
     return this.userscriptDriver.isAvailable();
-  }
-
-  syncListenersToUserscript() {
-    if (this.userscriptDriver.isAvailable()) {
-      for (const entry of this._listeners) {
-        if (!entry.unbindUserscript) {
-          try {
-            entry.unbindUserscript = this.userscriptDriver.on(entry.event, entry.handler, entry.key || this.options.passkey);
-            // Once userscript handles the event stream, detach fallback DOM listener to avoid duplicate event calls
-            if (typeof entry.unbindDom === 'function') {
-              entry.unbindDom();
-              entry.unbindDom = null;
-            }
-          } catch (err) {
-            this.logger.warn(`Failed to sync listener for '${entry.event}' to userscript:`, err);
-          }
-        }
-      }
-    }
   }
 
   syncLogLevelFromUserscript() {
@@ -553,6 +534,87 @@ export class SRemoteClient {
     return this.userscriptDriver.bindMetadata(meta, instanceId, key);
   }
 
+  _setupInternalEventHub() {
+    this._eventListeners = new Map(); // event -> Set of { handler, key }
+    this._recentEventSignatures = new Map(); // sig -> timestamp
+
+    // Dedup helper: returns true if already dispatched within 200ms
+    const isDuplicate = (event, payload) => {
+      const instId = payload?.instanceId || 'unknown';
+      const stateSig = payload?.state ? `${payload.state.currentTime}_${payload.state.paused}` : '';
+      const sig = `${event}:${instId}:${stateSig}:${payload?.value ?? ''}`;
+      const now = Date.now();
+      const last = this._recentEventSignatures.get(sig);
+      if (last && now - last < 200) {
+        return true;
+      }
+      this._recentEventSignatures.set(sig, now);
+      // Clean old signatures if map grows large
+      if (this._recentEventSignatures.size > 100) {
+        for (const [k, ts] of this._recentEventSignatures.entries()) {
+          if (now - ts > 1000) this._recentEventSignatures.delete(k);
+        }
+      }
+      return false;
+    };
+
+    // Central dispatching function
+    this._dispatchClientEvent = (event, payload) => {
+      const ev = String(event || '').toLowerCase();
+      if (ev !== 'timeupdate' && isDuplicate(ev, payload)) {
+        return;
+      }
+
+      const listeners = this._eventListeners.get(ev);
+      if (listeners) {
+        for (const entry of Array.from(listeners)) {
+          try {
+            entry.handler(payload);
+          } catch (err) {
+            this.logger.warn(`Error in '${ev}' event handler:`, err);
+          }
+        }
+      }
+
+      const wildcardListeners = this._eventListeners.get('*');
+      if (wildcardListeners) {
+        const starPayload = typeof payload === 'object' && payload !== null ? { ...payload, event: ev } : { event: ev, value: payload };
+        for (const entry of Array.from(wildcardListeners)) {
+          try {
+            entry.handler(starPayload);
+          } catch (err) {
+            this.logger.warn(`Error in '*' wildcard event handler:`, err);
+          }
+        }
+      }
+    };
+
+    // Always connect DOM driver to internal hub
+    if (this.domDriver && typeof this.domDriver.on === 'function') {
+      this._unbindDomDriver = this.domDriver.on('*', payload => {
+        const ev = payload?.event;
+        if (ev) {
+          this._dispatchClientEvent(ev, payload);
+        }
+      });
+    }
+  }
+
+  syncListenersToUserscript() {
+    if (this.userscriptDriver.isAvailable() && !this._unbindUserscriptDriver) {
+      try {
+        this._unbindUserscriptDriver = this.userscriptDriver.on('*', payload => {
+          const ev = payload?.event;
+          if (ev) {
+            this._dispatchClientEvent(ev, payload);
+          }
+        }, this.options.passkey);
+      } catch (err) {
+        this.logger.warn('Failed to bind userscript event stream:', err);
+      }
+    }
+  }
+
   emit(event, payload) {
     this.logger.debug(`emit event '${event}':`, payload);
     if (this.userscriptDriver.isAvailable()) {
@@ -567,66 +629,77 @@ export class SRemoteClient {
   }
 
   on(event, handler, key) {
+    if (typeof handler !== 'function') return () => {};
     this.logger.debug(`Listening to event: ${event}`);
-    const entry = { event, handler, key, unbindDom: null, unbindUserscript: null };
+    const ev = String(event || '').toLowerCase();
 
-    // If userscript is available, bind directly to userscript
-    if (this.userscriptDriver.isAvailable()) {
-      try {
-        entry.unbindUserscript = this.userscriptDriver.on(event, handler, key || this.options.passkey);
-      } catch {}
-    } else if (this.domDriver && typeof this.domDriver.on === 'function') {
-      // Only fallback to DomDriver when userscript is not yet available
-      try {
-        entry.unbindDom = this.domDriver.on(event, handler);
-      } catch {}
+    if (!this._eventListeners.has(ev)) {
+      this._eventListeners.set(ev, new Set());
+    }
+    const entry = { handler, key: key || this.options.passkey };
+    this._eventListeners.get(ev).add(entry);
+
+    // If userscript is active and not yet connected to hub, sync it
+    if (this.userscriptDriver.isAvailable() && !this._unbindUserscriptDriver) {
+      this.syncListenersToUserscript();
     }
 
-    this._listeners.add(entry);
+    // Sticky replay check from active drivers
+    try {
+      if (ev === 'state' || ev === 'accept' || ev === '*') {
+        const curStatus = this.status();
+        if (curStatus) {
+          const replayPayload = {
+            event: ev === '*' ? 'state' : ev,
+            state: curStatus,
+            source: 'cache-replay',
+            instanceId: this.domDriver?.lastActiveInstanceId || 'dom-media',
+          };
+          setTimeout(() => {
+            try {
+              handler(replayPayload);
+            } catch {}
+          }, 0);
+        }
+      }
+    } catch {}
 
     return () => this.off(event, handler);
   }
 
   off(event, handler) {
     this.logger.debug(`Unlistening event: ${event}`);
-    for (const entry of Array.from(this._listeners)) {
-      if (entry.event === event && (!handler || entry.handler === handler)) {
-        if (typeof entry.unbindDom === 'function') {
-          try {
-            entry.unbindDom();
-          } catch {}
-        } else if (this.domDriver) {
-          this.domDriver.off(entry.event, entry.handler);
+    const ev = String(event || '').toLowerCase();
+    const set = this._eventListeners.get(ev);
+    if (set) {
+      if (handler) {
+        for (const entry of Array.from(set)) {
+          if (entry.handler === handler) {
+            set.delete(entry);
+          }
         }
-
-        if (typeof entry.unbindUserscript === 'function') {
-          try {
-            entry.unbindUserscript();
-          } catch {}
-        } else if (this.userscriptDriver.isAvailable()) {
-          this.userscriptDriver.off(entry.event, entry.handler);
-        }
-
-        this._listeners.delete(entry);
+      } else {
+        set.clear();
       }
     }
   }
 
   destroy() {
     this.logger.debug('Destroying SRemoteClient instance...');
-    for (const entry of Array.from(this._listeners)) {
-      if (typeof entry.unbindDom === 'function') {
-        try {
-          entry.unbindDom();
-        } catch {}
-      }
-      if (typeof entry.unbindUserscript === 'function') {
-        try {
-          entry.unbindUserscript();
-        } catch {}
-      }
+    if (typeof this._unbindDomDriver === 'function') {
+      try {
+        this._unbindDomDriver();
+      } catch {}
+      this._unbindDomDriver = null;
     }
-    this._listeners.clear();
+    if (typeof this._unbindUserscriptDriver === 'function') {
+      try {
+        this._unbindUserscriptDriver();
+      } catch {}
+      this._unbindUserscriptDriver = null;
+    }
+    this._eventListeners?.clear();
+    this._recentEventSignatures?.clear();
 
     if (this.domDriver && typeof this.domDriver.destroy === 'function') {
       try {

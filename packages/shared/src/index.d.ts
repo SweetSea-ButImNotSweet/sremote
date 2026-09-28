@@ -208,6 +208,7 @@ export interface InstanceManager {
   denyOrigin: (origin: string) => void;
   clearDeniedOrigins: () => void;
   readonly lastAcceptedData: any;
+  readonly lastStateData: any;
   isMultiModeActive: () => boolean;
   getLatestActiveInstanceId: () => string | null;
   broadcastToPorts: (payload: any, excludeInstanceId?: string | null) => void;

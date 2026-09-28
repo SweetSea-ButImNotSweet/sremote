@@ -44,6 +44,7 @@ export function createInstanceManager(options = {}) {
   let isSessionDenied = false;
   const sessionDeniedOrigins = new Set();
   let lastAcceptedData = null;
+  let lastStateData = null;
 
   function isMultiModeActive() {
     if (typeof multiModeConfig === 'boolean') return multiModeConfig;
@@ -142,6 +143,11 @@ export function createInstanceManager(options = {}) {
       lastAcceptedData = payload;
     } else if ((ev === 'disconnect' || rawEv === 'disconnect') && payload?.instanceId && lastAcceptedData?.instanceId === payload.instanceId) {
       lastAcceptedData = null;
+      lastStateData = null;
+    }
+
+    if (payload?.state) {
+      lastStateData = { ...payload, event: ev };
     }
 
     const triggerHandlers = targetMap => {
@@ -193,6 +199,18 @@ export function createInstanceManager(options = {}) {
     if ((ev === 'accept' || ev === '*') && lastAcceptedData && instances.has(lastAcceptedData.instanceId)) {
       try {
         const replayPayload = ev === '*' ? { ...lastAcceptedData, event: 'accept' } : lastAcceptedData;
+        setTimeout(() => {
+          try {
+            handler(replayPayload);
+          } catch {}
+        }, 0);
+      } catch {}
+    }
+
+    // Sticky replay for state
+    if (ev === 'state' && lastStateData && instances.has(lastStateData.instanceId)) {
+      try {
+        const replayPayload = { ...lastStateData, event: 'state' };
         setTimeout(() => {
           try {
             handler(replayPayload);
@@ -298,6 +316,9 @@ export function createInstanceManager(options = {}) {
     },
     get lastAcceptedData() {
       return lastAcceptedData;
+    },
+    get lastStateData() {
+      return lastStateData;
     },
     isMultiModeActive,
     getLatestActiveInstanceId,

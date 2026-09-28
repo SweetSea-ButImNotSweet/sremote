@@ -34,6 +34,18 @@ export function createLifecycleHandlers({ instanceManager, validateDomainAccess,
       } catch {}
     }
 
+    const lastStateData = instanceManager.lastStateData;
+    if (ev === 'state' && lastStateData && instances.has(lastStateData.instanceId)) {
+      try {
+        const payload = { ...lastStateData, event: 'state' };
+        setTimeout(() => {
+          try {
+            handler(payload);
+          } catch {}
+        }, 0);
+      } catch {}
+    }
+
     return () => offEvent(ev, handler);
   };
 
