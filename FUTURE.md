@@ -155,6 +155,8 @@ Ensure rock-solid stability and top-tier developer documentation before venturin
   - Continuous smoke testing against third-party player embeds to catch DOM/API changes from platforms early.
 - [ ] **Full Documentation Audit & Polish**:
   - Systematically review, update, and align all multilingual guides, API references, recipes, and live demo sandboxes.
+- [ ] **Revamp & Fix 11 Demo Showcase Apps (`demo/apps/`)**:
+  - Refactor all 11 existing showcase demo apps (`01-simple-player` through `11-gym-ducking`) to adopt the latest unified v4+ Fluent API (`sremote(...)`), remove legacy trailing arguments, and verify cross-origin reliability and polished UX.
 
 ---
 
