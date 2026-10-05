@@ -7,6 +7,12 @@
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/@sremote/sdk.svg)](https://www.npmjs.com/package/@sremote/sdk)
 
+> [!WARNING]
+> **Active Development & Experimental Notice**
+> SRemote is under active development with a significant backlog of pending work (detailed in [FUTURE.md](FUTURE.md)). Given the inherent complexity of cross-origin media bridging, the library **still contains various bugs** and breaking changes are expected.
+> 
+> Installation and usage in **production environments are strictly not recommended** at this stage.
+
 **SRemote** provides a unified control interface for embedded web media (HTML5 video/audio, YouTube, Spotify, Vimeo, SoundCloud, Bilibili, and 20+ other platforms). It solves cross-domain limitations (Same-Origin Policy) through an optional companion userscript bridge and provides rich client-side SDKs for web developers.
 
 ---

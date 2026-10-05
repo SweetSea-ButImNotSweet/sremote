@@ -7,6 +7,12 @@
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](../LICENSE)
 [![npm version](https://img.shields.io/npm/v/@sremote/sdk.svg)](https://www.npmjs.com/package/@sremote/sdk)
 
+> [!WARNING]
+> **Dự án đang trong giai đoạn phát triển tích cực (Experimental)**
+> SRemote hiện đang được phát triển tích cực nhưng vẫn còn rất nhiều đầu việc tồn đọng (xem chi tiết tại [FUTURE.md](../FUTURE.md)). Vì kiến trúc xử lý cross-origin và bridge iframe khá phức tạp, dự án **vẫn còn tồn tại kha khá lỗi (bugs)** và API có thể thay đổi bất cứ lúc nào.
+> 
+> Tác giả **không khuyến nghị** cài đặt hoặc đưa thư viện này vào môi trường production vào thời điểm hiện tại.
+
 **SRemote** cung cấp một giao diện điều khiển thống nhất cho media nhúng trên web (HTML5 video/audio, YouTube, Spotify, Vimeo, SoundCloud, Bilibili và nhiều nền tảng khác). Dự án làm việc quanh giới hạn Same-Origin Policy (SOP) thông qua cầu nối Userscript tùy chọn, kèm theo SDK phía client cho lập trình viên.
 
 ---
