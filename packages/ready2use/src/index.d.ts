@@ -44,28 +44,33 @@ export interface BaseProviderOptions {
 }
 
 /**
- * Unified remote control interface for player instance.
+ * Unified fluent remote control interface for player instance.
  */
-export interface PlayerRemoteControl {
+export interface PlayerRemoteControl extends PromiseLike<any> {
   readonly instanceId: string;
   readonly adapter: SRemoteCustomAdapter;
   readonly capabilities: SRemoteCapabilities;
-  play(): Promise<any>;
-  pause(): Promise<any>;
-  toggle(): Promise<any>;
-  stop(): Promise<any>;
-  seek(seconds: number): Promise<any>;
-  seekTo(seconds: number): Promise<any>;
-  setVolume(volume: number): Promise<any>;
+  play(): this;
+  pause(): this;
+  toggle(): this;
+  stop(): this;
+  seek(seconds: number): this;
+  seekTo(seconds: number): this;
+  setCurrentTime(seconds: number): this;
+  setVolume(volume: number): this;
+  volume(volume: number): this;
   getVolume(): Promise<number>;
-  setMuted(muted: boolean): Promise<any>;
+  setMuted(muted: boolean): this;
+  mute(muted?: boolean): this;
   isMuted(): Promise<boolean>;
-  setPlaybackRate(rate: number): Promise<any>;
+  setPlaybackRate(rate: number): this;
+  speed(rate: number): this;
   getPlaybackRate(): Promise<number>;
-  next(): Promise<any>;
-  previous(): Promise<any>;
-  load(source: any): Promise<any>;
+  next(): this;
+  previous(): this;
+  load(source: any): this;
   getState(): Promise<Record<string, any>>;
+  getCurrentTime(): Promise<number>;
 }
 
 /**

@@ -89,20 +89,61 @@ console.log(`  ✓ Polyfills verified (${passed} assertions)\n`);
 // 2. Audit Remote Proxy
 console.log('2. Checking Remote Proxy:');
 let played = false;
+let paused = false;
+let currentVolume = 1;
+let currentOffset = 0;
 const testAdapter = {
   play() {
     played = true;
   },
-  pause() {},
-  capabilities: { play: true, pause: true },
+  pause() {
+    paused = true;
+  },
+  setVolume(v) {
+    currentVolume = v;
+  },
+  seek(offset) {
+    currentOffset += offset;
+  },
+  getCurrentTime() {
+    return currentOffset;
+  },
+  capabilities: { play: true, pause: true, volume: true, seek: true },
 };
 const remote = createRemoteProxy(testAdapter, null, 'audit-id');
 assert(remote.instanceId === 'audit-id', 'Remote instanceId matches');
 assert(remote.capabilities.play === true, 'Remote capabilities proxy matches');
-await remote.play();
-assert(played === true, 'remote.play() forwarded to adapter.play()');
 
-console.log(`  ✓ Remote Proxy verified\n`);
+// Test Fluent Chaining & Thenable contract
+await remote.play().seek(15).volume(0.6).pause();
+assert(played === true, 'Fluent chained play() executed');
+assert(currentOffset === 15, 'Fluent chained seek(15) executed');
+assert(currentVolume === 0.6, 'Fluent chained volume(0.6) executed');
+assert(paused === true, 'Fluent chained pause() executed');
+
+// Test client delegation if client.select is provided
+let clientSelectedTarget = null;
+let clientActionCalled = false;
+const mockClient = {
+  select(target) {
+    clientSelectedTarget = target;
+    return {
+      play() {
+        clientActionCalled = true;
+        return this;
+      },
+      then(cb) {
+        return Promise.resolve(cb ? cb() : undefined);
+      }
+    };
+  }
+};
+const delegatedRemote = createRemoteProxy(testAdapter, mockClient, 'delegated-id');
+await delegatedRemote.play();
+assert(clientSelectedTarget === 'delegated-id', 'Delegated client.select(instanceId) called');
+assert(clientActionCalled === true, 'Delegated fluent action executed');
+
+console.log(`  ✓ Remote Proxy & Fluent Chaining verified\n`);
 
 // 3. Audit all 22 providers
 console.log('3. Auditing All Platform Providers:');
