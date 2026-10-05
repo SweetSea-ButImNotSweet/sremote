@@ -222,3 +222,5 @@ export function getGlobalTransactionTracker() {
 export function createTransactionTracker(options) {
   return new ActionTransactionTracker(options);
 }
+
+export const pipeline = { getTracker: getGlobalTransactionTracker, createTracker: createTransactionTracker, Tracker: ActionTransactionTracker };

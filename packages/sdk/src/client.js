@@ -603,12 +603,16 @@ export class SRemoteClient {
   syncListenersToUserscript() {
     if (this.userscriptDriver.isAvailable() && !this._unbindUserscriptDriver) {
       try {
-        this._unbindUserscriptDriver = this.userscriptDriver.on('*', payload => {
-          const ev = payload?.event;
-          if (ev) {
-            this._dispatchClientEvent(ev, payload);
-          }
-        }, this.options.passkey);
+        this._unbindUserscriptDriver = this.userscriptDriver.on(
+          '*',
+          payload => {
+            const ev = payload?.event;
+            if (ev) {
+              this._dispatchClientEvent(ev, payload);
+            }
+          },
+          this.options.passkey,
+        );
       } catch (err) {
         this.logger.warn('Failed to bind userscript event stream:', err);
       }
@@ -649,12 +653,7 @@ export class SRemoteClient {
       if (ev === 'state' || ev === 'accept' || ev === '*') {
         const curStatus = this.status();
         if (curStatus) {
-          const replayPayload = {
-            event: ev === '*' ? 'state' : ev,
-            state: curStatus,
-            source: 'cache-replay',
-            instanceId: this.domDriver?.lastActiveInstanceId || 'dom-media',
-          };
+          const replayPayload = { event: ev === '*' ? 'state' : ev, state: curStatus, source: 'cache-replay', instanceId: this.domDriver?.lastActiveInstanceId || 'dom-media' };
           setTimeout(() => {
             try {
               handler(replayPayload);

@@ -7,6 +7,8 @@
  *    NO_MEDIA (idle / detached) <-> HAS_MEDIA (READY / PLAYING / PAUSED / ENDED)
  */
 
+import { extractMediaState, createEventPayload } from '../events.js';
+
 export const TransportState = Object.freeze({ DISCONNECTED: 'DISCONNECTED', CONNECTING: 'CONNECTING', CONNECTED: 'CONNECTED', TERMINATED: 'TERMINATED' });
 
 export const MediaState = Object.freeze({ NONE: 'NONE', NO_MEDIA: 'NO_MEDIA', READY: 'READY', PLAYING: 'PLAYING', PAUSED: 'PAUSED', ENDED: 'ENDED' });
@@ -117,3 +119,5 @@ export class HierarchicalFSM {
 export function createFSM(initialOptions) {
   return new HierarchicalFSM(initialOptions);
 }
+
+export const state = { get: extractMediaState, createPayload: createEventPayload, createFSM, TransportState, MediaState, HierarchicalFSM };

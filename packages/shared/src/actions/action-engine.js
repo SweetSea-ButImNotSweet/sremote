@@ -4,6 +4,8 @@
  * Single Source of Truth for action dispatching.
  */
 
+import { wrapCustomAdapter } from '../events.js';
+
 const adapterPreviousVolumeMap = new WeakMap();
 
 /**
@@ -670,3 +672,5 @@ export async function executeMediaAction(target, action, value = undefined, opti
       return false;
   }
 }
+
+export const actions = { execute: executeMediaAction, safePlay: safePlayMedia, safePause: safePauseMedia, wrapAdapter: wrapCustomAdapter };

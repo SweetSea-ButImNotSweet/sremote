@@ -32,3 +32,5 @@ export const SREMOTE_ACTIONS = {
 };
 
 export const SREMOTE_STORAGE_KEYS = { HELLO_SEQ: 'sremote:hello_seq', PARENT_ORIGIN: 'sremote:parent_origin', HANDSHAKE_SECRET: 'sremote:handshake_secret' };
+
+export const constants = { ACTIONS: SREMOTE_ACTIONS, EVENTS: SREMOTE_EVENTS, STORAGE_KEYS: SREMOTE_STORAGE_KEYS };

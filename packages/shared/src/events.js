@@ -646,3 +646,7 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
 
   return adapter;
 }
+
+export const capabilities = { get: evaluateCapabilities };
+
+export const events = { bind: bindMediaEvents, MEDIA_EVENTS, SAFE_FALLBACK_EVENTS };

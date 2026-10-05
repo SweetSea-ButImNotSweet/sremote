@@ -55,12 +55,7 @@ export class AdapterDriver {
       }
     };
 
-    const wrapped = actions.wrapAdapter(rawAdapter, {
-      instanceId: targetId,
-      transactionTracker: this.transactionTracker,
-      logger: this.logger,
-      onEmit,
-    });
+    const wrapped = actions.wrapAdapter(rawAdapter, { instanceId: targetId, transactionTracker: this.transactionTracker, logger: this.logger, onEmit });
 
     this.adaptersMap.set(targetId, wrapped);
 

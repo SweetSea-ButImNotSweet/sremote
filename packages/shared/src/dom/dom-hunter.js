@@ -1,4 +1,5 @@
-import { isValidMediaElement } from '../events.js';
+import { isValidMediaElement, hasMediaSource } from '../events.js';
+import { resolveMediaElement } from '../actions/action-engine.js';
 
 /**
  * Recursively queries media elements across DOM tree, open Shadow DOM, and accessible iframes.
@@ -158,3 +159,12 @@ export function createMediaWatcher(onMediaAdded, options = {}) {
     },
   };
 }
+
+export const dom = {
+  resolve: resolveMediaElement,
+  query: queryMediaDeep,
+  findAll: findAllMedia,
+  watch: createMediaWatcher,
+  isValid: isValidMediaElement,
+  hasSource: hasMediaSource,
+};

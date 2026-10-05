@@ -187,3 +187,15 @@ export const console_log = (...args) => defaultLogger.log(...args);
 export const console_debug = (...args) => defaultLogger.debug(...args);
 export const console_warn = (...args) => defaultLogger.warn(...args);
 export const console_error = (...args) => defaultLogger.error(...args);
+
+export const logger = {
+  create: createLogger,
+  default: defaultLogger,
+  LEVELS: LOG_LEVELS,
+  resolveLevel: resolveLogLevel,
+  getGlobalOverride: getGlobalLogLevelOverride,
+  log: console_log,
+  debug: console_debug,
+  warn: console_warn,
+  error: console_error,
+};

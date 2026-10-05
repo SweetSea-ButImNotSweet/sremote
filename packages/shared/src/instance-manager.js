@@ -331,3 +331,5 @@ export function createInstanceManager(options = {}) {
     removeInstance,
   };
 }
+
+export const instance = { createManager: createInstanceManager, generateId: generateInstanceId };

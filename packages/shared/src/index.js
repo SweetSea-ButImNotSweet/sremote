@@ -1,13 +1,12 @@
-// Domain Modules
-export * from './dom/index.js';
-export * from './state/index.js';
-export * from './capabilities/index.js';
-export * from './actions/index.js';
-export * from './events/index.js';
-export * from './pipeline/index.js';
-export * from './instance/index.js';
-export * from './logging/index.js';
-export * from './constants/index.js';
+// Domain Modules & Namespaces
+export * from './dom/dom-hunter.js';
+export * from './state/fsm.js';
+export * from './actions/action-engine.js';
+export * from './events.js';
+export * from './pipeline/transaction-tracker.js';
+export * from './instance-manager.js';
+export * from './logger.js';
+export * from './constants.js';
 export * from './connection/index.js';
 export * from './api/schema.js';
 export * from './api/builder.js';
