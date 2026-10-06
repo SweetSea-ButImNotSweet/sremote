@@ -36,6 +36,7 @@ export function createRemoteProxy(adapter, sremoteClient = null, instanceId = nu
   class FluentRemoteProxy {
     constructor() {
       this._chain = Promise.resolve();
+      this._lenient = false;
     }
 
     get instanceId() {
@@ -50,13 +51,44 @@ export function createRemoteProxy(adapter, sremoteClient = null, instanceId = nu
       return safeAdapter.capabilities || {};
     }
 
-    // --- Thenable Contract ---
+    /**
+     * Synchronous reactive state snapshot reading directly from adapter
+     */
+    get state() {
+      if (typeof safeAdapter.getState === 'function') {
+        const s = safeAdapter.getState();
+        if (s && typeof s.then !== 'function') return s;
+      }
+      return {
+        paused: typeof safeAdapter.paused === 'function' ? safeAdapter.paused() : typeof safeAdapter.paused === 'boolean' ? safeAdapter.paused : true,
+      };
+    }
+
+    /**
+     * Enables Lenient Mode: errors in chained actions are swallowed/logged and the pipeline continues.
+     */
+    lenient() {
+      this._lenient = true;
+      return this;
+    }
+
+    /**
+     * Enables Strict Mode: failures reject the pipeline (Fail-Fast default).
+     */
+    strict() {
+      this._lenient = false;
+      return this;
+    }
+
+    // --- Thenable Contract & Error Boundary ---
     then(onFulfilled, onRejected) {
       return this._chain.then(onFulfilled, onRejected);
     }
 
     catch(onRejected) {
-      return this._chain.catch(onRejected);
+      const handler = typeof onRejected === 'function' ? onRejected : () => undefined;
+      this._chain = this._chain.catch(handler);
+      return this;
     }
 
     finally(onFinally) {
@@ -64,8 +96,33 @@ export function createRemoteProxy(adapter, sremoteClient = null, instanceId = nu
     }
 
     _enqueue(fn) {
-      this._chain = this._chain.then(() => fn());
+      this._chain = this._chain.then(
+        async () => fn(),
+        (err) => {
+          if (this._lenient) {
+            return fn();
+          }
+          throw err;
+        }
+      );
       return this;
+    }
+
+    /**
+     * Inspect current reactive state between steps without breaking the chain
+     */
+    tap(fn) {
+      return this._enqueue(async () => {
+        if (typeof fn === 'function') {
+          let s = this.state;
+          if (typeof safeAdapter.getState === 'function') {
+            try {
+              s = await safeAdapter.getState();
+            } catch {}
+          }
+          fn(s);
+        }
+      });
     }
 
     // --- Fluent Playback Methods ---
@@ -121,42 +178,29 @@ export function createRemoteProxy(adapter, sremoteClient = null, instanceId = nu
       });
     }
 
-    setCurrentTime(seconds) {
-      return this.seekTo(seconds);
-    }
-
-    setVolume(volume) {
-      return this._enqueue(() => {
-        if (typeof safeAdapter.setVolume === 'function') return safeAdapter.setVolume(volume);
-        return Promise.resolve();
-      });
-    }
-
     volume(val) {
-      return this.setVolume(val);
-    }
-
-    setMuted(muted) {
       return this._enqueue(() => {
-        if (typeof safeAdapter.setMuted === 'function') return safeAdapter.setMuted(muted);
+        if (typeof safeAdapter.setVolume === 'function') return safeAdapter.setVolume(val);
+        if (typeof safeAdapter.volume === 'function') return safeAdapter.volume(val);
         return Promise.resolve();
       });
     }
 
     mute(val = true) {
-      return this.setMuted(val);
-    }
-
-    setPlaybackRate(rate) {
       return this._enqueue(() => {
-        if (typeof safeAdapter.setPlaybackRate === 'function') return safeAdapter.setPlaybackRate(rate);
-        if (typeof safeAdapter.setSpeed === 'function') return safeAdapter.setSpeed(rate);
+        if (typeof safeAdapter.setMuted === 'function') return safeAdapter.setMuted(val);
+        if (typeof safeAdapter.mute === 'function') return safeAdapter.mute(val);
         return Promise.resolve();
       });
     }
 
     speed(rate) {
-      return this.setPlaybackRate(rate);
+      return this._enqueue(() => {
+        if (typeof safeAdapter.setPlaybackRate === 'function') return safeAdapter.setPlaybackRate(rate);
+        if (typeof safeAdapter.setSpeed === 'function') return safeAdapter.setSpeed(rate);
+        if (typeof safeAdapter.speed === 'function') return safeAdapter.speed(rate);
+        return Promise.resolve();
+      });
     }
 
     next() {
@@ -180,40 +224,31 @@ export function createRemoteProxy(adapter, sremoteClient = null, instanceId = nu
       });
     }
 
-    // --- Direct Getters / Inspect methods (execute immediately on active chain) ---
-    async getCurrentTime() {
-      return this._chain.then(() => {
-        if (typeof safeAdapter.getCurrentTime === 'function') return safeAdapter.getCurrentTime();
-        return 0;
+    quality(level) {
+      return this._enqueue(() => {
+        if (typeof safeAdapter.setQuality === 'function') return safeAdapter.setQuality(level);
+        return Promise.resolve();
       });
     }
 
-    async getVolume() {
-      return this._chain.then(() => {
-        if (typeof safeAdapter.getVolume === 'function') return safeAdapter.getVolume();
-        return 1;
+    subtitle(track) {
+      return this._enqueue(() => {
+        if (typeof safeAdapter.setSubtitle === 'function') return safeAdapter.setSubtitle(track);
+        return Promise.resolve();
       });
     }
 
-    async isMuted() {
-      return this._chain.then(() => {
-        if (typeof safeAdapter.isMuted === 'function') return safeAdapter.isMuted();
-        if (typeof safeAdapter.getMuted === 'function') return safeAdapter.getMuted();
-        return false;
+    shuffle(enable = true) {
+      return this._enqueue(() => {
+        if (typeof safeAdapter.setShuffle === 'function') return safeAdapter.setShuffle(enable);
+        return Promise.resolve();
       });
     }
 
-    async getPlaybackRate() {
-      return this._chain.then(() => {
-        if (typeof safeAdapter.getPlaybackRate === 'function') return safeAdapter.getPlaybackRate();
-        return 1;
-      });
-    }
-
-    async getState() {
-      return this._chain.then(() => {
-        if (typeof safeAdapter.getState === 'function') return safeAdapter.getState();
-        return {};
+    repeat(mode = true) {
+      return this._enqueue(() => {
+        if (typeof safeAdapter.setRepeat === 'function') return safeAdapter.setRepeat(mode);
+        return Promise.resolve();
       });
     }
   }

@@ -465,7 +465,15 @@ export class SRemoteClient {
  * Scoped, Promise-like (Thenable) fluent chain instance for an individual media/iframe target.
  */
 export interface SRemoteFluentInstance extends PromiseLike<any> {
-  // Pure Playback Chaining
+  // Flow Modifiers
+  lenient(): this;
+  strict(): this;
+
+  // Reactive State & Tap
+  readonly state: SRemoteMediaState;
+  tap(fn: (state: SRemoteMediaState) => void): this;
+
+  // Pure Playback Chaining (Clean Verbs)
   play(): this;
   pause(): this;
   toggle(): this;
@@ -485,20 +493,18 @@ export interface SRemoteFluentInstance extends PromiseLike<any> {
   previous(): this;
 
   // Scoped Inspection & Events
-  getQualities(): Promise<string[]>;
-  getSubtitles(): Promise<any[]>;
   status(): SRemoteMediaState | null;
   capabilities(): SRemoteCapabilities | null;
   bindMetadata(meta: any): void;
   on(event: string, handler: (data: any) => void): () => void;
   off(event: string, handler: (data: any) => void): void;
 
-  // Thenable Interface
+  // Thenable Interface & Error Boundary
   then<TResult1 = any, TResult2 = never>(
     onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | undefined | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null,
   ): Promise<TResult1 | TResult2>;
-  catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): Promise<any | TResult>;
+  catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): this & Promise<any | TResult>;
   finally(onfinally?: (() => void) | undefined | null): Promise<any>;
 }
 

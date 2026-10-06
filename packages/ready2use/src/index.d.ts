@@ -50,27 +50,35 @@ export interface PlayerRemoteControl extends PromiseLike<any> {
   readonly instanceId: string;
   readonly adapter: SRemoteCustomAdapter;
   readonly capabilities: SRemoteCapabilities;
+
+  // Flow Modifiers
+  lenient(): this;
+  strict(): this;
+
+  // Reactive State & Tap
+  readonly state: Record<string, any>;
+  tap(fn: (state: Record<string, any>) => void): this;
+
+  // Playback Controls (Clean Verbs)
   play(): this;
   pause(): this;
   toggle(): this;
   stop(): this;
   seek(seconds: number): this;
   seekTo(seconds: number): this;
-  setCurrentTime(seconds: number): this;
-  setVolume(volume: number): this;
   volume(volume: number): this;
-  getVolume(): Promise<number>;
-  setMuted(muted: boolean): this;
   mute(muted?: boolean): this;
-  isMuted(): Promise<boolean>;
-  setPlaybackRate(rate: number): this;
   speed(rate: number): this;
-  getPlaybackRate(): Promise<number>;
   next(): this;
   previous(): this;
   load(source: any): this;
-  getState(): Promise<Record<string, any>>;
-  getCurrentTime(): Promise<number>;
+  quality(level: string | number): this;
+  subtitle(track: string | null): this;
+  shuffle(enable?: boolean): this;
+  repeat(mode?: boolean | string): this;
+
+  // Error boundary
+  catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): this & Promise<any | TResult>;
 }
 
 /**

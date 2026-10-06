@@ -60,6 +60,31 @@ export interface SRemoteMediaState {
   [key: string]: any;
 }
 
+export interface LoadSourceDTO {
+  src: string;
+  type?: string;
+  id?: string;
+  title?: string;
+  poster?: string;
+  [key: string]: any;
+}
+
+export interface QualityDTO {
+  id: string;
+  label: string;
+  height?: number;
+  bitrate?: number;
+}
+
+export interface SubtitleDTO {
+  id: string;
+  label: string;
+  lang: string;
+  src?: string;
+}
+
+export type RepeatModeDTO = boolean | 'off' | 'one' | 'all';
+
 export interface SRemoteEventPayload {
   source: string;
   instanceId: string;

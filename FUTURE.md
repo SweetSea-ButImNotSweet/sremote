@@ -58,7 +58,7 @@ Version 4.0 is a milestone architectural overhaul that synchronizes developer er
   - Leverage `HTMLVideoElement.requestVideoFrameCallback()` (rVFC) for rock-solid, 60fps frame-accurate progress tracking without CPU-wasting timers.
 
 ### 3. SRemote SDK & Ready2Use Bridge Binding
-- [ ] **Direct Fluent Instance Binding**:
+- [x] **Direct Fluent Instance Binding**:
   - Both `.mount(target, opts)` and `.create(opts)` from `@sremote/ready2use` immediately return a chainable, active Fluent instance managed by the SDK.
 - [x] **Standardize Bridge Driver & Registration Interface**:
   - Standardized the bridge adapter registration interface so any custom adapter or ready2use provider plugs directly into the Driver Pipeline without `window.sremote` polling.

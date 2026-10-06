@@ -102,6 +102,9 @@ const testAdapter = {
   setVolume(v) {
     currentVolume = v;
   },
+  getVolume() {
+    return currentVolume;
+  },
   seek(offset) {
     currentOffset += offset;
   },
@@ -120,6 +123,40 @@ assert(played === true, 'Fluent chained play() executed');
 assert(currentOffset === 15, 'Fluent chained seek(15) executed');
 assert(currentVolume === 0.6, 'Fluent chained volume(0.6) executed');
 assert(paused === true, 'Fluent chained pause() executed');
+
+// Test Clean Fluent Chaining with .tap() and synchronous .state
+let tappedState = null;
+await remote
+  .seek(5)
+  .volume(0.9)
+  .tap(s => { tappedState = s; });
+
+assert(currentOffset === 20, 'Fluent chained seek(5) updated offset');
+assert(currentVolume === 0.9, 'Fluent chained volume(0.9) updated volume');
+assert(tappedState !== null, 'Fluent chained .tap(cb) received state snapshot');
+assert(remote.state.paused === true, 'Synchronous remote.state.paused accessible');
+
+// Test .catch() Error Boundary Recovery
+let recoveredPlay = false;
+const failingAdapter = {
+  seek() { throw new Error('Seek failure'); },
+  play() { recoveredPlay = true; },
+  capabilities: { play: true, seek: true },
+};
+const errorRemote = createRemoteProxy(failingAdapter, null, 'err-id');
+await errorRemote.seek(10).catch().play();
+assert(recoveredPlay === true, '.catch() swallowed error and recovered pipeline to play()');
+
+// Test .lenient() Mode
+let lenientVolumeExecuted = false;
+const lenientAdapter = {
+  seek() { throw new Error('Hardware seek unsupported'); },
+  setVolume() { lenientVolumeExecuted = true; },
+  capabilities: { volume: true, seek: true },
+};
+const lenientRemote = createRemoteProxy(lenientAdapter, null, 'lenient-id');
+await lenientRemote.lenient().seek(10).volume(0.5);
+assert(lenientVolumeExecuted === true, '.lenient() skipped failing seek and executed volume(0.5)');
 
 // Test client delegation if client.select is provided
 let clientSelectedTarget = null;

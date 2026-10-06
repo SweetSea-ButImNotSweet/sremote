@@ -19,6 +19,34 @@ export class FluentInstance {
     this.options = options;
     this._resolvedInstanceId = null;
     this._chain = Promise.resolve();
+    this._lenient = false;
+  }
+
+  /**
+   * Enables Lenient Mode: errors in chained actions are swallowed/logged and the pipeline continues.
+   * @returns {this}
+   */
+  lenient() {
+    this._lenient = true;
+    return this;
+  }
+
+  /**
+   * Enables Strict Mode: failures reject the pipeline (Fail-Fast default).
+   * @returns {this}
+   */
+  strict() {
+    this._lenient = false;
+    return this;
+  }
+
+  /**
+   * Synchronous reactive state snapshot reading directly from cached state.
+   * @returns {import('@sremote/shared').SRemoteMediaState | {}}
+   */
+  get state() {
+    const target = this.resolveTarget();
+    return this.client.status(typeof target === 'string' ? target : null) || {};
   }
 
   /**
@@ -84,24 +112,54 @@ export class FluentInstance {
   }
 
   /**
-   * Append an action step to the pipeline chain
-   * @param {string} action
+   * Append an action step to the pipeline chain with lenient resilience
+   * @param {string|Function} actionOrFn
    * @param {*} [payload=undefined]
    * @returns {this}
    * @private
    */
-  _enqueue(action, payload) {
-    this._chain = this._chain.then(() => this._exec(action, payload));
+  _enqueue(actionOrFn, payload) {
+    this._chain = this._chain.then(
+      async () => {
+        if (typeof actionOrFn === 'function') {
+          return actionOrFn();
+        }
+        return this._exec(actionOrFn, payload);
+      },
+      (err) => {
+        if (this._lenient) {
+          if (this.client?.logger?.warn) {
+            this.client.logger.warn(`[sremote:lenient] Skipped failed action '${typeof actionOrFn === 'string' ? actionOrFn : 'fn'}':`, err);
+          }
+          return typeof actionOrFn === 'function' ? actionOrFn() : this._exec(actionOrFn, payload);
+        }
+        throw err;
+      }
+    );
     return this;
   }
 
-  // --- Thenable Contract ---
+  /**
+   * Inspect current reactive state between steps without breaking the chain
+   * @param {(state: import('@sremote/shared').SRemoteMediaState) => void} fn
+   * @returns {this}
+   */
+  tap(fn) {
+    return this._enqueue(() => {
+      if (typeof fn === 'function') fn(this.state);
+    });
+  }
+
+  // --- Thenable Contract & Error Boundary ---
   then(onFulfilled, onRejected) {
     return this._chain.then(onFulfilled, onRejected);
   }
 
   catch(onRejected) {
-    return this._chain.catch(onRejected);
+    // If called with no arguments or undefined, swallow error and recover chain to resolved
+    const handler = typeof onRejected === 'function' ? onRejected : () => undefined;
+    this._chain = this._chain.catch(handler);
+    return this;
   }
 
   finally(onFinally) {
@@ -177,18 +235,9 @@ export class FluentInstance {
     return this._enqueue('previous');
   }
 
-  // --- Scoped Query and Inspection Helpers ---
-  async getQualities() {
-    return this._exec('getQualities');
-  }
-
-  async getSubtitles() {
-    return this._exec('getSubtitles');
-  }
-
+  // --- Scoped Inspection & Events ---
   status() {
-    const target = this.resolveTarget();
-    return this.client.status(typeof target === 'string' ? target : null);
+    return this.state;
   }
 
   capabilities() {
