@@ -4,6 +4,7 @@ import { DomDriver } from './drivers/dom.js';
 import { BridgeDriver } from './drivers/bridge.js';
 import { DriverCache } from './driver-cache.js';
 import { FluentInstance } from './fluent/instance.js';
+import { FluentGroupInstance } from './fluent/group.js';
 import { showInstallModal } from './ui/install-modal.js';
 import { lockGlobalSRemoteIfAbsent } from './guard.js';
 import { logger, ConnectionManager, HierarchicalFSM } from '@sremote/shared';
@@ -397,6 +398,16 @@ export class SRemoteClient {
    */
   select(target = null, options = {}) {
     return new FluentInstance(this, target, options);
+  }
+
+  /**
+   * Returns a scoped FluentGroupInstance targeting multiple elements or broadcasting across all instances
+   * @param {string|Array<string|HTMLElement>|null} [selector=null]
+   * @param {Object} [options={}]
+   * @returns {FluentGroupInstance}
+   */
+  all(selector = null, options = {}) {
+    return new FluentGroupInstance(this, selector, options);
   }
 
   // --- Pure Root Playback Controls (Targets default/active instance) ---

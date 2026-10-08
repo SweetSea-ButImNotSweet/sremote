@@ -1,6 +1,6 @@
-import type { SRemoteCapabilities, SRemoteMediaState, SRemoteInstanceData, SRemoteEventPayload, SRemoteEventHandler, SRemoteActionName, SRemoteEventName } from '@sremote/shared';
+import type { SRemoteCapabilities, SRemoteMediaState, SRemoteInstanceData, SRemoteEventPayload, SRemoteEventHandler, SRemoteActionName, SRemoteEventName, LoadSourceDTO, RepeatModeDTO, QualityDTO, SubtitleDTO } from '@sremote/shared';
 
-export type { SRemoteCapabilities, SRemoteMediaState, SRemoteInstanceData, SRemoteEventPayload, SRemoteEventHandler, SRemoteActionName, SRemoteEventName };
+export type { SRemoteCapabilities, SRemoteMediaState, SRemoteInstanceData, SRemoteEventPayload, SRemoteEventHandler, SRemoteActionName, SRemoteEventName, LoadSourceDTO, RepeatModeDTO, QualityDTO, SubtitleDTO };
 
 export { SREMOTE_EVENTS, SREMOTE_ACTIONS, SREMOTE_STORAGE_KEYS, MEDIA_EVENTS } from '@sremote/shared';
 
@@ -427,6 +427,11 @@ export class SRemoteClient {
    */
   select(target?: string | HTMLElement | null, options?: { key?: string | null }): SRemoteFluentInstance;
 
+  /**
+   * Scopes multiple iframes, media elements or broadcasts across all instances for fluent chaining.
+   */
+  all(selector?: string | Array<string | HTMLElement> | null, options?: { key?: string | null }): SRemoteFluentGroupInstance;
+
   // --- Quick Playback Controls (Root / Default Instance) ---
   play(): Promise<any>;
   pause(): Promise<any>;
@@ -443,10 +448,10 @@ export class SRemoteClient {
   subtitle(track: string | null): Promise<any>;
   getSubtitles(): Promise<any[]>;
   shuffle(enable?: boolean): Promise<any>;
-  repeat(mode?: 'off' | 'all' | 'one' | boolean): Promise<any>;
+  repeat(mode?: RepeatModeDTO): Promise<any>;
   next(): Promise<any>;
   previous(): Promise<any>;
-  load(source: any): Promise<any>;
+  load(source: string | LoadSourceDTO): Promise<any>;
   status(instanceId?: string, key?: string | null): SRemoteMediaState | null;
   capabilities(targetOrId?: string | HTMLElement, key?: string | null): SRemoteCapabilities | null;
 
@@ -464,7 +469,7 @@ export class SRemoteClient {
 /**
  * Scoped, Promise-like (Thenable) fluent chain instance for an individual media/iframe target.
  */
-export interface SRemoteFluentInstance extends PromiseLike<any> {
+export interface SRemoteFluentInstance extends PromiseLike<SRemoteFluentInstance> {
   // Flow Modifiers
   lenient(): this;
   strict(): this;
@@ -484,11 +489,11 @@ export interface SRemoteFluentInstance extends PromiseLike<any> {
   mute(val?: boolean): this;
   speed(rate: number): this;
   pip(enable?: boolean): this;
-  load(source: any): this;
+  load(source: string | LoadSourceDTO): this;
   quality(level: string | number): this;
   subtitle(track: string | null): this;
   shuffle(enable?: boolean): this;
-  repeat(mode?: 'off' | 'all' | 'one' | boolean): this;
+  repeat(mode?: RepeatModeDTO): this;
   next(): this;
   previous(): this;
 
@@ -500,8 +505,51 @@ export interface SRemoteFluentInstance extends PromiseLike<any> {
   off(event: string, handler: (data: any) => void): void;
 
   // Thenable Interface & Error Boundary
-  then<TResult1 = any, TResult2 = never>(
-    onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | undefined | null,
+  then<TResult1 = SRemoteFluentInstance, TResult2 = never>(
+    onfulfilled?: ((value: SRemoteFluentInstance) => TResult1 | PromiseLike<TResult1>) | undefined | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null,
+  ): Promise<TResult1 | TResult2>;
+  catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): this & Promise<any | TResult>;
+  finally(onfinally?: (() => void) | undefined | null): Promise<any>;
+}
+
+/**
+ * Scoped, Promise-like (Thenable) fluent chain instance for multi-instance broadcasting.
+ */
+export interface SRemoteFluentGroupInstance extends PromiseLike<SRemoteFluentGroupInstance> {
+  // Flow Modifiers
+  lenient(): this;
+  strict(): this;
+
+  // Reactive State & Tap (Group Snapshot Array)
+  readonly state: SRemoteMediaState[];
+  tap(fn: (states: SRemoteMediaState[]) => void): this;
+
+  // Pure Playback Chaining (Clean Verbs)
+  play(): this;
+  pause(): this;
+  toggle(): this;
+  stop(): this;
+  seek(offset: number): this;
+  seekTo(time: number): this;
+  volume(val: number): this;
+  mute(val?: boolean): this;
+  speed(rate: number): this;
+  pip(enable?: boolean): this;
+  load(source: string | LoadSourceDTO): this;
+  quality(level: string | number): this;
+  subtitle(track: string | null): this;
+  shuffle(enable?: boolean): this;
+  repeat(mode?: RepeatModeDTO): this;
+  next(): this;
+  previous(): this;
+
+  // Lifecycle
+  destroy(): this;
+
+  // Thenable Interface & Error Boundary
+  then<TResult1 = SRemoteFluentGroupInstance, TResult2 = never>(
+    onfulfilled?: ((value: SRemoteFluentGroupInstance) => TResult1 | PromiseLike<TResult1>) | undefined | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null,
   ): Promise<TResult1 | TResult2>;
   catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): this & Promise<any | TResult>;
@@ -515,6 +563,13 @@ export interface SRemoteCallable {
    * await sremote('#hero-video').play().seek(10).volume(0.8);
    */
   (target?: string | HTMLElement | null, options?: { key?: string | null }): SRemoteFluentInstance;
+
+  /**
+   * Selects multiple players or broadcasts across all instances.
+   * @example
+   * await sremote.all('.video-player').pause();
+   */
+  all(selector?: string | Array<string | HTMLElement> | null, options?: { key?: string | null }): SRemoteFluentGroupInstance;
 }
 
 export declare function showInstallModal(options?: SRemoteInstallModalOptions): SRemoteInstallModalHandle;

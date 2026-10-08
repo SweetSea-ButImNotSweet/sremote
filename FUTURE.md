@@ -26,6 +26,10 @@ Version 4.0 is a milestone architectural overhaul that synchronizes developer er
     await sremote('#hero-video').play().seek(10).volume(0.8);
     ```
   - Internal command queue with automatic microtask dispatch and flush.
+- [x] **Multi-Instance Broadcasting (`sremote.all`)**:
+  - Added `sremote.all(selector?)` returning `FluentGroupInstance` executing commands in parallel via `Promise.allSettled`.
+  - Supports `.tap(states => ...)` and group snapshot reading `.state` (array of `SRemoteMediaState`).
+  - Supports group lifecycle teardown via `.destroy()`.
 - [x] **Deprecate Legacy Trailing Arguments**:
   - Drop trailing `instanceId` arguments (`remote.play('id')` ➔ `remote('id').play()`) to eliminate API ambiguity.
 

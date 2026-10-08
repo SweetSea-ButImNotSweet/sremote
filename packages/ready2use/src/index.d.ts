@@ -1,6 +1,6 @@
-import type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities } from '@sremote/sdk';
+import type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities, LoadSourceDTO, RepeatModeDTO } from '@sremote/sdk';
 
-export type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities };
+export type { SRemoteClient, SRemoteCustomAdapter, SRemoteCapabilities, LoadSourceDTO, RepeatModeDTO };
 
 /**
  * Standard options accepted by all player providers
@@ -46,7 +46,7 @@ export interface BaseProviderOptions {
 /**
  * Unified fluent remote control interface for player instance.
  */
-export interface PlayerRemoteControl extends PromiseLike<any> {
+export interface PlayerRemoteControl extends PromiseLike<PlayerRemoteControl> {
   readonly instanceId: string;
   readonly adapter: SRemoteCustomAdapter;
   readonly capabilities: SRemoteCapabilities;
@@ -71,11 +71,11 @@ export interface PlayerRemoteControl extends PromiseLike<any> {
   speed(rate: number): this;
   next(): this;
   previous(): this;
-  load(source: any): this;
+  load(source: string | LoadSourceDTO): this;
   quality(level: string | number): this;
   subtitle(track: string | null): this;
   shuffle(enable?: boolean): this;
-  repeat(mode?: boolean | string): this;
+  repeat(mode?: RepeatModeDTO): this;
 
   // Error boundary
   catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): this & Promise<any | TResult>;

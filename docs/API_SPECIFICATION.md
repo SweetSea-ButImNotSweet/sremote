@@ -139,4 +139,11 @@ await yt.remote
   .seek(99999) // Tự động bỏ qua nếu lỗi
   .volume(0.5) // Tiếp tục thực thi
   .strict();
+
+// 5. Multi-Instance Broadcasting (sremote.all)
+// Phát đồng loạt, đổi âm lượng hoặc tạm dừng toàn bộ video/iframe trên trang:
+await sremote.all('.video-player')
+  .pause()
+  .volume(0.3)
+  .tap(states => console.log(`Controlled ${states.length} players simultaneously`));
 ```
