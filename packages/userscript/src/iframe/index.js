@@ -79,13 +79,67 @@ export function initIframeAgent() {
 
   function bindVideoEvents(video) {
     if (!video || boundMediaElements.has(video)) return;
-    boundMediaElements.add(video);
-
+    // Throttle & state tracking
     let hasEmittedAlmostEnd = false;
     let lastTimeupdate = 0;
     let lastProgress = 0;
     const TIMEUPDATE_THROTTLE_MS = 250;
     const PROGRESS_THROTTLE_MS = 500;
+
+    // Frame-accurate video progress tracking using requestVideoFrameCallback (rVFC)
+    const hasRVFC = typeof HTMLVideoElement !== 'undefined' && 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+    let rvfcHandle = null;
+
+    const stopRVFCLoop = () => {
+      if (rvfcHandle !== null && typeof video.cancelVideoFrameCallback === 'function') {
+        try {
+          video.cancelVideoFrameCallback(rvfcHandle);
+        } catch {}
+        rvfcHandle = null;
+      }
+    };
+
+    const emitFrameUpdate = (now, mediaTime) => {
+      if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) return;
+      lastTimeupdate = now;
+
+      const currentState = getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia);
+      const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
+      const dur = currentState?.duration || (Number.isFinite(video.duration) ? video.duration : null);
+      const curTime = mediaTime ?? (safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0);
+
+      if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
+        if (!hasEmittedAlmostEnd) {
+          hasEmittedAlmostEnd = true;
+          emitToParent(treatAlmostEndAsEnd ? 'ended' : 'almostend', { isProgrammatic, state: currentState });
+        }
+      } else if (dur && curTime < dur - 1.5) {
+        hasEmittedAlmostEnd = false;
+      }
+
+      emitToParent('timeupdate', { isProgrammatic, state: currentState });
+    };
+
+    const startRVFCLoop = () => {
+      if (!hasRVFC || !(video instanceof HTMLVideoElement) || rvfcHandle !== null) return;
+      const onFrame = (now, metadata) => {
+        rvfcHandle = null;
+        if (video.paused || video.ended || !video.isConnected) return;
+        emitFrameUpdate(now, metadata?.mediaTime);
+        if (!video.paused && !video.ended) {
+          try {
+            rvfcHandle = video.requestVideoFrameCallback(onFrame);
+          } catch {
+            rvfcHandle = null;
+          }
+        }
+      };
+      try {
+        rvfcHandle = video.requestVideoFrameCallback(onFrame);
+      } catch {
+        rvfcHandle = null;
+      }
+    };
 
     for (const evtName of MEDIA_EVENTS) {
       video.addEventListener(evtName, () => {
@@ -104,7 +158,18 @@ export function initIframeAgent() {
 
         const currentState = getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia);
 
+        if (evtName === 'play' || evtName === 'playing') {
+          startRVFCLoop();
+        } else if (evtName === 'pause' || evtName === 'ended' || evtName === 'emptied') {
+          stopRVFCLoop();
+        }
+
         if (evtName === 'timeupdate') {
+          // If rVFC is actively driving frame updates, avoid duplicate dispatches
+          if (hasRVFC && video instanceof HTMLVideoElement && !video.paused && rvfcHandle !== null) {
+            return;
+          }
+
           // Throttle timeupdate to avoid flooding the MessagePort & parent listeners
           if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) {
             return;
@@ -140,6 +205,10 @@ export function initIframeAgent() {
         emitToParent(evtName, { isProgrammatic, state: currentState });
       });
     }
+
+    if (!video.paused && !video.ended) {
+      startRVFCLoop();
+    }
   }
 
   const resolver = createMediaResolver(createdMediaPool, bindVideoEvents);
@@ -165,6 +234,22 @@ export function initIframeAgent() {
       checkActiveMediaLiveness();
     },
   });
+
+  let livenessScheduled = null;
+  function scheduleActiveMediaLiveness() {
+    if (livenessScheduled) return;
+    if (typeof requestAnimationFrame === 'function') {
+      livenessScheduled = requestAnimationFrame(() => {
+        livenessScheduled = null;
+        checkActiveMediaLiveness();
+      });
+    } else {
+      livenessScheduled = setTimeout(() => {
+        livenessScheduled = null;
+        checkActiveMediaLiveness();
+      }, 16);
+    }
+  }
 
   function checkActiveMediaLiveness() {
     IframeStyleEngine.maintainStyles();
@@ -195,10 +280,15 @@ export function initIframeAgent() {
   // Early MutationObserver on root / documentElement
   let observer = null;
   try {
-    observer = new MutationObserver(checkActiveMediaLiveness);
+    observer = new MutationObserver(scheduleActiveMediaLiveness);
     const rootEl = document.documentElement || document;
     if (rootEl) {
-      observer.observe(rootEl, { childList: true, subtree: true });
+      observer.observe(rootEl, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['src', 'currentSrc'],
+      });
     }
   } catch {}
 
@@ -505,34 +595,30 @@ export function initIframeAgent() {
     // Re-ensure root observer is active if documentElement was not ready during early init
     if (!observer) {
       try {
-        observer = new MutationObserver(checkActiveMediaLiveness);
+        observer = new MutationObserver(scheduleActiveMediaLiveness);
         const mountTarget = document.documentElement || document.body || document;
         if (mountTarget) {
-          observer.observe(mountTarget, { childList: true, subtree: true });
+          observer.observe(mountTarget, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['src', 'currentSrc'],
+          });
         }
       } catch {}
     }
 
-    const poolCheckInterval = setInterval(checkActiveMediaLiveness, 1000);
-
-    let huntAttempts = 0;
-    const huntTimer = setInterval(() => {
-      huntAttempts++;
-      IframeStyleEngine.maintainStyles();
-      if (resolver.resolveActiveMedia()) {
-        onMediaAvailable();
-        if (resolver.getActiveMedia()) clearInterval(huntTimer);
-      } else if (huntAttempts > 20) {
-        clearInterval(huntTimer);
-      }
-    }, 250);
+    // Maintain initial iframe style injection once
+    IframeStyleEngine.maintainStyles();
 
     let teardownDone = false;
     const handleTeardown = ev => {
       if (teardownDone) return;
       teardownDone = true;
-      clearInterval(huntTimer);
-      clearInterval(poolCheckInterval);
+      if (livenessScheduled) {
+        cancelAnimationFrame(livenessScheduled);
+        livenessScheduled = null;
+      }
       try {
         if (observer) observer.disconnect();
       } catch {}

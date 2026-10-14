@@ -56,7 +56,7 @@ Version 4.0 is a milestone architectural overhaul that synchronizes developer er
     - Root Transport State: `DISCONNECTED` ➔ `CONNECTING` ➔ `CONNECTED` ➔ `TERMINATED`.
     - Nested Media State (Active only when `CONNECTED`): `NO_MEDIA` (idle / detached) ⇄ `HAS_MEDIA` (`READY` / `PLAYING` / `PAUSED` / `ENDED`).
   - Eliminate race conditions, ghost states, and disconnected listener leaks permanently during rapid in-place video swaps.
-- [ ] **MutationObserver & rVFC Media Liveness (Zero Timer Polling)**:
+- [x] **MutationObserver & rVFC Media Liveness (Zero Timer Polling)**:
   - Eliminate all battery-draining `setInterval` polling loops (`huntTimer`, `checkActiveMediaLiveness`, fake `timeupdateTimer`).
   - Use scoped `MutationObserver` for instant, event-driven video element discovery and replacement.
   - Leverage `HTMLVideoElement.requestVideoFrameCallback()` (rVFC) for rock-solid, 60fps frame-accurate progress tracking without CPU-wasting timers.
