@@ -21,6 +21,7 @@ export class NicoNicoProvider extends BaseProvider {
     iframe.allow = 'autoplay; encrypted-media; fullscreen';
     iframe.allowFullscreen = true;
     iframe.src = `https://embed.nicovideo.jp/watch/${watchId}?jsapi=1&playerId=${playerId}&autoplay=${options.autoplay ? 1 : 0}`;
+    iframe.referrerPolicy = 'no-referrer-when-downgrade';
 
     applyElementAttributes(iframe, width, height, instanceId);
 
