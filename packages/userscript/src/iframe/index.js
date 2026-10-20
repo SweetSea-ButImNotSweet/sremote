@@ -1,7 +1,7 @@
-import { logger, MEDIA_EVENTS, descriptors } from '../config.js';
+import { logger, descriptors } from '../config.js';
 import { VERSION, NS, ENABLE_DEBUG_API } from '../const.js';
 import { Storage } from '../core/storage.js';
-import { checkOriginPairPermission, generateInstanceId, safeSetProp, safeGetProp, normalizeOrigin } from '../core/utils.js';
+import { checkOriginPairPermission, generateInstanceId, safeSetProp, normalizeOrigin } from '../core/utils.js';
 import { showConnectedIndicator, hideConnectedIndicator } from '../ui/indicator-badge.js';
 import { IframeStyleEngine } from './style-engine.js';
 import { mockMediaSessionInstance, hookMediaSession } from './media-session.js';
@@ -11,7 +11,8 @@ import { getVideoState, getIframeCapabilities, createMediaController } from './c
 import { createIframeDebugApi } from '../debug/iframe-debug.js';
 import { createRpcRegistry } from './rpc.js';
 import { createIframeTransportManager } from './transport.js';
-import { pipeline, parseEnvelope, createEnvelope, PACKET_TYPE } from '@sremote/shared';
+import { createMediaEventEmitter } from './event-emitter.js';
+import { createIframeDispatcher } from './dispatcher.js';
 
 export function initIframeAgent() {
   let topOrigin = null;
@@ -36,13 +37,13 @@ export function initIframeAgent() {
   // Check if top window permanently blocked in Storage.permissions
   const isTopBlocked = normTop ? Storage.permissions.get(normTop, '*') === 0 || Storage.permissions.get('*', normTop) === 0 : false;
   if (isTopBlocked) {
-    return; // Top window is permanently blocked
+    return;
   }
 
   if (topOrigin) {
     const pairPerm = checkOriginPairPermission(topOrigin, location.origin);
     if (pairPerm.isDenied) {
-      return; // This specific parent -> iframe pair was denied
+      return;
     }
   }
 
@@ -69,147 +70,45 @@ export function initIframeAgent() {
   let configuredVolume = null;
   let configuredMuted = null;
   const mediaWaiters = [];
-  const boundMediaElements = new WeakSet();
   const createdMediaPool = new WeakSet();
   let treatAlmostEndAsEnd = false;
   let programmaticActionTimestamp = 0;
   let originalMediaSrcBeforeDebug = null;
+  let observer = null;
+  let livenessScheduled = null;
+  let gmQueryTimer = null;
 
   IframeStyleEngine.init('');
 
-  function bindVideoEvents(video) {
-    if (!video || boundMediaElements.has(video)) return;
-    // Throttle & state tracking
-    let hasEmittedAlmostEnd = false;
-    let lastTimeupdate = 0;
-    let lastProgress = 0;
-    const TIMEUPDATE_THROTTLE_MS = 250;
-    const PROGRESS_THROTTLE_MS = 500;
-
-    // Frame-accurate video progress tracking using requestVideoFrameCallback (rVFC)
-    const hasRVFC = typeof HTMLVideoElement !== 'undefined' && 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
-    let rvfcHandle = null;
-
-    const stopRVFCLoop = () => {
-      if (rvfcHandle !== null && typeof video.cancelVideoFrameCallback === 'function') {
-        try {
-          video.cancelVideoFrameCallback(rvfcHandle);
-        } catch {}
-        rvfcHandle = null;
-      }
-    };
-
-    const emitFrameUpdate = (now, mediaTime) => {
-      if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) return;
-      lastTimeupdate = now;
-
-      const currentState = getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia);
-      const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
-      const dur = currentState?.duration || (Number.isFinite(video.duration) ? video.duration : null);
-      const curTime = mediaTime ?? safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0;
-
-      if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
-        if (!hasEmittedAlmostEnd) {
-          hasEmittedAlmostEnd = true;
-          emitToParent(treatAlmostEndAsEnd ? 'ended' : 'almostend', { isProgrammatic, state: currentState });
-        }
-      } else if (dur && curTime < dur - 1.5) {
-        hasEmittedAlmostEnd = false;
-      }
-
-      emitToParent('timeupdate', { isProgrammatic, state: currentState });
-    };
-
-    const startRVFCLoop = () => {
-      if (!hasRVFC || !(video instanceof HTMLVideoElement) || rvfcHandle !== null) return;
-      const onFrame = (now, metadata) => {
-        rvfcHandle = null;
-        if (video.paused || video.ended || !video.isConnected) return;
-        emitFrameUpdate(now, metadata?.mediaTime);
-        if (!video.paused && !video.ended) {
-          try {
-            rvfcHandle = video.requestVideoFrameCallback(onFrame);
-          } catch {
-            rvfcHandle = null;
-          }
-        }
-      };
-      try {
-        rvfcHandle = video.requestVideoFrameCallback(onFrame);
-      } catch {
-        rvfcHandle = null;
-      }
-    };
-
-    for (const evtName of MEDIA_EVENTS) {
-      video.addEventListener(evtName, () => {
-        resolver.setActiveMedia(video);
-        resolver.setMediaType(video.tagName ? video.tagName.toLowerCase() : 'video');
-
-        const now = Date.now();
-        let isProgrammatic = false;
-        const tracker = pipeline.getTracker();
-        if (tracker && typeof tracker.matchAndConsume === 'function') {
-          isProgrammatic = tracker.matchAndConsume(evtName, { instanceId, video }).isProgrammatic;
-        }
-        if (!isProgrammatic) {
-          isProgrammatic = now - programmaticActionTimestamp < 500;
-        }
-
-        const currentState = getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia);
-
-        if (evtName === 'play' || evtName === 'playing') {
-          startRVFCLoop();
-        } else if (evtName === 'pause' || evtName === 'ended' || evtName === 'emptied') {
-          stopRVFCLoop();
-        }
-
-        if (evtName === 'timeupdate') {
-          // If rVFC is actively driving frame updates, avoid duplicate dispatches
-          if (hasRVFC && video instanceof HTMLVideoElement && !video.paused && rvfcHandle !== null) {
-            return;
-          }
-
-          // Throttle timeupdate to avoid flooding the MessagePort & parent listeners
-          if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) {
-            return;
-          }
-          lastTimeupdate = now;
-
-          const dur = currentState?.duration || (Number.isFinite(video.duration) ? video.duration : null);
-          const curTime = safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0;
-          if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
-            if (!hasEmittedAlmostEnd) {
-              hasEmittedAlmostEnd = true;
-              emitToParent(treatAlmostEndAsEnd ? 'ended' : 'almostend', { isProgrammatic, state: currentState });
-            }
-          } else if (dur && curTime < dur - 1.5) {
-            hasEmittedAlmostEnd = false;
-          }
-        }
-
-        if (evtName === 'progress') {
-          if (now - lastProgress < PROGRESS_THROTTLE_MS) {
-            return;
-          }
-          lastProgress = now;
-        }
-
-        if (evtName === 'ended') {
-          hasEmittedAlmostEnd = false;
-          const dur = currentState?.duration || (Number.isFinite(video.duration) ? video.duration : null);
-          const curTime = safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0;
-          if (dur && dur > 0 && Math.abs(dur - curTime) > 1.5) return;
-        }
-
-        emitToParent(evtName, { isProgrammatic, state: currentState });
-      });
+  function emitToParent(eventOrAction, payload = {}) {
+    const lowerEvt = String(eventOrAction || '').toLowerCase();
+    if (!handshake.primaryAuthorizedOrigin && lowerEvt !== 'accept' && lowerEvt !== 'requestblobclone') {
+      return;
     }
 
-    if (!video.paused && !video.ended) {
-      startRVFCLoop();
+    const msg = { type: `${NS}${eventOrAction}`, event: eventOrAction, source: 'iframe', instanceId, location: location.href, origin: location.origin, ...payload };
+    logger.debug(`%c[SRemote:signal] Iframe emit -> ${eventOrAction} (source: iframe)`, 'color: #10b981;', msg);
+
+    if (mediaPort) {
+      try {
+        mediaPort.postMessage(msg);
+      } catch {}
     }
   }
+
+  const { bindVideoEvents } = createMediaEventEmitter({
+    resolver: {
+      getActiveMedia: () => resolver.getActiveMedia(),
+      resolveActiveMedia: () => resolver.resolveActiveMedia(),
+      setActiveMedia: m => resolver.setActiveMedia(m),
+      setMediaType: t => resolver.setMediaType(t),
+      getMediaType: () => resolver.getMediaType(),
+    },
+    emitToParent,
+    instanceIdGetter: () => instanceId,
+    treatAlmostEndAsEndGetter: () => treatAlmostEndAsEnd,
+    programmaticActionTimestampGetter: () => programmaticActionTimestamp,
+  });
 
   const resolver = createMediaResolver(createdMediaPool, bindVideoEvents);
   mockMediaSessionInstance.setResolver(resolver);
@@ -235,20 +134,13 @@ export function initIframeAgent() {
     },
   });
 
-  let livenessScheduled = null;
   function scheduleActiveMediaLiveness() {
     if (livenessScheduled) return;
-    if (typeof requestAnimationFrame === 'function') {
-      livenessScheduled = requestAnimationFrame(() => {
-        livenessScheduled = null;
-        checkActiveMediaLiveness();
-      });
-    } else {
-      livenessScheduled = setTimeout(() => {
-        livenessScheduled = null;
-        checkActiveMediaLiveness();
-      }, 16);
-    }
+    const scheduleFn = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : fn => setTimeout(fn, 16);
+    livenessScheduled = scheduleFn(() => {
+      livenessScheduled = null;
+      checkActiveMediaLiveness();
+    });
   }
 
   function checkActiveMediaLiveness() {
@@ -265,7 +157,6 @@ export function initIframeAgent() {
         if (!resolver.resolveActiveMedia()) {
           resolver.setActiveMedia(null);
           resolver.setMediaType(null);
-          // Crucial: Only emit media state change (noMedia). DO NOT trigger transport termination!
           emitToParent('noMedia', { instanceId, hasMedia: false, reason: 'media_detached' });
           return;
         }
@@ -277,8 +168,6 @@ export function initIframeAgent() {
     }
   }
 
-  // Early MutationObserver on root / documentElement
-  let observer = null;
   try {
     observer = new MutationObserver(scheduleActiveMediaLiveness);
     const rootEl = document.documentElement || document;
@@ -293,31 +182,11 @@ export function initIframeAgent() {
       playbackState: ms?.playbackState,
       metadata: ms?.metadata ? { title: ms.metadata.title, artist: ms.metadata.artist, album: ms.metadata.album, artwork: ms.metadata.artwork || [] } : null,
       supportedActions: Array.from(mockMediaSessionInstance._handlers.keys()),
+      isProgrammatic: Date.now() - programmaticActionTimestamp < 500,
     };
     if (action) payload.event = action;
     if (specificValue !== undefined) payload.value = specificValue;
-
-    const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
-    payload.isProgrammatic = isProgrammatic;
-
     emitToParent(action || 'mediaSessionState', payload);
-  }
-
-  function emitToParent(eventOrAction, payload = {}) {
-    const lowerEvt = String(eventOrAction || '').toLowerCase();
-    if (!handshake.primaryAuthorizedOrigin && lowerEvt !== 'accept' && lowerEvt !== 'requestblobclone') {
-      return;
-    }
-
-    const msg = { type: `${NS}${eventOrAction}`, event: eventOrAction, source: 'iframe', instanceId, location: location.href, origin: location.origin, ...payload };
-
-    logger.debug(`%c[SRemote:signal] Iframe emit -> ${eventOrAction} (source: iframe)`, 'color: #10b981;', msg);
-
-    if (mediaPort) {
-      try {
-        mediaPort.postMessage(msg);
-      } catch {}
-    }
   }
 
   function notifyState(action, specificValue) {
@@ -380,116 +249,21 @@ export function initIframeAgent() {
     }
   }
 
+  const dispatcher = createIframeDispatcher({
+    instanceIdGetter: () => instanceId,
+    resolver,
+    rpcRegistry,
+    executeControl,
+    emitToParent,
+    mockMediaSessionInstance,
+    get handshake() {
+      return handshake;
+    },
+  });
+
   function bindPort(port) {
     mediaPort = port;
-    port.onmessage = async e => {
-      const rawData = e.data;
-      if (!rawData || typeof rawData !== 'object') return;
-
-      const envelope = parseEnvelope(rawData, NS);
-      if (!envelope) return;
-
-      const action = envelope.action;
-      const lowerAction = action.toLowerCase();
-      const data = envelope.payload && typeof envelope.payload === 'object' ? envelope.payload : {};
-      const envelopeType = envelope.type;
-
-      if (lowerAction !== 'ping' && lowerAction !== 'pong') {
-        logger.log(`%c[SRemote:command] Iframe received command (port envelope) -> [${envelopeType}] ${action}`, 'color: #8b5cf6; font-weight: bold;', envelope);
-      }
-
-      if (lowerAction === 'resendblobobject' && data.blob) {
-        try {
-          const localBlobUrl = URL.createObjectURL(data.blob);
-          if (mockMediaSessionInstance.metadata) {
-            const arts = mockMediaSessionInstance.metadata.artwork || [];
-            arts.push({ src: localBlobUrl });
-            mockMediaSessionInstance.metadata.artwork = arts;
-            if (navigator.mediaSession && typeof MediaMetadata !== 'undefined') {
-              navigator.mediaSession.metadata = new MediaMetadata(mockMediaSessionInstance.metadata);
-            }
-          }
-        } catch (err) {
-          logger.warn('[sremote] Error creating local object URL for blob:', err);
-        }
-        return;
-      }
-
-      if (lowerAction === 'bridge_post') {
-        const payload = data.payload;
-        const targetOrigin = data.targetOrigin || '*';
-        try {
-          window.postMessage(payload, targetOrigin);
-        } catch (err) {
-          logger.warn('[sremote] Error executing bridge postMessage in iframe:', err);
-        }
-        return;
-      }
-
-      if (envelopeType === PACKET_TYPE.RPC_REQUEST || (lowerAction === 'rpc_request' && data.action)) {
-        const rpcId = envelope.id || data.rpcId;
-        const targetAction = data.action || action;
-        const targetParams = data.params !== undefined ? data.params : envelope.payload;
-        try {
-          const res = await rpcRegistry.executeRpc(targetAction, targetParams);
-          port.postMessage(
-            createEnvelope({
-              type: PACKET_TYPE.RPC_RESPONSE,
-              action: 'rpc_response',
-              id: rpcId,
-              payload: { success: true, instanceId, data: res },
-              meta: { source: 'iframe', instanceId },
-            }),
-          );
-        } catch (err) {
-          const isNotFound = String(err).includes('not found');
-          port.postMessage(
-            createEnvelope({
-              type: PACKET_TYPE.RPC_RESPONSE,
-              action: 'rpc_response',
-              id: rpcId,
-              payload: { success: false, error: isNotFound ? 'METHOD_NOT_FOUND' : 'RPC_ERROR', message: String(err), instanceId },
-              meta: { source: 'iframe', instanceId },
-            }),
-          );
-        }
-        return;
-      }
-
-      if (lowerAction === 'ping') {
-        resolver.resolveActiveMedia();
-        const state = getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia);
-        const capabilities = getIframeCapabilities(null, resolver.getActiveMedia(), resolver.resolveActiveMedia);
-        try {
-          port.postMessage({
-            type: `${NS}pong`,
-            source: 'iframe',
-            instanceId,
-            mediaType: resolver.getMediaType(),
-            hasMedia: Boolean(resolver.getActiveMedia()),
-            capabilities,
-            state,
-          });
-        } catch {}
-        return;
-      }
-
-      if (
-        lowerAction === 'singlemediadetected' ||
-        lowerAction === 'multiplemediadetected' ||
-        lowerAction === 'whereisinstanceid' ||
-        lowerAction === 'accept' ||
-        lowerAction === 'disconnect'
-      ) {
-        return;
-      }
-
-      const handled = await executeControl(action, data.value);
-      if (!handled) {
-        logger.warn(`[sremote] Command '${action}' failed: No media element or MediaSession handler found in frame.`);
-        emitToParent('noMedia', { action, reason: 'NO_MEDIA_FOUND', message: `No media element or MediaSession handler found for command '${action}'` });
-      }
-    };
+    port.onmessage = e => dispatcher.dispatchPortMessage(e, port);
   }
 
   const handshake = createIframeTransportManager({
@@ -523,7 +297,7 @@ export function initIframeAgent() {
   // Active GM-based Query Poller
   function listenToGMQueries() {
     let lastQueryToken = null;
-    setInterval(() => {
+    gmQueryTimer = setInterval(() => {
       try {
         const queryReq = Storage.raw.get('sremote:ipc:query_req');
         if (queryReq && queryReq !== lastQueryToken) {
@@ -548,58 +322,11 @@ export function initIframeAgent() {
   listenToGMQueries();
 
   // Listen to Window PostMessages
-  window.addEventListener('message', async event => {
-    const data = event.data;
-
-    // Check if this message is an internal SRemote protocol message
-    const isSRemote = data && typeof data === 'object' && typeof data.type === 'string' && data.type.startsWith(NS);
-
-    if (!isSRemote) {
-      // Forward arbitrary window message to Parent via private MessagePort
-      if (mediaPort && event.source !== window.top) {
-        try {
-          mediaPort.postMessage({ type: `${NS}bridge_message`, source: 'iframe', data: data, origin: event.origin });
-        } catch {}
-      }
-      return;
-    }
-
-    if (event.source === window || data.source === 'iframe') return;
-
-    const action = data.type.slice(NS.length);
-    const lowerAction = action.toLowerCase();
-    const callerOrigin = event.origin || 'unknown_parent';
-
-    logger.log(`%c[SRemote:command] Iframe received command/message (window) -> ${action}`, 'color: #ec4899; font-weight: bold;', { origin: callerOrigin, data });
-
-    if (lowerAction === 'syn_ack' || lowerAction === 'synack') {
-      handshake.handleSynAck(event, data);
-      return;
-    }
-
-    // Direct Window PostMessage Command Fallback (if port is not ready or failed)
-    if (
-      lowerAction === 'play' ||
-      lowerAction === 'pause' ||
-      lowerAction === 'toggle' ||
-      lowerAction === 'stop' ||
-      lowerAction === 'seek' ||
-      lowerAction === 'seekto' ||
-      lowerAction === 'currenttime' ||
-      lowerAction === 'volume' ||
-      lowerAction === 'muted' ||
-      lowerAction === 'speed' ||
-      lowerAction === 'rate'
-    ) {
-      await executeControl(action, data.value);
-      return;
-    }
-  });
+  window.addEventListener('message', event => dispatcher.dispatchWindowMessage(event, mediaPort));
 
   function boot() {
     if (resolver.resolveActiveMedia()) onMediaAvailable();
 
-    // Re-ensure root observer is active if documentElement was not ready during early init
     if (!observer) {
       try {
         observer = new MutationObserver(scheduleActiveMediaLiveness);
@@ -610,15 +337,18 @@ export function initIframeAgent() {
       } catch {}
     }
 
-    // Maintain initial iframe style injection once
     IframeStyleEngine.maintainStyles();
 
     let teardownDone = false;
     const handleTeardown = ev => {
       if (teardownDone) return;
       teardownDone = true;
+      if (gmQueryTimer) {
+        clearInterval(gmQueryTimer);
+        gmQueryTimer = null;
+      }
       if (livenessScheduled) {
-        cancelAnimationFrame(livenessScheduled);
+        if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(livenessScheduled);
         livenessScheduled = null;
       }
       try {
