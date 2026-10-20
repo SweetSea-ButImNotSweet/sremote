@@ -17,10 +17,13 @@ export const LOG_LEVELS = { INHERIT: -1, SILENT: 0, ERROR: 1, INFO: 2, DEBUG: 3 
  */
 export function getGlobalLogLevelOverride() {
   try {
-    // 1. Check window.sremote property override (often set by Userscript or developer in console)
     if (typeof window !== 'undefined') {
-      if (typeof window.sremote?.logLevel === 'number' && window.sremote.logLevel >= -1) {
-        return window.sremote.logLevel;
+      // 1. Check window.sremote ONLY if it is native userscript driver (exclude wrapper proxy to prevent circular getter deadlock)
+      const cand = window.sremote;
+      if (cand?.isSremoteNative === true && cand[Symbol.for('__sremote_source__')] !== 'wrapper') {
+        if (typeof cand.logLevel === 'number' && cand.logLevel >= -1) {
+          return cand.logLevel;
+        }
       }
       // 2. Check localStorage
       const storageVal = window.localStorage?.getItem('sremote:log_level');
@@ -87,13 +90,22 @@ export function createLogger(options = {}) {
   const { prefix = 'sremote', level: staticLevel, getLevel, defaultLevel = LOG_LEVELS.ERROR } = options;
 
   let currentLevel = staticLevel;
+  let isResolving = false;
 
   const getEffectiveLevel = () => {
-    if (typeof getLevel === 'function') {
-      const dynamic = getLevel();
-      if (typeof dynamic === 'number' && dynamic >= 0) return resolveLogLevel(dynamic, defaultLevel);
+    if (isResolving) {
+      return typeof currentLevel === 'number' ? currentLevel : defaultLevel;
     }
-    return resolveLogLevel(currentLevel, defaultLevel);
+    isResolving = true;
+    try {
+      if (typeof getLevel === 'function') {
+        const dynamic = getLevel();
+        if (typeof dynamic === 'number' && dynamic >= 0) return resolveLogLevel(dynamic, defaultLevel);
+      }
+      return resolveLogLevel(currentLevel, defaultLevel);
+    } finally {
+      isResolving = false;
+    }
   };
 
   const tag = `[SRemote:${prefix}]`;
