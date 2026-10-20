@@ -15,6 +15,7 @@ export function queryMediaDeep(root = typeof document !== 'undefined' ? document
     if (!root || visitedRoots.has(root)) return list;
     visitedRoots.add(root);
 
+    // 1. Direct native C++ query for media elements (0.01ms)
     if (root.querySelectorAll) {
       const found = root.querySelectorAll('video, audio');
       for (let i = 0; i < found.length; i++) {
@@ -23,18 +24,13 @@ export function queryMediaDeep(root = typeof document !== 'undefined' ? document
           list.push(el);
         }
       }
-    }
 
-    const allElements = root.querySelectorAll ? root.querySelectorAll('*') : [];
-    for (let i = 0; i < allElements.length; i++) {
-      const el = allElements[i];
-      if (el.shadowRoot) {
-        list.push(...queryMediaDeep(el.shadowRoot, visitedRoots, options));
-      }
-      if (el.tagName === 'IFRAME' || el.tagName === 'FRAME') {
+      // 2. Query only iframes/frames for child documents - never query '*'
+      const iframes = root.querySelectorAll('iframe, frame');
+      for (let i = 0; i < iframes.length; i++) {
         try {
-          const childDoc = el.contentDocument || el.contentWindow?.document;
-          if (childDoc) {
+          const childDoc = iframes[i].contentDocument || iframes[i].contentWindow?.document;
+          if (childDoc && !visitedRoots.has(childDoc)) {
             list.push(...queryMediaDeep(childDoc, visitedRoots, options));
           }
         } catch {}
@@ -124,10 +120,27 @@ export function createMediaWatcher(onMediaAdded, options = {}) {
                 }
               }
 
-              // Also scan nested elements (and shadowRoot if present)
-              const nested = queryMediaDeep(node, new Set(), options);
-              for (const n of nested) {
-                handleMedia(n);
+              // Scan descendants of added node using direct selectors ONLY
+              if (node.querySelectorAll) {
+                const subMedia = node.querySelectorAll('video, audio');
+                for (let i = 0; i < subMedia.length; i++) {
+                  if (isValidMediaElement(subMedia[i], options)) {
+                    handleMedia(subMedia[i]);
+                  }
+                }
+
+                const subIframes = node.querySelectorAll('iframe, frame');
+                for (let i = 0; i < subIframes.length; i++) {
+                  try {
+                    const childDoc = subIframes[i].contentDocument || subIframes[i].contentWindow?.document;
+                    if (childDoc) {
+                      const iframeMedia = queryMediaDeep(childDoc, new Set(), options);
+                      for (const im of iframeMedia) {
+                        handleMedia(im);
+                      }
+                    }
+                  } catch {}
+                }
               }
             }
           }

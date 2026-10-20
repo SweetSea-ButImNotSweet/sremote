@@ -189,11 +189,13 @@ export function isValidMediaElement(media, options = {}) {
 
   const tag = media.tagName?.toUpperCase() ?? '';
 
-  if (tag === 'VIDEO' && typeof media.getBoundingClientRect === 'function') {
+  if (tag === 'VIDEO') {
     try {
-      const rect = media.getBoundingClientRect();
-      const isTooSmall = (rect.width > 0 && rect.width < minSize) || (rect.height > 0 && rect.height < minSize);
-      const isHidden = rect.width === 0 && rect.height === 0 && !media.hasAttribute?.('controls');
+      // Use offset or intrinsic dimensions to avoid forced layout reflow
+      const w = media.offsetWidth || (typeof media.videoWidth === 'number' ? media.videoWidth : 0);
+      const h = media.offsetHeight || (typeof media.videoHeight === 'number' ? media.videoHeight : 0);
+      const isTooSmall = (w > 0 && w < minSize) || (h > 0 && h < minSize);
+      const isHidden = w === 0 && h === 0 && !media.hasAttribute?.('controls');
 
       // Reject tracking pixels or hidden videos without source/playback
       if (isTooSmall || (isHidden && media.paused && !hasMediaSource(media))) {

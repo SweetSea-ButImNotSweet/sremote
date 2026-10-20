@@ -312,8 +312,7 @@ export class SRemoteClient {
         }
         // If mode is dom-direct or fallback enabled and target is not an external iframe ID
         if (!targetOrId && (this.mode === 'dom-direct' || this.options.fallbackToDom)) {
-          const domList = this.domDriver.list();
-          if (domList.length > 0) {
+          if (this.domDriver.resolveMediaElement(null)) {
             return { driver: this.domDriver, name: 'DomDriver' };
           }
         }
