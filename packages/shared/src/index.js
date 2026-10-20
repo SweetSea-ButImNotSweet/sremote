@@ -10,3 +10,4 @@ export * from './constants.js';
 export * from './connection/index.js';
 export * from './api/schema.js';
 export * from './api/builder.js';
+export * from './protocol/envelope.js';

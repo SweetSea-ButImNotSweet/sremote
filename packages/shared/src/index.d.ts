@@ -318,4 +318,27 @@ export declare class ConnectionManager {
   terminate(): void;
 }
 
+export declare const PACKET_TYPE: {
+  readonly RPC_REQUEST: 'RPC_REQUEST';
+  readonly RPC_RESPONSE: 'RPC_RESPONSE';
+  readonly EVENT: 'EVENT';
+  readonly HANDSHAKE: 'HANDSHAKE';
+  readonly HEARTBEAT: 'HEARTBEAT';
+};
+
+export interface SRemoteEnvelope<T = any> {
+  id: string;
+  type: string;
+  action: string;
+  payload: T;
+  meta: { timestamp: number; source: string; instanceId?: string | null; [key: string]: any };
+}
+
+export declare function createEnvelope<T = any>(options: { type: string; action: string; payload?: T; id?: string | null; meta?: any }): SRemoteEnvelope<T>;
+
+export declare function createRpcRequestEnvelope(action: string, params?: any, meta?: any): SRemoteEnvelope;
+export declare function createRpcResponseEnvelope(rpcId: string, result?: any, error?: any, meta?: any): SRemoteEnvelope;
+export declare function createEventEnvelope(eventName: string, payload?: any, meta?: any): SRemoteEnvelope;
+export declare function parseEnvelope(raw: any, namespace?: string): SRemoteEnvelope | null;
+
 export declare function createConnectionManager(options?: any): ConnectionManager;

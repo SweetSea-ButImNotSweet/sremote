@@ -121,12 +121,12 @@ export class FluentGroupInstance {
           await Promise.all(promises);
         }
       },
-      (err) => {
+      err => {
         if (this._lenient) {
           return;
         }
         throw err;
-      }
+      },
     );
     return this;
   }
@@ -224,6 +224,35 @@ export class FluentGroupInstance {
 
   previous() {
     return this._enqueue('previous');
+  }
+
+  /**
+   * Subscribes to events across all instances currently in the group.
+   * @param {string} event
+   * @param {Function} handler
+   * @returns {Function} Unbind callback
+   */
+  on(event, handler) {
+    if (typeof handler !== 'function') return () => {};
+    const instances = this.resolveInstances();
+    const unbinders = instances.map(inst => inst.on(event, handler));
+    return () => {
+      unbinders.forEach(u => {
+        try {
+          u();
+        } catch {}
+      });
+    };
+  }
+
+  /**
+   * Unsubscribes from events across all instances in the group.
+   * @param {string} event
+   * @param {Function} [handler]
+   */
+  off(event, handler) {
+    const instances = this.resolveInstances();
+    instances.forEach(inst => inst.off(event, handler));
   }
 
   /**

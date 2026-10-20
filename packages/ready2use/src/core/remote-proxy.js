@@ -59,9 +59,7 @@ export function createRemoteProxy(adapter, sremoteClient = null, instanceId = nu
         const s = safeAdapter.getState();
         if (s && typeof s.then !== 'function') return s;
       }
-      return {
-        paused: typeof safeAdapter.paused === 'function' ? safeAdapter.paused() : typeof safeAdapter.paused === 'boolean' ? safeAdapter.paused : true,
-      };
+      return { paused: typeof safeAdapter.paused === 'function' ? safeAdapter.paused() : typeof safeAdapter.paused === 'boolean' ? safeAdapter.paused : true };
     }
 
     /**
@@ -98,12 +96,12 @@ export function createRemoteProxy(adapter, sremoteClient = null, instanceId = nu
     _enqueue(fn) {
       this._chain = this._chain.then(
         async () => fn(),
-        (err) => {
+        err => {
           if (this._lenient) {
             return fn();
           }
           throw err;
-        }
+        },
       );
       return this;
     }

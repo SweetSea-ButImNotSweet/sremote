@@ -3,6 +3,7 @@ import { Storage } from '../core/storage.js';
 import { generateInstanceId } from '../core/utils.js';
 import { createPermissionDialog } from '../ui/permission-dialog.js';
 import { flushPendingCommands, pendingRpcRequests } from './queue.js';
+import { createEnvelope, parseEnvelope, PACKET_TYPE, createFSM, TransportState, MediaState } from '@sremote/shared';
 
 /**
  * Transport Connection State Enum
@@ -28,6 +29,8 @@ export function createParentTransportManager({
 }) {
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, removeInstance, notifyMediaCountChange, emitGlobalEvent, pauseOthersExcept } = instanceManager;
 
+  const portToInstanceMap = new WeakMap(); // MessagePort -> instanceId (O(1) direct port lookup)
+  const sourceWindowToInstanceMap = new WeakMap(); // Window -> instanceId
   const blacklistedIframes = new WeakSet();
   const blacklistedSources = new WeakSet();
   const pendingReapTimers = new Map(); // instanceId -> timeoutId
@@ -117,6 +120,14 @@ export function createParentTransportManager({
 
     instanceManager.setCurrentActiveInstanceId(instanceId);
 
+    // O(1) Direct Port Mapping
+    if (port) {
+      portToInstanceMap.set(port, instanceId);
+    }
+
+    // Attach deterministic FSM
+    const fsm = createFSM({ transportState: initialTransportState === TRANSPORT_STATE.CONNECTED ? TransportState.CONNECTED : TransportState.CONNECTING });
+
     const item = {
       port,
       location: initialLocation,
@@ -128,6 +139,7 @@ export function createParentTransportManager({
       lastSeen: Date.now(),
       status: initialTransportState === TRANSPORT_STATE.CONNECTED ? 'ready' : 'connecting',
       transportState: initialTransportState,
+      fsm,
       iframeEl: iframeEl || assignedIframeIdMap.get(instanceId) || null,
       authenticated: false,
       hasMedia: false,
@@ -139,39 +151,47 @@ export function createParentTransportManager({
     }
 
     port.onmessage = e => {
-      const data = e.data;
-      if (!data || typeof data !== 'object') return;
-      const type = String(data.type || '');
-      if (!type.startsWith(NS)) return;
+      const rawData = e.data;
+      if (!rawData || typeof rawData !== 'object') return;
+
+      // Micro-Kernel Protocol Envelope Parser (Supports Dual-Mode: Native + Legacy)
+      const envelope = parseEnvelope(rawData, NS);
+      if (!envelope) return;
+
+      const action = envelope.action;
+      const lowerAction = action.toLowerCase();
+      const data = envelope.payload && typeof envelope.payload === 'object' ? envelope.payload : {};
+      const envelopeType = envelope.type;
 
       item.lastSeen = Date.now();
-      const action = type.slice(NS.length);
-      const lowerAction = action.toLowerCase();
 
       if (lowerAction !== 'ping' && lowerAction !== 'pong') {
-        logger.scope('transport').debug(`Parent received (port) -> ${action}`, { instanceId, data });
+        logger.scope('transport').debug(`Parent received (port envelope) -> [${envelopeType}] ${action}`, { instanceId, envelope });
       }
 
-      // RPC Handling
-      if (lowerAction === 'rpc_response' && data.rpcId) {
-        const req = pendingRpcRequests.get(data.rpcId);
+      // 1. RPC Response Handling
+      if (envelopeType === PACKET_TYPE.RPC_RESPONSE || (lowerAction === 'rpc_response' && envelope.id)) {
+        const rpcId = envelope.id || data.rpcId;
+        const req = pendingRpcRequests.get(rpcId);
         if (req) {
           clearTimeout(req.timer);
-          pendingRpcRequests.delete(data.rpcId);
-          if (data.result?.success === false && data.result?.error) {
-            req.resolve?.({ success: false, error: data.result.error, message: data.result.message || 'RPC execution failed', instanceId });
+          pendingRpcRequests.delete(rpcId);
+          const resPayload = data.result !== undefined ? data.result : data;
+          if (resPayload?.success === false && resPayload?.error) {
+            req.resolve?.({ success: false, error: resPayload.error, message: resPayload.message || 'RPC execution failed', instanceId });
           } else {
-            req.resolve(typeof data.result === 'object' && data.result !== null ? { instanceId, ...data.result } : { success: true, instanceId, data: data.result });
+            req.resolve(typeof resPayload === 'object' && resPayload !== null ? { instanceId, ...resPayload } : { success: true, instanceId, data: resPayload });
           }
         }
         return;
       }
 
-      // Heartbeat Pong
-      if (lowerAction === 'pong') {
+      // 2. Heartbeat Pong
+      if (lowerAction === 'pong' || envelopeType === PACKET_TYPE.HEARTBEAT) {
         if (item.transportState === TRANSPORT_STATE.CONNECTING) {
           item.transportState = TRANSPORT_STATE.CONNECTED;
           item.status = 'ready';
+          fsm.transitionTransport(TransportState.CONNECTED);
           flushPendingCommands(instanceId, port, isMultiModeActive);
         }
         if (data.state) item.state = data.state;
@@ -180,16 +200,18 @@ export function createParentTransportManager({
         return;
       }
 
-      // Terminal Transport Disconnect (Iframe completely unloaded)
+      // 3. Terminal Transport Disconnect
       if (lowerAction === 'disconnect' || lowerAction === 'unload') {
+        fsm.transitionTransport(TransportState.TERMINATED);
         terminateInstance(instanceId, lowerAction);
         return;
       }
 
-      // MEDIA STATE CHANGE: When media drops or is detached, DO NOT terminate port!
+      // 4. Media State Change: nomedia
       if (lowerAction === 'nomedia' || lowerAction === 'mediadisconnected') {
         logger.scope('media').log(`Instance '${instanceId}' has no active media. Port preserved.`);
         item.hasMedia = false;
+        fsm.transitionMedia(MediaState.NO_MEDIA);
         if (item.state && typeof item.state === 'object') {
           item.state = { ...item.state, paused: true };
         }
@@ -199,12 +221,16 @@ export function createParentTransportManager({
         return;
       }
 
-      // TCP Handshake ACK on Port
+      // 5. TCP Handshake ACK on Port
       if (lowerAction === 'ack' || lowerAction === 'accept') {
         item.authenticated = true;
         item.transportState = TRANSPORT_STATE.CONNECTED;
         item.status = 'ready';
-        if (typeof data.hasMedia === 'boolean') item.hasMedia = data.hasMedia;
+        fsm.transitionTransport(TransportState.CONNECTED);
+        if (typeof data.hasMedia === 'boolean') {
+          item.hasMedia = data.hasMedia;
+          if (data.hasMedia) fsm.transitionMedia(MediaState.READY);
+        }
         if (data.state) item.state = data.state;
         if (data.mediaType) item.mediaType = data.mediaType;
         if (data.capabilities) item.capabilities = data.capabilities;
@@ -214,21 +240,31 @@ export function createParentTransportManager({
         return;
       }
 
-      // Media State Updates
-      if (typeof data.hasMedia === 'boolean') item.hasMedia = data.hasMedia;
+      // 6. Media State Updates
+      if (typeof data.hasMedia === 'boolean') {
+        item.hasMedia = data.hasMedia;
+        if (data.hasMedia && fsm.mediaState === MediaState.NO_MEDIA) {
+          fsm.transitionMedia(MediaState.READY);
+        }
+      }
       if (data.state) item.state = data.state;
       if (data.mediaType) item.mediaType = data.mediaType;
       if (data.capabilities) item.capabilities = data.capabilities;
 
       if (lowerAction === 'play' || lowerAction === 'playing') {
+        fsm.transitionMedia(MediaState.PLAYING);
         instanceManager.setCurrentActiveInstanceId(instanceId);
         const exclusiveMode = instanceManager.exclusiveMode;
         if (exclusiveMode === 'auto' || exclusiveMode === true) {
           pauseOthersExcept(instanceId);
         } else if (exclusiveMode && exclusiveMode !== instanceId) {
-          port.postMessage({ type: `${NS}pause`, source: 'parent' });
+          port.postMessage(createEnvelope({ type: PACKET_TYPE.RPC_REQUEST, action: 'pause', meta: { source: 'parent', instanceId } }));
           return;
         }
+      } else if (lowerAction === 'pause') {
+        fsm.transitionMedia(MediaState.PAUSED);
+      } else if (lowerAction === 'ended') {
+        fsm.transitionMedia(MediaState.ENDED);
       }
 
       if (lowerAction === 'bridge_message') {
@@ -241,7 +277,7 @@ export function createParentTransportManager({
 
       const forwardedPayload =
         typeof data === 'object' && data !== null
-          ? { instanceId, source: data.source || 'iframe', mediaType: data.mediaType || item.mediaType, ...data, event: action }
+          ? { instanceId, source: envelope.meta?.source || data.source || 'iframe', mediaType: data.mediaType || item.mediaType, ...data, event: action }
           : { instanceId, source: 'iframe', mediaType: item.mediaType, value: data, event: action };
       emitGlobalEvent(action, forwardedPayload);
       onMediaMessage(action, forwardedPayload);
@@ -313,6 +349,12 @@ export function createParentTransportManager({
         return;
       }
 
+      if (event.source && typeof event.source === 'object') {
+        try {
+          sourceWindowToInstanceMap.set(event.source, instanceId);
+        } catch {}
+      }
+
       const completeSynAck = () => {
         const channel = new MessageChannel();
         setupPortForInstance(instanceId, channel.port1, iframeLoc, iframeOrigin, iframeEl, TRANSPORT_STATE.CONNECTING);
@@ -342,7 +384,7 @@ export function createParentTransportManager({
 
         try {
           event.source.postMessage(synAckPayload, iframeOrigin && iframeOrigin !== 'null' ? iframeOrigin : '*', [channel.port2]);
-          channel.port1.postMessage({ type: `${NS}ping`, source: 'parent', handshakeVerify: true });
+          channel.port1.postMessage(createEnvelope({ type: PACKET_TYPE.HEARTBEAT, action: 'ping', payload: { handshakeVerify: true }, meta: { source: 'parent', instanceId } }));
         } catch (err) {
           synLog.warn('Failed to transfer MessagePort in syn_ack:', err);
         }

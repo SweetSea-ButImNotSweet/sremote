@@ -46,7 +46,7 @@ Version 4.0 is a milestone architectural overhaul that synchronizes developer er
 - [x] **Platform-Aware Driver Caching**:
   - Cache the resolved driver tagged with platform metadata (e.g., `platform: 'youtube'`) for instant 0ms subsequent dispatch.
   - Automatic cache invalidation when target elements detach, remount, or navigate to another media source.
-- [ ] **Micro-Kernel Protocol Envelope & Pure Transport Layer**:
+- [x] **Micro-Kernel Protocol Envelope & Pure Transport Layer**:
   - Completely decouple physical communication (`MessagePort` delivery) from business logic (Permissions, Media RPC, Command Queue).
   - Standardize all cross-origin packets into an immutable envelope contract: `{ id, type: 'RPC'|'EVENT'|'HANDSHAKE', action, payload, meta }`.
   - Eliminate recursive DOM scanning (`root.querySelectorAll('iframe')`) by indexing source ports directly.
@@ -69,7 +69,7 @@ Version 4.0 is a milestone architectural overhaul that synchronizes developer er
   - Eliminated `window.sremote` hijacking by userscript; unified discovery via `Symbol.for('__sremote_native_driver__')` and reactive event `sremote:driver:ready`.
 
 ### 4. Userscript Permission Dialog Overhaul
-- [ ] **Fix "Always Allow" Logic Bug**:
+- [x] **Fix "Always Allow" Logic Bug**:
   - Clarify and cleanly isolate permission scopes: current session vs. domain-level permanent allowance. Fix the bug where "Always Allow" gets confused across distinct frames/origins.
 - [ ] **Modernized, Clean Modal UI**:
   - Redesign the consent prompt modal to reduce clutter, improve visual hierarchy, and make permissions transparent and easy to understand for end-users.

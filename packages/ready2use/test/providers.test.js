@@ -129,7 +129,9 @@ let tappedState = null;
 await remote
   .seek(5)
   .volume(0.9)
-  .tap(s => { tappedState = s; });
+  .tap(s => {
+    tappedState = s;
+  });
 
 assert(currentOffset === 20, 'Fluent chained seek(5) updated offset');
 assert(currentVolume === 0.9, 'Fluent chained volume(0.9) updated volume');
@@ -139,8 +141,12 @@ assert(remote.state.paused === true, 'Synchronous remote.state.paused accessible
 // Test .catch() Error Boundary Recovery
 let recoveredPlay = false;
 const failingAdapter = {
-  seek() { throw new Error('Seek failure'); },
-  play() { recoveredPlay = true; },
+  seek() {
+    throw new Error('Seek failure');
+  },
+  play() {
+    recoveredPlay = true;
+  },
   capabilities: { play: true, seek: true },
 };
 const errorRemote = createRemoteProxy(failingAdapter, null, 'err-id');
@@ -150,8 +156,12 @@ assert(recoveredPlay === true, '.catch() swallowed error and recovered pipeline 
 // Test .lenient() Mode
 let lenientVolumeExecuted = false;
 const lenientAdapter = {
-  seek() { throw new Error('Hardware seek unsupported'); },
-  setVolume() { lenientVolumeExecuted = true; },
+  seek() {
+    throw new Error('Hardware seek unsupported');
+  },
+  setVolume() {
+    lenientVolumeExecuted = true;
+  },
   capabilities: { volume: true, seek: true },
 };
 const lenientRemote = createRemoteProxy(lenientAdapter, null, 'lenient-id');
@@ -171,9 +181,9 @@ const mockClient = {
       },
       then(cb) {
         return Promise.resolve(cb ? cb() : undefined);
-      }
+      },
     };
-  }
+  },
 };
 const delegatedRemote = createRemoteProxy(testAdapter, mockClient, 'delegated-id');
 await delegatedRemote.play();

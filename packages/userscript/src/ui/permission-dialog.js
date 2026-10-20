@@ -5,34 +5,41 @@ import { createModal } from './modal.js';
 import { logger } from '../config.js';
 
 // Table Queue management: gom toàn bộ các iframe origin đang chờ
-// pendingItems: Map<iframeOrigin, { parentOrigin, iframeOrigin, isTop, callbacks: Function[], rowElement?: HTMLElement }>
+// pendingItems: Map<pairKey, { parentOrigin, iframeOrigin, isTop, callbacks: Function[], rowElement?: HTMLElement }>
 const pendingItems = new Map();
 let activeDialog = null; // { modal, tableContainer }
-let isSessionBlocked = false;
-let isSessionAllowed = false;
-const allowedOriginsInSession = new Set();
-const deniedOriginsInSession = new Set();
+const sessionBlockedParents = new Set();
+const sessionAllowedParents = new Set();
+const allowedOriginPairsInSession = new Set();
+const deniedOriginPairsInSession = new Set();
+
+export function getOriginPairKey(parentOrigin, iframeOrigin) {
+  const normParent = normalizeOrigin(parentOrigin) || '*';
+  const normIframe = normalizeOrigin(iframeOrigin) || '*';
+  return `${normParent}::${normIframe}`;
+}
 
 function applyDecision(item, allowed, remember) {
   const { parentOrigin, iframeOrigin, callbacks } = item;
   const permLog = logger.scope('permission');
   const normParent = normalizeOrigin(parentOrigin);
   const normIframe = normalizeOrigin(iframeOrigin);
+  const pairKey = getOriginPairKey(parentOrigin, iframeOrigin);
 
-  permLog.log(`applyDecision: allowed=${allowed}, remember=${remember}`, { parentOrigin, iframeOrigin });
+  permLog.log(`applyDecision: allowed=${allowed}, remember=${remember}`, { parentOrigin, iframeOrigin, pairKey });
 
-  // Track in in-memory session
+  // Track in in-memory session scoped to the origin pair
   if (allowed) {
-    allowedOriginsInSession.add(iframeOrigin);
-    deniedOriginsInSession.delete(iframeOrigin);
+    allowedOriginPairsInSession.add(pairKey);
+    deniedOriginPairsInSession.delete(pairKey);
   } else {
-    deniedOriginsInSession.add(iframeOrigin);
-    allowedOriginsInSession.delete(iframeOrigin);
+    deniedOriginPairsInSession.add(pairKey);
+    allowedOriginPairsInSession.delete(pairKey);
   }
 
   if (remember && normIframe) {
     const decision = allowed ? 1 : 0;
-    // Set for this specific parent-iframe pair
+    // Set for this specific parent-iframe pair in persistent GM Dict
     Storage.permissions.set(normParent, normIframe, decision);
     permLog.log(`Persisted permission in Storage.permissions: parent='${normParent}', iframe='${normIframe}', decision=${decision}`);
   }
@@ -44,12 +51,12 @@ function applyDecision(item, allowed, remember) {
   });
 }
 
-function removePendingRow(iframeOrigin) {
-  const item = pendingItems.get(iframeOrigin);
+function removePendingRow(key) {
+  const item = pendingItems.get(key);
   if (item?.rowElement) {
     item.rowElement.remove();
   }
-  pendingItems.delete(iframeOrigin);
+  pendingItems.delete(key);
 
   // Cập nhật lại trạng thái hiển thị của batch row nếu danh sách thay đổi
   updateTableBatchRow();
@@ -124,6 +131,7 @@ function updateTableBatchRow() {
 }
 
 function renderRow(item) {
+  const pairKey = getOriginPairKey(item.parentOrigin, item.iframeOrigin);
   const row = document.createElement('div');
   row.className = 'sv-perm-row';
 
@@ -141,7 +149,7 @@ function renderRow(item) {
   denyBtn.textContent = t('denyBtn');
   denyBtn.addEventListener('click', () => {
     applyDecision(item, false, false);
-    removePendingRow(item.iframeOrigin);
+    removePendingRow(pairKey);
   });
 
   const allowBtn = document.createElement('button');
@@ -150,7 +158,7 @@ function renderRow(item) {
   allowBtn.textContent = t('allowBtn');
   allowBtn.addEventListener('click', () => {
     applyDecision(item, true, false);
-    removePendingRow(item.iframeOrigin);
+    removePendingRow(pairKey);
   });
 
   // Dropdown menu [...]
@@ -187,7 +195,7 @@ function renderRow(item) {
     alwaysAllowItem.addEventListener('click', () => {
       closeDropdown();
       applyDecision(item, true, true);
-      removePendingRow(item.iframeOrigin);
+      removePendingRow(pairKey);
     });
 
     const alwaysDenyItem = document.createElement('button');
@@ -197,7 +205,7 @@ function renderRow(item) {
     alwaysDenyItem.addEventListener('click', () => {
       closeDropdown();
       applyDecision(item, false, true);
-      removePendingRow(item.iframeOrigin);
+      removePendingRow(pairKey);
     });
 
     dropdown.append(alwaysAllowItem, alwaysDenyItem);
@@ -277,8 +285,10 @@ function openOrUpdateDialog(isTop) {
         className: 'sv-btn sv-btn-allow-session',
         text: t('allowSessionBtn'),
         onClick: (_, { close }) => {
-          isSessionAllowed = true;
           const items = Array.from(pendingItems.values());
+          items.forEach(it => {
+            if (it.parentOrigin) sessionAllowedParents.add(it.parentOrigin);
+          });
           pendingItems.clear();
           const dlg = activeDialog;
           activeDialog = null;
@@ -339,13 +349,14 @@ function openOrUpdateDialog(isTop) {
 export function createPermissionDialog({ origin, iframeOrigin = null, parentOrigin = null, onDecision, isTop = false }) {
   const effectiveIframeOrigin = iframeOrigin || origin;
   const effectiveParentOrigin = parentOrigin || (isTop && typeof location !== 'undefined' ? location.origin : null) || 'unknown_parent';
+  const pairKey = getOriginPairKey(effectiveParentOrigin, effectiveIframeOrigin);
 
-  // 0. Nếu session này đã bị chặn: lập tức từ chối; nếu đã cho phép toàn phiên: lập tức cho phép
-  if (isSessionBlocked || deniedOriginsInSession.has(effectiveIframeOrigin)) {
+  // 0. Nếu session của trang cha này đã bị chặn: lập tức từ chối; nếu cặp origin này đã được quyết định trong session
+  if (sessionBlockedParents.has(effectiveParentOrigin) || deniedOriginPairsInSession.has(pairKey)) {
     onDecision?.(false);
     return { close: () => {} };
   }
-  if (isSessionAllowed || allowedOriginsInSession.has(effectiveIframeOrigin)) {
+  if (sessionAllowedParents.has(effectiveParentOrigin) || allowedOriginPairsInSession.has(pairKey)) {
     onDecision?.(true);
     return { close: () => {} };
   }
@@ -362,12 +373,12 @@ export function createPermissionDialog({ origin, iframeOrigin = null, parentOrig
   }
 
   // 2. Nếu đã có trong pendingItems thì gom callback lại
-  if (pendingItems.has(effectiveIframeOrigin)) {
-    const existing = pendingItems.get(effectiveIframeOrigin);
+  if (pendingItems.has(pairKey)) {
+    const existing = pendingItems.get(pairKey);
     if (typeof onDecision === 'function') {
       existing.callbacks.push(onDecision);
     }
-    return { close: () => removePendingRow(effectiveIframeOrigin) };
+    return { close: () => removePendingRow(pairKey) };
   }
 
   // 3. Đưa vào bảng chờ
@@ -378,16 +389,22 @@ export function createPermissionDialog({ origin, iframeOrigin = null, parentOrig
     callbacks: typeof onDecision === 'function' ? [onDecision] : [],
     rowElement: null,
   };
-  pendingItems.set(effectiveIframeOrigin, newItem);
+  pendingItems.set(pairKey, newItem);
 
   // 4. Mở hoặc cập nhật giao diện bảng
   openOrUpdateDialog(isTop);
 
-  return { close: () => removePendingRow(effectiveIframeOrigin) };
+  return { close: () => removePendingRow(pairKey) };
 }
 
-function setPermissionSessionBlocked(blocked = true) {
-  isSessionBlocked = blocked;
+function setPermissionSessionBlocked(blocked = true, parentOrigin = null) {
+  const targetParent = parentOrigin || (typeof location !== 'undefined' ? location.origin : '*');
+  if (blocked) {
+    sessionBlockedParents.add(targetParent);
+  } else {
+    sessionBlockedParents.delete(targetParent);
+  }
+
   if (blocked && activeDialog) {
     const items = Array.from(pendingItems.values());
     pendingItems.clear();

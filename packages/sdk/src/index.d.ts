@@ -1,6 +1,30 @@
-import type { SRemoteCapabilities, SRemoteMediaState, SRemoteInstanceData, SRemoteEventPayload, SRemoteEventHandler, SRemoteActionName, SRemoteEventName, LoadSourceDTO, RepeatModeDTO, QualityDTO, SubtitleDTO } from '@sremote/shared';
+import type {
+  SRemoteCapabilities,
+  SRemoteMediaState,
+  SRemoteInstanceData,
+  SRemoteEventPayload,
+  SRemoteEventHandler,
+  SRemoteActionName,
+  SRemoteEventName,
+  LoadSourceDTO,
+  RepeatModeDTO,
+  QualityDTO,
+  SubtitleDTO,
+} from '@sremote/shared';
 
-export type { SRemoteCapabilities, SRemoteMediaState, SRemoteInstanceData, SRemoteEventPayload, SRemoteEventHandler, SRemoteActionName, SRemoteEventName, LoadSourceDTO, RepeatModeDTO, QualityDTO, SubtitleDTO };
+export type {
+  SRemoteCapabilities,
+  SRemoteMediaState,
+  SRemoteInstanceData,
+  SRemoteEventPayload,
+  SRemoteEventHandler,
+  SRemoteActionName,
+  SRemoteEventName,
+  LoadSourceDTO,
+  RepeatModeDTO,
+  QualityDTO,
+  SubtitleDTO,
+};
 
 export { SREMOTE_EVENTS, SREMOTE_ACTIONS, SREMOTE_STORAGE_KEYS, MEDIA_EVENTS } from '@sremote/shared';
 

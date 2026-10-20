@@ -20,6 +20,7 @@ export class FluentInstance {
     this._resolvedInstanceId = null;
     this._chain = Promise.resolve();
     this._lenient = false;
+    this._scopedListeners = new Map(); // originalHandler -> wrappedHandler
   }
 
   /**
@@ -126,7 +127,7 @@ export class FluentInstance {
         }
         return this._exec(actionOrFn, payload);
       },
-      (err) => {
+      err => {
         if (this._lenient) {
           if (this.client?.logger?.warn) {
             this.client.logger.warn(`[sremote:lenient] Skipped failed action '${typeof actionOrFn === 'string' ? actionOrFn : 'fn'}':`, err);
@@ -134,7 +135,7 @@ export class FluentInstance {
           return typeof actionOrFn === 'function' ? actionOrFn() : this._exec(actionOrFn, payload);
         }
         throw err;
-      }
+      },
     );
     return this;
   }
@@ -250,11 +251,90 @@ export class FluentInstance {
     return this.client.bindMetadata(meta, typeof target === 'string' ? target : null, this.options.key);
   }
 
+  _matchesTarget(payload) {
+    const instId = payload?.instanceId;
+    if (!instId) return true; // Global notification or unassigned broadcast
+
+    // 1. Direct resolved instanceId match
+    if (this._resolvedInstanceId && this._resolvedInstanceId === instId) return true;
+
+    // 2. Direct string target match (e.g. 'instance_slot_1' or '#selector')
+    if (typeof this.target === 'string') {
+      if (this.target === instId) {
+        this._resolvedInstanceId = instId;
+        return true;
+      }
+      // Late-bind: check if target is a CSS selector pointing to the DOM element with this instanceId
+      if (typeof document !== 'undefined') {
+        try {
+          const el = document.querySelector(this.target);
+          if (el && (el.getAttribute('data-sremote-id') === instId || el.id === instId)) {
+            this._resolvedInstanceId = instId;
+            return true;
+          }
+        } catch {}
+      }
+    }
+
+    // 3. Target is an HTMLElement
+    if (this.target && typeof this.target === 'object' && this.target.nodeType === 1) {
+      if (this.target.getAttribute?.('data-sremote-id') === instId || this.target.id === instId) {
+        this._resolvedInstanceId = instId;
+        return true;
+      }
+    }
+
+    // If instanceId is already resolved and strictly differs from incoming event
+    if (this._resolvedInstanceId && this._resolvedInstanceId !== instId) {
+      return false;
+    }
+
+    return false;
+  }
+
   on(event, handler) {
-    return this.client.on(event, handler, this.options.key);
+    if (typeof handler !== 'function') return () => {};
+
+    let wrappedMap = this._scopedListeners.get(event);
+    if (!wrappedMap) {
+      wrappedMap = new Map();
+      this._scopedListeners.set(event, wrappedMap);
+    }
+
+    const wrappedHandler = payload => {
+      if (this._matchesTarget(payload)) {
+        handler(payload);
+      }
+    };
+
+    wrappedMap.set(handler, wrappedHandler);
+    const unbind = this.client.on(event, wrappedHandler, this.options.key);
+
+    return () => {
+      unbind();
+      wrappedMap.delete(handler);
+    };
   }
 
   off(event, handler) {
-    return this.client.off(event, handler);
+    const wrappedMap = this._scopedListeners.get(event);
+    if (wrappedMap) {
+      if (handler) {
+        const wrappedHandler = wrappedMap.get(handler);
+        if (wrappedHandler) {
+          this.client.off(event, wrappedHandler);
+          wrappedMap.delete(handler);
+        } else {
+          this.client.off(event, handler);
+        }
+      } else {
+        for (const wrappedHandler of wrappedMap.values()) {
+          this.client.off(event, wrappedHandler);
+        }
+        wrappedMap.clear();
+      }
+    } else {
+      this.client.off(event, handler);
+    }
   }
 }

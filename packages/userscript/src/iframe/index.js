@@ -11,7 +11,7 @@ import { getVideoState, getIframeCapabilities, createMediaController } from './c
 import { createIframeDebugApi } from '../debug/iframe-debug.js';
 import { createRpcRegistry } from './rpc.js';
 import { createIframeTransportManager } from './transport.js';
-import { pipeline } from '@sremote/shared';
+import { pipeline, parseEnvelope, createEnvelope, PACKET_TYPE } from '@sremote/shared';
 
 export function initIframeAgent() {
   let topOrigin = null;
@@ -106,7 +106,7 @@ export function initIframeAgent() {
       const currentState = getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia);
       const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
       const dur = currentState?.duration || (Number.isFinite(video.duration) ? video.duration : null);
-      const curTime = mediaTime ?? (safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0);
+      const curTime = mediaTime ?? safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0;
 
       if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
         if (!hasEmittedAlmostEnd) {
@@ -283,12 +283,7 @@ export function initIframeAgent() {
     observer = new MutationObserver(scheduleActiveMediaLiveness);
     const rootEl = document.documentElement || document;
     if (rootEl) {
-      observer.observe(rootEl, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['src', 'currentSrc'],
-      });
+      observer.observe(rootEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'currentSrc'] });
     }
   } catch {}
 
@@ -388,16 +383,19 @@ export function initIframeAgent() {
   function bindPort(port) {
     mediaPort = port;
     port.onmessage = async e => {
-      const data = e.data;
-      if (!data || typeof data !== 'object') return;
-      const type = String(data.type || '');
-      if (!type.startsWith(NS)) return;
+      const rawData = e.data;
+      if (!rawData || typeof rawData !== 'object') return;
 
-      const action = type.slice(NS.length);
+      const envelope = parseEnvelope(rawData, NS);
+      if (!envelope) return;
+
+      const action = envelope.action;
       const lowerAction = action.toLowerCase();
+      const data = envelope.payload && typeof envelope.payload === 'object' ? envelope.payload : {};
+      const envelopeType = envelope.type;
 
       if (lowerAction !== 'ping' && lowerAction !== 'pong') {
-        logger.log(`%c[SRemote:command] Iframe received command (port) -> ${action}`, 'color: #8b5cf6; font-weight: bold;', data);
+        logger.log(`%c[SRemote:command] Iframe received command (port envelope) -> [${envelopeType}] ${action}`, 'color: #8b5cf6; font-weight: bold;', envelope);
       }
 
       if (lowerAction === 'resendblobobject' && data.blob) {
@@ -428,18 +426,32 @@ export function initIframeAgent() {
         return;
       }
 
-      if (lowerAction === 'rpc_request' && data.rpcId && data.action) {
+      if (envelopeType === PACKET_TYPE.RPC_REQUEST || (lowerAction === 'rpc_request' && data.action)) {
+        const rpcId = envelope.id || data.rpcId;
+        const targetAction = data.action || action;
+        const targetParams = data.params !== undefined ? data.params : envelope.payload;
         try {
-          const res = await rpcRegistry.executeRpc(data.action, data.params);
-          port.postMessage({ type: `${NS}rpc_response`, source: 'iframe', rpcId: data.rpcId, result: { success: true, instanceId, data: res } });
+          const res = await rpcRegistry.executeRpc(targetAction, targetParams);
+          port.postMessage(
+            createEnvelope({
+              type: PACKET_TYPE.RPC_RESPONSE,
+              action: 'rpc_response',
+              id: rpcId,
+              payload: { success: true, instanceId, data: res },
+              meta: { source: 'iframe', instanceId },
+            }),
+          );
         } catch (err) {
           const isNotFound = String(err).includes('not found');
-          port.postMessage({
-            type: `${NS}rpc_response`,
-            source: 'iframe',
-            rpcId: data.rpcId,
-            result: { success: false, error: isNotFound ? 'METHOD_NOT_FOUND' : 'RPC_ERROR', message: String(err), instanceId },
-          });
+          port.postMessage(
+            createEnvelope({
+              type: PACKET_TYPE.RPC_RESPONSE,
+              action: 'rpc_response',
+              id: rpcId,
+              payload: { success: false, error: isNotFound ? 'METHOD_NOT_FOUND' : 'RPC_ERROR', message: String(err), instanceId },
+              meta: { source: 'iframe', instanceId },
+            }),
+          );
         }
         return;
       }
@@ -598,12 +610,7 @@ export function initIframeAgent() {
         observer = new MutationObserver(scheduleActiveMediaLiveness);
         const mountTarget = document.documentElement || document.body || document;
         if (mountTarget) {
-          observer.observe(mountTarget, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['src', 'currentSrc'],
-          });
+          observer.observe(mountTarget, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'currentSrc'] });
         }
       } catch {}
     }
