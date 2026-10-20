@@ -1,5 +1,6 @@
 export function isNativeSRemoteInstance(target) {
   if (!target || typeof target !== 'object') return false;
+  if (target[Symbol.for('__sremote_source__')] === 'wrapper') return false;
   try {
     if (target.isSremoteNative === true) return true;
     if (target[Symbol.for('__sremote_native_driver__')] || target[Symbol.for('__sremote_native__')] || target[Symbol.for('__sremote_driver__')]) return true;

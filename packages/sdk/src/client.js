@@ -792,9 +792,6 @@ if (typeof globalThis !== 'undefined') {
 if (typeof window !== 'undefined') {
   try {
     clientSingleton[Symbol.for('__sremote_source__')] = 'wrapper';
-    clientSingleton[Symbol.for('__sremote_native_driver__')] = true;
-    clientSingleton[Symbol.for('__sremote_native__')] = true;
-    clientSingleton.isSremoteNative = true;
 
     // Define window.sremote if not existing
     if (!window.sremote) {
