@@ -163,10 +163,29 @@ export class SRemoteClient {
       logLevel: newLevel => {
         if (typeof newLevel === 'number') {
           this.logger.setLevel(newLevel);
+          try {
+            if (typeof window !== 'undefined' && window.localStorage) {
+              window.localStorage.setItem('sremote:log_level', String(newLevel));
+            }
+          } catch {}
+        } else if (newLevel === null) {
+          try {
+            if (typeof window !== 'undefined' && window.localStorage) {
+              window.localStorage.removeItem('sremote:log_level');
+            }
+          } catch {}
         }
         return this.bridgeDriver.getApi()?.debug?.logLevel?.(newLevel) ?? this.logger.level;
       },
     };
+  }
+
+  get logLevel() {
+    return this.logger.level;
+  }
+
+  set logLevel(newLevel) {
+    this.debug.logLevel(newLevel);
   }
 
   syncGlobalAdapters() {
