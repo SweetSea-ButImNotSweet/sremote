@@ -217,15 +217,7 @@ export function initIframeAgent() {
     },
   });
 
-  const dispatcher = createIframeDispatcher({
-    instanceIdGetter: () => instanceId,
-    resolver,
-    rpcRegistry,
-    executeControl,
-    emitToParent,
-    mockMediaSessionInstance,
-    handshake,
-  });
+  const dispatcher = createIframeDispatcher({ instanceIdGetter: () => instanceId, resolver, rpcRegistry, executeControl, emitToParent, mockMediaSessionInstance, handshake });
 
   // ==========================================
   // PHASE 5: Media Detection, Observer & Lifecycle

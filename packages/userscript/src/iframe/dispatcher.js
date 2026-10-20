@@ -8,24 +8,12 @@ export const MEDIA_COMMANDS = new Set(['play', 'pause', 'toggle', 'stop', 'seek'
 /**
  * Creates the unified message dispatcher for both MessagePort and Window fallback channels.
  */
-export function createIframeDispatcher({
-  instanceIdGetter,
-  resolver,
-  rpcRegistry,
-  executeControl,
-  emitToParent,
-  mockMediaSessionInstance,
-  handshake,
-}) {
+export function createIframeDispatcher({ instanceIdGetter, resolver, rpcRegistry, executeControl, emitToParent, mockMediaSessionInstance, handshake }) {
   async function handleIncomingControl(action, value) {
     const handled = await executeControl(action, value);
     if (!handled) {
       logger.warn(`[sremote] Command '${action}' failed: No media element or MediaSession handler found in frame.`);
-      emitToParent('noMedia', {
-        action,
-        reason: 'NO_MEDIA_FOUND',
-        message: `No media element or MediaSession handler found for command '${action}'`,
-      });
+      emitToParent('noMedia', { action, reason: 'NO_MEDIA_FOUND', message: `No media element or MediaSession handler found for command '${action}'` });
     }
     return handled;
   }
@@ -174,9 +162,5 @@ export function createIframeDispatcher({
     }
   }
 
-  return {
-    dispatchPortMessage,
-    dispatchWindowMessage,
-    handleIncomingControl,
-  };
+  return { dispatchPortMessage, dispatchWindowMessage, handleIncomingControl };
 }

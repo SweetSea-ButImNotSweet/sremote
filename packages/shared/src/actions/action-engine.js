@@ -4,7 +4,10 @@
  * Single Source of Truth for action dispatching.
  */
 
-import { wrapCustomAdapter } from '../events.js';
+import { decorateCustomAdapter } from '../events.js';
+import { nativeMediaDescriptors, getNativeMediaProp, setNativeMediaProp, callNativeMediaMethod } from '../dom/native-media.js';
+
+export { nativeMediaDescriptors };
 
 const adapterPreviousVolumeMap = new WeakMap();
 
@@ -50,18 +53,6 @@ export function resolveMediaElement(target, doc = typeof document !== 'undefined
   return null;
 }
 
-const mediaProto = typeof HTMLMediaElement !== 'undefined' ? HTMLMediaElement.prototype : {};
-export const nativeMediaDescriptors = {
-  play: typeof mediaProto.play === 'function' ? mediaProto.play : null,
-  pause: typeof mediaProto.pause === 'function' ? mediaProto.pause : null,
-  currentTime: typeof Object.getOwnPropertyDescriptor === 'function' ? Object.getOwnPropertyDescriptor(mediaProto, 'currentTime') : null,
-  volume: typeof Object.getOwnPropertyDescriptor === 'function' ? Object.getOwnPropertyDescriptor(mediaProto, 'volume') : null,
-  muted: typeof Object.getOwnPropertyDescriptor === 'function' ? Object.getOwnPropertyDescriptor(mediaProto, 'muted') : null,
-  playbackRate: typeof Object.getOwnPropertyDescriptor === 'function' ? Object.getOwnPropertyDescriptor(mediaProto, 'playbackRate') : null,
-  paused: typeof Object.getOwnPropertyDescriptor === 'function' ? Object.getOwnPropertyDescriptor(mediaProto, 'paused') : null,
-  duration: typeof Object.getOwnPropertyDescriptor === 'function' ? Object.getOwnPropertyDescriptor(mediaProto, 'duration') : null,
-};
-
 /**
  * Safely plays a media element, recovering from ended state, unstarted videos,
  * or prototype overrides by third-party players (e.g. Bilibili Nano/Dash).
@@ -76,13 +67,7 @@ export async function safePlayMedia(el) {
     const dur = el.duration ?? 0;
 
     if (isEnded || (dur > 0 && Math.abs(dur - curTime) <= 0.1)) {
-      try {
-        if (nativeMediaDescriptors.currentTime?.set) {
-          nativeMediaDescriptors.currentTime.set.call(el, 0);
-        } else {
-          el.currentTime = 0;
-        }
-      } catch {}
+      setNativeMediaProp(el, 'currentTime', 0);
     }
 
     let res;
@@ -94,9 +79,9 @@ export async function safePlayMedia(el) {
     }
 
     // 2. If instance play() returned nothing or failed, try native prototype play
-    if (!res && nativeMediaDescriptors.play) {
+    if (!res) {
       try {
-        res = nativeMediaDescriptors.play.call(el);
+        res = callNativeMediaMethod(el, 'play');
       } catch {}
     }
 
@@ -131,9 +116,7 @@ export function safePauseMedia(el) {
     }
   } catch {}
   try {
-    if (nativeMediaDescriptors.pause) {
-      nativeMediaDescriptors.pause.call(el);
-    }
+    callNativeMediaMethod(el, 'pause');
   } catch (err) {
     if (typeof console !== 'undefined') {
       console.warn('[sremote:action] safePauseMedia error:', err);
@@ -481,7 +464,7 @@ export async function executeMediaAction(target, action, value = undefined, opti
 
     case 'toggle':
       if (!isPureGet) {
-        const isPaused = el.paused !== undefined ? el.paused : (nativeMediaDescriptors.paused?.get?.call(el) ?? true);
+        const isPaused = getNativeMediaProp(el, 'paused', true);
         if (isPaused) await safePlayMedia(el);
         else safePauseMedia(el);
       }
@@ -490,32 +473,16 @@ export async function executeMediaAction(target, action, value = undefined, opti
     case 'stop':
       if (!isPureGet) {
         safePauseMedia(el);
-        try {
-          if (nativeMediaDescriptors.currentTime?.set) {
-            nativeMediaDescriptors.currentTime.set.call(el, 0);
-          } else {
-            el.currentTime = 0;
-          }
-        } catch {
-          el.currentTime = 0;
-        }
+        setNativeMediaProp(el, 'currentTime', 0);
       }
       return true;
 
     case 'seek':
       if (!isPureGet && value !== undefined && value !== null) {
-        const dur = el.duration || (nativeMediaDescriptors.duration?.get?.call(el) ?? 0) || 0;
-        const curTime = el.currentTime ?? nativeMediaDescriptors.currentTime?.get?.call(el) ?? 0;
+        const dur = getNativeMediaProp(el, 'duration', 0) || 0;
+        const curTime = getNativeMediaProp(el, 'currentTime', 0) ?? 0;
         const targetTime = Math.max(0, Math.min(dur || Infinity, curTime + Number(value)));
-        try {
-          if (nativeMediaDescriptors.currentTime?.set) {
-            nativeMediaDescriptors.currentTime.set.call(el, targetTime);
-          } else {
-            el.currentTime = targetTime;
-          }
-        } catch {
-          el.currentTime = targetTime;
-        }
+        setNativeMediaProp(el, 'currentTime', targetTime);
         try {
           el.dispatchEvent(new Event('seeking'));
           el.dispatchEvent(new Event('seeked'));
@@ -526,17 +493,9 @@ export async function executeMediaAction(target, action, value = undefined, opti
     case 'currenttime':
     case 'seekto':
       if (!isPureGet && value !== undefined && value !== null) {
-        const dur = el.duration || (nativeMediaDescriptors.duration?.get?.call(el) ?? 0) || 0;
+        const dur = getNativeMediaProp(el, 'duration', 0) || 0;
         const targetTime = Math.max(0, Math.min(dur || Infinity, Number(value)));
-        try {
-          if (nativeMediaDescriptors.currentTime?.set) {
-            nativeMediaDescriptors.currentTime.set.call(el, targetTime);
-          } else {
-            el.currentTime = targetTime;
-          }
-        } catch {
-          el.currentTime = targetTime;
-        }
+        setNativeMediaProp(el, 'currentTime', targetTime);
         try {
           el.dispatchEvent(new Event('seeking'));
           el.dispatchEvent(new Event('seeked'));
@@ -547,21 +506,8 @@ export async function executeMediaAction(target, action, value = undefined, opti
     case 'volume':
       if (!isPureGet && value !== undefined && value !== null) {
         const targetVol = Math.max(0, Math.min(1, Number(value)));
-        try {
-          if (nativeMediaDescriptors.volume?.set) {
-            nativeMediaDescriptors.volume.set.call(el, targetVol);
-          } else {
-            el.volume = targetVol;
-          }
-          if (nativeMediaDescriptors.muted?.set) {
-            nativeMediaDescriptors.muted.set.call(el, false);
-          } else {
-            el.muted = false;
-          }
-        } catch {
-          el.volume = targetVol;
-          el.muted = false;
-        }
+        setNativeMediaProp(el, 'volume', targetVol);
+        setNativeMediaProp(el, 'muted', false);
         try {
           el.dispatchEvent(new Event('volumechange'));
         } catch {}
@@ -571,17 +517,9 @@ export async function executeMediaAction(target, action, value = undefined, opti
     case 'muted':
     case 'mute':
       if (!isPureGet) {
-        const curMuted = el.muted ?? nativeMediaDescriptors.muted?.get?.call(el) ?? false;
+        const curMuted = getNativeMediaProp(el, 'muted', false);
         const nextMuted = typeof value === 'boolean' ? value : !curMuted;
-        try {
-          if (nativeMediaDescriptors.muted?.set) {
-            nativeMediaDescriptors.muted.set.call(el, nextMuted);
-          } else {
-            el.muted = nextMuted;
-          }
-        } catch {
-          el.muted = nextMuted;
-        }
+        setNativeMediaProp(el, 'muted', nextMuted);
         try {
           el.dispatchEvent(new Event('volumechange'));
         } catch {}
@@ -593,15 +531,7 @@ export async function executeMediaAction(target, action, value = undefined, opti
     case 'playbackrate':
       if (!isPureGet && value !== undefined && value !== null) {
         const rate = Number(value) || 1;
-        try {
-          if (nativeMediaDescriptors.playbackRate?.set) {
-            nativeMediaDescriptors.playbackRate.set.call(el, rate);
-          } else {
-            el.playbackRate = rate;
-          }
-        } catch {
-          el.playbackRate = rate;
-        }
+        setNativeMediaProp(el, 'playbackRate', rate);
         try {
           el.dispatchEvent(new Event('ratechange'));
         } catch {}
@@ -673,4 +603,4 @@ export async function executeMediaAction(target, action, value = undefined, opti
   }
 }
 
-export const actions = { execute: executeMediaAction, safePlay: safePlayMedia, safePause: safePauseMedia, wrapAdapter: wrapCustomAdapter };
+export const actions = { execute: executeMediaAction, safePlay: safePlayMedia, safePause: safePauseMedia, wrapAdapter: decorateCustomAdapter };
