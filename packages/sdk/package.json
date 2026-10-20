@@ -10,6 +10,7 @@
   "files": ["dist", "src/index.d.ts", "README.md"],
   "publishConfig": { "access": "public" },
   "scripts": { "build": "vite build", "dev": "vite build --watch" },
+  "devDependencies": { "@sremote/shared": "*" },
   "keywords": ["sremote", "iframe", "media", "video-controller", "sdk", "client"],
   "author": "sweetsea (https://github.com/SweetSea-ButImNotSweet)",
   "repository": { "type": "git", "url": "git+https://github.com/SweetSea-ButImNotSweet/sremote.git", "directory": "packages/sdk" },

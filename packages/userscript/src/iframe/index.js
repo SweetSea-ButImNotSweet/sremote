@@ -577,11 +577,6 @@ export function initIframeAgent() {
       return;
     }
 
-    if (lowerAction === 'hello') {
-      handshake.handleHelloMessage(event, data);
-      return;
-    }
-
     // Direct Window PostMessage Command Fallback (if port is not ready or failed)
     if (
       lowerAction === 'play' ||

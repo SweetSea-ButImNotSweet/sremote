@@ -427,32 +427,6 @@ export function createParentTransportManager({
       processSyn();
       return;
     }
-
-    // Legacy Fallback: accept without syn
-    if (lowerAction === 'accept') {
-      const iframeEl = findIframeElementBySource(event.source);
-      const instanceId = data.instanceId || generateInstanceId();
-      const iframeLoc = data.location || '';
-      const iframeOrigin = event.origin && event.origin !== 'null' ? event.origin : data.origin || '*';
-
-      if (event.ports && event.ports.length > 0) {
-        const port = event.ports[0];
-        setupPortForInstance(instanceId, port, iframeLoc, iframeOrigin, iframeEl, TRANSPORT_STATE.CONNECTED);
-        const inst = instances.get(instanceId);
-        if (inst) {
-          inst.authenticated = true;
-          instanceManager.setCurrentActiveInstanceId(instanceId);
-          inst.hasMedia = Boolean(data.hasMedia);
-          if (data.state) inst.state = data.state;
-          if (data.mediaType) inst.mediaType = data.mediaType;
-          if (data.capabilities) inst.capabilities = data.capabilities;
-          inst.lastSeen = Date.now();
-        }
-        notifyMediaCountChange();
-        emitGlobalEvent('accept', { ...data, instanceId });
-      }
-      return;
-    }
   };
 
   // --- 4. Grace Period Liveness & Heartbeat Sweeper ---

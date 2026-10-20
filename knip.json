@@ -1,11 +1,13 @@
 {
-  "$schema": "https://unpkg.com/knip@5/overview/configuration-schema.json",
+  "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     ".": {
       "entry": [
         "assets/js/header.js",
-        "demo/script.js",
-        "demo/i18n.js",
+        "demo/sdkless-sandbox/script.js",
+        "demo/sdkless-sandbox/i18n.js",
+        "demo/apps/*/app.js",
+        "demo/apps/common.js",
         "docs/assets/js/docs-viewer.js",
         "docs/assets/js/recipes-data.js",
         "docs/assets/js/recipes-runtime.js",
@@ -16,6 +18,7 @@
     },
     "packages/userscript": { "entry": ["src/main.js"], "project": ["src/**/*.{js,cjs,mjs}"] },
     "packages/shared": { "project": ["src/**/*.{js,cjs,mjs}"] },
+    "packages/sdk": { "entry": ["src/index.js"], "project": ["src/**/*.{js,cjs,mjs}"] },
     "packages/ready2use": { "entry": ["src/index.js"], "project": ["src/**/*.{js,cjs,mjs}"] }
   },
   "ignoreExportsUsedInFile": true,

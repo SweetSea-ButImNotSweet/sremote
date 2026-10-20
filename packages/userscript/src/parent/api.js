@@ -57,8 +57,8 @@ export function createExportedApi({
     lifecycleHandlers: { hello: helloWithInitiateTracking, lock: lifecycleHandlers.lockSession, bindMetadata: lifecycleHandlers.bindMetadata },
     debugApi,
     customExtensions: {
-      isDummy: false,
       isSremoteNative: true,
+      [Symbol.for('__sremote_native_driver__')]: true,
       [Symbol.for('__sremote_native__')]: true,
       [Symbol.for('__sremote_driver__')]: true,
       get logLevel() {

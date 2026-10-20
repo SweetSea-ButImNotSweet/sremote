@@ -15,10 +15,10 @@ function resolveSRemote(opts = {}) {
   if (typeof globalThis !== 'undefined' && globalThis[Symbol.for('__sremote_client__')]) {
     return globalThis[Symbol.for('__sremote_client__')];
   }
-  if (typeof window !== 'undefined' && window.sremote && !window.sremote.isDummy && window.sremote.adapters) {
+  if (typeof window !== 'undefined' && window.sremote?.adapters) {
     return window.sremote;
   }
-  if (typeof globalThis !== 'undefined' && globalThis.sremote && !globalThis.sremote.isDummy && globalThis.sremote.adapters) {
+  if (typeof globalThis !== 'undefined' && globalThis.sremote?.adapters) {
     return globalThis.sremote;
   }
   return null;

@@ -6,15 +6,10 @@ import { DriverCache } from './driver-cache.js';
 import { FluentInstance } from './fluent/instance.js';
 import { FluentGroupInstance } from './fluent/group.js';
 import { showInstallModal } from './ui/install-modal.js';
-import { lockGlobalSRemoteIfAbsent } from './guard.js';
 import { logger, ConnectionManager, HierarchicalFSM } from '@sremote/shared';
-
-// Execute immediately when module is loaded to protect window.sremote
-lockGlobalSRemoteIfAbsent();
 
 export class SRemoteClient {
   constructor(options = {}) {
-    lockGlobalSRemoteIfAbsent();
     this.options = { fallbackToDom: true, timeout: 2000, passkey: null, driverPriority: ['adapter', 'mediasession', 'dom', 'bridge'], ...options };
 
     const initialLogLevel = typeof this.options.logLevel === 'number' ? this.options.logLevel : this.options.debug ? logger.LEVELS.DEBUG : undefined;
@@ -26,7 +21,6 @@ export class SRemoteClient {
 
     const driverOptions = { ...this.options, logger: this.logger };
     this.bridgeDriver = new BridgeDriver(driverOptions);
-    this.userscriptDriver = this.bridgeDriver; // Alias for backward compatibility
     this.domDriver = new DomDriver(driverOptions);
     this.adapterDriver = new AdapterDriver({ ...driverOptions, instanceManager: this.domDriver.instanceManager, emitter: this.domDriver });
     this.mediaSessionDriver = new MediaSessionDriver(driverOptions);
@@ -81,39 +75,39 @@ export class SRemoteClient {
       get: (instanceId, key) => this.status(instanceId, key),
       capabilities: (instanceId, key) => this.capabilities(instanceId, key),
       getIframe: (instanceId, key) => {
-        if (this.userscriptDriver.isAvailable()) {
-          return this.userscriptDriver.getIframe(instanceId, key || this.options.passkey);
+        if (this.bridgeDriver.isAvailable()) {
+          return this.bridgeDriver.getIframe(instanceId, key || this.options.passkey);
         }
         return null;
       },
-      assign: (iframeOrSelector, customId) => this.userscriptDriver.assignId(iframeOrSelector, customId),
+      assign: (iframeOrSelector, customId) => this.bridgeDriver.assignId(iframeOrSelector, customId),
       setMultiMode: (mode, key) => {
         this.domDriver.setMultiMode(mode);
-        if (this.userscriptDriver.isAvailable()) {
-          this.userscriptDriver.setMultiMode(mode, key || this.options.passkey);
+        if (this.bridgeDriver.isAvailable()) {
+          this.bridgeDriver.setMultiMode(mode, key || this.options.passkey);
         }
       },
       isMultiMode: key => {
-        if (this.userscriptDriver.isAvailable()) {
-          return this.userscriptDriver.isMultiMode(key || this.options.passkey);
+        if (this.bridgeDriver.isAvailable()) {
+          return this.bridgeDriver.isMultiMode(key || this.options.passkey);
         }
         return this.domDriver.isMultiMode();
       },
       setExclusive: (mode, key) => {
         this.domDriver.setExclusive(mode);
-        if (this.userscriptDriver.isAvailable()) {
-          this.userscriptDriver.setExclusive(mode, key || this.options.passkey);
+        if (this.bridgeDriver.isAvailable()) {
+          this.bridgeDriver.setExclusive(mode, key || this.options.passkey);
         }
       },
       query: key => {
-        if (this.userscriptDriver.isAvailable()) {
-          return this.userscriptDriver.query(key || this.options.passkey);
+        if (this.bridgeDriver.isAvailable()) {
+          return this.bridgeDriver.query(key || this.options.passkey);
         }
         return [];
       },
       note: (dict, key) => {
-        if (this.userscriptDriver.isAvailable()) {
-          this.userscriptDriver.note(dict, key || this.options.passkey);
+        if (this.bridgeDriver.isAvailable()) {
+          this.bridgeDriver.note(dict, key || this.options.passkey);
         }
       },
     };
@@ -141,15 +135,20 @@ export class SRemoteClient {
     this.syncGlobalAdapters();
 
     this.rpc = {
-      call: (action, params, instanceId, key) => this.userscriptDriver.call(action, params, instanceId, key),
-      postMessage: (msg, origin, instanceId, from, key) => this.userscriptDriver.postWindowMessage(msg, origin, instanceId, from, key),
+      call: (action, params, instanceId, key) => {
+        if (instanceId) {
+          this.logger.warn('[sremote] Trailing instanceId argument on root rpc.call() is deprecated. Use sremote(target).rpc(action, params) instead.');
+        }
+        return this.bridgeDriver.call(action, params, instanceId, key);
+      },
+      postMessage: (msg, origin, instanceId, from, key) => this.bridgeDriver.postWindowMessage(msg, origin, instanceId, from, key),
       onMessage: (handler, key) => this.on('iframe:message', handler, key),
     };
 
     this.css = {
-      set: (css, instanceId, key) => this.userscriptDriver.call('setIframeCSS', { css }, instanceId, key),
-      get: (instanceId, key) => this.userscriptDriver.call('getIframeCSS', {}, instanceId, key),
-      remove: (instanceId, key) => this.userscriptDriver.call('removeIframeCSS', {}, instanceId, key),
+      set: (css, instanceId, key) => this.bridgeDriver.call('setIframeCSS', { css }, instanceId, key),
+      get: (instanceId, key) => this.bridgeDriver.call('getIframeCSS', {}, instanceId, key),
+      remove: (instanceId, key) => this.bridgeDriver.call('removeIframeCSS', {}, instanceId, key),
     };
 
     this.debug = {
@@ -190,12 +189,12 @@ export class SRemoteClient {
   }
 
   isUserscriptAvailable() {
-    return this.userscriptDriver.isAvailable();
+    return this.bridgeDriver.isAvailable();
   }
 
   syncLogLevelFromUserscript() {
-    if (this.userscriptDriver?.isAvailable()) {
-      const api = this.userscriptDriver.getApi();
+    if (this.bridgeDriver?.isAvailable()) {
+      const api = this.bridgeDriver.getApi();
       if (api && typeof api.logLevel === 'number' && api.logLevel >= 0) {
         this.logger.setLevel(api.logLevel);
       }
@@ -211,9 +210,9 @@ export class SRemoteClient {
         this.mode = 'dom-direct';
       }
 
-      await this.connectionManager.connect({ checkUserscriptAvailable: () => this.userscriptDriver.isAvailable(), checkAdapterAvailable: () => this.adapterDriver?.isAvailable() });
+      await this.connectionManager.connect({ checkUserscriptAvailable: () => this.bridgeDriver.isAvailable(), checkAdapterAvailable: () => this.adapterDriver?.isAvailable() });
 
-      if (this.userscriptDriver.isAvailable()) {
+      if (this.bridgeDriver.isAvailable()) {
         this.mode = 'userscript';
         this.syncLogLevelFromUserscript();
         this.syncGlobalAdapters();
@@ -498,9 +497,12 @@ export class SRemoteClient {
       }
     }
 
-    // 2. Query userscriptDriver
-    if (this.userscriptDriver.isAvailable()) {
-      return this.userscriptDriver.status(instanceId, key);
+    // 2. Query bridgeDriver
+    if (this.bridgeDriver.isAvailable()) {
+      if (instanceId) {
+        this.logger.warn('[sremote] Trailing instanceId argument on root status() is deprecated. Use sremote(target).status() instead.');
+      }
+      return this.bridgeDriver.status(instanceId, key);
     }
     if (this.domDriver) {
       return this.domDriver.status(instanceId);
@@ -519,9 +521,12 @@ export class SRemoteClient {
       }
     }
 
-    // 2. Query userscriptDriver
-    if (this.userscriptDriver.isAvailable()) {
-      return this.userscriptDriver.capabilities(targetOrId, key);
+    // 2. Query bridgeDriver
+    if (this.bridgeDriver.isAvailable()) {
+      if (targetOrId) {
+        this.logger.warn('[sremote] Trailing argument on root capabilities() is deprecated. Use sremote(target).capabilities() instead.');
+      }
+      return this.bridgeDriver.capabilities(targetOrId, key);
     }
     if (this.domDriver) {
       return this.domDriver.capabilities(targetOrId);
@@ -532,8 +537,8 @@ export class SRemoteClient {
   // --- Global Lifecycle & Events ---
   async hello(options, key) {
     await this.ready();
-    if (this.userscriptDriver.isAvailable()) {
-      const api = this.userscriptDriver.getApi();
+    if (this.bridgeDriver.isAvailable()) {
+      const api = this.bridgeDriver.getApi();
       if (api && typeof api.hello === 'function') {
         return api.hello(options, key || this.options.passkey);
       }
@@ -542,7 +547,7 @@ export class SRemoteClient {
   }
 
   bindMetadata(meta, instanceId, key) {
-    return this.userscriptDriver.bindMetadata(meta, instanceId, key);
+    return this.bridgeDriver.bindMetadata(meta, instanceId, key);
   }
 
   _setupInternalEventHub() {
@@ -612,9 +617,9 @@ export class SRemoteClient {
   }
 
   syncListenersToUserscript() {
-    if (this.userscriptDriver.isAvailable() && !this._unbindUserscriptDriver) {
+    if (this.bridgeDriver.isAvailable() && !this._unbindUserscriptDriver) {
       try {
-        this._unbindUserscriptDriver = this.userscriptDriver.on(
+        this._unbindUserscriptDriver = this.bridgeDriver.on(
           '*',
           payload => {
             const ev = payload?.event;
@@ -632,8 +637,8 @@ export class SRemoteClient {
 
   emit(event, payload) {
     this.logger.debug(`emit event '${event}':`, payload);
-    if (this.userscriptDriver.isAvailable()) {
-      const api = this.userscriptDriver.getApi();
+    if (this.bridgeDriver.isAvailable()) {
+      const api = this.bridgeDriver.getApi();
       if (api && typeof api.emit === 'function') {
         return api.emit(event, payload);
       }
@@ -655,7 +660,7 @@ export class SRemoteClient {
     this._eventListeners.get(ev).add(entry);
 
     // If userscript is active and not yet connected to hub, sync it
-    if (this.userscriptDriver.isAvailable() && !this._unbindUserscriptDriver) {
+    if (this.bridgeDriver.isAvailable() && !this._unbindUserscriptDriver) {
       this.syncListenersToUserscript();
     }
 
@@ -768,12 +773,12 @@ if (typeof globalThis !== 'undefined') {
 if (typeof window !== 'undefined') {
   try {
     clientSingleton[Symbol.for('__sremote_source__')] = 'wrapper';
+    clientSingleton[Symbol.for('__sremote_native_driver__')] = true;
     clientSingleton[Symbol.for('__sremote_native__')] = true;
     clientSingleton.isSremoteNative = true;
-    clientSingleton.isDummy = false;
 
-    // Define window.sremote if not existing or dummy
-    if (!window.sremote || window.sremote.isDummy) {
+    // Define window.sremote if not existing
+    if (!window.sremote) {
       window.sremote = sremote;
     }
   } catch {}

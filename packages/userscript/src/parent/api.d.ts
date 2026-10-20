@@ -280,7 +280,8 @@ export interface SRemoteParentApi {
   hello(options?: SRemoteHelloOptions, target?: Window | null): void | boolean;
 
   // Identification flags
-  isDummy: boolean;
+  /** @deprecated Removed in v4.0. Always false if present. */
+  isDummy?: boolean;
   isSremoteNative: boolean;
 
   // Optional Debug namespace (if enabled)

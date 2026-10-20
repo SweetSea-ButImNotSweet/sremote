@@ -273,11 +273,12 @@ export function showInstallModal(options = {}) {
     handleDetected();
   }
 
-  // Check if userscript is already present
+  // Check if driver or userscript is already present
   if (autoDetect && typeof window !== 'undefined') {
-    if (window.sremote && !window.sremote.isDummy) {
+    if (window[Symbol.for('__sremote_native_driver__')] || window.sremote?.isSremoteNative) {
       handleDetected();
     } else {
+      window.addEventListener('sremote:driver:ready', onUserscriptReady, { once: true });
       window.addEventListener('sremote:ready', onUserscriptReady, { once: true });
     }
   }

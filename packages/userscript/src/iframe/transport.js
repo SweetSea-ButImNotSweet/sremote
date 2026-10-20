@@ -141,25 +141,6 @@ export function createIframeTransportManager({ instanceIdGetter, setInstanceId, 
     log.log(`TCP Handshake ESTABLISHED (1-to-1) with parent [${callerOrigin}]`);
   }
 
-  // Legacy fallback support for older parent userscripts sending 'hello'
-  function handleHelloMessage(event, data) {
-    if (event.source === window) return;
-    if (transportState === IFRAME_TRANSPORT_STATE.CONNECTED) return;
-
-    if (data.assignedInstanceId && typeof data.assignedInstanceId === 'string') {
-      setInstanceId(data.assignedInstanceId);
-    }
-    if (data.css && typeof data.css === 'string') {
-      IframeStyleEngine.setDynamicCSS(data.css);
-    }
-    if (typeof data.treatAlmostEndAsEnd === 'boolean') {
-      treatAlmostEndAsEndSetter(data.treatAlmostEndAsEnd);
-    }
-
-    // If parent sent hello, respond by starting SYN flow
-    sendSyn();
-  }
-
   return {
     get primaryAuthorizedOrigin() {
       return primaryAuthorizedOrigin;
@@ -169,6 +150,5 @@ export function createIframeTransportManager({ instanceIdGetter, setInstanceId, 
     },
     sendSyn,
     handleSynAck,
-    handleHelloMessage,
   };
 }
