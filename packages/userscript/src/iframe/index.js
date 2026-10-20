@@ -15,6 +15,9 @@ import { createMediaEventEmitter } from './event-emitter.js';
 import { createIframeDispatcher } from './dispatcher.js';
 
 export function initIframeAgent() {
+  // ==========================================
+  // PHASE 1: Environment, Security & State Setup
+  // ==========================================
   let topOrigin = null;
   try {
     if (window.top?.location?.origin) {
@@ -80,6 +83,18 @@ export function initIframeAgent() {
 
   IframeStyleEngine.init('');
 
+  // ==========================================
+  // PHASE 2: Base Communication & Notification Core
+  // ==========================================
+  function closeMediaPort() {
+    if (mediaPort) {
+      try {
+        mediaPort.close();
+      } catch {}
+      mediaPort = null;
+    }
+  }
+
   function emitToParent(eventOrAction, payload = {}) {
     const lowerEvt = String(eventOrAction || '').toLowerCase();
     if (!handshake.primaryAuthorizedOrigin && lowerEvt !== 'accept' && lowerEvt !== 'requestblobclone') {
@@ -96,6 +111,41 @@ export function initIframeAgent() {
     }
   }
 
+  function sendMediaSessionState(action, specificValue) {
+    const ms = navigator.mediaSession || mockMediaSessionInstance;
+    const payload = {
+      playbackState: ms?.playbackState,
+      metadata: ms?.metadata ? { title: ms.metadata.title, artist: ms.metadata.artist, album: ms.metadata.album, artwork: ms.metadata.artwork || [] } : null,
+      supportedActions: Array.from(mockMediaSessionInstance._handlers.keys()),
+      isProgrammatic: Date.now() - programmaticActionTimestamp < 500,
+    };
+    if (action) payload.event = action;
+    if (specificValue !== undefined) payload.value = specificValue;
+    emitToParent(action || 'mediaSessionState', payload);
+  }
+
+  function notifyState(action, specificValue) {
+    const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
+    const mediaType = resolver.getMediaType();
+    switch (mediaType) {
+      case 'adapter':
+      case 'video':
+      case 'audio':
+        emitToParent(action || 'state', {
+          ...(action ? { event: action } : {}),
+          ...(specificValue !== undefined ? { value: specificValue } : {}),
+          isProgrammatic,
+          state: getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
+        });
+        break;
+      default:
+        sendMediaSessionState(action, specificValue);
+    }
+  }
+
+  // ==========================================
+  // PHASE 3: Resolver, Controller & RPC Registry
+  // ==========================================
   const { bindVideoEvents } = createMediaEventEmitter({
     resolver: {
       getActiveMedia: () => resolver.getActiveMedia(),
@@ -112,6 +162,87 @@ export function initIframeAgent() {
 
   const resolver = createMediaResolver(createdMediaPool, bindVideoEvents);
   mockMediaSessionInstance.setResolver(resolver);
+
+  const executeControl = createMediaController({
+    activeMediaGetter: resolver.getActiveMedia,
+    mediaTypeGetter: resolver.getMediaType,
+    resolveActiveMedia: resolver.resolveActiveMedia,
+    notifyState,
+    sendMediaSessionState,
+    configuredVolumeGetter: () => configuredVolume,
+    configuredVolumeSetter: v => {
+      configuredVolume = v;
+    },
+    configuredMutedSetter: m => {
+      configuredMuted = m;
+    },
+    programmaticActionTimestampSetter: ts => {
+      programmaticActionTimestamp = ts;
+    },
+    emitToParent,
+    instanceId,
+  });
+
+  const rpcRegistry = createRpcRegistry({
+    resolver,
+    instanceId,
+    emitToParent,
+    sendMediaSessionState,
+    notifyState,
+    getOriginalMediaSrc: () => originalMediaSrcBeforeDebug,
+    setOriginalMediaSrc: src => {
+      originalMediaSrcBeforeDebug = src;
+    },
+  });
+
+  // ==========================================
+  // PHASE 4: Transport & Dispatcher Wiring
+  // ==========================================
+  function bindPort(port) {
+    mediaPort = port;
+    port.onmessage = e => dispatcher.dispatchPortMessage(e, port);
+  }
+
+  const handshake = createIframeTransportManager({
+    instanceIdGetter: () => instanceId,
+    setInstanceId: id => {
+      instanceId = id;
+    },
+    resolver,
+    bindPort,
+    notifyState,
+    closeMediaPort,
+    treatAlmostEndAsEndSetter: val => {
+      treatAlmostEndAsEnd = val;
+    },
+  });
+
+  const dispatcher = createIframeDispatcher({
+    instanceIdGetter: () => instanceId,
+    resolver,
+    rpcRegistry,
+    executeControl,
+    emitToParent,
+    mockMediaSessionInstance,
+    handshake,
+  });
+
+  // ==========================================
+  // PHASE 5: Media Detection, Observer & Lifecycle
+  // ==========================================
+  function onMediaAvailable() {
+    const activeMedia = resolver.getActiveMedia();
+    const mediaType = resolver.getMediaType();
+    if ((mediaType === 'video' || mediaType === 'audio') && activeMedia) {
+      bindVideoEvents(activeMedia);
+    }
+    notifyState();
+    if (handshake.primaryAuthorizedOrigin) {
+      showConnectedIndicator(handshake.primaryAuthorizedOrigin, handshake.primaryAuthorizedOrigin);
+    }
+    const waiters = mediaWaiters.splice(0, mediaWaiters.length);
+    for (const w of waiters) w(true);
+  }
 
   function trackMediaElement(el) {
     if (!el) return;
@@ -166,132 +297,6 @@ export function initIframeAgent() {
     if (resolver.resolveActiveMedia() && (!had || oldType !== resolver.getMediaType())) {
       onMediaAvailable();
     }
-  }
-
-  try {
-    observer = new MutationObserver(scheduleActiveMediaLiveness);
-    const rootEl = document.documentElement || document;
-    if (rootEl) {
-      observer.observe(rootEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'currentSrc'] });
-    }
-  } catch {}
-
-  function sendMediaSessionState(action, specificValue) {
-    const ms = navigator.mediaSession || mockMediaSessionInstance;
-    const payload = {
-      playbackState: ms?.playbackState,
-      metadata: ms?.metadata ? { title: ms.metadata.title, artist: ms.metadata.artist, album: ms.metadata.album, artwork: ms.metadata.artwork || [] } : null,
-      supportedActions: Array.from(mockMediaSessionInstance._handlers.keys()),
-      isProgrammatic: Date.now() - programmaticActionTimestamp < 500,
-    };
-    if (action) payload.event = action;
-    if (specificValue !== undefined) payload.value = specificValue;
-    emitToParent(action || 'mediaSessionState', payload);
-  }
-
-  function notifyState(action, specificValue) {
-    const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
-    const mediaType = resolver.getMediaType();
-    switch (mediaType) {
-      case 'adapter':
-      case 'video':
-      case 'audio':
-        emitToParent(action || 'state', {
-          ...(action ? { event: action } : {}),
-          ...(specificValue !== undefined ? { value: specificValue } : {}),
-          isProgrammatic,
-          state: getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
-        });
-        break;
-      default:
-        sendMediaSessionState(action, specificValue);
-    }
-  }
-
-  const executeControl = createMediaController({
-    activeMediaGetter: resolver.getActiveMedia,
-    mediaTypeGetter: resolver.getMediaType,
-    resolveActiveMedia: resolver.resolveActiveMedia,
-    notifyState,
-    sendMediaSessionState,
-    configuredVolumeGetter: () => configuredVolume,
-    configuredVolumeSetter: v => {
-      configuredVolume = v;
-    },
-    configuredMutedSetter: m => {
-      configuredMuted = m;
-    },
-    programmaticActionTimestampSetter: ts => {
-      programmaticActionTimestamp = ts;
-    },
-    emitToParent,
-    instanceId,
-  });
-
-  const rpcRegistry = createRpcRegistry({
-    resolver,
-    instanceId,
-    emitToParent,
-    sendMediaSessionState,
-    notifyState,
-    getOriginalMediaSrc: () => originalMediaSrcBeforeDebug,
-    setOriginalMediaSrc: src => {
-      originalMediaSrcBeforeDebug = src;
-    },
-  });
-
-  function closeMediaPort() {
-    if (mediaPort) {
-      try {
-        mediaPort.close();
-      } catch {}
-      mediaPort = null;
-    }
-  }
-
-  const dispatcher = createIframeDispatcher({
-    instanceIdGetter: () => instanceId,
-    resolver,
-    rpcRegistry,
-    executeControl,
-    emitToParent,
-    mockMediaSessionInstance,
-    get handshake() {
-      return handshake;
-    },
-  });
-
-  function bindPort(port) {
-    mediaPort = port;
-    port.onmessage = e => dispatcher.dispatchPortMessage(e, port);
-  }
-
-  const handshake = createIframeTransportManager({
-    instanceIdGetter: () => instanceId,
-    setInstanceId: id => {
-      instanceId = id;
-    },
-    resolver,
-    bindPort,
-    notifyState,
-    closeMediaPort,
-    treatAlmostEndAsEndSetter: val => {
-      treatAlmostEndAsEnd = val;
-    },
-  });
-
-  function onMediaAvailable() {
-    const activeMedia = resolver.getActiveMedia();
-    const mediaType = resolver.getMediaType();
-    if ((mediaType === 'video' || mediaType === 'audio') && activeMedia) {
-      bindVideoEvents(activeMedia);
-    }
-    notifyState();
-    if (handshake.primaryAuthorizedOrigin) {
-      showConnectedIndicator(handshake.primaryAuthorizedOrigin, handshake.primaryAuthorizedOrigin);
-    }
-    const waiters = mediaWaiters.splice(0, mediaWaiters.length);
-    for (const w of waiters) w(true);
   }
 
   // Active GM-based Query Poller
