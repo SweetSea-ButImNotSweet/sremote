@@ -11,30 +11,56 @@
 
 export const LOG_LEVELS = { INHERIT: -1, SILENT: 0, ERROR: 1, INFO: 2, DEBUG: 3 };
 
-/**
- * Checks for global log level override from Userscript, DevTools, or Storage.
- * @returns {number|null}
- */
-export function getGlobalLogLevelOverride() {
+const GLOBAL_LOG_LEVEL_KEY = Symbol.for('__sremote_global_log_level__');
+
+// Auto-initialize global log level once from localStorage if present
+if (typeof globalThis !== 'undefined' && globalThis[GLOBAL_LOG_LEVEL_KEY] === undefined) {
   try {
-    if (typeof window !== 'undefined') {
-      // 1. Check window.sremote ONLY if it is native userscript driver (exclude wrapper proxy to prevent circular getter deadlock)
-      const cand = window.sremote;
-      if (cand?.isSremoteNative === true && cand[Symbol.for('__sremote_source__')] !== 'wrapper') {
-        if (typeof cand.logLevel === 'number' && cand.logLevel >= -1) {
-          return cand.logLevel;
-        }
-      }
-      // 2. Check localStorage
-      const storageVal = window.localStorage?.getItem('sremote:log_level');
-      if (storageVal !== null && storageVal !== undefined && storageVal !== '') {
-        const parsed = Number(storageVal);
-        if (!Number.isNaN(parsed) && parsed >= -1) {
-          return parsed;
-        }
+    const saved = globalThis.localStorage?.getItem('sremote:log_level');
+    if (saved !== null && saved !== undefined && saved !== '') {
+      const parsed = Number(saved);
+      if (!Number.isNaN(parsed) && parsed >= -1) {
+        globalThis[GLOBAL_LOG_LEVEL_KEY] = parsed;
       }
     }
   } catch {}
+}
+
+/**
+ * Sets the global log level across all SRemote modules, loggers, and contexts.
+ * @param {number|null} newLevel - Log level (0-3), -1 for INHERIT, or null to clear
+ */
+export function setGlobalLogLevel(newLevel) {
+  if (typeof globalThis === 'undefined') return;
+
+  if (typeof newLevel === 'number') {
+    globalThis[GLOBAL_LOG_LEVEL_KEY] = newLevel;
+    try {
+      globalThis.localStorage?.setItem('sremote:log_level', String(newLevel));
+    } catch {}
+  } else if (newLevel === null) {
+    delete globalThis[GLOBAL_LOG_LEVEL_KEY];
+    try {
+      globalThis.localStorage?.removeItem('sremote:log_level');
+    } catch {}
+  }
+
+  // Notify any other logger scopes or listeners in current window
+  try {
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('sremote:loglevel:change', { detail: { level: newLevel } }));
+    }
+  } catch {}
+}
+
+/**
+ * Gets the current active global log level override.
+ * @returns {number|null}
+ */
+export function getGlobalLogLevel() {
+  if (typeof globalThis !== 'undefined' && typeof globalThis[GLOBAL_LOG_LEVEL_KEY] === 'number') {
+    return globalThis[GLOBAL_LOG_LEVEL_KEY];
+  }
   return null;
 }
 
@@ -45,16 +71,12 @@ export function getGlobalLogLevelOverride() {
  * @returns {number}
  */
 export function resolveLogLevel(localLevel = undefined, defaultLevel = LOG_LEVELS.ERROR) {
-  if (typeof localLevel === 'number' && localLevel >= 0) {
-    const override = getGlobalLogLevelOverride();
-    if (override !== null && override !== undefined && override !== LOG_LEVELS.INHERIT) {
-      return override;
-    }
-    return localLevel;
+  const globalLevel = getGlobalLogLevel();
+  if (globalLevel !== null && globalLevel !== LOG_LEVELS.INHERIT) {
+    return globalLevel;
   }
-  const override = getGlobalLogLevelOverride();
-  if (override !== null && override !== undefined && override !== LOG_LEVELS.INHERIT) {
-    return override;
+  if (typeof localLevel === 'number' && localLevel >= 0) {
+    return localLevel;
   }
   return defaultLevel;
 }
@@ -205,7 +227,6 @@ export const logger = {
   default: defaultLogger,
   LEVELS: LOG_LEVELS,
   resolveLevel: resolveLogLevel,
-  getGlobalOverride: getGlobalLogLevelOverride,
   log: console_log,
   debug: console_debug,
   warn: console_warn,

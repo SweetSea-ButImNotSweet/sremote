@@ -6,7 +6,7 @@ import { DriverCache } from './driver-cache.js';
 import { FluentInstance } from './fluent/instance.js';
 import { FluentGroupInstance } from './fluent/group.js';
 import { showInstallModal } from './ui/install-modal.js';
-import { logger, ConnectionManager, HierarchicalFSM } from '@sremote/shared';
+import { logger, ConnectionManager, HierarchicalFSM, setGlobalLogLevel, getGlobalLogLevel } from '@sremote/shared';
 
 export class SRemoteClient {
   constructor(options = {}) {
@@ -168,27 +168,19 @@ export class SRemoteClient {
       dump: instanceId => this.bridgeDriver.getApi()?.debug?.dump?.(instanceId) ?? null,
       setSource: (src, instanceId) => this.bridgeDriver.getApi()?.debug?.setSource?.(src, instanceId),
       logLevel: newLevel => {
-        if (typeof newLevel === 'number') {
-          this.logger.setLevel(newLevel);
-          try {
-            if (typeof window !== 'undefined' && window.localStorage) {
-              window.localStorage.setItem('sremote:log_level', String(newLevel));
-            }
-          } catch {}
-        } else if (newLevel === null) {
-          try {
-            if (typeof window !== 'undefined' && window.localStorage) {
-              window.localStorage.removeItem('sremote:log_level');
-            }
-          } catch {}
+        if (newLevel !== undefined) {
+          setGlobalLogLevel(newLevel);
+          if (this.bridgeDriver?.isAvailable()) {
+            this.bridgeDriver.getApi()?.debug?.logLevel?.(newLevel);
+          }
         }
-        return this.bridgeDriver.getApi()?.debug?.logLevel?.(newLevel) ?? this.logger.level;
+        return getGlobalLogLevel() ?? this.logger.level;
       },
     };
   }
 
   get logLevel() {
-    return this.logger.level;
+    return getGlobalLogLevel() ?? this.logger.level;
   }
 
   set logLevel(newLevel) {
