@@ -116,6 +116,13 @@ export class SRemoteClient {
       register: (adapter, instanceId) => {
         const registeredId = this.adapterDriver.register(adapter, instanceId);
         this.syncGlobalAdapters();
+        if (this.mode === 'detecting' || !this.bridgeDriver.isAvailable()) {
+          this.mode = 'dom-direct';
+        }
+        if (this.connectionManager) {
+          this.connectionManager.notifyAdapterAvailable('Local adapter registered');
+        }
+        this._flushCommandQueue();
         return registeredId;
       },
       unregister: instanceId => {
@@ -236,7 +243,7 @@ export class SRemoteClient {
         this.syncLogLevelFromUserscript();
         this.syncGlobalAdapters();
         this.syncListenersToUserscript();
-      } else if (this.options.fallbackToDom) {
+      } else if (this.options.fallbackToDom || this.adapterDriver?.isAvailable()) {
         this.mode = 'dom-direct';
       } else {
         this.mode = 'unsupported';
@@ -349,13 +356,14 @@ export class SRemoteClient {
     if (!this.connectionManager.isConnected) {
       this.logger.debug(`[Auto-Queue] Enqueuing '${actionName}' while connecting...`);
       return new Promise((resolve, reject) => {
+        const queueTimeout = (this.options.timeout || 2000) + 1500;
         const timeoutTimer = setTimeout(() => {
           const idx = this._commandQueue.findIndex(q => q.timer === timeoutTimer);
           if (idx !== -1) {
             this._commandQueue.splice(idx, 1);
             reject(new Error(`[SRemote:SDK] Command '${actionName}' timed out waiting for connection.`));
           }
-        }, this.options.timeout || 2000);
+        }, queueTimeout);
 
         this._commandQueue.push({
           timer: timeoutTimer,

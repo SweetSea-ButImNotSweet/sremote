@@ -45,13 +45,31 @@ export class ConnectionManager {
     this._readyPromise = new Promise(resolve => {
       const { checkUserscriptAvailable, checkAdapterAvailable } = context;
 
+      let resolved = false;
+      let timer = null;
+
+      const cleanup = () => {
+        if (timer) clearTimeout(timer);
+        this._completeConnection = null;
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('sremote:driver:ready', onReadyEvent);
+          window.removeEventListener('sremote:ready', onReadyEvent);
+          window.removeEventListener('sremote:bridge:announce', onReadyEvent);
+        }
+      };
+
       const completeConnection = (mode, reason) => {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
         this.fsm.transitionTransport(TransportState.CONNECTED, { mode, reason });
         if (this.logger?.scope) {
           this.logger.scope('connection').log(reason);
         }
         resolve(true);
       };
+
+      this._completeConnection = completeConnection;
 
       // 1. Immediate check: userscript or custom adapter
       if (typeof checkUserscriptAvailable === 'function' && checkUserscriptAvailable()) {
@@ -65,23 +83,8 @@ export class ConnectionManager {
       }
 
       // 2. Event-driven handshake
-      let resolved = false;
-      let timer = null;
-
       const onReadyEvent = evt => {
-        if (resolved) return;
-        resolved = true;
-        cleanup();
         completeConnection('userscript', `Received announce/ready event: ${evt?.type || 'ready'}`);
-      };
-
-      const cleanup = () => {
-        if (timer) clearTimeout(timer);
-        if (typeof window !== 'undefined') {
-          window.removeEventListener('sremote:driver:ready', onReadyEvent);
-          window.removeEventListener('sremote:ready', onReadyEvent);
-          window.removeEventListener('sremote:bridge:announce', onReadyEvent);
-        }
       };
 
       if (typeof window !== 'undefined') {
@@ -92,15 +95,13 @@ export class ConnectionManager {
 
       // 3. Fallback timeout
       timer = setTimeout(() => {
-        if (resolved) return;
-        resolved = true;
-        cleanup();
-
         if (typeof checkUserscriptAvailable === 'function' && checkUserscriptAvailable()) {
           completeConnection('userscript', 'Userscript detected after wait timeout');
         } else if (this.options.fallbackToDom) {
           completeConnection('dom-direct', 'Userscript not detected. Falling back to Mode: dom-direct');
         } else {
+          resolved = true;
+          cleanup();
           this.fsm.transitionTransport(TransportState.TERMINATED, { reason: 'Handshake timeout' });
           if (this.logger?.warn) {
             this.logger.warn('Connection handshake timed out and fallback disabled');
@@ -111,6 +112,22 @@ export class ConnectionManager {
     });
 
     return this._readyPromise;
+  }
+
+  /**
+   * Notifies the connection manager that a local adapter has been registered,
+   * immediately completing the handshake without waiting for userscript timeout.
+   * @param {string} [reason='Local adapter registered']
+   */
+  notifyAdapterAvailable(reason = 'Local adapter registered') {
+    if (this.fsm.transportState === TransportState.CONNECTED) {
+      return;
+    }
+    if (typeof this._completeConnection === 'function') {
+      this._completeConnection('dom-direct', reason);
+    } else {
+      this.fsm.transitionTransport(TransportState.CONNECTED, { mode: 'dom-direct', reason });
+    }
   }
 
   notifyMediaChange(hasMedia, mediaState = MediaState.READY) {
@@ -124,11 +141,13 @@ export class ConnectionManager {
 
   disconnect() {
     this._readyPromise = null;
+    this._completeConnection = null;
     this.fsm.transitionTransport(TransportState.DISCONNECTED);
   }
 
   terminate() {
     this._readyPromise = null;
+    this._completeConnection = null;
     this.fsm.transitionTransport(TransportState.TERMINATED);
   }
 }
