@@ -498,9 +498,11 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
   }
 
   // Subscribe to rawAdapter if it implements an event emitter contract (.on)
+  let isEmitting = false;
   let unbindAdapterEvents = null;
   if (typeof rawAdapter.on === 'function') {
     unbindAdapterEvents = rawAdapter.on('*', payload => {
+      if (isEmitting) return; // Prevent echo loop from adapter.emit -> rawAdapter.on -> adapter.emit
       const eventName = payload?.event || payload?.type;
       if (eventName) {
         adapter.emit(eventName, payload);
@@ -511,52 +513,58 @@ export function wrapCustomAdapter(rawAdapter, options = {}) {
   let lastTimeupdateAdapterLog = 0;
 
   adapter.emit = (event, payload = {}) => {
-    const ev = String(event || '').toLowerCase();
-    const now = Date.now();
-    lastAdapterEmitTimeMap.set(ev, now);
-
+    if (isEmitting) return;
+    isEmitting = true;
     try {
-      originalEmit?.(event, payload);
-    } catch {}
+      const ev = String(event || '').toLowerCase();
+      const now = Date.now();
+      lastAdapterEmitTimeMap.set(ev, now);
 
-    const payloadObj = typeof payload === 'object' && payload !== null ? payload : { value: payload };
-    const isProgrammatic =
-      payloadObj.isProgrammatic ??
-      payloadObj.programmatic ??
-      resolveIsProgrammatic({ eventName: ev, instanceId, value: payloadObj.value, tracker: getGlobalTransactionTracker(), timestampGetter: () => programmaticActionTimestamp });
-
-    const state = extractMediaState(adapter);
-    const fullPayload = createEventPayload(ev, { source, instanceId, mediaType: 'adapter', isProgrammatic, ...(state ? { state } : {}), ...payloadObj });
-
-    const shouldLogAdapterEvent = ev !== 'timeupdate' || now - lastTimeupdateAdapterLog >= TIMEUPDATE_LOG_THROTTLE_MS;
-    if (ev === 'timeupdate' && shouldLogAdapterEvent) {
-      lastTimeupdateAdapterLog = now;
-    }
-
-    if (shouldLogAdapterEvent) {
-      defaultLogger.scope('event').debug(`Adapter emit -> ${ev}`, fullPayload);
-    }
-
-    if (typeof onEmit === 'function') {
       try {
-        onEmit(ev, fullPayload);
+        originalEmit?.(event, payload);
       } catch {}
 
-      // Automatically trigger unified 'state' event for state-changing events
-      if (ev !== 'state' && STATE_CHANGING_EVENTS.has(ev)) {
-        try {
-          const statePayload = createEventPayload('state', {
-            source,
-            instanceId,
-            mediaType: 'adapter',
-            triggerEvent: ev,
-            isProgrammatic,
-            state,
-            ...(typeof payload === 'object' && payload !== null ? payload : {}),
-          });
-          onEmit('state', statePayload);
-        } catch {}
+      const payloadObj = typeof payload === 'object' && payload !== null ? payload : { value: payload };
+      const isProgrammatic =
+        payloadObj.isProgrammatic ??
+        payloadObj.programmatic ??
+        resolveIsProgrammatic({ eventName: ev, instanceId, value: payloadObj.value, tracker: getGlobalTransactionTracker(), timestampGetter: () => programmaticActionTimestamp });
+
+      const state = extractMediaState(adapter);
+      const fullPayload = createEventPayload(ev, { source, instanceId, mediaType: 'adapter', isProgrammatic, ...(state ? { state } : {}), ...payloadObj });
+
+      const shouldLogAdapterEvent = ev !== 'timeupdate' || now - lastTimeupdateAdapterLog >= TIMEUPDATE_LOG_THROTTLE_MS;
+      if (ev === 'timeupdate' && shouldLogAdapterEvent) {
+        lastTimeupdateAdapterLog = now;
       }
+
+      if (shouldLogAdapterEvent) {
+        defaultLogger.scope('event').debug(`Adapter emit -> ${ev}`, fullPayload);
+      }
+
+      if (typeof onEmit === 'function') {
+        try {
+          onEmit(ev, fullPayload);
+        } catch {}
+
+        // Automatically trigger unified 'state' event for state-changing events
+        if (ev !== 'state' && STATE_CHANGING_EVENTS.has(ev)) {
+          try {
+            const statePayload = createEventPayload('state', {
+              source,
+              instanceId,
+              mediaType: 'adapter',
+              triggerEvent: ev,
+              isProgrammatic,
+              state,
+              ...(typeof payload === 'object' && payload !== null ? payload : {}),
+            });
+            onEmit('state', statePayload);
+          } catch {}
+        }
+      }
+    } finally {
+      isEmitting = false;
     }
   };
 
