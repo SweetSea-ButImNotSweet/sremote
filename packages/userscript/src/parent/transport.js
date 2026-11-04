@@ -40,6 +40,16 @@ export function createParentTransport({
   // --- Helper: Find Iframe Element from Window Source ---
   function findIframeElementBySource(sourceWindow, root = document) {
     if (!sourceWindow || !root) return null;
+
+    // Fast path: O(1) WeakMap lookup for known source window
+    if (root === document) {
+      const cachedId = sourceWindowToInstanceMap.get(sourceWindow);
+      if (cachedId) {
+        const cachedEl = assignedIframeIdMap.get(cachedId) || instances.get(cachedId)?.iframeEl;
+        if (cachedEl?.isConnected) return cachedEl;
+      }
+    }
+
     try {
       const iframes = root.querySelectorAll ? root.querySelectorAll('iframe') : [];
       for (let i = 0; i < iframes.length; i++) {

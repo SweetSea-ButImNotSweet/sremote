@@ -1,4 +1,4 @@
-import { capabilities, dom, events, state } from '@sremote/shared';
+import { capabilities, dom, events, state, TIMEUPDATE_THROTTLE_MS, TIMEUPDATE_LOG_THROTTLE_MS } from '@sremote/shared';
 import { generateInstanceId } from '../core/utils.js';
 import { logger } from '../config.js';
 
@@ -75,9 +75,7 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
     }
 
     let lastTimeupdate = 0;
-    const TIMEUPDATE_THROTTLE_MS = 250;
     let lastTimeupdateLog = 0;
-    const TIMEUPDATE_LOG_THROTTLE_MS = 2000;
 
     // Standard event listener binding without prototype hooking
     const unbind = events.bind(

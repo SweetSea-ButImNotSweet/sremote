@@ -4,8 +4,8 @@
  * Single Source of Truth for action dispatching.
  */
 
-import { decorateCustomAdapter } from '../events.js';
-import { nativeMediaDescriptors, getNativeMediaProp, setNativeMediaProp, callNativeMediaMethod } from '../dom/native-media.js';
+import { wrapAdapter } from '../events.js';
+import { nativeMediaDescriptors, getNativeMediaProp, setNativeMediaProp, callNative } from '../dom/native-media.js';
 
 export { nativeMediaDescriptors };
 
@@ -81,7 +81,7 @@ export async function safePlayMedia(el) {
     // 2. If instance play() returned nothing or failed, try native prototype play
     if (!res) {
       try {
-        res = callNativeMediaMethod(el, 'play');
+        res = callNative(el, 'play');
       } catch {}
     }
 
@@ -116,7 +116,7 @@ export function safePauseMedia(el) {
     }
   } catch {}
   try {
-    callNativeMediaMethod(el, 'pause');
+    callNative(el, 'pause');
   } catch (err) {
     if (typeof console !== 'undefined') {
       console.warn('[sremote:action] safePauseMedia error:', err);
@@ -125,258 +125,210 @@ export function safePauseMedia(el) {
 }
 
 /**
- * Executes a normalized action on a target (HTMLMediaElement or Custom Adapter).
- *
- * @param {HTMLMediaElement|Object} target
- * @param {string} action
- * @param {*} [value]
- * @param {Object} [options={}]
- * @param {boolean} [options.isPureGet=false]
- * @param {Object} [options.transactionTracker=null]
- * @param {string} [options.instanceId='unknown']
- * @returns {Promise<any>}
+ * Executes a normalized action on a Custom Adapter target.
+ * @private
  */
-export async function executeMediaAction(target, action, value = undefined, options = {}) {
-  if (!target) return false;
-  const { isPureGet = false, transactionTracker = null, instanceId = 'unknown', logger = null } = options;
-  const norm = String(action || '').toLowerCase();
+async function executeAdapterAction(target, norm, value, isPureGet, logger) {
+  let emittedDuringAction = false;
+  const autoEmit = (eventName, payload = {}) => {
+    if (!isPureGet && typeof target.emit === 'function' && !emittedDuringAction) {
+      try {
+        target.emit(eventName, { programmatic: true, isProgrammatic: true, ...payload });
+      } catch (err) {
+        if (logger?.warn) logger.warn(`[sremote] Error auto-emitting '${eventName}':`, err);
+      }
+    }
+  };
 
-  const isAdapter = Boolean(
-    target &&
-      (typeof target.getState === 'function' ||
-        typeof target.useAdapter === 'function' ||
-        target[Symbol.for('__sremote_adapter__')] ||
-        target.source === 'adapter' ||
-        target.isAdapter === true ||
-        target.capabilities?.hasAdapter ||
-        (!target.tagName && typeof target.play === 'function' && typeof target.pause === 'function')),
-  );
+  switch (norm) {
+    case 'play':
+      if (!isPureGet && typeof target.play === 'function') {
+        await target.play();
+        autoEmit('play');
+      }
+      return true;
 
-  if (!isPureGet && transactionTracker && typeof transactionTracker.startTransaction === 'function') {
-    transactionTracker.startTransaction(norm, value, instanceId);
-  }
+    case 'pause':
+      if (!isPureGet && typeof target.pause === 'function') {
+        await target.pause();
+        autoEmit('pause');
+      }
+      return true;
 
-  if (logger?.debug) {
-    logger.debug(`[ActionEngine] Executing '${norm}' on ${isAdapter ? 'Adapter' : target.tagName || 'Object'}`, { value, instanceId });
-  }
-
-  // --- 1. Custom Adapter Execution ---
-  if (isAdapter) {
-    let emittedDuringAction = false;
-    const autoEmit = (eventName, payload = {}) => {
-      if (!isPureGet && typeof target.emit === 'function' && !emittedDuringAction) {
-        try {
-          target.emit(eventName, { programmatic: true, isProgrammatic: true, ...payload });
-        } catch (err) {
-          if (logger?.warn) logger.warn(`[sremote] Error auto-emitting '${eventName}':`, err);
+    case 'toggle':
+      if (!isPureGet) {
+        if (typeof target.toggle === 'function') {
+          await target.toggle();
+          const isPaused = typeof target.paused === 'function' ? target.paused() : typeof target.paused === 'boolean' ? target.paused : null;
+          if (isPaused !== null) autoEmit(isPaused ? 'pause' : 'play');
+          else autoEmit('toggle');
+        } else if (typeof target.play === 'function' && typeof target.pause === 'function') {
+          const isPaused = typeof target.paused === 'function' ? target.paused() : typeof target.paused === 'boolean' ? target.paused : true;
+          if (isPaused) {
+            await target.play();
+            autoEmit('play');
+          } else {
+            await target.pause();
+            autoEmit('pause');
+          }
         }
       }
-    };
+      return true;
 
-    switch (norm) {
-      case 'play':
-        if (!isPureGet && typeof target.play === 'function') {
-          await target.play();
-          autoEmit('play');
-        }
-        return true;
-
-      case 'pause':
-        if (!isPureGet && typeof target.pause === 'function') {
-          await target.pause();
-          autoEmit('pause');
-        }
-        return true;
-
-      case 'toggle':
-        if (!isPureGet) {
-          if (typeof target.toggle === 'function') {
-            await target.toggle();
-            const isPaused = typeof target.paused === 'function' ? target.paused() : typeof target.paused === 'boolean' ? target.paused : null;
-            if (isPaused !== null) autoEmit(isPaused ? 'pause' : 'play');
-            else autoEmit('toggle');
-          } else if (typeof target.play === 'function' && typeof target.pause === 'function') {
-            const isPaused = typeof target.paused === 'function' ? target.paused() : typeof target.paused === 'boolean' ? target.paused : true;
-            if (isPaused) {
-              await target.play();
-              autoEmit('play');
-            } else {
-              await target.pause();
-              autoEmit('pause');
-            }
+    case 'stop':
+      if (!isPureGet) {
+        if (typeof target.stop === 'function') {
+          await target.stop();
+        } else {
+          if (typeof target.pause === 'function') await target.pause();
+          if (typeof target.seekTo === 'function') {
+            await target.seekTo(0);
+          } else if (typeof target.setCurrentTime === 'function') {
+            await target.setCurrentTime(0);
           }
         }
-        return true;
+        autoEmit('pause');
+        autoEmit('stop');
+      }
+      return true;
 
-      case 'stop':
-        if (!isPureGet) {
-          if (typeof target.stop === 'function') {
-            await target.stop();
-          } else {
-            if (typeof target.pause === 'function') await target.pause();
-            if (typeof target.seekTo === 'function') {
-              await target.seekTo(0);
-            } else if (typeof target.setCurrentTime === 'function') {
-              await target.setCurrentTime(0);
-            }
+    case 'seek':
+      if (!isPureGet) {
+        if (typeof target.seek === 'function') {
+          await target.seek(Number(value));
+        } else if (typeof target.seekTo === 'function' || typeof target.setCurrentTime === 'function') {
+          let cur = 0;
+          if (typeof target.getCurrentTime === 'function') {
+            cur = Number((await target.getCurrentTime()) || 0);
           }
-          autoEmit('pause');
-          autoEmit('stop');
-        }
-        return true;
-
-      case 'seek':
-        if (!isPureGet) {
-          if (typeof target.seek === 'function') {
-            await target.seek(Number(value));
-          } else if (typeof target.seekTo === 'function' || typeof target.setCurrentTime === 'function') {
-            let cur = 0;
-            if (typeof target.getCurrentTime === 'function') {
-              cur = Number((await target.getCurrentTime()) || 0);
-            }
-            const targetTime = Math.max(0, cur + Number(value));
-            if (typeof target.seekTo === 'function') {
-              await target.seekTo(targetTime);
-            } else {
-              await target.setCurrentTime(targetTime);
-            }
-          }
-          autoEmit('seeking');
-          autoEmit('seeked');
-        }
-        return true;
-
-      case 'currenttime':
-      case 'seekto':
-        if (!isPureGet) {
-          const targetTime = Number(value);
+          const targetTime = Math.max(0, cur + Number(value));
           if (typeof target.seekTo === 'function') {
             await target.seekTo(targetTime);
-          } else if (typeof target.setCurrentTime === 'function') {
-            await target.setCurrentTime(targetTime);
-          } else if (typeof target.seek === 'function') {
-            let cur = 0;
-            if (typeof target.getCurrentTime === 'function') {
-              cur = Number((await target.getCurrentTime()) || 0);
-            }
-            await target.seek(targetTime - cur);
-          }
-          autoEmit('seeking');
-          autoEmit('seeked');
-        }
-        return true;
-
-      case 'volume':
-        if (!isPureGet) {
-          const targetVol = Math.max(0, Math.min(1, Number(value)));
-          if (targetVol > 0) {
-            adapterPreviousVolumeMap.set(target, targetVol);
-          }
-          if (typeof target.setVolume === 'function') {
-            await target.setVolume(targetVol);
-          } else if (typeof target.volume === 'function') {
-            await target.volume(targetVol);
-          } else if (target.mediaElement) {
-            target.mediaElement.volume = targetVol;
-            target.mediaElement.muted = false;
-          }
-
-          if (typeof target.setMuted === 'function') {
-            try {
-              await target.setMuted(false);
-            } catch {}
-          } else if (typeof target.mute === 'function') {
-            try {
-              await target.mute(false);
-            } catch {}
-          }
-
-          autoEmit('volumechange', { volume: targetVol, muted: false });
-        }
-        return true;
-
-      case 'muted':
-      case 'mute':
-        if (!isPureGet) {
-          const isMuted = Boolean(value);
-          const prevVol = adapterPreviousVolumeMap.get(target) || 1;
-          if (isMuted) {
-            let curVol = 1;
-            if (typeof target.getVolume === 'function') {
-              try {
-                curVol = Number(await target.getVolume());
-              } catch {}
-            } else if (target.mediaElement) {
-              curVol = target.mediaElement.volume;
-            }
-            if (curVol > 0) adapterPreviousVolumeMap.set(target, curVol);
-
-            if (typeof target.setMuted === 'function') {
-              await target.setMuted(true);
-            } else if (typeof target.mute === 'function') {
-              await target.mute(true);
-            } else if (typeof target.setVolume === 'function') {
-              await target.setVolume(0);
-            } else if (typeof target.volume === 'function') {
-              await target.volume(0);
-            } else if (target.mediaElement) {
-              target.mediaElement.muted = true;
-            }
           } else {
-            if (typeof target.setMuted === 'function') {
-              await target.setMuted(false);
-            } else if (typeof target.mute === 'function') {
-              await target.mute(false);
-            }
-
-            if (typeof target.setVolume === 'function') {
-              await target.setVolume(prevVol);
-            } else if (typeof target.volume === 'function') {
-              await target.volume(prevVol);
-            } else if (target.mediaElement) {
-              target.mediaElement.muted = false;
-              target.mediaElement.volume = prevVol;
-            }
+            await target.setCurrentTime(targetTime);
           }
-          autoEmit('volumechange', { muted: isMuted });
         }
-        return true;
+        autoEmit('seeking');
+        autoEmit('seeked');
+      }
+      return true;
 
-      case 'speed':
-      case 'rate':
-      case 'playbackrate':
-        if (!isPureGet) {
-          const rate = Number(value) || 1;
-          if (typeof target.setPlaybackRate === 'function') {
-            await target.setPlaybackRate(rate);
-          } else if (typeof target.setSpeed === 'function') {
-            await target.setSpeed(rate);
-          } else if (typeof target.speed === 'function') {
-            await target.speed(rate);
+    case 'currenttime':
+    case 'seekto':
+      if (!isPureGet) {
+        const targetTime = Number(value);
+        if (typeof target.seekTo === 'function') {
+          await target.seekTo(targetTime);
+        } else if (typeof target.setCurrentTime === 'function') {
+          await target.setCurrentTime(targetTime);
+        } else if (typeof target.seek === 'function') {
+          let cur = 0;
+          if (typeof target.getCurrentTime === 'function') {
+            cur = Number((await target.getCurrentTime()) || 0);
+          }
+          await target.seek(targetTime - cur);
+        }
+        autoEmit('seeking');
+        autoEmit('seeked');
+      }
+      return true;
+
+    case 'volume':
+      if (!isPureGet) {
+        const targetVol = Math.max(0, Math.min(1, Number(value)));
+        if (targetVol > 0) {
+          adapterPreviousVolumeMap.set(target, targetVol);
+        }
+        if (typeof target.setVolume === 'function') {
+          await target.setVolume(targetVol);
+        } else if (typeof target.volume === 'function') {
+          await target.volume(targetVol);
+        } else if (target.mediaElement) {
+          target.mediaElement.volume = targetVol;
+          target.mediaElement.muted = false;
+        }
+
+        if (typeof target.setMuted === 'function') {
+          try {
+            await target.setMuted(false);
+          } catch {}
+        } else if (typeof target.mute === 'function') {
+          try {
+            await target.mute(false);
+          } catch {}
+        }
+
+        autoEmit('volumechange', { volume: targetVol, muted: false });
+      }
+      return true;
+
+    case 'muted':
+    case 'mute':
+      if (!isPureGet) {
+        const isMuted = Boolean(value);
+        const prevVol = adapterPreviousVolumeMap.get(target) || 1;
+        if (isMuted) {
+          let curVol = 1;
+          if (typeof target.getVolume === 'function') {
+            try {
+              curVol = Number(await target.getVolume());
+            } catch {}
           } else if (target.mediaElement) {
-            target.mediaElement.playbackRate = rate;
+            curVol = target.mediaElement.volume;
           }
-          autoEmit('ratechange', { playbackRate: rate });
+          if (curVol > 0) {
+            adapterPreviousVolumeMap.set(target, curVol);
+          }
         }
-        return true;
 
-      case 'pip':
-      case 'enterpip':
-        if (!isPureGet) {
+        if (typeof target.setMuted === 'function') {
+          await target.setMuted(isMuted);
+        } else if (typeof target.mute === 'function') {
+          await target.mute(isMuted);
+        } else if (typeof target.setVolume === 'function') {
+          await target.setVolume(isMuted ? 0 : prevVol);
+        } else if (typeof target.volume === 'function') {
+          await target.volume(isMuted ? 0 : prevVol);
+        } else if (target.mediaElement) {
+          target.mediaElement.muted = isMuted;
+        }
+
+        autoEmit('volumechange', { muted: isMuted });
+      }
+      return true;
+
+    case 'speed':
+    case 'rate':
+    case 'playbackrate':
+      if (!isPureGet && value !== undefined && value !== null) {
+        const rate = Number(value) || 1;
+        if (typeof target.setPlaybackRate === 'function') {
+          await target.setPlaybackRate(rate);
+        } else if (typeof target.playbackRate === 'function') {
+          await target.playbackRate(rate);
+        } else if (typeof target.setSpeed === 'function') {
+          await target.setSpeed(rate);
+        } else if (typeof target.speed === 'function') {
+          await target.speed(rate);
+        } else if (target.mediaElement) {
+          target.mediaElement.playbackRate = rate;
+        }
+        autoEmit('ratechange', { playbackRate: rate });
+      }
+      return true;
+
+    case 'pip':
+      if (!isPureGet) {
+        const shouldEnable = typeof value === 'boolean' ? value : true;
+        if (shouldEnable) {
           if (typeof target.requestPip === 'function') {
             await target.requestPip(true);
           } else if (typeof target.pip === 'function') {
             await target.pip(true);
-          } else if (target.mediaElement && typeof document !== 'undefined') {
-            if (target.mediaElement.requestPictureInPicture) {
-              await target.mediaElement.requestPictureInPicture();
-            }
+          } else if (target.mediaElement && typeof target.mediaElement.requestPictureInPicture === 'function') {
+            await target.mediaElement.requestPictureInPicture();
           }
-        }
-        return true;
-
-      case 'exitpip':
-        if (!isPureGet) {
+        } else {
           if (typeof target.requestPip === 'function') {
             await target.requestPip(false);
           } else if (typeof target.pip === 'function') {
@@ -385,74 +337,102 @@ export async function executeMediaAction(target, action, value = undefined, opti
             await document.exitPictureInPicture?.();
           }
         }
-        return true;
+      }
+      return true;
 
-      case 'load':
-        if (!isPureGet && typeof target.load === 'function') {
-          return target.load(value);
+    case 'enterpip':
+      if (!isPureGet) {
+        if (typeof target.requestPip === 'function') {
+          await target.requestPip(true);
+        } else if (typeof target.pip === 'function') {
+          await target.pip(true);
+        } else if (target.mediaElement && typeof target.mediaElement.requestPictureInPicture === 'function') {
+          await target.mediaElement.requestPictureInPicture();
         }
-        return false;
+      }
+      return true;
 
-      case 'quality':
-        if (!isPureGet && typeof target.setQuality === 'function') {
-          return target.setQuality(value);
+    case 'exitpip':
+      if (!isPureGet) {
+        if (typeof target.requestPip === 'function') {
+          await target.requestPip(false);
+        } else if (typeof target.pip === 'function') {
+          await target.pip(false);
+        } else if (typeof document !== 'undefined' && document.pictureInPictureElement) {
+          await document.exitPictureInPicture?.();
         }
-        return false;
+      }
+      return true;
 
-      case 'getqualities':
-        if (typeof target.getQualities === 'function') {
-          return target.getQualities();
+    case 'load':
+      if (!isPureGet && typeof target.load === 'function') {
+        return target.load(value);
+      }
+      return false;
+
+    case 'quality':
+      if (!isPureGet && typeof target.setQuality === 'function') {
+        return target.setQuality(value);
+      }
+      return false;
+
+    case 'getqualities':
+      if (typeof target.getQualities === 'function') {
+        return target.getQualities();
+      }
+      return [];
+
+    case 'subtitle':
+      if (!isPureGet && typeof target.setSubtitle === 'function') {
+        return target.setSubtitle(value);
+      }
+      return false;
+
+    case 'getsubtitles':
+      if (typeof target.getSubtitles === 'function') {
+        return target.getSubtitles();
+      }
+      return [];
+
+    case 'shuffle':
+      if (!isPureGet && typeof target.setShuffle === 'function') {
+        return target.setShuffle(value);
+      }
+      return false;
+
+    case 'repeat':
+      if (!isPureGet) {
+        if (typeof target.setRepeat === 'function') {
+          return target.setRepeat(value);
         }
-        return [];
-
-      case 'subtitle':
-        if (!isPureGet && typeof target.setSubtitle === 'function') {
-          return target.setSubtitle(value);
+        if (target.mediaElement) {
+          target.mediaElement.loop = value === true || value === 'one';
         }
-        return false;
+      }
+      return true;
 
-      case 'getsubtitles':
-        if (typeof target.getSubtitles === 'function') {
-          return target.getSubtitles();
-        }
-        return [];
+    case 'next':
+      if (!isPureGet && typeof target.next === 'function') {
+        return target.next();
+      }
+      return false;
 
-      case 'shuffle':
-        if (!isPureGet && typeof target.setShuffle === 'function') {
-          return target.setShuffle(value);
-        }
-        return false;
+    case 'previous':
+      if (!isPureGet && typeof target.previous === 'function') {
+        return target.previous();
+      }
+      return false;
 
-      case 'repeat':
-        if (!isPureGet) {
-          if (typeof target.setRepeat === 'function') {
-            return target.setRepeat(value);
-          }
-          if (target.mediaElement) {
-            target.mediaElement.loop = value === true || value === 'one';
-          }
-        }
-        return true;
-
-      case 'next':
-        if (!isPureGet && typeof target.next === 'function') {
-          return target.next();
-        }
-        return false;
-
-      case 'previous':
-        if (!isPureGet && typeof target.previous === 'function') {
-          return target.previous();
-        }
-        return false;
-
-      default:
-        return false;
-    }
+    default:
+      return false;
   }
+}
 
-  // --- 2. HTMLMediaElement Execution ---
-  const el = target;
+/**
+ * Executes a normalized action on an HTMLMediaElement target.
+ * @private
+ */
+async function executeNativeAction(el, norm, value, isPureGet) {
   switch (norm) {
     case 'play':
       if (!isPureGet) await safePlayMedia(el);
@@ -603,4 +583,51 @@ export async function executeMediaAction(target, action, value = undefined, opti
   }
 }
 
-export const actions = { execute: executeMediaAction, safePlay: safePlayMedia, safePause: safePauseMedia, wrapAdapter: decorateCustomAdapter };
+/**
+ * Executes a normalized action on a target (HTMLMediaElement or Custom Adapter).
+ *
+ * @param {HTMLMediaElement|Object} target
+ * @param {string} action
+ * @param {*} [value]
+ * @param {Object} [options={}]
+ * @param {boolean} [options.isPureGet=false]
+ * @param {Object} [options.transactionTracker=null]
+ * @param {string} [options.instanceId='unknown']
+ * @returns {Promise<any>}
+ */
+export async function executeMediaAction(target, action, value = undefined, options = {}) {
+  if (!target) return false;
+  const { isPureGet = false, transactionTracker = null, instanceId = 'unknown', logger = null } = options;
+  const norm = String(action || '').toLowerCase();
+
+  const isAdapter = Boolean(
+    target &&
+      (typeof target.getState === 'function' ||
+        typeof target.useAdapter === 'function' ||
+        target[Symbol.for('__sremote_adapter__')] ||
+        target.source === 'adapter' ||
+        target.isAdapter === true ||
+        target.capabilities?.hasAdapter ||
+        (!target.tagName && typeof target.play === 'function' && typeof target.pause === 'function')),
+  );
+
+  if (!isPureGet && transactionTracker && typeof transactionTracker.startTransaction === 'function') {
+    transactionTracker.startTransaction(norm, value, instanceId);
+  }
+
+  if (logger?.debug) {
+    logger.debug(`[ActionEngine] Executing '${norm}' on ${isAdapter ? 'Adapter' : target.tagName || 'Object'}`, { value, instanceId });
+  }
+
+  if (isAdapter) {
+    return executeAdapterAction(target, norm, value, isPureGet, logger);
+  }
+  return executeNativeAction(target, norm, value, isPureGet);
+}
+
+export const actions = {
+  execute: executeMediaAction,
+  safePlay: safePlayMedia,
+  safePause: safePauseMedia,
+  wrapAdapter,
+};

@@ -1,4 +1,4 @@
-import { assertValidMediaElement, hasActiveMediaSource } from '../events.js';
+import { isValidMedia, hasMediaSource } from '../events.js';
 import { resolveMediaElement } from '../actions/action-engine.js';
 
 /**
@@ -20,7 +20,7 @@ export function queryMediaDeep(root = typeof document !== 'undefined' ? document
       const found = root.querySelectorAll('video, audio');
       for (let i = 0; i < found.length; i++) {
         const el = found[i];
-        if (assertValidMediaElement(el, options)) {
+        if (isValidMedia(el, options)) {
           list.push(el);
         }
       }
@@ -115,7 +115,7 @@ export function createMediaWatcher(onMediaAdded, options = {}) {
             if (node.nodeType === 1) {
               const tag = node.tagName?.toUpperCase?.();
               if (tag === 'VIDEO' || tag === 'AUDIO') {
-                if (assertValidMediaElement(node, options)) {
+                if (isValidMedia(node, options)) {
                   handleMedia(node);
                 }
               }
@@ -124,7 +124,7 @@ export function createMediaWatcher(onMediaAdded, options = {}) {
               if (node.querySelectorAll) {
                 const subMedia = node.querySelectorAll('video, audio');
                 for (let i = 0; i < subMedia.length; i++) {
-                  if (assertValidMediaElement(subMedia[i], options)) {
+                  if (isValidMedia(subMedia[i], options)) {
                     handleMedia(subMedia[i]);
                   }
                 }
@@ -178,6 +178,6 @@ export const dom = {
   query: queryMediaDeep,
   findAll: findAllMedia,
   watch: createMediaWatcher,
-  isValid: assertValidMediaElement,
-  hasSource: hasActiveMediaSource,
+  isValid: isValidMedia,
+  hasSource: hasMediaSource,
 };

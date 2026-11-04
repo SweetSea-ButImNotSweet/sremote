@@ -67,18 +67,20 @@ export function handleBindMetadata({ metadata, instanceId, emitToParent, sendMed
   sendMediaSessionState();
 }
 
-export function createMediaController({
-  activeMediaGetter,
-  mediaTypeGetter,
-  resolveActiveMedia,
-  notifyState,
-  sendMediaSessionState,
-  configuredVolumeSetter,
-  configuredMutedSetter,
-  programmaticActionTimestampSetter,
-  emitToParent,
-  instanceId,
-}) {
+export function createMediaController(options) {
+  const {
+    ctx,
+    activeMediaGetter = ctx ? () => ctx.resolver?.getActiveMedia() : options.activeMediaGetter,
+    mediaTypeGetter = ctx ? () => ctx.resolver?.getMediaType() : options.mediaTypeGetter,
+    resolveActiveMedia = ctx ? () => ctx.resolver?.resolveActiveMedia() : options.resolveActiveMedia,
+    notifyState = ctx?.notifyState || options.notifyState,
+    sendMediaSessionState = ctx?.sendMediaSessionState || options.sendMediaSessionState,
+    configuredVolumeSetter = ctx ? v => (ctx.configuredVolume = v) : options.configuredVolumeSetter,
+    configuredMutedSetter = ctx ? m => (ctx.configuredMuted = m) : options.configuredMutedSetter,
+    programmaticActionTimestampSetter = ctx ? ts => (ctx.programmaticTime = ts) : options.programmaticActionTimestampSetter,
+    emitToParent = ctx?.emitToParent || options.emitToParent,
+    instanceId = ctx?.instanceId || options.instanceId,
+  } = options;
   return async function executeControl(action, value, isPureGet = false) {
     if (!isPureGet) programmaticActionTimestampSetter(Date.now());
     const norm = action.toLowerCase();

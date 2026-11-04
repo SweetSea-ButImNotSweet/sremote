@@ -1,4 +1,5 @@
 import { createLogger, LOG_LEVELS } from './logger.js';
+import { TIMEUPDATE_LOG_THROTTLE_MS } from './events/constants.js';
 
 /**
  * Generates a unique instance identifier.
@@ -116,7 +117,6 @@ export function createInstanceManager(options = {}) {
   }
 
   let lastTimeupdateLogTime = 0;
-  const TIMEUPDATE_LOG_THROTTLE_MS = 2000;
 
   function emitGlobalEvent(event, payload = {}) {
     const rawEv = String(event || '').toLowerCase();

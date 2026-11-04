@@ -8,7 +8,17 @@ export const MEDIA_COMMANDS = new Set(['play', 'pause', 'toggle', 'stop', 'seek'
 /**
  * Creates the unified message dispatcher for both MessagePort and Window fallback channels.
  */
-export function createIframeDispatcher({ instanceIdGetter, resolver, rpcRegistry, executeControl, emitToParent, mockMediaSessionInstance, handshake }) {
+export function createIframeDispatcher(options) {
+  const {
+    ctx,
+    instanceIdGetter = ctx ? () => ctx.instanceId : options.instanceIdGetter,
+    resolver = ctx?.resolver || options.resolver,
+    rpcRegistry = ctx?.rpcRegistry || options.rpcRegistry,
+    executeControl = ctx?.executeControl || options.executeControl,
+    emitToParent = ctx?.emitToParent || options.emitToParent,
+    mockMediaSessionInstance = options.mockMediaSessionInstance,
+    handshake = options.handshake,
+  } = options;
   async function handleIncomingControl(action, value) {
     const handled = await executeControl(action, value);
     if (!handled) {

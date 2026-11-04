@@ -17,16 +17,18 @@ export const IFRAME_TRANSPORT_STATE = { DISCONNECTED: 'DISCONNECTED', CONNECTING
  *    Attaches dedicated MessagePort and sends 'ack' back via the port.
  * 3. Autonomous connection survival across media detachment / video reload.
  */
-export function createIframeTransport({
-  instanceIdGetter,
-  setInstanceId,
-  resolver,
-  bindPort,
-  closeMediaPort,
-  notifyState,
-  treatAlmostEndSetter,
-  treatAlmostEndAsEndSetter = treatAlmostEndSetter,
-}) {
+export function createIframeTransport(options) {
+  const {
+    ctx,
+    instanceIdGetter = ctx ? () => ctx.instanceId : options.instanceIdGetter,
+    setInstanceId = ctx ? id => (ctx.instanceId = id) : options.setInstanceId,
+    resolver = ctx?.resolver || options.resolver,
+    bindPort = ctx?.bindPort || options.bindPort,
+    closeMediaPort = ctx?.closeMediaPort || options.closeMediaPort,
+    notifyState = ctx?.notifyState || options.notifyState,
+    treatAlmostEndSetter = ctx ? val => (ctx.treatAlmostEndAsEnd = val) : options.treatAlmostEndSetter,
+    treatAlmostEndAsEndSetter = treatAlmostEndSetter || (ctx ? val => (ctx.treatAlmostEndAsEnd = val) : options.treatAlmostEndAsEndSetter),
+  } = options;
   let primaryAuthorizedOrigin = null;
   let transportState = IFRAME_TRANSPORT_STATE.DISCONNECTED;
   let currentSynChallenge = null;

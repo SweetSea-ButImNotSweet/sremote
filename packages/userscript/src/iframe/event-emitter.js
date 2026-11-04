@@ -1,12 +1,20 @@
 import { MEDIA_EVENTS, descriptors } from '../config.js';
 import { safeGetProp } from '../core/utils.js';
 import { getVideoState } from './controller.js';
-import { pipeline } from '@sremote/shared';
+import { pipeline, TIMEUPDATE_THROTTLE_MS, PROGRESS_THROTTLE_MS } from '@sremote/shared';
 
 /**
  * Creates the media event listener and rVFC frame-loop manager for video elements inside the iframe.
  */
-export function createMediaEventEmitter({ resolver, emitToParent, instanceIdGetter, treatAlmostEndAsEndGetter, programmaticActionTimestampGetter }) {
+export function createMediaEventEmitter(options) {
+  const {
+    ctx,
+    resolver = ctx?.resolver || options.resolver,
+    emitToParent = ctx?.emitToParent || options.emitToParent,
+    instanceIdGetter = ctx ? () => ctx.instanceId : options.instanceIdGetter,
+    treatAlmostEndAsEndGetter = ctx ? () => ctx.treatAlmostEndAsEnd : options.treatAlmostEndAsEndGetter,
+    programmaticActionTimestampGetter = ctx ? () => ctx.programmaticTime : options.programmaticActionTimestampGetter,
+  } = options;
   const boundMediaElements = new WeakSet();
 
   function bindVideoEvents(video) {
@@ -16,8 +24,6 @@ export function createMediaEventEmitter({ resolver, emitToParent, instanceIdGett
     let hasEmittedAlmostEnd = false;
     let lastTimeupdate = 0;
     let lastProgress = 0;
-    const TIMEUPDATE_THROTTLE_MS = 250;
-    const PROGRESS_THROTTLE_MS = 500;
 
     const hasRVFC = typeof HTMLVideoElement !== 'undefined' && 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
     let rvfcHandle = null;

@@ -5,7 +5,7 @@ import { isProgrammatic } from './origin-detector.js';
 import { bindDomMedia } from './dom-binder.js';
 import { evaluateCapabilities } from './validator.js';
 import { defaultLogger } from '../logger.js';
-import { getGlobalTransactionTracker } from '../pipeline/transaction-tracker.js';
+import { getTransactionTracker } from '../pipeline/transaction-tracker.js';
 
 /**
  * Decorates a user-provided custom adapter without mutating the original object.
@@ -77,7 +77,7 @@ export function wrapAdapter(rawAdapter, options = {}) {
           eventName: ev,
           instanceId,
           value: payloadObj.value,
-          tracker: getGlobalTransactionTracker(),
+          tracker: getTransactionTracker(),
           timestampGetter: () => programmaticActionTimestamp,
         });
 

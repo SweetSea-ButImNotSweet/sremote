@@ -2,7 +2,7 @@ import { MEDIA_EVENTS, TIMEUPDATE_THROTTLE_MS, PROGRESS_THROTTLE_MS, ALMOST_END_
 import { captureMediaSnapshot } from './snapshot.js';
 import { buildEventPayload } from './payload.js';
 import { isProgrammatic } from './origin-detector.js';
-import { getGlobalTransactionTracker } from '../pipeline/transaction-tracker.js';
+import { getTransactionTracker } from '../pipeline/transaction-tracker.js';
 
 /**
  * Attaches standardized event listeners to an HTMLMediaElement with smart end/almostend handling and throttled progress/timeupdate.
@@ -25,7 +25,7 @@ export function bindDomMedia(media, onEvent, options = {}) {
     excludedEvents = null,
     programmaticTimeGetter = null,
     programmaticActionTimestampGetter = programmaticTimeGetter,
-    transactionTracker = getGlobalTransactionTracker(),
+    transactionTracker = getTransactionTracker(),
   } = options;
 
   const excludedSet = excludedEvents ? (excludedEvents instanceof Set ? excludedEvents : new Set(Array.from(excludedEvents).map(e => String(e).toLowerCase()))) : null;

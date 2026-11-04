@@ -56,9 +56,8 @@ export function checkPermission(parentOrigin, iframeOrigin) {
 // Backward-compatibility alias
 export const checkOriginPairPermission = checkPermission;
 
-export function generateInstanceId(prefix = 'sv') {
-  return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
-}
+import { generateInstanceId } from '@sremote/shared';
+export { generateInstanceId };
 
 export function createButton({ className, text, title, onClick }) {
   const btn = document.createElement('button');

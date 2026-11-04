@@ -4,7 +4,17 @@ import { getVideoState, getIframeCapabilities, handleBindMetadata } from './cont
 import { findAllMedia } from './media-hunter.js';
 import { mockMediaSessionInstance } from './media-session.js';
 
-export function createRpcRegistry({ resolver, instanceId, emitToParent, sendMediaSessionState, notifyState, getOriginalMediaSrc, setOriginalMediaSrc }) {
+export function createRpcRegistry(options) {
+  const {
+    ctx,
+    resolver = ctx?.resolver || options.resolver,
+    instanceId = ctx?.instanceId || options.instanceId,
+    emitToParent = ctx?.emitToParent || options.emitToParent,
+    sendMediaSessionState = ctx?.sendMediaSessionState || options.sendMediaSessionState,
+    notifyState = ctx?.notifyState || options.notifyState,
+    getOriginalMediaSrc = ctx ? () => ctx.originalMediaSrc : options.getOriginalMediaSrc,
+    setOriginalMediaSrc = ctx ? src => (ctx.originalMediaSrc = src) : options.setOriginalMediaSrc,
+  } = options;
   const customRpcActions = new Map();
 
   customRpcActions.set('getCapabilities', async () => {

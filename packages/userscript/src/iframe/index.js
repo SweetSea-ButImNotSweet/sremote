@@ -144,56 +144,66 @@ export function initIframeAgent() {
   }
 
   // ==========================================
-  // PHASE 3: Resolver, Controller & RPC Registry
+  // PHASE 3: Resolver, Controller & RPC Registry (via IframeContext)
   // ==========================================
-  const { bindVideoEvents } = createMediaEventEmitter({
-    resolver: {
-      getActiveMedia: () => resolver.getActiveMedia(),
-      resolveActiveMedia: () => resolver.resolveActiveMedia(),
-      setActiveMedia: m => resolver.setActiveMedia(m),
-      setMediaType: t => resolver.setMediaType(t),
-      getMediaType: () => resolver.getMediaType(),
+  const ctx = {
+    get instanceId() {
+      return instanceId;
     },
-    emitToParent,
-    instanceIdGetter: () => instanceId,
-    treatAlmostEndAsEndGetter: () => treatAlmostEndAsEnd,
-    programmaticActionTimestampGetter: () => programmaticActionTimestamp,
-  });
-
-  const resolver = createMediaResolver(createdMediaPool, bindVideoEvents);
-  mockMediaSessionInstance.setResolver(resolver);
-
-  const executeControl = createMediaController({
-    activeMediaGetter: resolver.getActiveMedia,
-    mediaTypeGetter: resolver.getMediaType,
-    resolveActiveMedia: resolver.resolveActiveMedia,
-    notifyState,
-    sendMediaSessionState,
-    configuredVolumeGetter: () => configuredVolume,
-    configuredVolumeSetter: v => {
+    set instanceId(id) {
+      instanceId = id;
+    },
+    get mediaPort() {
+      return mediaPort;
+    },
+    set mediaPort(p) {
+      mediaPort = p;
+    },
+    get configuredVolume() {
+      return configuredVolume;
+    },
+    set configuredVolume(v) {
       configuredVolume = v;
     },
-    configuredMutedSetter: m => {
+    get configuredMuted() {
+      return configuredMuted;
+    },
+    set configuredMuted(m) {
       configuredMuted = m;
     },
-    programmaticActionTimestampSetter: ts => {
+    get treatAlmostEndAsEnd() {
+      return treatAlmostEndAsEnd;
+    },
+    set treatAlmostEndAsEnd(v) {
+      treatAlmostEndAsEnd = v;
+    },
+    get programmaticTime() {
+      return programmaticActionTimestamp;
+    },
+    set programmaticTime(ts) {
       programmaticActionTimestamp = ts;
     },
-    emitToParent,
-    instanceId,
-  });
-
-  const rpcRegistry = createRpcRegistry({
-    resolver,
-    instanceId,
-    emitToParent,
-    sendMediaSessionState,
-    notifyState,
-    getOriginalMediaSrc: () => originalMediaSrcBeforeDebug,
-    setOriginalMediaSrc: src => {
+    get originalMediaSrc() {
+      return originalMediaSrcBeforeDebug;
+    },
+    set originalMediaSrc(src) {
       originalMediaSrcBeforeDebug = src;
     },
-  });
+    closeMediaPort,
+    emitToParent,
+    notifyState,
+    sendMediaSessionState,
+    resolver: null,
+    bindPort: null,
+  };
+
+  const { bindVideoEvents } = createMediaEventEmitter({ ctx });
+  const resolver = createMediaResolver(createdMediaPool, bindVideoEvents);
+  ctx.resolver = resolver;
+  mockMediaSessionInstance.setResolver(resolver);
+
+  const executeControl = createMediaController({ ctx });
+  const rpcRegistry = createRpcRegistry({ ctx });
 
   // ==========================================
   // PHASE 4: Transport & Dispatcher Wiring
@@ -202,22 +212,10 @@ export function initIframeAgent() {
     mediaPort = port;
     port.onmessage = e => dispatcher.dispatchPortMessage(e, port);
   }
+  ctx.bindPort = bindPort;
 
-  const handshake = createIframeTransport({
-    instanceIdGetter: () => instanceId,
-    setInstanceId: id => {
-      instanceId = id;
-    },
-    resolver,
-    bindPort,
-    notifyState,
-    closeMediaPort,
-    treatAlmostEndAsEndSetter: val => {
-      treatAlmostEndAsEnd = val;
-    },
-  });
-
-  const dispatcher = createIframeDispatcher({ instanceIdGetter: () => instanceId, resolver, rpcRegistry, executeControl, emitToParent, mockMediaSessionInstance, handshake });
+  const handshake = createIframeTransport({ ctx });
+  const dispatcher = createIframeDispatcher({ ctx, rpcRegistry, executeControl, mockMediaSessionInstance, handshake });
 
   // ==========================================
   // PHASE 5: Media Detection, Observer & Lifecycle

@@ -21,17 +21,19 @@ let packetCounter = 0;
  * @param {Object} [options.meta={}] - Metadata (source, timestamp, instanceId, etc.)
  * @returns {Object} Immutable envelope packet
  */
-export function createEnvelope({ type, action, payload = null, id = null, meta = {} }) {
+export function createEnvelope({ type, action, payload = null, id = null, meta = {}, freeze = false }) {
   packetCounter = (packetCounter + 1) & 0x7fffffff;
   const packetId = id || `pkt_${Date.now().toString(36)}_${packetCounter.toString(36)}`;
 
-  return Object.freeze({
+  const envelope = {
     id: packetId,
     type: String(type || PACKET_TYPE.EVENT).toUpperCase(),
     action: String(action || '').toLowerCase(),
     payload,
-    meta: Object.freeze({ timestamp: Date.now(), source: meta.source || 'unknown', instanceId: meta.instanceId || null, ...meta }),
-  });
+    meta: { timestamp: Date.now(), source: meta.source || 'unknown', instanceId: meta.instanceId || null, ...meta },
+  };
+
+  return freeze ? Object.freeze({ ...envelope, meta: Object.freeze(envelope.meta) }) : envelope;
 }
 
 /**
