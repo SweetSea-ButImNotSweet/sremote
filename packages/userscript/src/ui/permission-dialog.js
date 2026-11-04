@@ -7,7 +7,7 @@ import { logger } from '../config.js';
 // Table Queue management: gom toàn bộ các iframe origin đang chờ
 // pendingItems: Map<pairKey, { parentOrigin, iframeOrigin, isTop, callbacks: Function[], rowElement?: HTMLElement }>
 const pendingItems = new Map();
-let activeDialog = null; // { modal, tableContainer }
+let activeDialog = null; // { modal, containerEl, isSingleMode, updateView: Function }
 const sessionBlockedParents = new Set();
 const sessionAllowedParents = new Set();
 const allowedOriginPairsInSession = new Set();
@@ -58,76 +58,42 @@ function removePendingRow(key) {
   }
   pendingItems.delete(key);
 
-  // Cập nhật lại trạng thái hiển thị của batch row nếu danh sách thay đổi
-  updateTableBatchRow();
-
   // Nếu không còn mục nào đang chờ thì tự đóng hộp thoại
   if (pendingItems.size === 0 && activeDialog) {
     activeDialog.modal.close();
     activeDialog = null;
+    return;
+  }
+
+  // Cập nhật lại giao diện (chuyển đổi giữa multi và single nếu chỉ còn 1 item)
+  if (activeDialog?.updateView) {
+    activeDialog.updateView();
   }
 }
 
-let tableBatchRowEl = null;
+function renderSingleCard(item) {
+  const card = document.createElement('div');
+  card.className = 'sv-perm-single-card';
 
-function renderTableBatchRow() {
-  const row = document.createElement('div');
-  row.className = 'sv-perm-row sv-perm-footer-row';
+  const icon = document.createElement('div');
+  icon.className = 'sv-perm-single-icon';
+  icon.innerHTML = '▶';
 
-  const emptyDomainEl = document.createElement('div');
-  emptyDomainEl.className = 'sv-perm-domain';
-  emptyDomainEl.textContent = ''; // Không ghi domain theo yêu cầu
+  const info = document.createElement('div');
+  info.className = 'sv-perm-single-info';
 
-  const actionsEl = document.createElement('div');
-  actionsEl.className = 'sv-row-actions';
+  const originEl = document.createElement('div');
+  originEl.className = 'sv-perm-single-origin';
+  originEl.textContent = item.iframeOrigin;
+  originEl.title = item.iframeOrigin;
 
-  const denyAllBtn = document.createElement('button');
-  denyAllBtn.type = 'button';
-  denyAllBtn.className = 'sv-row-btn sv-row-btn-deny';
-  denyAllBtn.textContent = t('denyAllBtn');
-  denyAllBtn.addEventListener('click', () => {
-    const items = Array.from(pendingItems.values());
-    pendingItems.clear();
-    if (activeDialog) {
-      activeDialog.modal.close();
-      activeDialog = null;
-    }
-    items.forEach(it => applyDecision(it, false, false));
-  });
+  const subEl = document.createElement('div');
+  subEl.className = 'sv-perm-single-sub';
+  subEl.textContent = t('singleFrameDesc');
 
-  const allowAllBtn = document.createElement('button');
-  allowAllBtn.type = 'button';
-  allowAllBtn.className = 'sv-row-btn sv-row-btn-allow';
-  allowAllBtn.textContent = t('allowAllBtn');
-  allowAllBtn.addEventListener('click', () => {
-    const items = Array.from(pendingItems.values());
-    pendingItems.clear();
-    if (activeDialog) {
-      activeDialog.modal.close();
-      activeDialog = null;
-    }
-    // FIXME: Mặc định ghi nhớ (remember = true) để tránh việc người dùng bấm Cho phép tất cả mà vẫn bị hỏi lại khi F5. Sẽ xem xét thiết kế lại UX nút này sau.
-    items.forEach(it => applyDecision(it, true, true));
-  });
-
-  actionsEl.append(denyAllBtn, allowAllBtn);
-  row.append(emptyDomainEl, actionsEl);
-  return row;
-}
-
-function updateTableBatchRow() {
-  if (!activeDialog?.tableContainer) return;
-  if (pendingItems.size > 1) {
-    if (!tableBatchRowEl) {
-      tableBatchRowEl = renderTableBatchRow();
-      activeDialog.tableContainer.append(tableBatchRowEl);
-    } else {
-      activeDialog.tableContainer.append(tableBatchRowEl);
-    }
-  } else if (tableBatchRowEl) {
-    tableBatchRowEl.remove();
-    tableBatchRowEl = null;
-  }
+  info.append(originEl, subEl);
+  card.append(icon, info);
+  return card;
 }
 
 function renderRow(item) {
@@ -166,7 +132,7 @@ function renderRow(item) {
   moreBtn.type = 'button';
   moreBtn.className = 'sv-row-btn sv-row-more-btn';
   moreBtn.textContent = '•••';
-  moreBtn.title = 'Tùy chọn mở rộng';
+  moreBtn.title = 'Tùy chọn';
 
   let dropdown = null;
 
@@ -225,39 +191,59 @@ function renderRow(item) {
 
 function openOrUpdateDialog(isTop) {
   if (activeDialog) {
-    // Đã có dialog mở, bổ sung các row chưa được vẽ
-    for (const item of pendingItems.values()) {
-      if (!item.rowElement) {
-        const row = renderRow(item);
-        if (tableBatchRowEl) {
-          activeDialog.tableContainer.insertBefore(row, tableBatchRowEl);
-        } else {
-          activeDialog.tableContainer.append(row);
-        }
-      }
-    }
-    updateTableBatchRow();
+    activeDialog.updateView();
     return;
   }
 
-  // Tạo modal mới dạng Bảng
+  // Khởi tạo container thân modal
   const container = document.createElement('div');
+  let rememberChecked = false;
 
-  const desc = document.createElement('div');
-  desc.className = 'sv-text';
-  desc.style.marginBottom = '6px';
-  desc.textContent = t('dialogTableDesc');
-  container.append(desc);
+  const renderContent = () => {
+    container.innerHTML = '';
+    const items = Array.from(pendingItems.values());
 
-  const tableContainer = document.createElement('div');
-  tableContainer.className = 'sv-perm-table-container';
+    if (items.length <= 1) {
+      // 1 Item: Single Card Clean Layout
+      const item = items[0];
+      if (item) {
+        container.append(renderSingleCard(item));
+      }
+    } else {
+      // Multi-Item: Flat List Layout
+      const desc = document.createElement('div');
+      desc.className = 'sv-text';
+      desc.style.marginBottom = '6px';
+      desc.textContent = t('dialogTableDesc');
+      container.append(desc);
 
-  for (const item of pendingItems.values()) {
-    const row = renderRow(item);
-    tableContainer.append(row);
-  }
+      const tableContainer = document.createElement('div');
+      tableContainer.className = 'sv-perm-table-container';
 
-  container.append(tableContainer);
+      items.forEach(it => {
+        const row = renderRow(it);
+        tableContainer.append(row);
+      });
+
+      container.append(tableContainer);
+    }
+
+    // Checkbox: Ghi nhớ lựa chọn cho trang này (Minimalist flat checkbox)
+    const rememberLabel = document.createElement('label');
+    rememberLabel.className = 'sv-remember';
+    const rememberInput = document.createElement('input');
+    rememberInput.type = 'checkbox';
+    rememberInput.checked = rememberChecked;
+    rememberInput.addEventListener('change', () => {
+      rememberChecked = rememberInput.checked;
+    });
+    const rememberSpan = document.createElement('span');
+    rememberSpan.textContent = t('rememberChoice');
+    rememberLabel.append(rememberInput, rememberSpan);
+    container.append(rememberLabel);
+  };
+
+  renderContent();
 
   const modal = createModal({
     titleText: t('dialogTitle'),
@@ -266,68 +252,33 @@ function openOrUpdateDialog(isTop) {
     hostId: isTop ? 'sremote-top-permission-host' : 'sremote-permission-host',
     buttons: [
       {
-        className: 'sv-btn sv-btn-always-allow-all',
-        text: t('alwaysAllowAllBtn'),
+        className: 'sv-btn sv-btn-deny',
+        text: () => (pendingItems.size > 1 ? t('denyAllBtn') : t('denyBtn')),
         onClick: (_, { close }) => {
           const items = Array.from(pendingItems.values());
           pendingItems.clear();
           const dlg = activeDialog;
           activeDialog = null;
-          tableBatchRowEl = null;
-          try {
-            dlg?.modal?.close();
-          } catch {}
-          close(true);
-          items.forEach(it => applyDecision(it, true, true));
-        },
-      },
-      {
-        className: 'sv-btn sv-btn-allow-session',
-        text: t('allowSessionBtn'),
-        onClick: (_, { close }) => {
-          const items = Array.from(pendingItems.values());
-          items.forEach(it => {
-            if (it.parentOrigin) sessionAllowedParents.add(it.parentOrigin);
-          });
-          pendingItems.clear();
-          const dlg = activeDialog;
-          activeDialog = null;
-          tableBatchRowEl = null;
-          try {
-            dlg?.modal?.close();
-          } catch {}
-          close(true);
-          items.forEach(it => applyDecision(it, true, false));
-        },
-      },
-      {
-        className: 'sv-btn sv-btn-block-session',
-        text: t('blockSessionBtn'),
-        onClick: (_, { close }) => {
-          const dlg = activeDialog;
-          activeDialog = null;
-          tableBatchRowEl = null;
-          blockSession(true);
           try {
             dlg?.modal?.close();
           } catch {}
           close(false);
+          items.forEach(it => applyDecision(it, false, rememberChecked));
         },
       },
       {
-        className: 'sv-btn sv-btn-always-deny-all',
-        text: t('alwaysDenyAllBtn'),
+        className: 'sv-btn sv-btn-allow',
+        text: () => (pendingItems.size > 1 ? t('allowAllBtn') : t('allowBtn')),
         onClick: (_, { close }) => {
           const items = Array.from(pendingItems.values());
           pendingItems.clear();
           const dlg = activeDialog;
           activeDialog = null;
-          tableBatchRowEl = null;
           try {
             dlg?.modal?.close();
           } catch {}
-          close(false);
-          items.forEach(it => applyDecision(it, false, true));
+          close(true);
+          items.forEach(it => applyDecision(it, true, rememberChecked));
         },
       },
     ],
@@ -336,14 +287,22 @@ function openOrUpdateDialog(isTop) {
         const items = Array.from(pendingItems.values());
         pendingItems.clear();
         activeDialog = null;
-        tableBatchRowEl = null;
         items.forEach(it => applyDecision(it, false, false));
       }
     },
   });
 
-  activeDialog = { modal, tableContainer };
-  updateTableBatchRow();
+  const updateView = () => {
+    renderContent();
+    // Cập nhật lại text của 2 nút bấm ở footer nếu số lượng item thay đổi
+    const buttons = modal.box?.querySelectorAll('.sv-buttons .sv-btn');
+    if (buttons && buttons.length >= 2) {
+      buttons[0].textContent = pendingItems.size > 1 ? t('denyAllBtn') : t('denyBtn');
+      buttons[1].textContent = pendingItems.size > 1 ? t('allowAllBtn') : t('allowBtn');
+    }
+  };
+
+  activeDialog = { modal, containerEl: container, updateView };
 }
 
 export function createPermissionDialog({ origin, iframeOrigin = null, parentOrigin = null, onDecision, isTop = false }) {
@@ -391,25 +350,8 @@ export function createPermissionDialog({ origin, iframeOrigin = null, parentOrig
   };
   pendingItems.set(pairKey, newItem);
 
-  // 4. Mở hoặc cập nhật giao diện bảng
+  // 4. Mở hoặc cập nhật giao diện
   openOrUpdateDialog(isTop);
 
   return { close: () => removePendingRow(pairKey) };
-}
-
-function blockSession(blocked = true, parentOrigin = null) {
-  const targetParent = parentOrigin || (typeof location !== 'undefined' ? location.origin : '*');
-  if (blocked) {
-    sessionBlockedParents.add(targetParent);
-  } else {
-    sessionBlockedParents.delete(targetParent);
-  }
-
-  if (blocked && activeDialog) {
-    const items = Array.from(pendingItems.values());
-    pendingItems.clear();
-    activeDialog.modal.close();
-    activeDialog = null;
-    items.forEach(it => applyDecision(it, false, false));
-  }
 }

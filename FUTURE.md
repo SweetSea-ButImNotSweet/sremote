@@ -71,8 +71,8 @@ Version 4.0 is a milestone architectural overhaul that synchronizes developer er
 ### 4. Userscript Permission Dialog Overhaul
 - [x] **Fix "Always Allow" Logic Bug**:
   - Clarify and cleanly isolate permission scopes: current session vs. domain-level permanent allowance. Fix the bug where "Always Allow" gets confused across distinct frames/origins.
-- [ ] **Modernized, Clean Modal UI**:
-  - Redesign the consent prompt modal to reduce clutter, improve visual hierarchy, and make permissions transparent and easy to understand for end-users.
+- [x] **Modernized, Clean Modal UI**:
+  - Redesign the consent prompt modal to reduce clutter, improve visual hierarchy, and make permissions transparent and easy to understand for end-users. Minimalist / Flat UI with automatic Dark/Light mode support, streamlined single/multi-card views, and companion Userscript installer modal overhaul.
 
 ---
 

@@ -47,9 +47,10 @@ export function createModal({ titleText = 'SRemote', bodyElement = null, bodyTex
 
   if (buttons.length > 0) {
     buttons.forEach(btnConfig => {
+      const initialText = typeof btnConfig.text === 'function' ? btnConfig.text() : btnConfig.text;
       const btn = createButton({
         className: `sv-btn ${btnConfig.className || ''}`.trim(),
-        text: btnConfig.text,
+        text: initialText,
         onClick: e => {
           if (btnConfig.onClick) {
             btnConfig.onClick(e, { close });

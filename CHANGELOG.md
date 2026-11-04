@@ -53,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added reactive lifecycle CustomEvent `sremote:driver:ready`, allowing the SDK to connect instantaneously when userscript injects after page load without polling timers.
   - Eliminated mock `adapters` registry and fake client proxies in Userscript.
   - Removed defensive dummy proxy wrappers and overwrite traps in `@sremote/sdk/guard.js`.
+- **Purged Internal Legacy Aliases & Redundant Proxy Modules**:
+  - Removed legacy function export aliases across `@sremote/shared` submodules (deprecated camelCase/PascalCase duplicates in `events/`, `validator.js`, `envelope.js`, and `transaction-tracker.js`).
+  - Purged re-export proxies in `@sremote/ready2use` in favor of explicit tree-shakeable subpath exports (`@sremote/ready2use/youtube`, `@sremote/ready2use/vimeo`, etc.).
+  - Standardized call sites across `@sremote/userscript` and `@sremote/sdk` to target canonical shared APIs directly, trimming bundle overhead.
 - **Khai tử `sremote_debug` & Quy hoạch Debug Namespace**:
   - Completely eliminated `window.sremote_debug` in child iframes.
   - Consolidated debugging under `sremote.debug` on the SDK (`scan()`, `inspect()`, `getMediaElement()`, `getState()`, `dump()`, `setSource()`, `logLevel()`).
@@ -75,6 +79,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Leveraged `requestVideoFrameCallback()` (rVFC) for rock-solid 60fps tracking without CPU overhead.
 - **Purged `universal-adapter`**:
   - Completely eliminated `universal-adapter.js` factory (~300 LoC), trimming bundle footprint. Custom adapters now plug straight into `sremote.adapters.register(adapter)` without unnecessary wrapper overhead.
+
+### 🎨 Modernized Minimalist / Flat Modal UI & Permission Revamp
+- **Permission Dialog Overhaul (`@sremote/userscript`)**:
+  - Fixed "Always Allow" cross-origin logic bug by cleanly separating session vs. persistent permission scopes.
+  - Redesigned with a **Minimalist / Flat UI** (zero gradients, zero bevels, 1px crisp borders, automatic Dark/Light mode support).
+  - Adaptive Single/Multi-Item Layout: Displays a concise, high-visibility single-card view when only 1 iframe requests access (>90% of cases), dynamically switching to a clean flat table for multi-iframe scenarios.
+  - Streamlined Action Footer: Replaced the cluttered 4-button footer with standard 2-button actions (`[Allow]` / `[Deny]`) and a clean *"Remember my decision for this site"* checkbox.
+- **Install Userscript Modal Overhaul (`@sremote/sdk`)**:
+  - Re-engineered the installation guide into an intuitive 2-column horizontal stepper grid (Browser Extension Manager + 1-Click Script Installer).
+  - Added real-time Userscript detection badge with automatic 1.2s auto-close upon successful activation.
 
 ## [3.0.1] - 2026/08/17
 

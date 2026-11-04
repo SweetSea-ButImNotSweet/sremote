@@ -78,12 +78,18 @@ export function showInstallModal(options = {}) {
   let isClosed = false;
   let statusBanner = null;
   let success = false;
+  let autoCloseTimer = null;
 
   const close = () => {
     if (isClosed) return;
     isClosed = true;
+    if (autoCloseTimer) {
+      clearTimeout(autoCloseTimer);
+      autoCloseTimer = null;
+    }
     if (typeof window !== 'undefined') {
       window.removeEventListener('sremote:ready', onUserscriptReady);
+      window.removeEventListener('sremote:driver:ready', onUserscriptReady);
     }
     try {
       dialog.close();
@@ -106,6 +112,7 @@ export function showInstallModal(options = {}) {
   titleEl.textContent = title;
 
   const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
   closeBtn.className = 'sv-install-close-btn';
   closeBtn.innerHTML = '&times;';
   closeBtn.title = 'Đóng';
@@ -143,75 +150,72 @@ export function showInstallModal(options = {}) {
   statusBanner.className = 'sv-status-banner waiting';
   statusBanner.innerHTML = `
     <div class="sv-status-spinner"></div>
-    <span>Chờ nhận diện Userscript...</span>
+    <span>Đang chờ nhận diện Userscript...</span>
   `;
   box.append(statusBanner);
 
-  // Steps container
-  const stepsContainer = document.createElement('div');
-  stepsContainer.className = 'sv-steps';
+  // 2-Column Horizontal Cards
+  const gridContainer = document.createElement('div');
+  gridContainer.className = 'sv-install-grid';
 
-  // Step 1: Install Extension
-  const step1 = document.createElement('div');
-  step1.className = 'sv-step';
+  // Card 1: Install Extension
+  const card1 = document.createElement('div');
+  card1.className = 'sv-install-card';
   const links = EXTENSION_LINKS[browser] || EXTENSION_LINKS.chrome;
 
   let extLinksHtml = '';
   if (links.tampermonkey) {
-    extLinksHtml += `<a class="sv-ext-link sv-ext-recommended" href="${links.tampermonkey}" target="_blank" rel="noopener noreferrer">Tampermonkey (${browser})</a>`;
+    extLinksHtml += `<a class="sv-ext-link sv-ext-recommended" href="${links.tampermonkey}" target="_blank" rel="noopener noreferrer">Tampermonkey</a>`;
   }
   if (links.violentmonkey) {
     extLinksHtml += `<a class="sv-ext-link" href="${links.violentmonkey}" target="_blank" rel="noopener noreferrer">Violentmonkey</a>`;
   }
 
-  step1.innerHTML = `
-    <div class="sv-step-num">1</div>
-    <div class="sv-step-content">
-      <div class="sv-step-title">Cài extension Userscript manager</div>
-      <div>Chọn một extension phù hợp cho trình duyệt:</div>
-      <div class="sv-extensions-list">
-        ${extLinksHtml}
+  card1.innerHTML = `
+    <div>
+      <div class="sv-install-card-header">
+        <div class="sv-install-card-num">1</div>
+        <div class="sv-install-card-title">Cài Extension</div>
+      </div>
+      <div class="sv-install-card-desc" style="margin-top: 6px;">
+        Cần tiện ích quản lý userscript cho trình duyệt (${browser}):
       </div>
     </div>
+    <div class="sv-install-card-action">
+      ${extLinksHtml}
+    </div>
   `;
-  stepsContainer.append(step1);
+  gridContainer.append(card1);
 
-  // Step 2: Click to Install Script
-  const step2 = document.createElement('div');
-  step2.className = 'sv-step';
-  step2.innerHTML = `
-    <div class="sv-step-num">2</div>
-    <div class="sv-step-content">
-      <div class="sv-step-title">Cài đặt script</div>
-      <div>Bấm nút bên dưới để mở trang cài đặt script:</div>
-      <div class="sv-install-action">
-        <a class="sv-btn sv-btn-primary" href="${userscriptUrl}" target="_blank" rel="noopener noreferrer">
-          Cài đặt .user.js
-        </a>
+  // Card 2: Install Userscript
+  const card2 = document.createElement('div');
+  card2.className = 'sv-install-card';
+  card2.innerHTML = `
+    <div>
+      <div class="sv-install-card-header">
+        <div class="sv-install-card-num">2</div>
+        <div class="sv-install-card-title">Cài Userscript</div>
+      </div>
+      <div class="sv-install-card-desc" style="margin-top: 6px;">
+        Mở liên kết bên dưới và bấm "Cài đặt / Install":
       </div>
     </div>
-  `;
-  stepsContainer.append(step2);
-
-  // Step 3: Finish & Reload
-  const step3 = document.createElement('div');
-  step3.className = 'sv-step';
-  step3.innerHTML = `
-    <div class="sv-step-num">3</div>
-    <div class="sv-step-content">
-      <div class="sv-step-title">Xác nhận</div>
-      <div>Sau khi bấm Cài đặt trong extension, quay lại trang này hoặc tải lại trang.</div>
+    <div class="sv-install-card-action">
+      <a class="sv-btn sv-btn-primary sv-script-btn" href="${userscriptUrl}" target="_blank" rel="noopener noreferrer">
+        Cài đặt .user.js
+      </a>
     </div>
   `;
-  stepsContainer.append(step3);
+  gridContainer.append(card2);
 
-  box.append(stepsContainer);
+  box.append(gridContainer);
 
   // Footer Buttons
   const buttonsContainer = document.createElement('div');
   buttonsContainer.className = 'sv-buttons';
 
   const reloadBtn = document.createElement('button');
+  reloadBtn.type = 'button';
   reloadBtn.className = 'sv-btn sv-btn-deny';
   reloadBtn.textContent = 'Tải lại trang';
   reloadBtn.addEventListener('click', () => {
@@ -221,7 +225,8 @@ export function showInstallModal(options = {}) {
   });
 
   const doneBtn = document.createElement('button');
-  doneBtn.className = 'sv-btn sv-btn-primary';
+  doneBtn.type = 'button';
+  doneBtn.className = 'sv-btn';
   doneBtn.textContent = 'Đóng';
   doneBtn.addEventListener('click', () => {
     close();
@@ -236,6 +241,12 @@ export function showInstallModal(options = {}) {
   dialog.addEventListener('cancel', e => {
     e.preventDefault();
     close();
+  });
+
+  dialog.addEventListener('click', e => {
+    if (e.target === dialog) {
+      close();
+    }
   });
 
   // Mount
@@ -263,10 +274,17 @@ export function showInstallModal(options = {}) {
       statusBanner.className = 'sv-status-banner success';
       statusBanner.innerHTML = `
         <span>✓</span>
-        <span>Userscript đã được kích hoạt.</span>
+        <span>Userscript đã được kích hoạt thành công!</span>
       `;
     }
     onSuccess?.();
+
+    // Auto-close after 1.2s on detection for seamless UX
+    if (!autoCloseTimer) {
+      autoCloseTimer = setTimeout(() => {
+        close();
+      }, 1200);
+    }
   }
 
   function onUserscriptReady() {
