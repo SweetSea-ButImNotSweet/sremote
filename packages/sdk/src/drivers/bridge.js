@@ -211,6 +211,10 @@ export class BridgeDriver {
   list(key) {
     return this._callOptional('instances.list', [], this.getPasskey(key));
   }
+
+  remove(instanceId, key) {
+    return this._callOptional('instances.remove', false, instanceId, this.getPasskey(key));
+  }
 }
 
 // Backward-compatible alias

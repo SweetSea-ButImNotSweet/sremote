@@ -3,8 +3,25 @@ import { capabilities, state } from '@sremote/shared';
 /**
  * Creates instances domain handlers for parent API.
  */
-export function createInstancesHandlers({ instanceManager, validateDomainAccess, queryMediaInstancesViaGM, logger }) {
+export function createInstancesHandlers({ instanceManager, transportManager = null, validateDomainAccess, queryMediaInstancesViaGM, logger }) {
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, pauseOthersExcept } = instanceManager;
+
+  const removeInstance = (instanceId, key) => {
+    if (!validateDomainAccess(key)) {
+      logger.scope('auth').error('Blocked removeInstance()! Valid Passkey is required.');
+      return false;
+    }
+    if (!instanceId) return false;
+    if (transportManager && typeof transportManager.terminateInstance === 'function') {
+      transportManager.terminateInstance(instanceId, 'eager_destroy');
+      return true;
+    }
+    if (typeof instanceManager.removeInstance === 'function') {
+      instanceManager.removeInstance(instanceId, 'eager_destroy');
+      return true;
+    }
+    return false;
+  };
 
   const assignIframeId = (iframeOrSelector, customId) => {
     if (!customId || typeof customId !== 'string') return false;
@@ -187,5 +204,6 @@ export function createInstancesHandlers({ instanceManager, validateDomainAccess,
     queryInstances,
     getQualities,
     getSubtitles,
+    removeInstance,
   };
 }

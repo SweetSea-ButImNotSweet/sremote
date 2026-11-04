@@ -1,10 +1,1 @@
-{
-  "editor.defaultFormatter": "simwai.biome-vscode",
-  "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": { "quickfix.biome": "explicit", "source.organizeImports.biome": "explicit" },
-  "[javascript]": { "editor.defaultFormatter": "simwai.biome-vscode" },
-  "[json]": { "editor.defaultFormatter": "simwai.biome-vscode" },
-  "[jsonc]": { "editor.defaultFormatter": "simwai.biome-vscode" },
-  "[html]": { "editor.defaultFormatter": "simwai.biome-vscode" },
-  "[markdown]": { "editor.defaultFormatter": "simwai.biome-vscode" }
-}
+{ "editor.defaultFormatter": "biomejs.biome" }

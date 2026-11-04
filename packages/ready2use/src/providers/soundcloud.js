@@ -27,7 +27,7 @@ export class SoundCloudProvider extends BaseProvider {
     const iframe = document.createElement('iframe');
     iframe.id = `sremote-sc-${instanceId}`;
     iframe.allow = 'autoplay';
-    iframe.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(trackUrl)}&color=${encodeURIComponent(options.color || '#ff5500')}&auto_play=${autoPlay}&visual=${visual}&hide_cover=${Boolean(options.hideCover)}&show_teaser=${Boolean(options.showTeaser)}`;
+    iframe.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(trackUrl)}&color=${encodeURIComponent(options.color || '#ff5500')}&auto_play=${autoPlay}&visual=${visual}&hide_cover=${Boolean(options.hideCover)}&show_teaser=${Boolean(options.showTeaser)}#sremote_id=${instanceId}`;
 
     applyElementAttributes(iframe, width, height, instanceId);
 

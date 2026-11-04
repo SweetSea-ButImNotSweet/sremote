@@ -40,7 +40,7 @@ export class VimeoProvider extends BaseProvider {
     // Create iframe directly to bypass oEmbed restrictions and speed up mounting
     const iframe = document.createElement('iframe');
     iframe.id = `sremote-vimeo-${instanceId}`;
-    iframe.src = `https://player.vimeo.com/video/${videoId}?autoplay=${autoplay}&muted=${muted}&loop=${loop}&api=1`;
+    iframe.src = `https://player.vimeo.com/video/${videoId}?autoplay=${autoplay}&muted=${muted}&loop=${loop}&api=1#sremote_id=${instanceId}`;
     iframe.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media';
     iframe.allowFullscreen = true;
     iframe.style.border = 'none';

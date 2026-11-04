@@ -19,7 +19,7 @@ export function createExportedApi({
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap } = instanceManager;
 
   // 1. Initialize Domain Handlers
-  const instancesHandlers = createInstancesHandlers({ instanceManager, validateDomainAccess, queryMediaInstancesViaGM, logger });
+  const instancesHandlers = createInstancesHandlers({ instanceManager, transportManager, validateDomainAccess, queryMediaInstancesViaGM, logger });
 
   const rpcHandlers = createRpcHandlers({ instanceManager, validateDomainAccess, getIframeElement: instancesHandlers.getIframeElement, logger, NS });
 

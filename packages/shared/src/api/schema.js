@@ -41,6 +41,7 @@ export const API_SPEC = Object.freeze({
       setExclusive: { type: 'handler', handler: 'setExclusive', args: ['mode', 'key'] },
       query: { type: 'handler', handler: 'queryInstances', args: ['key'] },
       note: { type: 'handler', handler: 'annotateInstances', args: ['dict', 'key'] },
+      remove: { type: 'handler', handler: 'removeInstance', args: ['instanceId', 'key'] },
     },
     adapters: {
       register: { type: 'handler', handler: 'registerAdapter', args: ['adapter', 'instanceId', 'key'] },

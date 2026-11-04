@@ -233,9 +233,11 @@ export class BaseProvider {
       if (isDestroyed) return;
       isDestroyed = true;
 
-      // Unregister from SRemote client
+      // Eager unregister from SRemote client & bridge
       try {
-        if (sremoteClient?.adapters && typeof sremoteClient.adapters.unregister === 'function') {
+        if (sremoteClient?.instances && typeof sremoteClient.instances.remove === 'function') {
+          sremoteClient.instances.remove(instanceId);
+        } else if (sremoteClient?.adapters && typeof sremoteClient.adapters.unregister === 'function') {
           sremoteClient.adapters.unregister(instanceId);
         }
       } catch {}

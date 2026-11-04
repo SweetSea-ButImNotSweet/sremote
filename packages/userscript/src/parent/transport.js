@@ -288,6 +288,10 @@ export function createParentTransportManager({
 
   // --- 2. Instance Termination with Cleanup ---
   function terminateInstance(instanceId, reason = 'disconnected') {
+    if (pendingReapTimers.has(instanceId)) {
+      clearTimeout(pendingReapTimers.get(instanceId));
+      pendingReapTimers.delete(instanceId);
+    }
     const item = instances.get(instanceId);
     if (!item) return;
     item.transportState = TRANSPORT_STATE.TERMINATED;
@@ -321,6 +325,10 @@ export function createParentTransportManager({
     if (lowerAction === 'syn') {
       const iframeEl = findIframeElementBySource(event.source);
       let preAssignedId = (iframeEl && (iframeEl.getAttribute('data-sremote-id') || iframeToAssignedIdMap.get(iframeEl))) || null;
+      if (!preAssignedId && iframeEl?.name && typeof iframeEl.name === 'string') {
+        const nameMatch = iframeEl.name.match(/(?:sremote_id|data-sremote-id)=([^&;\s]+)/i);
+        if (nameMatch) preAssignedId = decodeURIComponent(nameMatch[1]);
+      }
       if (!preAssignedId && iframeEl?.closest) {
         const closestParentWithId = iframeEl.closest('[data-sremote-id]');
         if (closestParentWithId) {
@@ -549,6 +557,7 @@ export function createParentTransportManager({
 
   return {
     flushPendingSyns,
+    terminateInstance,
     destroy: () => {
       window.removeEventListener('message', onWindowMessage);
       clearInterval(heartbeatInterval);

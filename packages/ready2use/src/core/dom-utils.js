@@ -62,6 +62,15 @@ export function applyElementAttributes(el, width = '100%', height = '100%', inst
   if (!el) return;
   if (instanceId) {
     el.setAttribute('data-sremote-id', instanceId);
+    if (el.tagName === 'IFRAME') {
+      try {
+        if (!el.name) {
+          el.name = `sremote_id=${instanceId}`;
+        } else if (!el.name.includes('sremote_id=')) {
+          el.name = `${el.name};sremote_id=${instanceId}`;
+        }
+      } catch {}
+    }
   }
   if (width !== undefined) {
     el.style.width = typeof width === 'number' ? `${width}px` : width;

@@ -19,8 +19,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     ```javascript
     await sremote('#hero-video').play().seek(10).volume(0.8);
     ```
+- **Multi-Instance Broadcasting (`sremote.all`)**:
+  - Added `sremote.all(selector?)` returning `FluentGroupInstance` executing commands across matching or all active instances in parallel via `Promise.allSettled`.
+  - Supports `.tap(states => ...)`, group snapshot reading `.state`, and teardown via `.destroy()`.
 - **Dropped Legacy Trailing Arguments (`instanceId`, `key`)**:
   - Eliminated trailing target and passkey parameters from root playback functions (`play()`, `pause()`, `seek(offset)`, `volume(val)`...). All playback methods are now pure and focused solely on their functional action.
+
+### ⚡ Events Subsystem Modularization & Architecture Overhaul (`@sremote/shared`)
+- **Modularized Monolithic `events.js`**:
+  - Decomposed 660+ lines monolith into dedicated single-responsibility submodules under `packages/shared/src/events/`:
+    - `constants.js`: Frozen event sets, throttling intervals, and activity thresholds.
+    - `snapshot.js`: Frame snapshot extraction (`captureMediaSnapshot`).
+    - `envelope.js`: Structured cross-origin event packaging (`buildEventEnvelope`).
+    - `validator.js`: DOM node assertions & capability evaluation (`assertValidMediaElement`, `evaluateCapabilities`).
+    - `origin-detector.js`: Programmatic origin classification (`detectProgrammaticOrigin`).
+    - `dom-binder.js`: Scoped DOM event binding & selective fallback orchestration (`attachDomMediaListeners`).
+    - `adapter-decorator.js`: Custom adapter event interception & re-entrancy protection (`decorateCustomAdapter`).
+    - `index.js`: Canonical exports, namespace objects (`capabilities`, `events`), and full backward-compatible aliases.
+  - Converted root `packages/shared/src/events.js` into a lightweight, non-breaking bridge.
+- **Automated Monorepo AST Codemod (`scripts/refactor-events-ast.js`)**:
+  - Built an AST codemod tool using TypeScript Compiler API to systematically standardize internal function names across consumers (`action-engine.js`, `dom-hunter.js`, `fsm.js`) with zero false positives.
+- **Infinite Event Loop & Echo Storm Elimination**:
+  - Added re-entrancy flags (`isEmitting`) in `decorateCustomAdapter` preventing mutual event echoes between wrapped adapters and `rawAdapter.on('*')`.
+  - Added safe Symbol recursion guards `Symbol.for('__sremote_global_log_level__')` eliminating recursive getter loops at `logLevel >= 3`.
+- **Centralized Native HTMLMediaElement Accessors (`native-media.js`)**:
+  - Eliminated duplicate prototype descriptor caching and repetitive try/catch boilerplate across `action-engine.js` and `events/snapshot.js`.
+  - Created `packages/shared/src/dom/native-media.js` providing `getNativeMediaProp`, `setNativeMediaProp`, and `callNativeMediaMethod` to reliably bypass third-party player prototype monkey-patching (e.g. Bilibili Dash/Nano) cleanly.
 
 ### 🔄 Architecture & Public API Refactoring
 - **Userscript decoupled from `window.sremote`**: Userscript no longer claims or overwrites `window.sremote`. The global `window.sremote` is now 100% created and managed exclusively by `@sremote/sdk`.
@@ -45,6 +69,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented JIT (On-Demand per Action) dispatch table caching per target instance (`DriverCache`) for 0ms subsequent command dispatching.
   - Added automatic cache invalidation upon DOM detach (`!element.isConnected`).
   - Added micro Auto-Queue to safely buffer commands when FSM connection is still in progress.
+- **Zero-Polling MutationObserver & rVFC Media Liveness**:
+  - Eliminated battery-draining `setInterval` polling loops (`huntTimer`, `checkActiveMediaLiveness`, fake `timeupdateTimer`).
+  - Implemented scoped `MutationObserver` for instant, event-driven video discovery and replacement.
+  - Leveraged `requestVideoFrameCallback()` (rVFC) for rock-solid 60fps tracking without CPU overhead.
 - **Purged `universal-adapter`**:
   - Completely eliminated `universal-adapter.js` factory (~300 LoC), trimming bundle footprint. Custom adapters now plug straight into `sremote.adapters.register(adapter)` without unnecessary wrapper overhead.
 

@@ -110,6 +110,19 @@ export class SRemoteClient {
           this.bridgeDriver.note(dict, key || this.options.passkey);
         }
       },
+      remove: (instanceId, key) => {
+        this.driverCache.invalidate(instanceId);
+        if (this.adapterDriver) {
+          this.adapterDriver.unregister(instanceId);
+        }
+        if (this.domDriver) {
+          this.domDriver.instanceManager?.removeInstance?.(instanceId, 'eager_destroy');
+        }
+        if (this.bridgeDriver.isAvailable()) {
+          return this.bridgeDriver.remove(instanceId, key || this.options.passkey);
+        }
+        return true;
+      },
     };
 
     this.adapters = {
@@ -127,6 +140,7 @@ export class SRemoteClient {
       },
       unregister: instanceId => {
         this.logger.log(`Unregistering adapter for instance: ${instanceId}`);
+        this.driverCache.invalidate(instanceId);
         const result = this.adapterDriver.unregister(instanceId);
         return result;
       },
@@ -397,13 +411,28 @@ export class SRemoteClient {
     const targetLabel = targetOrId ? ` (target: ${typeof targetOrId === 'string' ? targetOrId : 'custom'})` : '';
     this.logger.scope('action').log(`(SDK) Dispatching -> ${actionName}${targetLabel}`, { payload, context });
 
-    return driver.execute(actionName, payload, {
+    const execResult = await driver.execute(actionName, payload, {
       targetId: targetOrId,
       passkey: context?.passkey || this.options.passkey,
       source: 'sdk-client',
       timestamp: Date.now(),
       ...context,
     });
+
+    // Fallback: If AdapterDriver executed but action wasn't supported (returned false/null)
+    // and external BridgeDriver is available, fallback to bridge
+    if (execResult === false && driver === this.adapterDriver && this.bridgeDriver?.isAvailable()) {
+      this.logger.scope('action').log(`(SDK) Adapter did not handle '${actionName}', falling back to BridgeDriver...`);
+      return this.bridgeDriver.execute(actionName, payload, {
+        targetId: targetOrId,
+        passkey: context?.passkey || this.options.passkey,
+        source: 'sdk-fallback',
+        timestamp: Date.now(),
+        ...context,
+      });
+    }
+
+    return execResult;
   }
 
   /**
