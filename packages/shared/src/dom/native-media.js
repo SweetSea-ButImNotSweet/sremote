@@ -83,7 +83,7 @@ export function setNativeMediaProp(el, prop, val) {
  * @param {...any} args
  * @returns {any}
  */
-export function callNativeMediaMethod(el, method, ...args) {
+export function callNative(el, method, ...args) {
   if (!el) return undefined;
   const fn = nativeMediaDescriptors[method];
   if (typeof fn === 'function') {
@@ -94,3 +94,6 @@ export function callNativeMediaMethod(el, method, ...args) {
   }
   return undefined;
 }
+
+// Backward-compatibility alias
+export const callNativeMediaMethod = callNative;

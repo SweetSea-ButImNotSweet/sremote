@@ -1,7 +1,7 @@
 import { MEDIA_EVENTS, TIMEUPDATE_THROTTLE_MS, PROGRESS_THROTTLE_MS, ALMOST_END_THRESHOLD_SEC, ALMOST_END_MIN_DURATION_SEC, ALMOST_END_RESET_THRESHOLD_SEC } from './constants.js';
 import { captureMediaSnapshot } from './snapshot.js';
-import { buildEventEnvelope } from './envelope.js';
-import { detectProgrammaticOrigin } from './origin-detector.js';
+import { buildEventPayload } from './payload.js';
+import { isProgrammatic } from './origin-detector.js';
 import { getGlobalTransactionTracker } from '../pipeline/transaction-tracker.js';
 
 /**
@@ -12,7 +12,7 @@ import { getGlobalTransactionTracker } from '../pipeline/transaction-tracker.js'
  * @param {Object} [options={}] - Options for binding
  * @returns {() => void} Detach / cleanup function to remove all attached listeners
  */
-export function attachDomMediaListeners(media, onEvent, options = {}) {
+export function bindDomMedia(media, onEvent, options = {}) {
   if (!media || typeof media.addEventListener !== 'function' || typeof onEvent !== 'function') {
     return () => {};
   }
@@ -23,7 +23,8 @@ export function attachDomMediaListeners(media, onEvent, options = {}) {
     treatAlmostEndAsEnd = false,
     events = MEDIA_EVENTS,
     excludedEvents = null,
-    programmaticActionTimestampGetter = null,
+    programmaticTimeGetter = null,
+    programmaticActionTimestampGetter = programmaticTimeGetter,
     transactionTracker = getGlobalTransactionTracker(),
   } = options;
 
@@ -42,16 +43,16 @@ export function attachDomMediaListeners(media, onEvent, options = {}) {
   const boundListeners = [];
 
   const dispatchStandardizedEvent = (evtName, eventObj) => {
-    const isProgrammatic = detectProgrammaticOrigin({ eventName: evtName, instanceId, media, tracker: transactionTracker, timestampGetter: programmaticActionTimestampGetter });
+    const isProg = isProgrammatic({ eventName: evtName, instanceId, media, tracker: transactionTracker, timestampGetter: programmaticActionTimestampGetter });
 
     onEvent(
       evtName,
-      buildEventEnvelope(evtName, {
+      buildEventPayload(evtName, {
         source,
         instanceId,
         mediaType: media.tagName?.toLowerCase() ?? 'video',
         state: captureMediaSnapshot(media),
-        isProgrammatic,
+        isProgrammatic: isProg,
         originalEvent: eventObj,
       }),
     );
@@ -86,7 +87,7 @@ export function attachDomMediaListeners(media, onEvent, options = {}) {
           if (!hasEmittedAlmostEnd) {
             hasEmittedAlmostEnd = true;
             const almostEndEvent = treatAlmostEndAsEnd ? 'ended' : 'almostend';
-            const isProgrammatic = detectProgrammaticOrigin({
+            const isProg = isProgrammatic({
               eventName: almostEndEvent,
               instanceId,
               media,
@@ -95,7 +96,7 @@ export function attachDomMediaListeners(media, onEvent, options = {}) {
             });
             onEvent(
               almostEndEvent,
-              buildEventEnvelope(almostEndEvent, { source, instanceId, mediaType: media.tagName?.toLowerCase() ?? 'video', state: captureMediaSnapshot(media), isProgrammatic }),
+              buildEventPayload(almostEndEvent, { source, instanceId, mediaType: media.tagName?.toLowerCase() ?? 'video', state: captureMediaSnapshot(media), isProgrammatic: isProg }),
             );
           }
         } else if (dur && curTime < dur - ALMOST_END_RESET_THRESHOLD_SEC) {
@@ -154,3 +155,7 @@ export function attachDomMediaListeners(media, onEvent, options = {}) {
     boundListeners.length = 0;
   };
 }
+
+// Backward-compatibility aliases
+export const attachDomMediaListeners = bindDomMedia;
+export const bindMediaEvents = bindDomMedia;

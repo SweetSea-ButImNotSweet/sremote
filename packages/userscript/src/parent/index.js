@@ -5,7 +5,7 @@ import { t } from '../core/i18n.js';
 import { registerMenuCommands } from './menu.js';
 import { pendingCommandQueue } from './queue.js';
 import { createExportedApi } from './api.js';
-import { createParentTransportManager } from './transport.js';
+import { createParentTransport } from './transport.js';
 import { setupTopMediaTracker } from './top-media.js';
 import { actions, dom, instance, pipeline } from '@sremote/shared';
 
@@ -267,7 +267,7 @@ export function initParentController() {
   }
 
   // Initialize Clean Transport Manager (MessagePort, Handshake, Challenge, Heartbeat & Grace Period)
-  const transportManager = createParentTransportManager({
+  const transportManager = createParentTransport({
     instanceManager,
     tabSessionId,
     isHelloInitiated: () => hasInitiatedHello,

@@ -1,7 +1,7 @@
 import { logger, descriptors } from '../config.js';
 import { VERSION, NS, ENABLE_DEBUG_API } from '../const.js';
 import { Storage } from '../core/storage.js';
-import { checkOriginPairPermission, generateInstanceId, safeSetProp, normalizeOrigin } from '../core/utils.js';
+import { checkPermission, generateInstanceId, safeSetProp, normalizeOrigin } from '../core/utils.js';
 import { showConnectedIndicator, hideConnectedIndicator } from '../ui/indicator-badge.js';
 import { IframeStyleEngine } from './style-engine.js';
 import { mockMediaSessionInstance, hookMediaSession } from './media-session.js';
@@ -10,7 +10,7 @@ import { setupMediaHooks } from './hooks.js';
 import { getVideoState, getIframeCapabilities, createMediaController } from './controller.js';
 import { createIframeDebugApi } from '../debug/iframe-debug.js';
 import { createRpcRegistry } from './rpc.js';
-import { createIframeTransportManager } from './transport.js';
+import { createIframeTransport } from './transport.js';
 import { createMediaEventEmitter } from './event-emitter.js';
 import { createIframeDispatcher } from './dispatcher.js';
 
@@ -44,7 +44,7 @@ export function initIframeAgent() {
   }
 
   if (topOrigin) {
-    const pairPerm = checkOriginPairPermission(topOrigin, location.origin);
+    const pairPerm = checkPermission(topOrigin, location.origin);
     if (pairPerm.isDenied) {
       return;
     }
@@ -203,7 +203,7 @@ export function initIframeAgent() {
     port.onmessage = e => dispatcher.dispatchPortMessage(e, port);
   }
 
-  const handshake = createIframeTransportManager({
+  const handshake = createIframeTransport({
     instanceIdGetter: () => instanceId,
     setInstanceId: id => {
       instanceId = id;

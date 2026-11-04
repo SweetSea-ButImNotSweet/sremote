@@ -1,5 +1,5 @@
 import { Storage } from '../core/storage.js';
-import { checkOriginPairPermission, normalizeOrigin } from '../core/utils.js';
+import { checkPermission, normalizeOrigin } from '../core/utils.js';
 import { t } from '../core/i18n.js';
 import { createModal } from './modal.js';
 import { logger } from '../config.js';
@@ -362,7 +362,7 @@ export function createPermissionDialog({ origin, iframeOrigin = null, parentOrig
   }
 
   // 1. Immediate storage verification
-  const perm = checkOriginPairPermission(effectiveParentOrigin, effectiveIframeOrigin);
+  const perm = checkPermission(effectiveParentOrigin, effectiveIframeOrigin);
   if (perm.isDenied) {
     onDecision?.(false);
     return { close: () => {} };
@@ -397,7 +397,7 @@ export function createPermissionDialog({ origin, iframeOrigin = null, parentOrig
   return { close: () => removePendingRow(pairKey) };
 }
 
-function setPermissionSessionBlocked(blocked = true, parentOrigin = null) {
+function blockSession(blocked = true, parentOrigin = null) {
   const targetParent = parentOrigin || (typeof location !== 'undefined' ? location.origin : '*');
   if (blocked) {
     sessionBlockedParents.add(targetParent);
@@ -413,3 +413,5 @@ function setPermissionSessionBlocked(blocked = true, parentOrigin = null) {
     items.forEach(it => applyDecision(it, false, false));
   }
 }
+
+const setPermissionSessionBlocked = blockSession;

@@ -38,7 +38,7 @@ import { Storage } from './storage.js';
 /**
  * Checks if a ParentOrigin -> IframeOrigin pair is granted or denied in Storage.permissions.
  */
-export function checkOriginPairPermission(parentOrigin, iframeOrigin) {
+export function checkPermission(parentOrigin, iframeOrigin) {
   const normParent = normalizeOrigin(parentOrigin);
   const normIframe = normalizeOrigin(iframeOrigin);
 
@@ -52,6 +52,9 @@ export function checkOriginPairPermission(parentOrigin, iframeOrigin) {
 
   return { isAllowed: false, isDenied: false, isPersisted: false };
 }
+
+// Backward-compatibility alias
+export const checkOriginPairPermission = checkPermission;
 
 export function generateInstanceId(prefix = 'sv') {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;

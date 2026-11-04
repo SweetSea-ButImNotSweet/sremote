@@ -12,7 +12,7 @@ import { PROGRAMMATIC_WINDOW_MS } from './constants.js';
  * @param {*} [params.value] - Action parameter value
  * @returns {boolean} True if programmatic
  */
-export function detectProgrammaticOrigin({ eventName, instanceId, tracker, timestampGetter, media, value }) {
+export function isProgrammatic({ eventName, instanceId, tracker, timestampGetter, media, value }) {
   if (!eventName) return false;
   const ev = String(eventName).toLowerCase();
 
@@ -44,3 +44,7 @@ export function detectProgrammaticOrigin({ eventName, instanceId, tracker, times
 
   return false;
 }
+
+// Backward-compatibility aliases
+export const detectProgrammaticOrigin = isProgrammatic;
+export const resolveIsProgrammatic = isProgrammatic;

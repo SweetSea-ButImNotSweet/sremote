@@ -41,7 +41,7 @@ export function createEnvelope({ type, action, payload = null, id = null, meta =
  * @param {Object} [meta={}]
  * @returns {Object}
  */
-export function createRpcRequestEnvelope(action, params = null, meta = {}) {
+export function createRpcRequest(action, params = null, meta = {}) {
   return createEnvelope({ type: PACKET_TYPE.RPC_REQUEST, action, payload: params, meta });
 }
 
@@ -53,7 +53,7 @@ export function createRpcRequestEnvelope(action, params = null, meta = {}) {
  * @param {Object} [meta={}]
  * @returns {Object}
  */
-export function createRpcResponseEnvelope(rpcId, result = null, error = null, meta = {}) {
+export function createRpcResponse(rpcId, result = null, error = null, meta = {}) {
   return createEnvelope({
     type: PACKET_TYPE.RPC_RESPONSE,
     action: 'rpc_response',
@@ -62,6 +62,11 @@ export function createRpcResponseEnvelope(rpcId, result = null, error = null, me
     meta,
   });
 }
+
+// Backward-compatibility aliases
+export const createRpcRequestEnvelope = createRpcRequest;
+export const createRpcResponseEnvelope = createRpcResponse;
+export const createEventPacket = createEventEnvelope;
 
 /**
  * Creates a media or lifecycle event envelope.

@@ -4,7 +4,7 @@
  * @param {HTMLMediaElement|Object} media
  * @returns {boolean}
  */
-export function hasActiveMediaSource(media) {
+export function hasMediaSource(media) {
   return Boolean(media?.currentSrc ?? media?.src ?? media?.srcObject);
 }
 
@@ -19,7 +19,7 @@ export function hasActiveMediaSource(media) {
  * @param {boolean} [options.requireConnected=true] - Require media to be connected to DOM
  * @returns {boolean}
  */
-export function assertValidMediaElement(media, options = {}) {
+export function isValidMedia(media, options = {}) {
   if (!media) return false;
 
   const { minSize = 32, requireConnected = true } = options;
@@ -36,7 +36,7 @@ export function assertValidMediaElement(media, options = {}) {
       const isHidden = w === 0 && h === 0 && !media.hasAttribute?.('controls');
 
       // Reject tracking pixels or hidden videos without source/playback
-      if (isTooSmall || (isHidden && media.paused && !hasActiveMediaSource(media))) {
+      if (isTooSmall || (isHidden && media.paused && !hasMediaSource(media))) {
         return false;
       }
     } catch {}
@@ -108,3 +108,9 @@ export function evaluateCapabilities(target) {
     hasMediaSession: false,
   };
 }
+
+// Backward-compatibility aliases
+export const hasActiveMediaSource = hasMediaSource;
+export const assertValidMediaElement = isValidMedia;
+export const isValidMediaElement = isValidMedia;
+export const getCapabilities = evaluateCapabilities;

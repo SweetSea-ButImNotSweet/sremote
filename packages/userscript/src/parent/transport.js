@@ -18,7 +18,7 @@ export const TRANSPORT_STATE = Object.freeze({ DISCONNECTED: 'DISCONNECTED', CON
  * 3. DOM Detach Grace Period (300ms) for React Strict Mode / Remount
  * 4. Ping/Pong Heartbeat Sweeper
  */
-export function createParentTransportManager({
+export function createParentTransport({
   instanceManager,
   tabSessionId = null,
   isHelloInitiated = () => false,
@@ -568,3 +568,6 @@ export function createParentTransportManager({
     },
   };
 }
+
+// Backward-compatibility alias
+export const createParentTransportManager = createParentTransport;

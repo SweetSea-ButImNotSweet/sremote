@@ -1,8 +1,8 @@
 import { MEDIA_EVENTS, SAFE_FALLBACK_EVENTS, STATE_CHANGING_EVENTS, ACTION_METHODS, TIMEUPDATE_LOG_THROTTLE_MS } from './constants.js';
 import { captureMediaSnapshot } from './snapshot.js';
-import { buildEventEnvelope } from './envelope.js';
-import { detectProgrammaticOrigin } from './origin-detector.js';
-import { attachDomMediaListeners } from './dom-binder.js';
+import { buildEventPayload } from './payload.js';
+import { isProgrammatic } from './origin-detector.js';
+import { bindDomMedia } from './dom-binder.js';
 import { evaluateCapabilities } from './validator.js';
 import { defaultLogger } from '../logger.js';
 import { getGlobalTransactionTracker } from '../pipeline/transaction-tracker.js';
@@ -18,7 +18,7 @@ import { getGlobalTransactionTracker } from '../pipeline/transaction-tracker.js'
  * @param {string} [options.source='adapter'] - Source identifier
  * @returns {Object} Decorated SRemote custom adapter
  */
-export function decorateCustomAdapter(rawAdapter, options = {}) {
+export function wrapAdapter(rawAdapter, options = {}) {
   if (!rawAdapter || typeof rawAdapter !== 'object') return null;
 
   const { instanceId, onEmit, source = 'adapter' } = options;
@@ -70,10 +70,10 @@ export function decorateCustomAdapter(rawAdapter, options = {}) {
       } catch {}
 
       const payloadObj = typeof payload === 'object' && payload !== null ? payload : { value: payload };
-      const isProgrammatic =
+      const isProg =
         payloadObj.isProgrammatic ??
         payloadObj.programmatic ??
-        detectProgrammaticOrigin({
+        isProgrammatic({
           eventName: ev,
           instanceId,
           value: payloadObj.value,
@@ -82,7 +82,7 @@ export function decorateCustomAdapter(rawAdapter, options = {}) {
         });
 
       const state = captureMediaSnapshot(adapter);
-      const fullPayload = buildEventEnvelope(ev, { source, instanceId, mediaType: 'adapter', isProgrammatic, ...(state ? { state } : {}), ...payloadObj });
+      const fullPayload = buildEventPayload(ev, { source, instanceId, mediaType: 'adapter', isProgrammatic: isProg, ...(state ? { state } : {}), ...payloadObj });
 
       const shouldLogAdapterEvent = ev !== 'timeupdate' || now - lastTimeupdateAdapterLog >= TIMEUPDATE_LOG_THROTTLE_MS;
       if (ev === 'timeupdate' && shouldLogAdapterEvent) {
@@ -101,12 +101,12 @@ export function decorateCustomAdapter(rawAdapter, options = {}) {
         // Automatically trigger unified 'state' event for state-changing events
         if (ev !== 'state' && STATE_CHANGING_EVENTS.has(ev)) {
           try {
-            const statePayload = buildEventEnvelope('state', {
+            const statePayload = buildEventPayload('state', {
               source,
               instanceId,
               mediaType: 'adapter',
               triggerEvent: ev,
-              isProgrammatic,
+              isProgrammatic: isProg,
               state,
               ...(typeof payload === 'object' && payload !== null ? payload : {}),
             });
@@ -149,7 +149,7 @@ export function decorateCustomAdapter(rawAdapter, options = {}) {
           ? MEDIA_EVENTS
           : SAFE_FALLBACK_EVENTS;
 
-      detachDomFallback = attachDomMediaListeners(
+      detachDomFallback = bindDomMedia(
         targetMediaEl,
         (evtName, payload) => {
           const evNorm = evtName.toLowerCase();
@@ -203,3 +203,7 @@ export function decorateCustomAdapter(rawAdapter, options = {}) {
 
   return adapter;
 }
+
+// Backward-compatibility aliases
+export const decorateCustomAdapter = wrapAdapter;
+export const wrapCustomAdapter = wrapAdapter;

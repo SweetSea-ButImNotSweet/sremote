@@ -233,6 +233,10 @@ export class SRemoteClient {
     }
   }
 
+  syncLogLevel() {
+    return this.syncLogLevelFromUserscript();
+  }
+
   async ready() {
     if (this._readyPromise) return this._readyPromise;
 
@@ -680,6 +684,10 @@ export class SRemoteClient {
         this.logger.warn('Failed to bind userscript event stream:', err);
       }
     }
+  }
+
+  syncListeners() {
+    return this.syncListenersToUserscript();
   }
 
   emit(event, payload) {

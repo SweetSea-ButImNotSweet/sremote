@@ -215,7 +215,7 @@ export class ActionTransactionTracker {
 
 let globalTrackerInstance = null;
 
-export function getGlobalTransactionTracker() {
+export function getTransactionTracker() {
   return (globalTrackerInstance ??= new ActionTransactionTracker());
 }
 
@@ -223,4 +223,12 @@ export function createTransactionTracker(options) {
   return new ActionTransactionTracker(options);
 }
 
-export const pipeline = { getTracker: getGlobalTransactionTracker, createTracker: createTransactionTracker, Tracker: ActionTransactionTracker };
+// Backward-compatibility aliases
+export const getGlobalTransactionTracker = getTransactionTracker;
+
+export const pipeline = {
+  getTracker: getTransactionTracker,
+  getGlobalTracker: getTransactionTracker,
+  createTracker: createTransactionTracker,
+  Tracker: ActionTransactionTracker,
+};
