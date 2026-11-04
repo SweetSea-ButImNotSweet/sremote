@@ -19,6 +19,3 @@ export function buildEventPayload(event, options = {}) {
   return { source, instanceId, mediaType, event: ev, isProgrammatic, ...(state ? { state } : {}), ...extra };
 }
 
-// Backward-compatibility aliases
-export const buildEventEnvelope = buildEventPayload;
-export const createEventPayload = buildEventPayload;

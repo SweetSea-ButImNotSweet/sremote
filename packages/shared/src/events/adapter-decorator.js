@@ -204,6 +204,3 @@ export function wrapAdapter(rawAdapter, options = {}) {
   return adapter;
 }
 
-// Backward-compatibility aliases
-export const decorateCustomAdapter = wrapAdapter;
-export const wrapCustomAdapter = wrapAdapter;

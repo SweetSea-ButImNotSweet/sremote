@@ -4,7 +4,7 @@
  * Single Source of Truth for action dispatching.
  */
 
-import { wrapAdapter } from '../events.js';
+import { wrapAdapter } from '../events/index.js';
 import { nativeMediaDescriptors, getNativeMediaProp, setNativeMediaProp, callNative } from '../dom/native-media.js';
 
 export { nativeMediaDescriptors };

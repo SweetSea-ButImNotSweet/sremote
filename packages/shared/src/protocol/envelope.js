@@ -65,10 +65,6 @@ export function createRpcResponse(rpcId, result = null, error = null, meta = {})
   });
 }
 
-// Backward-compatibility aliases
-export const createRpcRequestEnvelope = createRpcRequest;
-export const createRpcResponseEnvelope = createRpcResponse;
-export const createEventPacket = createEventEnvelope;
 
 /**
  * Creates a media or lifecycle event envelope.

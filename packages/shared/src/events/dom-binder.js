@@ -156,6 +156,3 @@ export function bindDomMedia(media, onEvent, options = {}) {
   };
 }
 
-// Backward-compatibility aliases
-export const attachDomMediaListeners = bindDomMedia;
-export const bindMediaEvents = bindDomMedia;

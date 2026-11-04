@@ -164,5 +164,4 @@ export function createIframeTransport(options) {
   };
 }
 
-// Backward-compatibility alias
-export const createIframeTransportManager = createIframeTransport;
+

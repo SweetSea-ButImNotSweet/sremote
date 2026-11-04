@@ -1,4 +1,4 @@
-import { isValidMedia, hasMediaSource } from '../events.js';
+import { isValidMedia, hasMediaSource } from '../events/index.js';
 import { resolveMediaElement } from '../actions/action-engine.js';
 
 /**

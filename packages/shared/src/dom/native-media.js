@@ -95,5 +95,3 @@ export function callNative(el, method, ...args) {
   return undefined;
 }
 
-// Backward-compatibility alias
-export const callNativeMediaMethod = callNative;

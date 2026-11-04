@@ -338,37 +338,22 @@ export declare function createEnvelope<T = any>(options: { type: string; action:
 
 export declare function createRpcRequest(action: string, params?: any, meta?: any): SRemoteEnvelope;
 export declare function createRpcResponse(rpcId: string, result?: any, error?: any, meta?: any): SRemoteEnvelope;
-export declare function createRpcRequestEnvelope(action: string, params?: any, meta?: any): SRemoteEnvelope;
-export declare function createRpcResponseEnvelope(rpcId: string, result?: any, error?: any, meta?: any): SRemoteEnvelope;
 export declare function createEventEnvelope(eventName: string, payload?: any, meta?: any): SRemoteEnvelope;
-export declare function createEventPacket(eventName: string, payload?: any, meta?: any): SRemoteEnvelope;
 export declare function parseEnvelope(raw: any, namespace?: string): SRemoteEnvelope | null;
 
 export declare function getTransactionTracker(): ActionTransactionTracker;
-export declare function getGlobalTransactionTracker(): ActionTransactionTracker;
 export declare function createTransactionTracker(options?: { defaultTtlMs?: number }): ActionTransactionTracker;
 
 export declare function buildEventPayload(event: string, options?: any): SRemoteEventPayload;
-export declare function buildEventEnvelope(event: string, options?: any): SRemoteEventPayload;
-export declare function createEventPayload(event: string, options?: any): SRemoteEventPayload;
 
 export declare function isValidMedia(media: any, options?: { minSize?: number; requireConnected?: boolean }): boolean;
-export declare function assertValidMediaElement(media: any, options?: { minSize?: number; requireConnected?: boolean }): boolean;
-export declare function isValidMediaElement(media: any, options?: { minSize?: number; requireConnected?: boolean }): boolean;
 
 export declare function hasMediaSource(media: any): boolean;
-export declare function hasActiveMediaSource(media: any): boolean;
 
 export declare function isProgrammatic(params: { eventName: string; instanceId?: string; tracker?: any; timestampGetter?: () => number; media?: any; value?: any }): boolean;
-export declare function detectProgrammaticOrigin(params: { eventName: string; instanceId?: string; tracker?: any; timestampGetter?: () => number; media?: any; value?: any }): boolean;
-export declare function resolveIsProgrammatic(params: { eventName: string; instanceId?: string; tracker?: any; timestampGetter?: () => number; media?: any; value?: any }): boolean;
 
 export declare function bindDomMedia(media: any, onEvent: (event: string, payload: any) => void, options?: any): () => void;
-export declare function attachDomMediaListeners(media: any, onEvent: (event: string, payload: any) => void, options?: any): () => void;
-export declare function bindMediaEvents(media: any, onEvent: (event: string, payload: any) => void, options?: any): () => void;
 
 export declare function wrapAdapter(rawAdapter: any, options?: { instanceId?: string; onEmit?: (event: string, payload: any) => void; source?: string }): any;
-export declare function decorateCustomAdapter(rawAdapter: any, options?: { instanceId?: string; onEmit?: (event: string, payload: any) => void; source?: string }): any;
-export declare function wrapCustomAdapter(rawAdapter: any, options?: { instanceId?: string; onEmit?: (event: string, payload: any) => void; source?: string }): any;
 
 export declare function createConnectionManager(options?: any): ConnectionManager;

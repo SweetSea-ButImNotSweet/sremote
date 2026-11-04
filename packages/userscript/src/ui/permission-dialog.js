@@ -307,7 +307,7 @@ function openOrUpdateDialog(isTop) {
           const dlg = activeDialog;
           activeDialog = null;
           tableBatchRowEl = null;
-          setPermissionSessionBlocked(true);
+          blockSession(true);
           try {
             dlg?.modal?.close();
           } catch {}
@@ -414,4 +414,3 @@ function blockSession(blocked = true, parentOrigin = null) {
   }
 }
 
-const setPermissionSessionBlocked = blockSession;

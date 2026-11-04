@@ -53,8 +53,6 @@ export function checkPermission(parentOrigin, iframeOrigin) {
   return { isAllowed: false, isDenied: false, isPersisted: false };
 }
 
-// Backward-compatibility alias
-export const checkOriginPairPermission = checkPermission;
 
 import { generateInstanceId } from '@sremote/shared';
 export { generateInstanceId };

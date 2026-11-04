@@ -109,8 +109,3 @@ export function evaluateCapabilities(target) {
   };
 }
 
-// Backward-compatibility aliases
-export const hasActiveMediaSource = hasMediaSource;
-export const assertValidMediaElement = isValidMedia;
-export const isValidMediaElement = isValidMedia;
-export const getCapabilities = evaluateCapabilities;

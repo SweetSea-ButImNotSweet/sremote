@@ -45,6 +45,3 @@ export function isProgrammatic({ eventName, instanceId, tracker, timestampGetter
   return false;
 }
 
-// Backward-compatibility aliases
-export const detectProgrammaticOrigin = isProgrammatic;
-export const resolveIsProgrammatic = isProgrammatic;

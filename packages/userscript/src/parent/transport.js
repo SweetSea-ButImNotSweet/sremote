@@ -579,5 +579,4 @@ export function createParentTransport({
   };
 }
 
-// Backward-compatibility alias
-export const createParentTransportManager = createParentTransport;
+

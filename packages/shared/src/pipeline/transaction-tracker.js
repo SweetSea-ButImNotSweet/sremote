@@ -223,12 +223,8 @@ export function createTransactionTracker(options) {
   return new ActionTransactionTracker(options);
 }
 
-// Backward-compatibility aliases
-export const getGlobalTransactionTracker = getTransactionTracker;
-
 export const pipeline = {
   getTracker: getTransactionTracker,
-  getGlobalTracker: getTransactionTracker,
   createTracker: createTransactionTracker,
   Tracker: ActionTransactionTracker,
 };
