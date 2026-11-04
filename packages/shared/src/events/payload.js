@@ -18,4 +18,3 @@ export function buildEventPayload(event, options = {}) {
 
   return { source, instanceId, mediaType, event: ev, isProgrammatic, ...(state ? { state } : {}), ...extra };
 }
-

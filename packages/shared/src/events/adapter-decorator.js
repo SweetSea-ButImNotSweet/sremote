@@ -73,13 +73,7 @@ export function wrapAdapter(rawAdapter, options = {}) {
       const isProg =
         payloadObj.isProgrammatic ??
         payloadObj.programmatic ??
-        isProgrammatic({
-          eventName: ev,
-          instanceId,
-          value: payloadObj.value,
-          tracker: getTransactionTracker(),
-          timestampGetter: () => programmaticActionTimestamp,
-        });
+        isProgrammatic({ eventName: ev, instanceId, value: payloadObj.value, tracker: getTransactionTracker(), timestampGetter: () => programmaticActionTimestamp });
 
       const state = captureMediaSnapshot(adapter);
       const fullPayload = buildEventPayload(ev, { source, instanceId, mediaType: 'adapter', isProgrammatic: isProg, ...(state ? { state } : {}), ...payloadObj });
@@ -203,4 +197,3 @@ export function wrapAdapter(rawAdapter, options = {}) {
 
   return adapter;
 }
-

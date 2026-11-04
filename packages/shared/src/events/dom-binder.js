@@ -87,16 +87,16 @@ export function bindDomMedia(media, onEvent, options = {}) {
           if (!hasEmittedAlmostEnd) {
             hasEmittedAlmostEnd = true;
             const almostEndEvent = treatAlmostEndAsEnd ? 'ended' : 'almostend';
-            const isProg = isProgrammatic({
-              eventName: almostEndEvent,
-              instanceId,
-              media,
-              tracker: transactionTracker,
-              timestampGetter: programmaticActionTimestampGetter,
-            });
+            const isProg = isProgrammatic({ eventName: almostEndEvent, instanceId, media, tracker: transactionTracker, timestampGetter: programmaticActionTimestampGetter });
             onEvent(
               almostEndEvent,
-              buildEventPayload(almostEndEvent, { source, instanceId, mediaType: media.tagName?.toLowerCase() ?? 'video', state: captureMediaSnapshot(media), isProgrammatic: isProg }),
+              buildEventPayload(almostEndEvent, {
+                source,
+                instanceId,
+                mediaType: media.tagName?.toLowerCase() ?? 'video',
+                state: captureMediaSnapshot(media),
+                isProgrammatic: isProg,
+              }),
             );
           }
         } else if (dur && curTime < dur - ALMOST_END_RESET_THRESHOLD_SEC) {
@@ -155,4 +155,3 @@ export function bindDomMedia(media, onEvent, options = {}) {
     boundListeners.length = 0;
   };
 }
-

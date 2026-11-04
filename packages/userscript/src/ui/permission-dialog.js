@@ -413,4 +413,3 @@ function blockSession(blocked = true, parentOrigin = null) {
     items.forEach(it => applyDecision(it, false, false));
   }
 }
-

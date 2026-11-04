@@ -163,5 +163,3 @@ export function createIframeTransport(options) {
     handleSynAck,
   };
 }
-
-

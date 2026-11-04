@@ -44,4 +44,3 @@ export function isProgrammatic({ eventName, instanceId, tracker, timestampGetter
 
   return false;
 }
-

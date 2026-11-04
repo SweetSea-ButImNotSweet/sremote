@@ -94,4 +94,3 @@ export function callNative(el, method, ...args) {
   }
   return undefined;
 }
-

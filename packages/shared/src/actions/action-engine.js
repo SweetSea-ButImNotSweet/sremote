@@ -625,9 +625,4 @@ export async function executeMediaAction(target, action, value = undefined, opti
   return executeNativeAction(target, norm, value, isPureGet);
 }
 
-export const actions = {
-  execute: executeMediaAction,
-  safePlay: safePlayMedia,
-  safePause: safePauseMedia,
-  wrapAdapter,
-};
+export const actions = { execute: executeMediaAction, safePlay: safePlayMedia, safePause: safePauseMedia, wrapAdapter };

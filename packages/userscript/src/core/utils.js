@@ -53,7 +53,6 @@ export function checkPermission(parentOrigin, iframeOrigin) {
   return { isAllowed: false, isDenied: false, isPersisted: false };
 }
 
-
 import { generateInstanceId } from '@sremote/shared';
 export { generateInstanceId };
 

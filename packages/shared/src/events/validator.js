@@ -108,4 +108,3 @@ export function evaluateCapabilities(target) {
     hasMediaSession: false,
   };
 }
-

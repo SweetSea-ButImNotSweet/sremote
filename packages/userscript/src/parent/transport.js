@@ -578,5 +578,3 @@ export function createParentTransport({
     },
   };
 }
-
-

@@ -65,7 +65,6 @@ export function createRpcResponse(rpcId, result = null, error = null, meta = {})
   });
 }
 
-
 /**
  * Creates a media or lifecycle event envelope.
  * @param {string} eventName

@@ -173,11 +173,4 @@ export function createMediaWatcher(onMediaAdded, options = {}) {
   };
 }
 
-export const dom = {
-  resolve: resolveMediaElement,
-  query: queryMediaDeep,
-  findAll: findAllMedia,
-  watch: createMediaWatcher,
-  isValid: isValidMedia,
-  hasSource: hasMediaSource,
-};
+export const dom = { resolve: resolveMediaElement, query: queryMediaDeep, findAll: findAllMedia, watch: createMediaWatcher, isValid: isValidMedia, hasSource: hasMediaSource };
