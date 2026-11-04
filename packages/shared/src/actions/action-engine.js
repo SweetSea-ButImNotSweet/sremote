@@ -5,9 +5,7 @@
  */
 
 import { wrapAdapter } from '../events/index.js';
-import { nativeMediaDescriptors, getNativeMediaProp, setNativeMediaProp, callNative } from '../dom/native-media.js';
-
-export { nativeMediaDescriptors };
+import { getNativeMediaProp, setNativeMediaProp, callNative } from '../dom/native-media.js';
 
 const adapterPreviousVolumeMap = new WeakMap();
 

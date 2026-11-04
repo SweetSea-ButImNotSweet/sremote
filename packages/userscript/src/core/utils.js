@@ -53,9 +53,6 @@ export function checkPermission(parentOrigin, iframeOrigin) {
   return { isAllowed: false, isDenied: false, isPersisted: false };
 }
 
-import { generateInstanceId } from '@sremote/shared';
-export { generateInstanceId };
-
 export function createButton({ className, text, title, onClick }) {
   const btn = document.createElement('button');
   if (className) btn.className = className;

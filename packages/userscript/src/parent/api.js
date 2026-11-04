@@ -1,4 +1,5 @@
-import { VERSION, NS, ENABLE_DEBUG_API, logger, pageWindow } from '../config.js';
+import { VERSION, NS, ENABLE_DEBUG_API } from '../const.js';
+import { logger, pageWindow } from '../config.js';
 import { createParentDebugApi } from '../debug/parent-debug.js';
 import { buildSRemoteApi } from '@sremote/shared';
 import { createInstancesHandlers } from './handlers/instances.js';

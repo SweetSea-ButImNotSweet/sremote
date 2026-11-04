@@ -1,5 +1,5 @@
+import { generateInstanceId } from '@sremote/shared';
 import { Storage } from '../../core/storage.js';
-import { generateInstanceId } from '../../core/utils.js';
 
 /**
  * Creates lifecycle, event and metadata handlers for parent API.

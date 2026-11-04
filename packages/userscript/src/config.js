@@ -1,4 +1,3 @@
-export * from './const.js';
 import { LOG_LEVEL } from './const.js';
 
 import { unsafeWindow } from '$';

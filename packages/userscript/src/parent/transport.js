@@ -1,9 +1,9 @@
-import { NS, logger } from '../config.js';
+import { NS } from '../const.js';
+import { logger } from '../config.js';
 import { Storage } from '../core/storage.js';
-import { generateInstanceId } from '../core/utils.js';
 import { createPermissionDialog } from '../ui/permission-dialog.js';
 import { flushPendingCommands, pendingRpcRequests } from './queue.js';
-import { createEnvelope, parseEnvelope, PACKET_TYPE, createFSM, TransportState, MediaState } from '@sremote/shared';
+import { createEnvelope, parseEnvelope, PACKET_TYPE, createFSM, TransportState, MediaState, generateInstanceId } from '@sremote/shared';
 
 /**
  * Transport Connection State Enum

@@ -1,4 +1,5 @@
-import { NS, logger } from '../config.js';
+import { NS } from '../const.js';
+import { logger } from '../config.js';
 
 export const pendingCommandQueue = []; // [{ action, value, targetInstanceId, timestamp, resolve }]
 export const pendingRpcRequests = new Map(); // rpcId -> { resolve, reject, timer }

@@ -1,13 +1,14 @@
-import { VERSION, NS, ENABLE_DEBUG_API, logger } from '../config.js';
+import { VERSION, NS, ENABLE_DEBUG_API } from '../const.js';
+import { logger } from '../config.js';
 import { Storage, GM } from '../core/storage.js';
-import { generateInstanceId, normalizeOrigin } from '../core/utils.js';
+import { normalizeOrigin } from '../core/utils.js';
 import { t } from '../core/i18n.js';
 import { registerMenuCommands } from './menu.js';
 import { pendingCommandQueue } from './queue.js';
 import { createExportedApi } from './api.js';
 import { createParentTransport } from './transport.js';
 import { setupTopMediaTracker } from './top-media.js';
-import { actions, dom, instance, pipeline } from '@sremote/shared';
+import { actions, dom, generateInstanceId, instance, pipeline } from '@sremote/shared';
 
 export function initParentController() {
   const currentOrigin = location.origin;

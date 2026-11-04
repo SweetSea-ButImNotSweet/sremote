@@ -1,7 +1,8 @@
 import { logger, descriptors } from '../config.js';
 import { VERSION, NS, ENABLE_DEBUG_API } from '../const.js';
 import { Storage } from '../core/storage.js';
-import { checkPermission, generateInstanceId, safeSetProp, normalizeOrigin } from '../core/utils.js';
+import { generateInstanceId } from '@sremote/shared';
+import { checkPermission, safeSetProp, normalizeOrigin } from '../core/utils.js';
 import { showConnectedIndicator, hideConnectedIndicator } from '../ui/indicator-badge.js';
 import { IframeStyleEngine } from './style-engine.js';
 import { mockMediaSessionInstance, hookMediaSession } from './media-session.js';

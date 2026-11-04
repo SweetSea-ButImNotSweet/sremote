@@ -1,5 +1,6 @@
-import { VERSION, NS, logger } from '../config.js';
-import { generateInstanceId } from '../core/utils.js';
+import { VERSION, NS } from '../const.js';
+import { logger } from '../config.js';
+import { generateInstanceId } from '@sremote/shared';
 import { showConnectedIndicator } from '../ui/indicator-badge.js';
 import { IframeStyleEngine } from './style-engine.js';
 import { getVideoState, getIframeCapabilities } from './controller.js';

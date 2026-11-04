@@ -1,4 +1,5 @@
-import { ENABLE_DEBUG_API, logger } from '../config.js';
+import { ENABLE_DEBUG_API } from '../const.js';
+import { logger } from '../config.js';
 import { IframeStyleEngine } from './style-engine.js';
 import { getVideoState, getIframeCapabilities, handleBindMetadata } from './controller.js';
 import { findAllMedia } from './media-hunter.js';

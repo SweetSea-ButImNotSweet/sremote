@@ -1,5 +1,6 @@
 export * from './client.js';
 export { default } from './client.js';
+export { showInstallModal } from './ui/install-modal.js';
 export * from './fluent/instance.js';
 export * from './fluent/group.js';
 export * from './drivers/adapter.js';

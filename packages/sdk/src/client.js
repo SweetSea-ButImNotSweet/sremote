@@ -837,5 +837,3 @@ if (typeof window !== 'undefined') {
 }
 
 export default sremote;
-
-export { showInstallModal };

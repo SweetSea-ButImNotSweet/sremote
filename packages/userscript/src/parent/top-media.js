@@ -1,5 +1,4 @@
-import { capabilities, dom, events, state, TIMEUPDATE_THROTTLE_MS, TIMEUPDATE_LOG_THROTTLE_MS } from '@sremote/shared';
-import { generateInstanceId } from '../core/utils.js';
+import { capabilities, dom, events, generateInstanceId, state, TIMEUPDATE_THROTTLE_MS, TIMEUPDATE_LOG_THROTTLE_MS } from '@sremote/shared';
 import { logger } from '../config.js';
 
 /**

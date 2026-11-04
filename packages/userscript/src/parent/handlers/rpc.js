@@ -1,4 +1,4 @@
-import { generateInstanceId } from '../../core/utils.js';
+import { generateInstanceId } from '@sremote/shared';
 import { pendingRpcRequests } from '../queue.js';
 
 /**
