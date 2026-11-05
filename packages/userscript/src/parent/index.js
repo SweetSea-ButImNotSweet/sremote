@@ -76,13 +76,19 @@ export function initParentController() {
     if (ENABLE_DEBUG_API && providedKey === '__DEBUG_BYPASS__') return true;
     const hostDomain = location.hostname || 'this_domain';
     const authConfig = Storage.auth.get(hostDomain);
-    const isLocked = instanceManager.isSessionLocked || authConfig.locked;
-    if (!isLocked) return true;
 
-    const expectedKey = authConfig.passkey;
-    const cleanKey = providedKey ? String(providedKey).trim() : null;
+    // 1. Persistent storage lock check
+    if (authConfig.locked && authConfig.passkey) {
+      const cleanKey = providedKey ? String(providedKey).trim() : null;
+      return Boolean(cleanKey && cleanKey === authConfig.passkey);
+    }
 
-    return Boolean(expectedKey && cleanKey && cleanKey === expectedKey);
+    // 2. Dynamic in-memory session lock check (via secure internal verification)
+    if (instanceManager.isSessionLocked) {
+      return instanceManager.verifySessionPasskey(providedKey);
+    }
+
+    return true;
   }
 
   // Register Menu Commands
@@ -124,22 +130,53 @@ export function initParentController() {
       });
     }
 
-    let targetId = targetInstanceId || getLatestActiveInstanceId();
+    let targetId = typeof targetInstanceId === 'string' ? targetInstanceId : null;
+    if (!targetId && targetInstanceId && typeof targetInstanceId === 'object') {
+      const mappedId = iframeToAssignedIdMap.get(targetInstanceId) || targetInstanceId.getAttribute?.('data-sremote-id') || targetInstanceId.id || null;
+      if (mappedId) targetId = mappedId;
+    }
+    if (!targetId) targetId = getLatestActiveInstanceId();
+
     let target = targetId ? instances.get(targetId) : null;
 
     // Smart fallback if target was not found by targetId:
     if (!target && targetInstanceId) {
-      // 1. Check if the targetInstanceId was associated with an iframe element
-      const mappedIframe = assignedIframeIdMap.get(targetInstanceId);
-      if (mappedIframe) {
-        const liveId = iframeToAssignedIdMap.get(mappedIframe);
+      // 1. If targetInstanceId is a DOM Element (iframe or media node)
+      if (typeof targetInstanceId === 'object' && targetInstanceId !== null) {
+        const liveId = iframeToAssignedIdMap.get(targetInstanceId) || targetInstanceId.getAttribute?.('data-sremote-id') || targetInstanceId.id;
         if (liveId && instances.has(liveId)) {
           targetId = liveId;
           target = instances.get(liveId);
-          logger.scope('action').log(`Smart-routed command '${action}' from stale id '${targetInstanceId}' -> live id '${liveId}'`);
+          logger.scope('action').log(`Smart-routed command '${action}' from element -> live id '${liveId}'`);
         }
       }
-      // 2. In single-mode or if exactly 1 instance is registered, route to the only active instance
+      // 2. Check if the targetInstanceId string was associated with an iframe element
+      if (!target && typeof targetInstanceId === 'string') {
+        const mappedIframe = assignedIframeIdMap.get(targetInstanceId);
+        if (mappedIframe) {
+          const liveId = iframeToAssignedIdMap.get(mappedIframe);
+          if (liveId && instances.has(liveId)) {
+            targetId = liveId;
+            target = instances.get(liveId);
+            logger.scope('action').log(`Smart-routed command '${action}' from stale id '${targetInstanceId}' -> live id '${liveId}'`);
+          }
+        }
+        // Check if string is a DOM selector (e.g. #player, iframe.video)
+        if (!target && typeof document !== 'undefined') {
+          try {
+            const foundEl = document.querySelector(targetInstanceId);
+            if (foundEl) {
+              const liveId = iframeToAssignedIdMap.get(foundEl) || foundEl.getAttribute?.('data-sremote-id') || foundEl.id;
+              if (liveId && instances.has(liveId)) {
+                targetId = liveId;
+                target = instances.get(liveId);
+                logger.scope('action').log(`Smart-routed command '${action}' from selector '${targetInstanceId}' -> live id '${liveId}'`);
+              }
+            }
+          } catch {}
+        }
+      }
+      // 3. In single-mode or if exactly 1 instance is registered, route to the only active instance
       if (!target && (!isMultiModeActive() || instances.size === 1)) {
         const onlyId = Array.from(instances.keys())[0];
         if (onlyId && instances.has(onlyId)) {

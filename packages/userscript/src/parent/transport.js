@@ -346,6 +346,9 @@ export function createParentTransport({ instanceManager, isHelloInitiated = () =
     if (!item) return;
     item.transportState = TRANSPORT_STATE.TERMINATED;
     try {
+      item.port?.postMessage(createEnvelope({ type: PACKET_TYPE.CONTROL, action: 'disconnect', payload: { reason, instanceId }, meta: { source: 'parent', instanceId } }));
+    } catch {}
+    try {
       item.port?.close();
     } catch {}
     removeInstance(instanceId, reason);
@@ -373,6 +376,9 @@ export function createParentTransport({ instanceManager, isHelloInitiated = () =
       const iframeEl = findIframeElementBySource(event.source);
 
       let preAssignedId = (iframeEl && (iframeEl.getAttribute('data-sremote-id') || iframeToAssignedIdMap.get(iframeEl))) || null;
+      if (!preAssignedId && iframeEl?.id) {
+        preAssignedId = iframeEl.id;
+      }
       if (!preAssignedId && iframeEl?.name && typeof iframeEl.name === 'string') {
         const nameMatch = iframeEl.name.match(/(?:sremote_id|data-sremote-id)=([^&;\s]+)/i);
         if (nameMatch) preAssignedId = decodeURIComponent(nameMatch[1]);
@@ -394,6 +400,9 @@ export function createParentTransport({ instanceManager, isHelloInitiated = () =
       if (iframeEl && instanceId) {
         assignedIframeIdMap.set(instanceId, iframeEl);
         iframeToAssignedIdMap.set(iframeEl, instanceId);
+        if (iframeEl.id && iframeEl.id !== instanceId) {
+          assignedIframeIdMap.set(iframeEl.id, iframeEl);
+        }
       }
 
       if (iframeEl && blacklistedIframes.has(iframeEl)) {
@@ -486,7 +495,7 @@ export function createParentTransport({ instanceManager, isHelloInitiated = () =
         synLog.log(`Deferred SYN from ${iframeOrigin} until top window calls sremote.hello()`);
         const now = Date.now();
         for (const [sId, item] of pendingSynQueue.entries()) {
-          if (item.timestamp && now - item.timestamp > 10000) {
+          if (item.timestamp && now - item.timestamp > 60000) {
             pendingSynQueue.delete(sId);
           }
         }
@@ -627,7 +636,8 @@ export function createParentTransport({ instanceManager, isHelloInitiated = () =
   const heartbeatInterval = setInterval(() => {
     const now = Date.now();
     const PING_THRESHOLD = 2000;
-    const DEAD_TIMEOUT = 5000;
+    const DEAD_TIMEOUT = 30000;
+    const isHidden = typeof document !== 'undefined' && document.hidden;
 
     for (const [id, item] of instances.entries()) {
       if (item.iframeEl && !item.iframeEl.isConnected) {
@@ -635,7 +645,7 @@ export function createParentTransport({ instanceManager, isHelloInitiated = () =
         continue;
       }
       const elapsed = now - (item.lastSeen || 0);
-      if (elapsed > DEAD_TIMEOUT) {
+      if (elapsed > DEAD_TIMEOUT && !isHidden) {
         logger.scope('transport').warn(`Transport instance '${id}' timed out (${elapsed}ms). Terminating...`);
         terminateInstance(id, 'timeout');
       } else if (elapsed > PING_THRESHOLD) {

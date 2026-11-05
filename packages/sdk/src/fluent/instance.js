@@ -109,7 +109,14 @@ export class FluentInstance {
    */
   async _exec(action, payload) {
     const target = this.resolveTarget();
-    return this.client.execute(action, payload, { targetId: target, passkey: this.options.key || this.client.options.passkey });
+    const res = await this.client.execute(action, payload, { targetId: target, passkey: this.options.key || this.client.options.passkey });
+    if (!this._lenient && res && typeof res === 'object' && res.success === false) {
+      const err = new Error(res.message || `[SRemote:Fluent] Command '${action}' failed with code '${res.error || 'COMMAND_FAILED'}'`);
+      err.code = res.error || 'COMMAND_FAILED';
+      err.response = res;
+      throw err;
+    }
+    return res;
   }
 
   /**

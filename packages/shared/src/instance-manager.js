@@ -42,6 +42,7 @@ export function createInstanceManager(options = {}) {
   let multiModeConfig = null; // null (auto-detect) | true (force multi) | false (force single)
   let currentActiveInstanceId = null;
   let isSessionLocked = false;
+  let sessionPasskey = null;
   let isSessionDenied = false;
   const sessionDeniedOrigins = new Set();
   let lastAcceptedData = null;
@@ -294,8 +295,15 @@ export function createInstanceManager(options = {}) {
     get isSessionLocked() {
       return isSessionLocked;
     },
-    setSessionLocked: locked => {
-      isSessionLocked = locked;
+    verifySessionPasskey: candidateKey => {
+      if (!isSessionLocked) return true;
+      const cleanKey = candidateKey ? String(candidateKey).trim() : null;
+      if (!sessionPasskey) return Boolean(cleanKey && cleanKey.length > 0);
+      return Boolean(cleanKey && cleanKey === sessionPasskey);
+    },
+    setSessionLocked: (locked, passkey = null) => {
+      isSessionLocked = Boolean(locked);
+      sessionPasskey = passkey ? String(passkey).trim() : null;
     },
     get isSessionDenied() {
       return isSessionDenied;

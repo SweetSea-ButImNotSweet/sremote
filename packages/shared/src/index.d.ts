@@ -222,7 +222,8 @@ export interface InstanceManager {
   currentActiveInstanceId: string | null;
   setCurrentActiveInstanceId: (id: string | null) => void;
   isSessionLocked: boolean;
-  setSessionLocked: (locked: boolean) => void;
+  verifySessionPasskey: (candidateKey?: string | null) => boolean;
+  setSessionLocked: (locked: boolean, passkey?: string | null) => void;
   isSessionDenied: boolean;
   setSessionDenied: (denied: boolean) => void;
   readonly sessionDeniedOrigins: Set<string>;

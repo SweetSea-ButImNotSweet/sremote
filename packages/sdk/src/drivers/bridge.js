@@ -168,6 +168,15 @@ export class BridgeDriver {
     }
   }
 
+  lock(key) {
+    const api = this.getApi();
+    const resolved = this._resolveMethod(api, 'lock');
+    if (resolved) {
+      return resolved.fn.call(resolved.context, this.getPasskey(key));
+    }
+    return false;
+  }
+
   async emit(event, payload, key) {
     return this._callOptional('emit', undefined, event, payload, this.getPasskey(key));
   }

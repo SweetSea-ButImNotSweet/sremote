@@ -48,10 +48,14 @@ export class ConnectionManager {
       let resolved = false;
       let timer = null;
 
+      const onReadyEvent = evt => {
+        completeConnection('userscript', `Received announce/ready event: ${evt?.type || 'ready'}`);
+      };
+
       const cleanup = () => {
         if (timer) clearTimeout(timer);
         this._completeConnection = null;
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
           window.removeEventListener('sremote:driver:ready', onReadyEvent);
           window.removeEventListener('sremote:ready', onReadyEvent);
           window.removeEventListener('sremote:bridge:announce', onReadyEvent);
@@ -83,10 +87,6 @@ export class ConnectionManager {
       }
 
       // 2. Event-driven handshake with active ping
-      const onReadyEvent = evt => {
-        completeConnection('userscript', `Received announce/ready event: ${evt?.type || 'ready'}`);
-      };
-
       if (typeof window !== 'undefined') {
         window.addEventListener('sremote:driver:ready', onReadyEvent, { once: true });
         window.addEventListener('sremote:ready', onReadyEvent, { once: true });

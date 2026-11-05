@@ -61,8 +61,11 @@ export function setupTopMediaTracker(instanceManager, options = {}) {
           if (mediaEl && oldEl && (oldEl === mediaEl || oldEl.contains?.(mediaEl) || mediaEl.contains?.(oldEl))) {
             continue;
           }
-          logger.log(`%c[SRemote:lifecycle] Replacing stale instance in Single Mode: ${oldId} -> ${customId}`, 'color: #f59e0b;');
-          instanceManager.removeInstance(oldId, 'replaced_by_new_instance');
+          // Only replace if the old instance was a detached top-media DOM node
+          if (oldInst?.isTopMedia && oldEl && !oldEl.isConnected) {
+            logger.log(`%c[SRemote:lifecycle] Replacing stale disconnected top-media in Single Mode: ${oldId} -> ${customId}`, 'color: #f59e0b;');
+            instanceManager.removeInstance(oldId, 'replaced_by_new_instance');
+          }
         }
       }
     }

@@ -74,8 +74,16 @@ export function createIframeDispatcher(options) {
         return;
       }
 
-      case 'disconnect':
+      case 'disconnect': {
+        const reason = data.reason || 'parent_disconnect';
+        logger.log(`[sremote] Iframe received disconnect signal: ${reason}`);
+        if (handshake?.resetConnection) {
+          handshake.resetConnection(reason);
+        } else if (ctx?.closeMediaPort) {
+          ctx.closeMediaPort();
+        }
         return;
+      }
 
       default: {
         // Handle RPC requests (with seamless media command fallback)

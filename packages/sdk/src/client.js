@@ -253,6 +253,12 @@ export class SRemoteClient {
         this.syncLogLevelFromUserscript();
         this.syncGlobalAdapters();
         this.syncListenersToUserscript();
+        try {
+          const api = this.bridgeDriver.getApi();
+          if (api && typeof api.hello === 'function') {
+            api.hello({ trackParent: true }, this.options.passkey);
+          }
+        } catch {}
       } else if (this.options.fallbackToDom || this.adapterDriver?.isAvailable()) {
         this.mode = 'dom-direct';
       } else {
@@ -365,7 +371,7 @@ export class SRemoteClient {
     if (!this.connectionManager.isConnected) {
       this.logger.debug(`[Auto-Queue] Enqueuing '${actionName}' while connecting...`);
       return new Promise((resolve, reject) => {
-        const queueTimeout = (this.options.timeout || 2000) + 1500;
+        const queueTimeout = this.options.queueTimeout || Math.max(10000, (this.options.timeout || 2000) * 2);
         const timeoutTimer = setTimeout(() => {
           const idx = this._commandQueue.findIndex(q => q.timer === timeoutTimer);
           if (idx !== -1) {
@@ -448,6 +454,16 @@ export class SRemoteClient {
    */
   select(target = null, options = {}) {
     return new FluentInstance(this, target, options);
+  }
+
+  /**
+   * Alias for select()
+   * @param {string|HTMLElement|null} [target=null]
+   * @param {Object} [options={}]
+   * @returns {FluentInstance}
+   */
+  instance(target = null, options = {}) {
+    return this.select(target, options);
   }
 
   /**
@@ -597,6 +613,13 @@ export class SRemoteClient {
     return false;
   }
 
+  lock(key) {
+    if (this.bridgeDriver.isAvailable()) {
+      return this.bridgeDriver.lock(key || this.options.passkey);
+    }
+    return false;
+  }
+
   bindMetadata(meta, instanceId, key) {
     return this.bridgeDriver.bindMetadata(meta, instanceId, key);
   }
@@ -715,8 +738,16 @@ export class SRemoteClient {
     this._eventListeners.get(ev).add(entry);
 
     // If userscript is active and not yet connected to hub, sync it
-    if (this.bridgeDriver.isAvailable() && !this._unbindUserscriptDriver) {
-      this.syncListenersToUserscript();
+    if (this.bridgeDriver.isAvailable()) {
+      if (!this._unbindUserscriptDriver) {
+        this.syncListenersToUserscript();
+      }
+      try {
+        const api = this.bridgeDriver.getApi();
+        if (api && typeof api.hello === 'function') {
+          api.hello({ trackParent: true }, key || this.options.passkey);
+        }
+      } catch {}
     }
 
     // Sticky replay check from active drivers (only when Userscript bridge is not active,

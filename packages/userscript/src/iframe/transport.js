@@ -171,6 +171,20 @@ export function createIframeTransport(options) {
     log.log(`Handshake v4 ESTABLISHED (MessagePort) with parent [${callerOrigin}]`);
   }
 
+  function resetConnection(reason = 'disconnected') {
+    const log = logger.scope('handshake');
+    if (synTimer) {
+      clearTimeout(synTimer);
+      synTimer = null;
+    }
+    closeMediaPort();
+    transportState = IFRAME_TRANSPORT_STATE.DISCONNECTED;
+    synRetryCount = 0;
+    currentSessionId = null;
+    notifyState();
+    log.log(`Transport connection reset (${reason}).`);
+  }
+
   return {
     get primaryAuthorizedOrigin() {
       return primaryAuthorizedOrigin;
@@ -183,5 +197,6 @@ export function createIframeTransport(options) {
     },
     sendSyn,
     handleSynAck,
+    resetConnection,
   };
 }

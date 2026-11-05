@@ -46,9 +46,9 @@ export function createLifecycleHandlers({ instanceManager, validateDomainAccess,
     globalEventListeners.get(ev)?.delete(handler);
   };
 
-  const lockSession = () => {
-    instanceManager.setSessionLocked(true);
-    logger.scope('lock').log('SRemote is now session-locked for this page');
+  const lockSession = (passkey = null) => {
+    instanceManager.setSessionLocked(true, passkey);
+    logger.scope('lock').log('SRemote is now session-locked for this page', { hasKey: Boolean(passkey) });
     return true;
   };
 
