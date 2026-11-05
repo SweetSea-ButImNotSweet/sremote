@@ -77,33 +77,39 @@ export function createExportedApi({
   });
 
   // Register Native Driver to internal Symbols for 100% collision-free SDK discovery
+  const targetWin = typeof unsafeWindow !== 'undefined' ? unsafeWindow : pageWindow;
   try {
-    if (typeof globalThis !== 'undefined') {
+    if (targetWin) {
+      targetWin[Symbol.for('__sremote_native_driver__')] = exportedApi;
+      targetWin[Symbol.for('__sremote_internal_bridge__')] = exportedApi;
+    }
+    if (typeof globalThis !== 'undefined' && globalThis !== targetWin) {
       globalThis[Symbol.for('__sremote_native_driver__')] = exportedApi;
-      // Backward compatibility for internal bridge resolution during transition
       globalThis[Symbol.for('__sremote_internal_bridge__')] = exportedApi;
     }
   } catch {}
 
-  // Proactively dispatch 'sremote:driver:ready' and 'sremote:ready' for late-loading SDK clients
-  try {
-    const targetWin = typeof unsafeWindow !== 'undefined' ? unsafeWindow : pageWindow;
-    if (typeof targetWin?.dispatchEvent === 'function') {
-      const driverDetail = { version: VERSION, isSremoteNative: true, driver: exportedApi, api: exportedApi };
-      const driverReadyEvent =
-        typeof CustomEvent === 'function'
-          ? new CustomEvent('sremote:driver:ready', { detail: driverDetail })
-          : Object.assign(new Event('sremote:driver:ready'), { detail: driverDetail });
-      targetWin.dispatchEvent(driverReadyEvent);
-
-      // Legacy fallback event
-      const legacyReadyEvent =
-        typeof CustomEvent === 'function' ? new CustomEvent('sremote:ready', { detail: driverDetail }) : Object.assign(new Event('sremote:ready'), { detail: driverDetail });
-      targetWin.dispatchEvent(legacyReadyEvent);
+  // Proactively dispatch 'sremote:driver:ready' and listen for late-loading SDK ping
+  const dispatchReady = () => {
+    try {
+      if (typeof targetWin?.dispatchEvent === 'function') {
+        const driverDetail = { version: VERSION, isSremoteNative: true, driver: exportedApi, api: exportedApi };
+        const driverReadyEvent =
+          typeof CustomEvent === 'function'
+            ? new CustomEvent('sremote:driver:ready', { detail: driverDetail })
+            : Object.assign(new Event('sremote:driver:ready'), { detail: driverDetail });
+        targetWin.dispatchEvent(driverReadyEvent);
+      }
+    } catch (err) {
+      logger.scope('bootstrap').warn('Failed to dispatch sremote:driver:ready event:', err);
     }
-  } catch (err) {
-    logger.scope('bootstrap').warn('Failed to dispatch sremote:driver:ready event:', err);
-  }
+  };
+
+  dispatchReady();
+
+  try {
+    targetWin?.addEventListener?.('sremote:client:ping', dispatchReady);
+  } catch {}
 
   logger.scope('bootstrap').log('SRemote Native Driver is ready');
   return exportedApi;

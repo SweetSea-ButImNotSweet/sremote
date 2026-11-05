@@ -165,6 +165,10 @@ export function createIframeDispatcher(options) {
         handshake.handleSynAck(event, data);
         return;
 
+      case 'hello':
+        handshake.sendSyn();
+        return;
+
       default:
         if (MEDIA_COMMANDS.has(lowerAction)) {
           await handleIncomingControl(action, data.value);

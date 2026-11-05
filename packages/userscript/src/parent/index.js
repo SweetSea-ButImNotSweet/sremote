@@ -93,9 +93,14 @@ export function initParentController() {
     }
   };
 
-  // Wakeup: Đánh thức iframe (toàn bộ hoặc đích danh targetWindow) khi trang cha đã chủ động gọi hello()
+  // Wakeup: Đánh thức iframe (toàn bộ hoặc đích danh targetWindow)
   const triggerPendingWakeup = (targetWindow = null) => {
-    if (!hasInitiatedHello) return;
+    if (!hasInitiatedHello) {
+      hasInitiatedHello = true;
+      try {
+        transportManager.flushPendingSyns();
+      } catch {}
+    }
     try {
       if (typeof broadcastHelloRef === 'function') {
         broadcastHelloRef({}, targetWindow);

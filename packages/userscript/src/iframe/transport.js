@@ -34,6 +34,7 @@ export function createIframeTransport(options) {
   let transportState = IFRAME_TRANSPORT_STATE.DISCONNECTED;
   let currentSynChallenge = null;
   let synTimer = null;
+  let synRetryCount = 0;
 
   function sendSyn() {
     if (typeof window === 'undefined' || !window.top || window.top === window) {
@@ -45,7 +46,7 @@ export function createIframeTransport(options) {
     }
 
     transportState = IFRAME_TRANSPORT_STATE.CONNECTING;
-    currentSynChallenge = generateInstanceId('syn');
+    currentSynChallenge = currentSynChallenge || generateInstanceId('syn');
 
     resolver.resolveActiveMedia();
     const hasActiveMedia = Boolean(resolver.getActiveMedia());
@@ -74,8 +75,6 @@ export function createIframeTransport(options) {
       log.warn('Failed to post SYN to window.top:', err);
     }
 
-    let synRetryCount = 0;
-
     // Retransmit SYN if no SYN-ACK after 2.5s and still CONNECTING (max 3 attempts)
     if (synTimer) clearTimeout(synTimer);
     synTimer = setTimeout(() => {
@@ -83,6 +82,8 @@ export function createIframeTransport(options) {
         synRetryCount++;
         sendSyn();
       } else if (transportState === IFRAME_TRANSPORT_STATE.CONNECTING) {
+        synRetryCount = 0;
+        currentSynChallenge = null;
         transportState = IFRAME_TRANSPORT_STATE.DISCONNECTED;
       }
     }, 2500);
@@ -146,6 +147,7 @@ export function createIframeTransport(options) {
       port.postMessage({ type: `${NS}ack`, source: 'iframe', instanceId: instanceIdGetter(), status: 'ESTABLISHED' });
     } catch {}
 
+    synRetryCount = 0;
     transportState = IFRAME_TRANSPORT_STATE.CONNECTED;
     notifyState();
     showConnectedIndicator(callerOrigin, primaryAuthorizedOrigin);

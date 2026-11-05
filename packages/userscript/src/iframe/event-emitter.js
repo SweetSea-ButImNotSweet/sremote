@@ -9,12 +9,12 @@ import { pipeline, TIMEUPDATE_THROTTLE_MS, PROGRESS_THROTTLE_MS } from '@sremote
 export function createMediaEventEmitter(options) {
   const {
     ctx,
-    resolver = ctx?.resolver || options.resolver,
     emitToParent = ctx?.emitToParent || options.emitToParent,
     instanceIdGetter = ctx ? () => ctx.instanceId : options.instanceIdGetter,
     treatAlmostEndAsEndGetter = ctx ? () => ctx.treatAlmostEndAsEnd : options.treatAlmostEndAsEndGetter,
     programmaticActionTimestampGetter = ctx ? () => ctx.programmaticTime : options.programmaticActionTimestampGetter,
   } = options;
+  const getResolver = () => ctx?.resolver || options.resolver;
   const boundMediaElements = new WeakSet();
 
   function bindVideoEvents(video) {
@@ -41,7 +41,8 @@ export function createMediaEventEmitter(options) {
       if (now - lastTimeupdate < TIMEUPDATE_THROTTLE_MS) return;
       lastTimeupdate = now;
 
-      const currentState = getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia);
+      const activeResolver = getResolver();
+      const currentState = getVideoState(video, activeResolver?.getActiveMedia(), activeResolver?.resolveActiveMedia);
       const isProgrammatic = Date.now() - programmaticActionTimestampGetter() < 500;
       const dur = currentState?.duration || (Number.isFinite(video.duration) ? video.duration : null);
       const curTime = mediaTime ?? safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0;
@@ -81,8 +82,9 @@ export function createMediaEventEmitter(options) {
 
     for (const evtName of MEDIA_EVENTS) {
       video.addEventListener(evtName, () => {
-        resolver.setActiveMedia(video);
-        resolver.setMediaType(video.tagName ? video.tagName.toLowerCase() : 'video');
+        const activeResolver = getResolver();
+        activeResolver?.setActiveMedia(video);
+        activeResolver?.setMediaType(video.tagName ? video.tagName.toLowerCase() : 'video');
 
         const now = Date.now();
         let isProgrammatic = false;
@@ -94,7 +96,7 @@ export function createMediaEventEmitter(options) {
           isProgrammatic = now - programmaticActionTimestampGetter() < 500;
         }
 
-        const currentState = getVideoState(video, resolver.getActiveMedia(), resolver.resolveActiveMedia);
+        const currentState = getVideoState(video, activeResolver?.getActiveMedia(), activeResolver?.resolveActiveMedia);
 
         if (evtName === 'play' || evtName === 'playing') {
           startRVFCLoop();

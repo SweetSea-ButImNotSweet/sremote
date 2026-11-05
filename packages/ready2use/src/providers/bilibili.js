@@ -6,8 +6,8 @@ import { applyElementAttributes, waitForIframeLoad } from '../core/dom-utils.js'
  * Bilibili uses native HTML5 inside iframe, so SRemote automatically discovers it.
  */
 function buildBilibiliUrl(options = {}) {
-  const params = new window.URLSearchParams();
   const opts = typeof options === 'string' ? { videoId: options } : options || {};
+  const params = new URLSearchParams();
 
   // Extract raw ID candidate
   let rawId = opts.bvid || opts.aid || opts.avid || opts.videoId || opts.id;
@@ -49,18 +49,18 @@ function buildBilibiliUrl(options = {}) {
     params.set('bvid', 'BV1xx411c7mD');
   }
 
-  if (options.cid) params.set('cid', options.cid);
-  if (options.page) params.set('page', options.page);
-  if (options.t || options.startTime) params.set('t', options.t || options.startTime);
+  if (opts.cid) params.set('cid', opts.cid);
+  if (opts.page) params.set('page', opts.page);
+  if (opts.t || opts.startTime) params.set('t', opts.t || opts.startTime);
 
-  const autoPlay = options.autoplay ?? true;
+  const autoPlay = opts.autoplay ?? true;
   params.set('autoplay', autoPlay ? '1' : '0');
 
-  if (options.danmaku !== undefined) {
-    params.set('danmaku', options.danmaku ? '1' : '0');
+  if (opts.danmaku !== undefined) {
+    params.set('danmaku', opts.danmaku ? '1' : '0');
   }
-  if (options.highQuality !== undefined || options.high_quality !== undefined) {
-    params.set('high_quality', (options.highQuality ?? options.high_quality) ? '1' : '0');
+  if (opts.highQuality !== undefined || opts.high_quality !== undefined) {
+    params.set('high_quality', (opts.highQuality ?? opts.high_quality) ? '1' : '0');
   }
 
   return `https://player.bilibili.com/player.html?${params.toString()}`;
@@ -80,6 +80,9 @@ export class BilibiliProvider extends BaseProvider {
     iframe.allow = 'autoplay; encrypted-media; fullscreen';
     iframe.allowFullscreen = true;
     iframe.style.border = 'none';
+    if (options.sandbox) {
+      iframe.setAttribute('sandbox', options.sandbox);
+    }
     iframe.src = buildBilibiliUrl(options);
 
     applyElementAttributes(iframe, width, height, instanceId);

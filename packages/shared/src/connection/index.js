@@ -82,7 +82,7 @@ export class ConnectionManager {
         return;
       }
 
-      // 2. Event-driven handshake
+      // 2. Event-driven handshake with active ping
       const onReadyEvent = evt => {
         completeConnection('userscript', `Received announce/ready event: ${evt?.type || 'ready'}`);
       };
@@ -91,6 +91,12 @@ export class ConnectionManager {
         window.addEventListener('sremote:driver:ready', onReadyEvent, { once: true });
         window.addEventListener('sremote:ready', onReadyEvent, { once: true });
         window.addEventListener('sremote:bridge:announce', onReadyEvent, { once: true });
+
+        // Ping Userscript if it loaded before SDK
+        try {
+          const pingEvt = typeof CustomEvent === 'function' ? new CustomEvent('sremote:client:ping') : new Event('sremote:client:ping');
+          window.dispatchEvent(pingEvt);
+        } catch {}
       }
 
       // 3. Fallback timeout

@@ -217,9 +217,9 @@ export class BaseProvider {
 
     // 6. Automatically register into SRemote Client if available
     let sremoteClient = null;
-    if (adapter && opts.register !== false && opts.autoRegister !== false) {
+    if (opts.register !== false && opts.autoRegister !== false) {
       sremoteClient = resolveSRemote(opts);
-      if (sremoteClient?.adapters && typeof sremoteClient.adapters.register === 'function') {
+      if (adapter && sremoteClient?.adapters && typeof sremoteClient.adapters.register === 'function') {
         sremoteClient.adapters.register(adapter, instanceId);
       }
     }
