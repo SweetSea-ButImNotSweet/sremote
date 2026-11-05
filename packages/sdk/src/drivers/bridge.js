@@ -153,14 +153,14 @@ export class BridgeDriver {
     }
   }
 
-  async on(event, callback, key) {
+  on(event, callback, key) {
     const api = this.getApi(true);
     const resolved = this._resolveMethod(api, 'on');
     if (!resolved) throw new Error('[SRemote:BridgeDriver] Host does not support .on()');
     return resolved.fn.call(resolved.context, event, callback, this.getPasskey(key));
   }
 
-  async off(event, callback, key) {
+  off(event, callback, key) {
     const api = this.getApi();
     const resolved = this._resolveMethod(api, 'off');
     if (resolved) {

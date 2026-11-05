@@ -1,7 +1,7 @@
 import { NS } from '../const.js';
 import { logger } from '../config.js';
 import { getVideoState, getIframeCapabilities } from './controller.js';
-import { parseEnvelope, createEnvelope, PACKET_TYPE, isHandshakePacket, HANDSHAKE_STEPS } from '@sremote/shared';
+import { parseEnvelope, createEnvelope, createCmdAck, PACKET_TYPE, isHandshakePacket, HANDSHAKE_STEPS } from '@sremote/shared';
 
 export const MEDIA_COMMANDS = new Set(['play', 'pause', 'toggle', 'stop', 'seek', 'seekto', 'currenttime', 'volume', 'muted', 'speed', 'rate']);
 
@@ -98,11 +98,35 @@ export function createIframeDispatcher(options) {
         return;
 
       default: {
-        // Handle RPC requests
+        // Handle RPC requests (with seamless media command fallback)
         if (envelopeType === PACKET_TYPE.RPC_REQUEST || lowerAction === 'rpc_request') {
           const rpcId = envelope.id || data.rpcId;
           const targetAction = data.action || action;
           const targetParams = data.params !== undefined ? data.params : envelope.payload;
+
+          if (MEDIA_COMMANDS.has(String(targetAction).toLowerCase())) {
+            const val = targetParams?.value !== undefined ? targetParams.value : targetParams;
+            let handled = false;
+            let errStr = null;
+            try {
+              handled = await handleIncomingControl(targetAction, val);
+            } catch (err) {
+              errStr = String(err?.message || err);
+            }
+            resolver.resolveActiveMedia();
+            const curState = getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia);
+            port.postMessage(
+              createEnvelope({
+                type: PACKET_TYPE.RPC_RESPONSE,
+                action: 'rpc_response',
+                id: rpcId,
+                payload: { success: handled && !errStr, result: { handled, state: curState }, error: !handled ? errStr || 'NO_MEDIA_FOUND' : null },
+                meta: { source: 'iframe', instanceId },
+              }),
+            );
+            return;
+          }
+
           try {
             const res = await rpcRegistry.executeRpc(targetAction, targetParams);
             port.postMessage(
@@ -129,9 +153,27 @@ export function createIframeDispatcher(options) {
           return;
         }
 
-        // Handle standard media playback controls
-        if (MEDIA_COMMANDS.has(lowerAction)) {
-          await handleIncomingControl(action, data.value);
+        // Handle standard media playback controls (or explicit COMMAND packet)
+        if (envelopeType === PACKET_TYPE.COMMAND || MEDIA_COMMANDS.has(lowerAction)) {
+          const val = data.value !== undefined ? data.value : envelope.payload?.value;
+          let handled = false;
+          let errStr = null;
+          try {
+            handled = await handleIncomingControl(action, val);
+          } catch (err) {
+            errStr = String(err?.message || err);
+          }
+
+          // Acknowledge command if envelope has tracking ID
+          if (envelope.id && port) {
+            resolver.resolveActiveMedia();
+            const curState = getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia);
+            try {
+              port.postMessage(
+                createCmdAck(envelope.id, handled && !errStr, { handled, state: curState }, !handled ? errStr || 'NO_MEDIA_FOUND' : null, { source: 'iframe', instanceId }),
+              );
+            } catch {}
+          }
         }
       }
     }

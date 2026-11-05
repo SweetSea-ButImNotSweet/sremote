@@ -4,11 +4,11 @@ import { Storage, GM } from '../core/storage.js';
 import { normalizeOrigin } from '../core/utils.js';
 import { t } from '../core/i18n.js';
 import { registerMenuCommands } from './menu.js';
-import { pendingCommandQueue } from './queue.js';
+import { pendingCommandQueue, trackCmd } from './queue.js';
 import { createExportedApi } from './api.js';
 import { createParentTransport } from './transport.js';
 import { setupTopMediaTracker } from './top-media.js';
-import { actions, dom, instance, pipeline } from '@sremote/shared';
+import { actions, dom, instance, pipeline, createCmd } from '@sremote/shared';
 
 export function initParentController() {
   const currentOrigin = location.origin;
@@ -169,7 +169,8 @@ export function initParentController() {
     }
 
     if (targetInstanceId === 'all') {
-      broadcastToPorts({ type: `${NS}${action}`, source: 'parent', value });
+      const allCmd = createCmd(action, value, { source: 'parent', instanceId: 'all' });
+      broadcastToPorts(allCmd);
       for (const item of instances.values()) {
         if (item.isTopMedia && item.mediaElement) {
           executeTopMediaAction(item.mediaElement, action, value);
@@ -181,23 +182,7 @@ export function initParentController() {
     const isAssignedPending = targetId && (assignedIframeIdMap.has(targetId) || target?.status === 'connecting');
 
     if (target?.port) {
-      try {
-        target.port.postMessage({ type: `${NS}${action}`, source: 'parent', value });
-        return Promise.resolve({ success: true, instanceId: targetId, action });
-      } catch (err) {
-        logger.warn(`[sremote] Error posting command '${action}' to port for '${targetId}':`, err);
-        const ifr = target.iframeEl || (targetId ? assignedIframeIdMap.get(targetId) : null);
-        if (ifr?.contentWindow && typeof ifr.contentWindow.postMessage === 'function') {
-          try {
-            ifr.contentWindow.postMessage({ type: `${NS}${action}`, source: 'parent', value }, '*');
-            logger.log(`%c[SRemote:command] Fallback command '${action}' sent via contentWindow.postMessage to '${targetId}'`, 'color: #10b981;');
-            return Promise.resolve({ success: true, instanceId: targetId, action, fallback: 'window' });
-          } catch (winErr) {
-            logger.warn(`[sremote] Fallback contentWindow.postMessage failed for '${targetId}':`, winErr);
-          }
-        }
-        return Promise.resolve({ success: false, error: 'PORT_DISCONNECTED', message: String(err), instanceId: targetId });
-      }
+      return trackCmd(action, value, targetId, target.port, target.iframeEl || assignedIframeIdMap.get(targetId));
     }
 
     if (targetInstanceId && !target && !isAssignedPending) {

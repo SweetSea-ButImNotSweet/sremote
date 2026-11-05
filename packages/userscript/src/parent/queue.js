@@ -1,8 +1,42 @@
-import { NS } from '../const.js';
 import { logger } from '../config.js';
+import { createCmd, generateInstanceId } from '@sremote/shared';
 
 export const pendingCommandQueue = []; // [{ action, value, targetInstanceId, timestamp, resolve }]
 export const pendingRpcRequests = new Map(); // rpcId -> { resolve, reject, timer }
+export const pendingCmds = new Map(); // cmdId -> { resolve, timer, action, instanceId }
+
+/**
+ * Tracks and dispatches a command with a deterministic Command-ACK promise.
+ */
+export function trackCmd(action, value, targetId, port, iframeEl = null, timeoutMs = 3000) {
+  const cmdId = generateInstanceId('cmd');
+  const env = createCmd(action, value, { source: 'parent', instanceId: targetId }, cmdId);
+
+  return new Promise(resolve => {
+    const timer = setTimeout(() => {
+      pendingCmds.delete(cmdId);
+      logger.warn(`[sremote:cmd] Command '${action}' timed out waiting for ACK from '${targetId}' (${timeoutMs}ms)`);
+      resolve({ success: false, error: 'TIMEOUT', message: `Command '${action}' timed out after ${timeoutMs}ms`, instanceId: targetId, action });
+    }, timeoutMs);
+
+    pendingCmds.set(cmdId, { resolve, timer, action, instanceId: targetId });
+
+    try {
+      port.postMessage(env);
+    } catch (err) {
+      clearTimeout(timer);
+      pendingCmds.delete(cmdId);
+      logger.warn(`[sremote] Error posting command '${action}' to port for '${targetId}':`, err);
+      if (iframeEl?.contentWindow && typeof iframeEl.contentWindow.postMessage === 'function') {
+        try {
+          iframeEl.contentWindow.postMessage(env, '*');
+          return resolve({ success: true, instanceId: targetId, action, fallback: 'window' });
+        } catch {}
+      }
+      resolve({ success: false, error: 'PORT_DISCONNECTED', message: String(err), instanceId: targetId });
+    }
+  });
+}
 
 export function flushPendingCommands(forInstanceId, port, isMultiModeActive) {
   if (!port || pendingCommandQueue.length === 0) return;
@@ -39,14 +73,14 @@ export function flushPendingCommands(forInstanceId, port, isMultiModeActive) {
   });
 
   for (const cmd of sortedActions) {
-    try {
-      port.postMessage({ type: `${NS}${cmd.action}`, source: 'parent', value: cmd.value });
-      cmd.resolve?.({ success: true, instanceId: forInstanceId, action: cmd.action });
-      logger.log(`%c[SRemote:queue] Flushed deduplicated command -> ${cmd.action}`, 'color: #10b981; font-weight: bold;', { value: cmd.value, instanceId: forInstanceId });
-    } catch (e) {
-      logger.warn('[sremote:queue] Error flushing command:', e);
-      cmd.resolve?.({ success: false, error: 'PORT_ERROR', message: String(e), instanceId: forInstanceId });
-    }
+    trackCmd(cmd.action, cmd.value, forInstanceId, port)
+      .then(res => {
+        cmd.resolve?.(res);
+        logger.log(`%c[SRemote:queue] Flushed command ACK received -> ${cmd.action}`, 'color: #10b981; font-weight: bold;', res);
+      })
+      .catch(err => {
+        cmd.resolve?.({ success: false, error: 'COMMAND_ERROR', message: String(err), instanceId: forInstanceId });
+      });
   }
 
   pendingCommandQueue.length = 0;

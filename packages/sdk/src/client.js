@@ -719,9 +719,10 @@ export class SRemoteClient {
       this.syncListenersToUserscript();
     }
 
-    // Sticky replay check from active drivers
+    // Sticky replay check from active drivers (only when Userscript bridge is not active,
+    // since the Userscript host already performs sticky replay natively)
     try {
-      if (ev === 'state' || ev === 'accept' || ev === '*') {
+      if ((ev === 'state' || ev === 'accept' || ev === '*') && !this.bridgeDriver.isAvailable()) {
         const curStatus = this.status();
         if (curStatus) {
           const replayPayload = { event: ev === '*' ? 'state' : ev, state: curStatus, source: 'cache-replay', instanceId: this.domDriver?.lastActiveInstanceId || 'dom-media' };

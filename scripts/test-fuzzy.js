@@ -12,6 +12,8 @@
 
 import {
   createEnvelope,
+  createCmd,
+  createCmdAck,
   parseEnvelope,
   PACKET_TYPE,
   createFSM,
@@ -268,6 +270,62 @@ assert(!isHandshakePacket({ protocol: 'sremote', version: 4, type: 'HANDSHAKE', 
 const parsedHandshake = parseEnvelope(ackPacket);
 assert(parsedHandshake && parsedHandshake.type === 'HANDSHAKE' && parsedHandshake.action === 'ack', 'parseEnvelope correctly translates Handshake v4 ACK packet');
 assert(parsedHandshake.meta.instanceId === 'inst_slot_99', 'parseEnvelope extracts instanceId into envelope metadata');
+
+// -------------------------------------------------------------
+// Test 7: CQRS Command-ACK Cycle & Bidirectional Communication
+// -------------------------------------------------------------
+console.log('\n7. CQRS Command-ACK Cycle & Bidirectional Communication:');
+
+// 1. Command envelope creation
+const cmd1 = createCmd('play', null, { instanceId: 'inst_alpha' }, 'cmd_test_001');
+assert(cmd1.type === PACKET_TYPE.COMMAND, 'createCmd creates PACKET_TYPE.COMMAND envelope');
+assert(cmd1.id === 'cmd_test_001', 'createCmd preserves custom command ID');
+assert(cmd1.action === 'play', 'createCmd standardizes action to play');
+
+// 2. Command envelope parsing
+const parsedCmd = parseEnvelope(cmd1);
+assert(parsedCmd && parsedCmd.type === 'COMMAND', 'parseEnvelope recognizes native COMMAND packet');
+assert(parsedCmd.meta.instanceId === 'inst_alpha', 'parseEnvelope extracts instanceId for command');
+
+// 3. Command ACK envelope creation (Success)
+const ack1 = createCmdAck('cmd_test_001', true, { state: { paused: false, currentTime: 5.2 } }, null, { instanceId: 'inst_alpha' });
+assert(ack1.type === PACKET_TYPE.COMMAND_ACK, 'createCmdAck creates PACKET_TYPE.COMMAND_ACK envelope');
+assert(ack1.id === 'cmd_test_001', 'createCmdAck links to origin command ID');
+assert(ack1.payload.success === true, 'createCmdAck payload reports success === true');
+assert(ack1.payload.result.state.currentTime === 5.2, 'createCmdAck carries fresh state snapshot');
+
+// 4. Command ACK envelope parsing
+const parsedAck = parseEnvelope(ack1);
+assert(parsedAck && parsedAck.type === 'COMMAND_ACK', 'parseEnvelope recognizes COMMAND_ACK packet');
+
+// 5. Command NACK envelope creation (Failure / Autoplay blocked)
+const nack1 = createCmdAck('cmd_test_002', false, null, 'AUTOPLAY_BLOCKED', { instanceId: 'inst_alpha' });
+assert(nack1.payload.success === false, 'NACK payload reports success === false');
+assert(nack1.payload.error === 'AUTOPLAY_BLOCKED', 'NACK preserves error string');
+
+// 6. Test BridgeDriver synchronous unbind contract
+import { BridgeDriver } from '../packages/sdk/src/drivers/bridge.js';
+
+let dummyListenerCount = 0;
+const mockHostApi = {
+  isSremoteNative: true,
+  on(evt, handler) {
+    dummyListenerCount++;
+    return () => dummyListenerCount--;
+  },
+  off() {},
+};
+
+// Set mock api on global symbol
+globalThis.window = globalThis;
+globalThis[Symbol.for('__sremote_native_driver__')] = mockHostApi;
+const bridge = new BridgeDriver();
+const unbindFn = bridge.on('test_event', () => {});
+assert(typeof unbindFn === 'function', 'BridgeDriver.on returns synchronous unbind function (NOT a Promise!)');
+unbindFn();
+assert(dummyListenerCount === 0, 'Synchronous unbind function cleanly unregistered listener without leak');
+delete globalThis[Symbol.for('__sremote_native_driver__')];
+delete globalThis.window;
 
 // -------------------------------------------------------------
 // Summary

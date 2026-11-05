@@ -8,7 +8,15 @@
 
 import { isHandshakePacket } from './handshake-contract.js';
 
-export const PACKET_TYPE = Object.freeze({ RPC_REQUEST: 'RPC_REQUEST', RPC_RESPONSE: 'RPC_RESPONSE', EVENT: 'EVENT', HANDSHAKE: 'HANDSHAKE', HEARTBEAT: 'HEARTBEAT' });
+export const PACKET_TYPE = Object.freeze({
+  RPC_REQUEST: 'RPC_REQUEST',
+  RPC_RESPONSE: 'RPC_RESPONSE',
+  COMMAND: 'COMMAND',
+  COMMAND_ACK: 'COMMAND_ACK',
+  EVENT: 'EVENT',
+  HANDSHAKE: 'HANDSHAKE',
+  HEARTBEAT: 'HEARTBEAT',
+});
 
 let packetCounter = 0;
 
@@ -66,6 +74,39 @@ export function createRpcResponse(rpcId, result = null, error = null, meta = {})
     meta,
   });
 }
+
+/**
+ * Creates a command request envelope.
+ * @param {string} action
+ * @param {*} [value=null]
+ * @param {Object} [meta={}]
+ * @param {string|null} [id=null]
+ * @returns {Object}
+ */
+export function createCmd(action, value = null, meta = {}, id = null) {
+  return createEnvelope({ type: PACKET_TYPE.COMMAND, action, payload: { value }, meta, id });
+}
+export const createCommand = createCmd;
+
+/**
+ * Creates a command ACK envelope.
+ * @param {string} cmdId
+ * @param {boolean} [success=true]
+ * @param {*} [result=null]
+ * @param {*} [error=null]
+ * @param {Object} [meta={}]
+ * @returns {Object}
+ */
+export function createCmdAck(cmdId, success = true, result = null, error = null, meta = {}) {
+  return createEnvelope({
+    type: PACKET_TYPE.COMMAND_ACK,
+    action: 'command_ack',
+    id: cmdId,
+    payload: { success: Boolean(success && !error), result, error: error ? (typeof error === 'object' ? error.message || error.error || String(error) : String(error)) : null },
+    meta,
+  });
+}
+export const createCommandAck = createCmdAck;
 
 /**
  * Creates a media or lifecycle event envelope.
@@ -131,6 +172,8 @@ export function parseEnvelope(raw, namespace = 'sremote:') {
     inferredType = PACKET_TYPE.RPC_REQUEST;
   } else if (rawAction === 'rpc_response') {
     inferredType = PACKET_TYPE.RPC_RESPONSE;
+  } else if (rawAction === 'command_ack' || rawAction === 'cmd_ack') {
+    inferredType = PACKET_TYPE.COMMAND_ACK;
   } else if (rawAction === 'syn' || rawAction === 'syn_ack' || rawAction === 'ack' || rawAction === 'hello' || rawAction === 'accept') {
     inferredType = PACKET_TYPE.HANDSHAKE;
   } else if (rawAction === 'ping' || rawAction === 'pong') {

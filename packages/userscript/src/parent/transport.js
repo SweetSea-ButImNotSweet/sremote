@@ -1,9 +1,10 @@
 import { NS } from '../const.js';
 import { logger } from '../config.js';
 import { createPermissionDialog } from '../ui/permission-dialog.js';
-import { flushPendingCommands, pendingRpcRequests } from './queue.js';
+import { flushPendingCommands, pendingRpcRequests, pendingCmds } from './queue.js';
 import {
   createEnvelope,
+  createCmd,
   parseEnvelope,
   PACKET_TYPE,
   createFSM,
@@ -216,6 +217,25 @@ export function createParentTransport({ instanceManager, isHelloInitiated = () =
         return;
       }
 
+      // 1.5. Command ACK Handling
+      if (envelopeType === PACKET_TYPE.COMMAND_ACK || (lowerAction === 'command_ack' && envelope.id)) {
+        const cmdId = envelope.id || data.cmdId;
+        const req = pendingCmds.get(cmdId);
+        if (req) {
+          clearTimeout(req.timer);
+          pendingCmds.delete(cmdId);
+          const resPayload = data.result !== undefined ? data.result : data;
+          if (resPayload?.state) item.state = resPayload.state;
+          const isOk = data.success !== false && resPayload?.success !== false && !data.error;
+          if (!isOk) {
+            req.resolve?.({ success: false, error: data.error || 'COMMAND_FAILED', message: data.message || 'Command execution failed', instanceId, action: req.action });
+          } else {
+            req.resolve?.({ success: true, instanceId, action: req.action, data: resPayload, state: item.state });
+          }
+        }
+        return;
+      }
+
       // 2. Heartbeat Pong
       if (lowerAction === 'pong' || envelopeType === PACKET_TYPE.HEARTBEAT) {
         if (item.transportState === TRANSPORT_STATE.CONNECTING) {
@@ -288,7 +308,7 @@ export function createParentTransport({ instanceManager, isHelloInitiated = () =
         if (exclusiveMode === 'auto' || exclusiveMode === true) {
           pauseOthersExcept(instanceId);
         } else if (exclusiveMode && exclusiveMode !== instanceId) {
-          port.postMessage(createEnvelope({ type: PACKET_TYPE.RPC_REQUEST, action: 'pause', meta: { source: 'parent', instanceId } }));
+          port.postMessage(createCmd('pause', null, { source: 'parent', instanceId }));
           return;
         }
       } else if (lowerAction === 'pause') {
@@ -464,7 +484,13 @@ export function createParentTransport({ instanceManager, isHelloInitiated = () =
       // hold the SYN in pendingSynQueue
       if (!isHelloInitiated()) {
         synLog.log(`Deferred SYN from ${iframeOrigin} until top window calls sremote.hello()`);
-        pendingSynQueue.set(sessionId, { processSyn, completeSynAck, rejectSyn });
+        const now = Date.now();
+        for (const [sId, item] of pendingSynQueue.entries()) {
+          if (item.timestamp && now - item.timestamp > 10000) {
+            pendingSynQueue.delete(sId);
+          }
+        }
+        pendingSynQueue.set(sessionId, { processSyn, completeSynAck, rejectSyn, timestamp: now });
         return;
       }
 
