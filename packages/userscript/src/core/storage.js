@@ -209,10 +209,7 @@ export const Storage = {
   clearIPCData() {
     const keys = rawStorage.list();
     for (const k of keys) {
-      if (
-        typeof k === 'string' &&
-        (k.startsWith('sremote:ipc:') || k.startsWith('sremote:query_req') || k.startsWith('sremote:report:') || k.startsWith('sremote:latest_handshake:'))
-      ) {
+      if (typeof k === 'string' && (k.startsWith('sremote:ipc:') || k.startsWith('sremote:query_req') || k.startsWith('sremote:report:'))) {
         rawStorage.remove(k);
       }
     }

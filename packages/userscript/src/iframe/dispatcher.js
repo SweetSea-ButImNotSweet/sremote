@@ -1,7 +1,7 @@
 import { NS } from '../const.js';
 import { logger } from '../config.js';
 import { getVideoState, getIframeCapabilities } from './controller.js';
-import { parseEnvelope, createEnvelope, PACKET_TYPE } from '@sremote/shared';
+import { parseEnvelope, createEnvelope, PACKET_TYPE, isHandshakePacket, HANDSHAKE_STEPS } from '@sremote/shared';
 
 export const MEDIA_COMMANDS = new Set(['play', 'pause', 'toggle', 'stop', 'seek', 'seekto', 'currenttime', 'volume', 'muted', 'speed', 'rate']);
 
@@ -139,6 +139,19 @@ export function createIframeDispatcher(options) {
 
   async function dispatchWindowMessage(event, mediaPort) {
     const data = event.data;
+
+    // 1. Standardized Handshake v4 Packets
+    if (isHandshakePacket(data)) {
+      if (data.step === HANDSHAKE_STEPS.SYN_ACK) {
+        handshake.handleSynAck(event, data);
+        return;
+      }
+      if (data.step === 'DISCOVER' || data.step === 'RESET') {
+        handshake.sendSyn(true);
+        return;
+      }
+      return;
+    }
 
     // Forward non-SRemote messages to parent if requested
     const isSRemote = data && typeof data === 'object' && typeof data.type === 'string' && data.type.startsWith(NS);

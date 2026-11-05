@@ -10,7 +10,18 @@
  * 6. High-throughput (1000 messages) packet stress test.
  */
 
-import { createEnvelope, parseEnvelope, PACKET_TYPE, createFSM, TransportState, MediaState } from '../packages/shared/src/index.js';
+import {
+  createEnvelope,
+  parseEnvelope,
+  PACKET_TYPE,
+  createFSM,
+  TransportState,
+  MediaState,
+  createHandshakePacket,
+  isHandshakePacket,
+  parseHandshakePacket,
+  HANDSHAKE_STEPS,
+} from '../packages/shared/src/index.js';
 
 let passed = 0;
 let failed = 0;
@@ -220,6 +231,43 @@ for (let i = 0; i < NUM_PACKETS; i++) {
 const elapsedMs = Date.now() - startTime;
 assert(validDispatches === NUM_PACKETS, `Successfully processed ${validDispatches}/${NUM_PACKETS} envelopes`);
 console.log(`  ⚡ Performance: ${NUM_PACKETS} envelopes encoded and parsed in ${elapsedMs}ms (~${(elapsedMs / NUM_PACKETS).toFixed(3)}ms per packet)`);
+
+// -------------------------------------------------------------
+// Test 6: SRemote Handshake v4 Deterministic 3-Way Protocol & Contract
+// -------------------------------------------------------------
+console.log('\n6. SRemote Handshake v4 Deterministic 3-Way Protocol & Contract:');
+
+// 1. SYN Packet
+const synPacket = createHandshakePacket({ step: HANDSHAKE_STEPS.SYN, sessionId: 'test_sess_001', payload: { origin: 'https://youtube.com', hasMedia: true, mediaType: 'video' } });
+assert(isHandshakePacket(synPacket), 'SYN packet recognized as valid Handshake v4 packet');
+assert(synPacket.protocol === 'sremote' && synPacket.version === 4 && synPacket.step === 'SYN', 'SYN packet contains protocol, version 4 and step SYN');
+
+// 2. SYN_ACK Packet
+const synAckPacket = createHandshakePacket({
+  step: HANDSHAKE_STEPS.SYN_ACK,
+  sessionId: 'test_sess_001',
+  instanceId: 'inst_slot_99',
+  payload: { allowed: true, config: { css: 'body { opacity: 0.9; }', treatAlmostEndAsEnd: true } },
+});
+assert(isHandshakePacket(synAckPacket), 'SYN_ACK packet recognized as valid Handshake v4 packet');
+assert(synAckPacket.instanceId === 'inst_slot_99', 'SYN_ACK preserved instanceId');
+assert(synAckPacket.payload.config.treatAlmostEndAsEnd === true, 'SYN_ACK transferred in-memory config');
+
+// 3. ACK Packet
+const ackPacket = createHandshakePacket({ step: HANDSHAKE_STEPS.ACK, sessionId: 'test_sess_001', instanceId: 'inst_slot_99', payload: { status: 'ESTABLISHED', hasMedia: true } });
+assert(isHandshakePacket(ackPacket), 'ACK packet recognized as valid Handshake v4 packet');
+assert(ackPacket.step === 'ACK' && ackPacket.payload.status === 'ESTABLISHED', 'ACK packet contains ESTABLISHED status');
+
+// 4. Invalid Packet Rejection
+assert(!isHandshakePacket(null), 'Null rejected by isHandshakePacket');
+assert(!isHandshakePacket({}), 'Empty object rejected by isHandshakePacket');
+assert(!isHandshakePacket({ protocol: 'sremote', version: 3 }), 'Wrong version rejected');
+assert(!isHandshakePacket({ protocol: 'sremote', version: 4, type: 'HANDSHAKE', step: 'UNKNOWN', sessionId: 's1' }), 'Unknown step rejected');
+
+// 5. Envelope parsing integration
+const parsedHandshake = parseEnvelope(ackPacket);
+assert(parsedHandshake && parsedHandshake.type === 'HANDSHAKE' && parsedHandshake.action === 'ack', 'parseEnvelope correctly translates Handshake v4 ACK packet');
+assert(parsedHandshake.meta.instanceId === 'inst_slot_99', 'parseEnvelope extracts instanceId into envelope metadata');
 
 // -------------------------------------------------------------
 // Summary

@@ -1,6 +1,6 @@
-import { VERSION, NS } from '../const.js';
+import { VERSION } from '../const.js';
 import { logger } from '../config.js';
-import { generateInstanceId } from '@sremote/shared';
+import { generateInstanceId, createHandshakePacket, HANDSHAKE_STEPS } from '@sremote/shared';
 import { showConnectedIndicator } from '../ui/indicator-badge.js';
 import { IframeStyleEngine } from './style-engine.js';
 import { getVideoState, getIframeCapabilities } from './controller.js';
@@ -8,15 +8,15 @@ import { getVideoState, getIframeCapabilities } from './controller.js';
 /**
  * Transport Connection State for Iframe
  */
-export const IFRAME_TRANSPORT_STATE = { DISCONNECTED: 'DISCONNECTED', CONNECTING: 'CONNECTING', CONNECTED: 'CONNECTED' };
+export const IFRAME_TRANSPORT_STATE = Object.freeze({ DISCONNECTED: 'DISCONNECTED', CONNECTING: 'CONNECTING', CONNECTED: 'CONNECTED' });
 
 /**
- * Clean & Resilient Iframe Transport Manager.
- * Implements 1-to-1 TCP-style handshake:
- * 1. sendSyn(): Iframe creates unique synChallenge and transmits 'syn' directly to window.top.
- * 2. handleSynAck(): Validates (event.source === window.top && event.data.synChallenge === currentSynChallenge).
- *    Attaches dedicated MessagePort and sends 'ack' back via the port.
- * 3. Autonomous connection survival across media detachment / video reload.
+ * Clean & Resilient Iframe Transport Manager (SRemote Handshake v4).
+ * Implements deterministic 3-way handshake:
+ * 1. sendSyn(): Generates unique sessionId, sends 'SYN' to window.top.
+ * 2. handleSynAck(): Validates (event.source === window.top && sessionId match).
+ *    Binds dedicated MessagePort, applies initial configs, sends 'ACK' directly over MessagePort.
+ * 3. Idempotent: Ignores duplicate SYN requests when already CONNECTED.
  */
 export function createIframeTransport(options) {
   const {
@@ -30,63 +30,67 @@ export function createIframeTransport(options) {
     treatAlmostEndSetter = ctx ? val => (ctx.treatAlmostEndAsEnd = val) : options.treatAlmostEndSetter,
     treatAlmostEndAsEndSetter = treatAlmostEndSetter || (ctx ? val => (ctx.treatAlmostEndAsEnd = val) : options.treatAlmostEndAsEndSetter),
   } = options;
+
   let primaryAuthorizedOrigin = null;
   let transportState = IFRAME_TRANSPORT_STATE.DISCONNECTED;
-  let currentSynChallenge = null;
+  let currentSessionId = generateInstanceId('sess');
   let synTimer = null;
   let synRetryCount = 0;
 
-  function sendSyn() {
+  function sendSyn(force = false) {
     if (typeof window === 'undefined' || !window.top || window.top === window) {
       return;
     }
 
-    if (transportState === IFRAME_TRANSPORT_STATE.CONNECTED) {
+    if (transportState === IFRAME_TRANSPORT_STATE.CONNECTED && !force) {
       return;
     }
 
     transportState = IFRAME_TRANSPORT_STATE.CONNECTING;
-    currentSynChallenge = currentSynChallenge || generateInstanceId('syn');
+    if (force || !currentSessionId) {
+      currentSessionId = generateInstanceId('sess');
+    }
 
     resolver.resolveActiveMedia();
     const hasActiveMedia = Boolean(resolver.getActiveMedia());
 
-    const synPayload = {
-      type: `${NS}syn`,
-      source: 'iframe',
-      synChallenge: currentSynChallenge,
-      instanceId: instanceIdGetter(),
-      location: location.href,
-      origin: location.origin,
-      version: VERSION,
-      hasMedia: hasActiveMedia,
-      mediaType: resolver.getMediaType() || (hasActiveMedia ? 'video' : 'idle'),
-      capabilities: getIframeCapabilities(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
-      state: getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
-    };
+    const synPacket = createHandshakePacket({
+      step: HANDSHAKE_STEPS.SYN,
+      sessionId: currentSessionId,
+      instanceId: instanceIdGetter() || null,
+      payload: {
+        origin: location.origin,
+        location: location.href,
+        version: VERSION,
+        hasMedia: hasActiveMedia,
+        mediaType: resolver.getMediaType() || (hasActiveMedia ? 'video' : 'idle'),
+        capabilities: getIframeCapabilities(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
+        state: getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
+      },
+    });
 
     const log = logger.scope('handshake');
-
-    log.log(`Iframe sending 'syn' (TCP Handshake) ->`, { synChallenge: currentSynChallenge, instanceId: instanceIdGetter() });
+    log.log(`Iframe sending SYN (Handshake v4) ->`, { sessionId: currentSessionId, instanceId: instanceIdGetter() });
 
     try {
-      window.top.postMessage(synPayload, '*');
+      window.top.postMessage(synPacket, '*');
     } catch (err) {
       log.warn('Failed to post SYN to window.top:', err);
     }
 
-    // Retransmit SYN if no SYN-ACK after 2.5s and still CONNECTING (max 3 attempts)
+    // Retransmit SYN if no SYN_ACK after 3.0s and still CONNECTING (max 3 retries)
     if (synTimer) clearTimeout(synTimer);
     synTimer = setTimeout(() => {
       if (transportState === IFRAME_TRANSPORT_STATE.CONNECTING && synRetryCount < 3) {
         synRetryCount++;
-        sendSyn();
+        log.log(`Retrying SYN (attempt ${synRetryCount}/3)...`);
+        sendSyn(false);
       } else if (transportState === IFRAME_TRANSPORT_STATE.CONNECTING) {
+        log.warn('Handshake SYN timed out after max retries.');
         synRetryCount = 0;
-        currentSynChallenge = null;
         transportState = IFRAME_TRANSPORT_STATE.DISCONNECTED;
       }
-    }, 2500);
+    }, 3000);
   }
 
   function handleSynAck(event, data) {
@@ -95,13 +99,14 @@ export function createIframeTransport(options) {
 
     // 1. Strict Anti-Spoofing: Must be from window.top
     if (typeof window !== 'undefined' && event.source !== window.top) {
-      secLog.warn('Dropped syn_ack: sender is not window.top.');
+      secLog.warn('Dropped SYN_ACK: sender is not window.top.');
       return;
     }
 
-    // 2. Strict Challenge Verification: Must match currentSynChallenge
-    if (!currentSynChallenge || data.synChallenge !== currentSynChallenge) {
-      secLog.warn('Dropped syn_ack: invalid or expired synChallenge.', { expected: currentSynChallenge, received: data?.synChallenge });
+    // 2. Strict Session Verification: Must match currentSessionId
+    const incomingSessionId = data.sessionId || data.synChallenge;
+    if (!currentSessionId || incomingSessionId !== currentSessionId) {
+      secLog.warn('Dropped SYN_ACK: invalid or expired sessionId.', { expected: currentSessionId, received: incomingSessionId });
       return;
     }
 
@@ -109,32 +114,35 @@ export function createIframeTransport(options) {
       clearTimeout(synTimer);
       synTimer = null;
     }
-    currentSynChallenge = null;
 
-    if (data.allowed === false) {
+    // 3. Check permission decision if provided
+    const payload = data.payload || data;
+    if (payload.allowed === false) {
       transportState = IFRAME_TRANSPORT_STATE.DISCONNECTED;
       log.warn('Connection rejected by top parent.');
       return;
     }
 
     if (!event.ports || event.ports.length === 0) {
-      log.warn('syn_ack received without MessagePort.');
+      log.warn('SYN_ACK received without MessagePort.');
       return;
     }
 
-    const callerOrigin = event.origin || data.parentOrigin || 'unknown_parent';
+    const callerOrigin = event.origin || payload.parentOrigin || 'unknown_parent';
     primaryAuthorizedOrigin = callerOrigin;
 
-    if (data.assignedInstanceId && typeof data.assignedInstanceId === 'string') {
-      setInstanceId(data.assignedInstanceId);
+    const assignedId = data.instanceId || data.assignedInstanceId;
+    if (assignedId && typeof assignedId === 'string') {
+      setInstanceId(assignedId);
     }
 
-    if (data.css && typeof data.css === 'string') {
-      IframeStyleEngine.setDynamicCSS(data.css);
+    const config = payload.config || payload;
+    if (config.css && typeof config.css === 'string') {
+      IframeStyleEngine.setDynamicCSS(config.css);
     }
 
-    if (typeof data.treatAlmostEndAsEnd === 'boolean') {
-      treatAlmostEndAsEndSetter(data.treatAlmostEndAsEnd);
+    if (typeof config.treatAlmostEndAsEnd === 'boolean') {
+      treatAlmostEndAsEndSetter(config.treatAlmostEndAsEnd);
     }
 
     // Bind dedicated private MessagePort
@@ -142,17 +150,25 @@ export function createIframeTransport(options) {
     const port = event.ports[0];
     bindPort(port);
 
-    // Send ACK back through the established private pipe
+    // Send ACK directly through the private MessagePort
     try {
-      port.postMessage({ type: `${NS}ack`, source: 'iframe', instanceId: instanceIdGetter(), status: 'ESTABLISHED' });
-    } catch {}
+      const ackPacket = createHandshakePacket({
+        step: HANDSHAKE_STEPS.ACK,
+        sessionId: currentSessionId,
+        instanceId: instanceIdGetter() || null,
+        payload: { status: 'ESTABLISHED', hasMedia: Boolean(resolver.getActiveMedia()), state: getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia) },
+      });
+      port.postMessage(ackPacket);
+    } catch (err) {
+      log.warn('Failed to post ACK over MessagePort:', err);
+    }
 
     synRetryCount = 0;
     transportState = IFRAME_TRANSPORT_STATE.CONNECTED;
     notifyState();
     showConnectedIndicator(callerOrigin, primaryAuthorizedOrigin);
 
-    log.log(`TCP Handshake ESTABLISHED (1-to-1) with parent [${callerOrigin}]`);
+    log.log(`Handshake v4 ESTABLISHED (MessagePort) with parent [${callerOrigin}]`);
   }
 
   return {
@@ -161,6 +177,9 @@ export function createIframeTransport(options) {
     },
     get transportState() {
       return transportState;
+    },
+    get currentSessionId() {
+      return currentSessionId;
     },
     sendSyn,
     handleSynAck,

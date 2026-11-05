@@ -6,6 +6,8 @@
  *   { id, type, action, payload, meta }
  */
 
+import { isHandshakePacket } from './handshake-contract.js';
+
 export const PACKET_TYPE = Object.freeze({ RPC_REQUEST: 'RPC_REQUEST', RPC_RESPONSE: 'RPC_RESPONSE', EVENT: 'EVENT', HANDSHAKE: 'HANDSHAKE', HEARTBEAT: 'HEARTBEAT' });
 
 let packetCounter = 0;
@@ -21,7 +23,7 @@ let packetCounter = 0;
  * @param {Object} [options.meta={}] - Metadata (source, timestamp, instanceId, etc.)
  * @returns {Object} Immutable envelope packet
  */
-export function createEnvelope({ type, action, payload = null, id = null, meta = {}, freeze = false }) {
+export function createEnvelope({ type, action, payload = null, id = null, meta = {}, freeze = true }) {
   packetCounter = (packetCounter + 1) & 0x7fffffff;
   const packetId = id || `pkt_${Date.now().toString(36)}_${packetCounter.toString(36)}`;
 
@@ -100,6 +102,17 @@ export function parseEnvelope(raw, namespace = 'sremote:') {
         meta: raw.meta,
       };
     }
+  }
+
+  // 1.5. Handshake Protocol Envelope
+  if (isHandshakePacket(raw)) {
+    return {
+      id: raw.sessionId || `pkt_hs_${Date.now().toString(36)}`,
+      type: PACKET_TYPE.HANDSHAKE,
+      action: String(raw.step || '').toLowerCase(),
+      payload: raw.payload || null,
+      meta: { timestamp: Date.now(), source: raw.step === 'SYN' || raw.step === 'ACK' ? 'iframe' : 'parent', instanceId: raw.instanceId || null, rawHandshake: raw },
+    };
   }
 
   // 2. Legacy Envelope / Flat Packet ({ type: 'sremote:*' })

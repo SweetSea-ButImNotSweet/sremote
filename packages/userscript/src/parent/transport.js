@@ -1,9 +1,19 @@
 import { NS } from '../const.js';
 import { logger } from '../config.js';
-import { Storage } from '../core/storage.js';
 import { createPermissionDialog } from '../ui/permission-dialog.js';
 import { flushPendingCommands, pendingRpcRequests } from './queue.js';
-import { createEnvelope, parseEnvelope, PACKET_TYPE, createFSM, TransportState, MediaState, generateInstanceId } from '@sremote/shared';
+import {
+  createEnvelope,
+  parseEnvelope,
+  PACKET_TYPE,
+  createFSM,
+  TransportState,
+  MediaState,
+  generateInstanceId,
+  createHandshakePacket,
+  HANDSHAKE_STEPS,
+  isHandshakePacket,
+} from '@sremote/shared';
 
 /**
  * Transport Connection State Enum
@@ -11,22 +21,14 @@ import { createEnvelope, parseEnvelope, PACKET_TYPE, createFSM, TransportState, 
 export const TRANSPORT_STATE = Object.freeze({ DISCONNECTED: 'DISCONNECTED', CONNECTING: 'CONNECTING', CONNECTED: 'CONNECTED', TERMINATED: 'TERMINATED' });
 
 /**
- * Clean & Resilient Parent Transport Manager.
+ * Clean & Resilient Parent Transport Manager (SRemote Handshake v4).
  * Handles:
- * 1. Dedicated MessagePort Lifecycle per Instance (TCP 1-to-1 SYN/SYN-ACK/ACK)
- * 2. Dedicated MessagePort Lifecycle per Instance
+ * 1. Dedicated MessagePort Lifecycle per Instance (Deterministic 3-Way Handshake)
+ * 2. Idempotent connection negotiation & in-memory handshake config
  * 3. DOM Detach Grace Period (300ms) for React Strict Mode / Remount
- * 4. Ping/Pong Heartbeat Sweeper
+ * 4. Ping/Pong Heartbeat Sweeper & Unified DOM Scanner
  */
-export function createParentTransport({
-  instanceManager,
-  tabSessionId = null,
-  isHelloInitiated = () => false,
-  onIframeReady = null,
-  onMediaMessage = () => {},
-  onMediaStateChange = () => {},
-  onBridgeMessage = () => {},
-}) {
+export function createParentTransport({ instanceManager, isHelloInitiated = () => false, onMediaMessage = () => {}, onMediaStateChange = () => {}, onBridgeMessage = () => {} }) {
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, removeInstance, notifyMediaCountChange, emitGlobalEvent, pauseOthersExcept } = instanceManager;
 
   const portToInstanceMap = new WeakMap(); // MessagePort -> instanceId (O(1) direct port lookup)
@@ -34,8 +36,26 @@ export function createParentTransport({
   const blacklistedIframes = new WeakSet();
   const blacklistedSources = new WeakSet();
   const pendingReapTimers = new Map(); // instanceId -> timeoutId
-  const pendingSynQueue = new Map(); // instanceId -> { event, data, processFn }
+  const pendingSynQueue = new Map(); // sessionId -> { event, data, processSyn }
   const GRACE_PERIOD_MS = 300;
+
+  // In-Memory Handshake Config (Eliminating persistent Storage.raw dependency)
+  const handshakeConfig = { css: null, treatAlmostEndAsEnd: null };
+
+  let scanDebounceTimer = null;
+
+  function updateHandshakeConfig(cfg = {}) {
+    if (typeof cfg.css === 'string' || cfg.css === null) {
+      handshakeConfig.css = cfg.css;
+    }
+    if (typeof cfg.treatAlmostEndAsEnd === 'boolean' || cfg.treatAlmostEndAsEnd === null) {
+      handshakeConfig.treatAlmostEndAsEnd = cfg.treatAlmostEndAsEnd;
+    }
+  }
+
+  function getHandshakeConfig() {
+    return { ...handshakeConfig };
+  }
 
   // --- Helper: Find Iframe Element from Window Source ---
   function findIframeElementBySource(sourceWindow, root = document) {
@@ -91,7 +111,7 @@ export function createParentTransport({
   }
 
   // --- 1. Port Setup & Channel Management ---
-  function setupPortForInstance(instanceId, port, initialLocation, initialOrigin, iframeEl = null, initialTransportState = TRANSPORT_STATE.CONNECTED) {
+  function setupPortForInstance(instanceId, port, initialLocation, initialOrigin, iframeEl = null, initialTransportState = TRANSPORT_STATE.CONNECTED, sessionId = null) {
     const newLocationOrOrigin = initialLocation || initialOrigin || '';
 
     // Check for Service / Domain Switch: ONLY evict if the EXACT same iframe DOM element navigated
@@ -99,7 +119,6 @@ export function createParentTransport({
       for (const [oldId, oldInst] of Array.from(instances.entries())) {
         if (oldId !== instanceId) {
           const oldIframe = oldInst?.iframeEl || assignedIframeIdMap.get(oldId);
-          // Only evict if this is confirmed to be the exact same DOM node navigating to a new URL/origin
           if (oldIframe && oldIframe === iframeEl) {
             logger
               .scope('transport')
@@ -142,6 +161,7 @@ export function createParentTransport({
       port,
       location: initialLocation,
       origin: initialOrigin,
+      sessionId,
       note: '',
       state: null,
       mediaType: null,
@@ -164,7 +184,7 @@ export function createParentTransport({
       const rawData = e.data;
       if (!rawData || typeof rawData !== 'object') return;
 
-      // Micro-Kernel Protocol Envelope Parser (Supports Dual-Mode: Native + Legacy)
+      // Micro-Kernel Protocol Envelope Parser (Supports Handshake v4 + Native Envelopes)
       const envelope = parseEnvelope(rawData, NS);
       if (!envelope) return;
 
@@ -231,7 +251,7 @@ export function createParentTransport({
         return;
       }
 
-      // 5. TCP Handshake ACK on Port
+      // 5. Handshake v4 ACK on Port
       if (lowerAction === 'ack' || lowerAction === 'accept') {
         item.authenticated = true;
         item.transportState = TRANSPORT_STATE.CONNECTED;
@@ -311,29 +331,27 @@ export function createParentTransport({
     removeInstance(instanceId, reason);
   }
 
-  // --- 3. Cross-Frame Window Message Listener ---
+  // --- 3. Cross-Frame Window Message Listener (Handshake v4) ---
   const onWindowMessage = event => {
     if (event.source === window) return;
 
     const data = event.data;
     if (!data || typeof data !== 'object') return;
-    const type = String(data.type || '');
-    if (!type.startsWith(NS)) return;
 
-    const action = type.slice(NS.length);
-    const lowerAction = action.toLowerCase();
-    const callerOrigin = event.origin || 'unknown_origin';
+    // A. SRemote Handshake v4 Standardized SYN Packet
+    const isHandshake = isHandshakePacket(data);
+    const isLegacySyn = typeof data.type === 'string' && data.type.startsWith(NS) && data.type.slice(NS.length).toLowerCase() === 'syn';
 
-    if (lowerAction === 'iframe_ready' || lowerAction === 'iframeready') {
-      try {
-        onIframeReady?.(event.source, callerOrigin);
-      } catch {}
-      return;
-    }
+    if (isHandshake || isLegacySyn) {
+      const step = isHandshake ? data.step : 'SYN';
+      if (step !== HANDSHAKE_STEPS.SYN && step !== 'SYN') {
+        return;
+      }
 
-    // --- TCP Handshake: 1-to-1 SYN from Iframe ---
-    if (lowerAction === 'syn') {
+      const sessionId = data.sessionId || data.synChallenge || generateInstanceId('sess');
+      const payload = data.payload || data;
       const iframeEl = findIframeElementBySource(event.source);
+
       let preAssignedId = (iframeEl && (iframeEl.getAttribute('data-sremote-id') || iframeToAssignedIdMap.get(iframeEl))) || null;
       if (!preAssignedId && iframeEl?.name && typeof iframeEl.name === 'string') {
         const nameMatch = iframeEl.name.match(/(?:sremote_id|data-sremote-id)=([^&;\s]+)/i);
@@ -345,13 +363,13 @@ export function createParentTransport({
           preAssignedId = closestParentWithId.getAttribute('data-sremote-id');
         }
       }
+
       const instanceId = preAssignedId || data.instanceId || generateInstanceId();
-      const iframeLoc = data.location || '';
-      const iframeOrigin = event.origin && event.origin !== 'null' ? event.origin : data.origin || '*';
-      const synChallenge = data.synChallenge;
+      const iframeLoc = payload.location || '';
+      const iframeOrigin = event.origin && event.origin !== 'null' ? event.origin : payload.origin || '*';
 
       const synLog = logger.scope('handshake');
-      synLog.log(`Parent received 'syn' from iframe -> ${iframeOrigin}`, { instanceId, synChallenge, data });
+      synLog.log(`Parent received SYN (Handshake v4) from ${iframeOrigin}`, { instanceId, sessionId });
 
       if (iframeEl && instanceId) {
         assignedIframeIdMap.set(instanceId, iframeEl);
@@ -359,11 +377,11 @@ export function createParentTransport({
       }
 
       if (iframeEl && blacklistedIframes.has(iframeEl)) {
-        synLog.warn(`Dropped syn from blacklisted iframe element: ${instanceId}`);
+        synLog.warn(`Dropped SYN from blacklisted iframe element: ${instanceId}`);
         return;
       }
       if (event.source && blacklistedSources.has(event.source)) {
-        synLog.warn(`Dropped syn from blacklisted window source: ${instanceId}`);
+        synLog.warn(`Dropped SYN from blacklisted window source: ${instanceId}`);
         return;
       }
 
@@ -373,52 +391,60 @@ export function createParentTransport({
         } catch {}
       }
 
+      // Idempotency: If this instance already has an established session with identical sessionId, skip recreation
+      const existingInst = instances.get(instanceId);
+      if (existingInst && existingInst.sessionId === sessionId && existingInst.transportState === TRANSPORT_STATE.CONNECTED) {
+        synLog.log(`Instance '${instanceId}' already connected with sessionId '${sessionId}'. Re-handshake skipped.`);
+        return;
+      }
+
       const completeSynAck = () => {
+        // Cleanly close prior port if any
+        if (existingInst?.port) {
+          try {
+            existingInst.port.close();
+          } catch {}
+        }
+
         const channel = new MessageChannel();
-        setupPortForInstance(instanceId, channel.port1, iframeLoc, iframeOrigin, iframeEl, TRANSPORT_STATE.CONNECTING);
+        setupPortForInstance(instanceId, channel.port1, iframeLoc, iframeOrigin, iframeEl, TRANSPORT_STATE.CONNECTING, sessionId);
+
         const inst = instances.get(instanceId);
         if (inst) {
           inst.authenticated = false; // Will be set to true on ACK
+          inst.sessionId = sessionId;
           instanceManager.setCurrentActiveInstanceId(instanceId);
-          inst.hasMedia = Boolean(data.hasMedia);
-          if (data.state) inst.state = data.state;
-          if (data.mediaType) inst.mediaType = data.mediaType;
-          if (data.capabilities) inst.capabilities = data.capabilities;
+          inst.hasMedia = Boolean(payload.hasMedia);
+          if (payload.state) inst.state = payload.state;
+          if (payload.mediaType) inst.mediaType = payload.mediaType;
+          if (payload.capabilities) inst.capabilities = payload.capabilities;
           inst.lastSeen = Date.now();
         }
         notifyMediaCountChange();
 
-        const latestHandshake = (tabSessionId ? Storage.raw.get(`sremote:ipc:latest_handshake:${tabSessionId}`) : null) || {};
-        const synAckPayload = {
-          type: `${NS}syn_ack`,
-          source: 'parent',
-          synChallenge,
-          allowed: true,
-          parentOrigin: location.origin,
-          assignedInstanceId: instanceId,
-          ...(latestHandshake.css ? { css: latestHandshake.css } : {}),
-          ...(typeof latestHandshake.treatAlmostEndAsEnd === 'boolean' ? { treatAlmostEndAsEnd: latestHandshake.treatAlmostEndAsEnd } : {}),
-        };
+        const synAckPacket = createHandshakePacket({
+          step: HANDSHAKE_STEPS.SYN_ACK,
+          sessionId,
+          instanceId,
+          payload: { allowed: true, parentOrigin: location.origin, config: { css: handshakeConfig.css || null, treatAlmostEndAsEnd: handshakeConfig.treatAlmostEndAsEnd } },
+        });
 
         try {
-          event.source.postMessage(synAckPayload, iframeOrigin && iframeOrigin !== 'null' ? iframeOrigin : '*', [channel.port2]);
+          event.source.postMessage(synAckPacket, iframeOrigin && iframeOrigin !== 'null' ? iframeOrigin : '*', [channel.port2]);
           channel.port1.postMessage(createEnvelope({ type: PACKET_TYPE.HEARTBEAT, action: 'ping', payload: { handshakeVerify: true }, meta: { source: 'parent', instanceId } }));
         } catch (err) {
-          synLog.warn('Failed to transfer MessagePort in syn_ack:', err);
+          synLog.warn('Failed to transfer MessagePort in SYN_ACK:', err);
         }
       };
 
       const rejectSyn = () => {
         try {
-          event.source.postMessage(
-            { type: `${NS}syn_ack`, source: 'parent', synChallenge, allowed: false, parentOrigin: location.origin },
-            iframeOrigin && iframeOrigin !== 'null' ? iframeOrigin : '*',
-          );
+          const rejectPacket = createHandshakePacket({ step: HANDSHAKE_STEPS.SYN_ACK, sessionId, instanceId, payload: { allowed: false, parentOrigin: location.origin } });
+          event.source.postMessage(rejectPacket, iframeOrigin && iframeOrigin !== 'null' ? iframeOrigin : '*');
         } catch {}
       };
 
       const processSyn = () => {
-        // Check permissions via Dialog (which checks isSessionBlocked, isSessionAllowed, Storage, and batches UI)
         createPermissionDialog({
           parentOrigin: location.origin,
           iframeOrigin,
@@ -435,19 +461,18 @@ export function createParentTransport({
       };
 
       // On-Demand Handshake: If the top page / SDK hasn't called hello() yet,
-      // hold the SYN in pendingSynQueue so we DO NOT bother users with unprompted dialogs!
+      // hold the SYN in pendingSynQueue
       if (!isHelloInitiated()) {
-        synLog.log(`Deferred 'syn' from ${iframeOrigin} until top window calls sremote.hello()`);
-        pendingSynQueue.set(instanceId, { processSyn, completeSynAck, rejectSyn });
+        synLog.log(`Deferred SYN from ${iframeOrigin} until top window calls sremote.hello()`);
+        pendingSynQueue.set(sessionId, { processSyn, completeSynAck, rejectSyn });
         return;
       }
 
       processSyn();
-      return;
     }
   };
 
-  // --- 4. Grace Period Liveness & Heartbeat Sweeper ---
+  // --- 4. Grace Period Liveness & Unified DOM Scanner ---
   function scheduleReapInstance(assignedId) {
     if (!assignedId || !instances.has(assignedId)) return;
     if (pendingReapTimers.has(assignedId)) {
@@ -472,20 +497,61 @@ export function createParentTransport({
     }
   }
 
-  const parentIframeObserver = new MutationObserver(mutations => {
+  function discover(targetWindow = null) {
+    const discoverPacket = createHandshakePacket({
+      step: 'RESET', // or DISCOVER
+      sessionId: generateInstanceId('disc'),
+      payload: { parentOrigin: location.origin, config: { css: handshakeConfig.css || null, treatAlmostEndAsEnd: handshakeConfig.treatAlmostEndAsEnd } },
+    });
+
+    if (targetWindow && typeof targetWindow.postMessage === 'function') {
+      try {
+        targetWindow.postMessage(discoverPacket, '*');
+      } catch {}
+      return;
+    }
+
+    try {
+      const iframes = document.querySelectorAll('iframe');
+      for (let i = 0; i < iframes.length; i++) {
+        try {
+          iframes[i].contentWindow?.postMessage(discoverPacket, '*');
+        } catch {}
+      }
+    } catch {}
+
+    try {
+      if (typeof window !== 'undefined' && window.frames) {
+        for (let i = 0; i < window.frames.length; i++) {
+          try {
+            window.frames[i].postMessage(discoverPacket, '*');
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+
+  // Unified DOM MutationObserver (Handles additions, dynamic discovery, and reaps)
+  const unifiedDomObserver = new MutationObserver(mutations => {
+    let hasNewIframe = false;
+
     for (const m of mutations) {
       if (m.addedNodes.length > 0) {
         for (let i = 0; i < m.addedNodes.length; i++) {
           const node = m.addedNodes[i];
           if (node.nodeType === 1) {
             if (node.tagName === 'IFRAME') {
+              hasNewIframe = true;
               const assignedId = iframeToAssignedIdMap.get(node) || node.getAttribute?.('data-sremote-id');
               if (assignedId) cancelReapInstance(assignedId);
             } else if (node.querySelectorAll) {
               const subIframes = node.querySelectorAll('iframe');
-              for (let j = 0; j < subIframes.length; j++) {
-                const assignedId = iframeToAssignedIdMap.get(subIframes[j]) || subIframes[j].getAttribute?.('data-sremote-id');
-                if (assignedId) cancelReapInstance(assignedId);
+              if (subIframes.length > 0) {
+                hasNewIframe = true;
+                for (let j = 0; j < subIframes.length; j++) {
+                  const assignedId = iframeToAssignedIdMap.get(subIframes[j]) || subIframes[j].getAttribute?.('data-sremote-id');
+                  if (assignedId) cancelReapInstance(assignedId);
+                }
               }
             }
           }
@@ -515,12 +581,20 @@ export function createParentTransport({
         }
       }
     }
+
+    if (hasNewIframe && isHelloInitiated()) {
+      if (scanDebounceTimer) clearTimeout(scanDebounceTimer);
+      scanDebounceTimer = setTimeout(() => {
+        logger.scope('lifecycle').log('New iframe detected in DOM. Auto-scanning with discover...');
+        discover();
+      }, 50);
+    }
   });
 
   const mountTarget = document.documentElement || document;
   if (mountTarget) {
     try {
-      parentIframeObserver.observe(mountTarget, { childList: true, subtree: true });
+      unifiedDomObserver.observe(mountTarget, { childList: true, subtree: true });
     } catch {}
   }
 
@@ -560,18 +634,22 @@ export function createParentTransport({
       try {
         item.processSyn();
       } catch (err) {
-        synLog.warn('Failed to process deferred syn:', err);
+        synLog.warn('Failed to process deferred SYN:', err);
       }
     });
   }
 
   return {
+    updateHandshakeConfig,
+    getHandshakeConfig,
+    discover,
     flushPendingSyns,
     terminateInstance,
     destroy: () => {
       window.removeEventListener('message', onWindowMessage);
       clearInterval(heartbeatInterval);
-      parentIframeObserver.disconnect();
+      if (scanDebounceTimer) clearTimeout(scanDebounceTimer);
+      unifiedDomObserver.disconnect();
       for (const t of pendingReapTimers.values()) clearTimeout(t);
       pendingReapTimers.clear();
       pendingSynQueue.clear();

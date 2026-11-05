@@ -14,7 +14,6 @@ export function createExportedApi({
   queryMediaInstancesViaGM,
   topMediaTracker = null,
   transportManager = null,
-  tabSessionId = null,
   onHelloInitiated = null,
 }) {
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap } = instanceManager;
@@ -26,7 +25,7 @@ export function createExportedApi({
 
   const cssHandlers = createCssHandlers({ rpcCall: rpcHandlers.rpcCall });
 
-  const lifecycleHandlers = createLifecycleHandlers({ instanceManager, validateDomainAccess, dispatchCommand, topMediaTracker, tabSessionId, logger, NS });
+  const lifecycleHandlers = createLifecycleHandlers({ instanceManager, validateDomainAccess, dispatchCommand, topMediaTracker, transportManager, logger, NS });
 
   const helloWithInitiateTracking = (...args) => {
     try {

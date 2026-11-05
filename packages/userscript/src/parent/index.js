@@ -8,7 +8,7 @@ import { pendingCommandQueue } from './queue.js';
 import { createExportedApi } from './api.js';
 import { createParentTransport } from './transport.js';
 import { setupTopMediaTracker } from './top-media.js';
-import { actions, dom, generateInstanceId, instance, pipeline } from '@sremote/shared';
+import { actions, dom, instance, pipeline } from '@sremote/shared';
 
 export function initParentController() {
   const currentOrigin = location.origin;
@@ -44,9 +44,6 @@ export function initParentController() {
 
   logger.log(`%c[sremote v${VERSION}] Parent Controller Initialized`, 'background: #0f172a; color: #38bdf8; font-weight: bold; padding: 2px 6px;');
 
-  // Tab-isolated session identifier (in-memory per tab window, avoiding cross-tab contamination)
-  const tabSessionId = generateInstanceId('tab');
-
   // Sync log level from storage to logger if configured
   try {
     const storedLogLevel = Storage.preferences.getLogLevel();
@@ -61,50 +58,14 @@ export function initParentController() {
   const instanceManager = instance.createManager();
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, getLatestActiveInstanceId, broadcastToPorts } = instanceManager;
 
-  let broadcastHelloRef = null;
   let hasInitiatedHello = false;
-
-  // Helper: Đợi n frame trình duyệt (dùng requestAnimationFrame kèm fallback setTimeout cho tab nền)
-  const waitFrames = (frames, callback) => {
-    let count = 0;
-    let cancelled = false;
-
-    const timer = setTimeout(() => {
-      if (!cancelled) {
-        cancelled = true;
-        callback();
-      }
-    }, frames * 18); // Fallback: ~90ms nếu tab ở background mà rAF bị tạm dừng
-
-    const step = () => {
-      if (cancelled) return;
-      count++;
-      if (count >= frames) {
-        cancelled = true;
-        clearTimeout(timer);
-        callback();
-      } else if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(step);
-      }
-    };
-
-    if (typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(step);
-    }
-  };
 
   // Wakeup: Đánh thức iframe (toàn bộ hoặc đích danh targetWindow)
   const triggerPendingWakeup = (targetWindow = null) => {
-    if (!hasInitiatedHello) {
-      hasInitiatedHello = true;
-      try {
-        transportManager.flushPendingSyns();
-      } catch {}
-    }
+    hasInitiatedHello = true;
     try {
-      if (typeof broadcastHelloRef === 'function') {
-        broadcastHelloRef({}, targetWindow);
-      }
+      transportManager.flushPendingSyns();
+      transportManager.discover(targetWindow);
     } catch {}
   };
 
@@ -272,63 +233,17 @@ export function initParentController() {
     return found;
   }
 
-  // Initialize Clean Transport Manager (MessagePort, Handshake, Challenge, Heartbeat & Grace Period)
-  const transportManager = createParentTransport({
-    instanceManager,
-    tabSessionId,
-    isHelloInitiated: () => hasInitiatedHello,
-    onIframeReady: (sourceWindow, origin) => {
-      logger.log(`%c[SRemote:handshake] Received 'iframe_ready' from ${origin}. Responding with hello...`, 'color: #10b981;');
-      triggerPendingWakeup(sourceWindow);
-    },
-  });
-
-  // Auto-Heal: Theo dõi các thẻ <iframe> được chèn động (React remount, dynamic route, v.v.)
-  // Debounce chờ đúng 5 frame của máy tính để DOM và iframe bắt đầu nạp trước khi gửi hello
-  try {
-    if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
-      let pendingDebounce = false;
-
-      const iframeObserver = new MutationObserver(mutations => {
-        let hasNewIframe = false;
-        for (const m of mutations) {
-          for (const node of m.addedNodes) {
-            if (node.nodeType === 1) {
-              if (node.tagName === 'IFRAME') {
-                hasNewIframe = true;
-              } else if (node.querySelector?.('iframe')) {
-                hasNewIframe = true;
-              }
-            }
-          }
-        }
-        if (hasNewIframe) {
-          if (pendingDebounce) return;
-          pendingDebounce = true;
-          logger.log(`%c[SRemote:autoheal] New iframe detected in DOM. Waiting 5 frames for mount...`, 'color: #06b6d4; font-weight: bold;');
-          waitFrames(5, () => {
-            pendingDebounce = false;
-            logger.log(`%c[SRemote:autoheal] 5 frames elapsed. Negotiating hello...`, 'color: #06b6d4;');
-            triggerPendingWakeup();
-          });
-        }
-      });
-      const targetMount = document.documentElement || document.body || document;
-      if (targetMount) {
-        iframeObserver.observe(targetMount, { childList: true, subtree: true });
-      }
-    }
-  } catch {}
+  // Initialize Clean Transport Manager (Handshake v4, MessagePort, Heartbeat & Grace Period)
+  const transportManager = createParentTransport({ instanceManager, isHelloInitiated: () => hasInitiatedHello });
 
   // Initialize and Export window.sremote
-  const api = createExportedApi({
+  createExportedApi({
     instanceManager,
     dispatchCommand,
     validateDomainAccess,
     queryMediaInstancesViaGM,
     topMediaTracker,
     transportManager,
-    tabSessionId,
     onHelloInitiated: () => {
       hasInitiatedHello = true;
       try {
@@ -336,7 +251,4 @@ export function initParentController() {
       } catch {}
     },
   });
-  if (api && typeof api.hello === 'function') {
-    broadcastHelloRef = api.hello;
-  }
 }
