@@ -31,6 +31,7 @@ export const SREMOTE_ACTIONS = {
   PREVIOUS_TRACK: 'previoustrack',
 };
 
-export const SREMOTE_STORAGE_KEYS = { HELLO_SEQ: 'sremote:hello_seq', PARENT_ORIGIN: 'sremote:parent_origin', HANDSHAKE_SECRET: 'sremote:handshake_secret' };
+/** @deprecated Legacy storage keys from v2/v3 (now obsolete with v4 in-memory handshake) */
+export const SREMOTE_STORAGE_KEYS = Object.freeze({});
 
 export const constants = { ACTIONS: SREMOTE_ACTIONS, EVENTS: SREMOTE_EVENTS, STORAGE_KEYS: SREMOTE_STORAGE_KEYS };

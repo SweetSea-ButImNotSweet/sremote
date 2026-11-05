@@ -7,19 +7,11 @@ import { createRpcHandlers } from './handlers/rpc.js';
 import { createCssHandlers } from './handlers/css.js';
 import { createLifecycleHandlers } from './handlers/lifecycle.js';
 
-export function createExportedApi({
-  instanceManager,
-  dispatchCommand,
-  validateDomainAccess,
-  queryMediaInstancesViaGM,
-  topMediaTracker = null,
-  transportManager = null,
-  onHelloInitiated = null,
-}) {
+export function createExportedApi({ instanceManager, dispatchCommand, validateDomainAccess, topMediaTracker = null, transportManager = null, onHelloInitiated = null }) {
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap } = instanceManager;
 
   // 1. Initialize Domain Handlers
-  const instancesHandlers = createInstancesHandlers({ instanceManager, transportManager, validateDomainAccess, queryMediaInstancesViaGM, logger });
+  const instancesHandlers = createInstancesHandlers({ instanceManager, transportManager, validateDomainAccess, logger });
 
   const rpcHandlers = createRpcHandlers({ instanceManager, validateDomainAccess, getIframeElement: instancesHandlers.getIframeElement, logger, NS });
 

@@ -292,5 +292,4 @@ export declare function createExportedApi(context: {
   instanceManager: any;
   dispatchCommand: (action: string, value?: any, targetInstanceId?: string | null, key?: string | null) => Promise<SRemoteCommandResult>;
   validateDomainAccess: (providedKey?: string | null) => boolean;
-  queryMediaInstancesViaGM: () => any[];
 }): SRemoteParentApi;

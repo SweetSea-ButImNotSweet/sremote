@@ -134,11 +134,8 @@ export declare const SREMOTE_ACTIONS: {
 
 export type SRemoteActionName = (typeof SREMOTE_ACTIONS)[keyof typeof SREMOTE_ACTIONS];
 
-export declare const SREMOTE_STORAGE_KEYS: {
-  readonly HELLO_SEQ: 'sremote:hello_seq';
-  readonly PARENT_ORIGIN: 'sremote:parent_origin';
-  readonly HANDSHAKE_SECRET: 'sremote:handshake_secret';
-};
+/** @deprecated Legacy storage keys from v2/v3 (now obsolete with v4 in-memory handshake) */
+export declare const SREMOTE_STORAGE_KEYS: Record<string, string>;
 
 export declare const MEDIA_EVENTS: readonly string[];
 export declare const SAFE_FALLBACK_EVENTS: readonly string[];

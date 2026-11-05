@@ -80,7 +80,6 @@ export function initIframeAgent() {
   let originalMediaSrcBeforeDebug = null;
   let observer = null;
   let livenessScheduled = null;
-  let gmQueryTimer = null;
 
   IframeStyleEngine.init('');
 
@@ -98,7 +97,7 @@ export function initIframeAgent() {
 
   function emitToParent(eventOrAction, payload = {}) {
     const lowerEvt = String(eventOrAction || '').toLowerCase();
-    if (!handshake.primaryAuthorizedOrigin && lowerEvt !== 'accept' && lowerEvt !== 'requestblobclone') {
+    if (!handshake.primaryAuthorizedOrigin && lowerEvt !== 'accept') {
       return;
     }
 
@@ -290,33 +289,6 @@ export function initIframeAgent() {
     }
   }
 
-  // Active GM-based Query Poller
-  function listenToGMQueries() {
-    let lastQueryToken = null;
-    gmQueryTimer = setInterval(() => {
-      try {
-        const queryReq = Storage.raw.get('sremote:ipc:query_req');
-        if (queryReq && queryReq !== lastQueryToken) {
-          lastQueryToken = queryReq;
-          resolver.resolveActiveMedia();
-
-          const reportData = {
-            instanceId,
-            location: location.href,
-            origin: location.origin,
-            title: document.title,
-            hasMedia: Boolean(resolver.getActiveMedia()),
-            mediaType: resolver.getMediaType(),
-            lastActive: Date.now(),
-          };
-          Storage.raw.set(`sremote:ipc:report:${instanceId}`, reportData);
-        }
-      } catch {}
-    }, 800);
-  }
-
-  listenToGMQueries();
-
   // Listen to Window PostMessages
   window.addEventListener('message', event => dispatcher.dispatchWindowMessage(event, mediaPort));
 
@@ -339,10 +311,6 @@ export function initIframeAgent() {
     const handleTeardown = ev => {
       if (teardownDone) return;
       teardownDone = true;
-      if (gmQueryTimer) {
-        clearInterval(gmQueryTimer);
-        gmQueryTimer = null;
-      }
       if (livenessScheduled) {
         if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(livenessScheduled);
         livenessScheduled = null;

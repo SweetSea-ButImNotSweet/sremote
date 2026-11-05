@@ -10,7 +10,6 @@ export function createRpcRegistry(options) {
     ctx,
     resolver = ctx?.resolver || options.resolver,
     instanceId = ctx?.instanceId || options.instanceId,
-    emitToParent = ctx?.emitToParent || options.emitToParent,
     sendMediaSessionState = ctx?.sendMediaSessionState || options.sendMediaSessionState,
     notifyState = ctx?.notifyState || options.notifyState,
     getOriginalMediaSrc = ctx ? () => ctx.originalMediaSrc : options.getOriginalMediaSrc,
@@ -113,15 +112,7 @@ export function createRpcRegistry(options) {
       }
 
       if (params?.title && mockMediaSessionInstance) {
-        handleBindMetadata({
-          metadata: { title: params.title, artist: 'sremote.debug', album: 'Debug Track' },
-          instanceId,
-          emitToParent,
-          sendMediaSessionState,
-          activeMediaGetter: resolver.getActiveMedia,
-          mediaTypeGetter: resolver.getMediaType,
-          resolveActiveMedia: resolver.resolveActiveMedia,
-        });
+        handleBindMetadata({ metadata: { title: params.title, artist: 'sremote.debug', album: 'Debug Track' }, sendMediaSessionState });
       }
 
       notifyState();

@@ -3,7 +3,7 @@ import { capabilities, state } from '@sremote/shared';
 /**
  * Creates instances domain handlers for parent API.
  */
-export function createInstancesHandlers({ instanceManager, transportManager = null, validateDomainAccess, queryMediaInstancesViaGM, logger }) {
+export function createInstancesHandlers({ instanceManager, transportManager = null, validateDomainAccess, logger }) {
   const { instances, assignedIframeIdMap, iframeToAssignedIdMap, isMultiModeActive, pauseOthersExcept } = instanceManager;
 
   const removeInstance = (instanceId, key) => {
@@ -178,7 +178,7 @@ export function createInstancesHandlers({ instanceManager, transportManager = nu
       logger.scope('auth').error('Blocked query()! Valid Passkey is required.');
       return [];
     }
-    return queryMediaInstancesViaGM();
+    return listInstances(key);
   };
 
   const getQualities = instanceId => {

@@ -197,27 +197,6 @@ export function initParentController() {
     });
   }
 
-  function queryMediaInstancesViaGM() {
-    const queryToken = `query_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    Storage.raw.set(`sremote:ipc:query_req`, queryToken);
-
-    const keys = Storage.raw.list();
-    const found = [];
-    for (const k of keys) {
-      if (k?.startsWith('sremote:ipc:report:')) {
-        const raw = Storage.raw.get(k);
-        try {
-          const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          if (data?.hasMedia) {
-            found.push(data);
-          }
-        } catch {}
-        Storage.raw.remove(k);
-      }
-    }
-    return found;
-  }
-
   // Initialize Clean Transport Manager (Handshake v4, MessagePort, Heartbeat & Grace Period)
   const transportManager = createParentTransport({ instanceManager, isHelloInitiated: () => hasInitiatedHello });
 
@@ -226,7 +205,6 @@ export function initParentController() {
     instanceManager,
     dispatchCommand,
     validateDomainAccess,
-    queryMediaInstancesViaGM,
     topMediaTracker,
     transportManager,
     onHelloInitiated: () => {

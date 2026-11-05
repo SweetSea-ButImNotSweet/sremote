@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { API_SPEC } from '../packages/shared/src/api/schema.js';
-import { SREMOTE_ACTIONS, SREMOTE_EVENTS, SREMOTE_STORAGE_KEYS } from '../packages/shared/src/constants.js';
+import { SREMOTE_ACTIONS, SREMOTE_EVENTS } from '../packages/shared/src/constants.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

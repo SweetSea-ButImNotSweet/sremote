@@ -16,7 +16,6 @@ export function createIframeDispatcher(options) {
     rpcRegistry = ctx?.rpcRegistry || options.rpcRegistry,
     executeControl = ctx?.executeControl || options.executeControl,
     emitToParent = ctx?.emitToParent || options.emitToParent,
-    mockMediaSessionInstance = options.mockMediaSessionInstance,
     handshake = options.handshake,
   } = options;
   async function handleIncomingControl(action, value) {
@@ -46,25 +45,6 @@ export function createIframeDispatcher(options) {
     }
 
     switch (lowerAction) {
-      case 'resendblobobject': {
-        if (data.blob) {
-          try {
-            const localBlobUrl = URL.createObjectURL(data.blob);
-            if (mockMediaSessionInstance.metadata) {
-              const arts = mockMediaSessionInstance.metadata.artwork || [];
-              arts.push({ src: localBlobUrl });
-              mockMediaSessionInstance.metadata.artwork = arts;
-              if (navigator.mediaSession && typeof MediaMetadata !== 'undefined') {
-                navigator.mediaSession.metadata = new MediaMetadata(mockMediaSessionInstance.metadata);
-              }
-            }
-          } catch (err) {
-            logger.warn('[sremote] Error creating local object URL for blob:', err);
-          }
-        }
-        return;
-      }
-
       case 'bridge_post': {
         const payload = data.payload;
         const targetOrigin = data.targetOrigin || '*';
