@@ -11,7 +11,7 @@
 export const HANDSHAKE_PROTOCOL = 'sremote';
 export const HANDSHAKE_VERSION = 4;
 
-export const HANDSHAKE_STEPS = Object.freeze({ SYN: 'SYN', SYN_ACK: 'SYN_ACK', ACK: 'ACK', RESET: 'RESET' });
+export const HANDSHAKE_STEPS = Object.freeze({ SYN: 'SYN', SYN_ACK: 'SYN_ACK', ACK: 'ACK', DISCOVER: 'DISCOVER', RESET: 'RESET' });
 
 /**
  * Creates a standardized handshake packet.

@@ -1,6 +1,7 @@
 import { NS } from '../const.js';
 import { logger } from '../config.js';
 import { getVideoState, getIframeCapabilities } from './controller.js';
+import { IFRAME_TRANSPORT_STATE } from './transport.js';
 import { parseEnvelope, createEnvelope, createCmdAck, PACKET_TYPE, isHandshakePacket, HANDSHAKE_STEPS } from '@sremote/shared';
 
 export const MEDIA_COMMANDS = new Set(['play', 'pause', 'toggle', 'stop', 'seek', 'seekto', 'currenttime', 'volume', 'muted', 'speed', 'rate']);
@@ -172,11 +173,22 @@ export function createIframeDispatcher(options) {
 
     // 1. Standardized Handshake v4 Packets
     if (isHandshakePacket(data)) {
-      if (data.step === HANDSHAKE_STEPS.SYN_ACK) {
+      if (data.step === HANDSHAKE_STEPS.SYN_ACK || data.step === 'SYN_ACK') {
         handshake.handleSynAck(event, data);
         return;
       }
-      if (data.step === 'DISCOVER' || data.step === 'RESET') {
+      if (data.step === HANDSHAKE_STEPS.DISCOVER || data.step === 'DISCOVER') {
+        // Idempotent Discovery: Only respond if this iframe is disconnected.
+        // If already connected or connecting, do not interrupt the active handshake flight.
+        if (handshake.transportState === IFRAME_TRANSPORT_STATE.DISCONNECTED) {
+          handshake.sendSyn(false);
+        }
+        return;
+      }
+      if (data.step === HANDSHAKE_STEPS.RESET || data.step === 'RESET') {
+        if (handshake.resetConnection) {
+          handshake.resetConnection('parent_reset_packet');
+        }
         handshake.sendSyn(true);
         return;
       }
@@ -209,7 +221,9 @@ export function createIframeDispatcher(options) {
         return;
 
       case 'hello':
-        handshake.sendSyn();
+        if (handshake.transportState === IFRAME_TRANSPORT_STATE.DISCONNECTED) {
+          handshake.sendSyn(false);
+        }
         return;
 
       default:

@@ -534,7 +534,7 @@ export function createParentTransport({ instanceManager, isHelloInitiated = () =
 
   function discover(targetWindow = null) {
     const discoverPacket = createHandshakePacket({
-      step: 'RESET', // or DISCOVER
+      step: HANDSHAKE_STEPS.DISCOVER,
       sessionId: generateInstanceId('disc'),
       payload: { parentOrigin: location.origin, config: { css: handshakeConfig.css || null, treatAlmostEndAsEnd: handshakeConfig.treatAlmostEndAsEnd } },
     });
