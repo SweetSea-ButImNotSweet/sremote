@@ -367,6 +367,37 @@ export class SRemoteClient {
   async execute(actionName, payload, context = {}) {
     const targetOrId = context?.targetId ?? null;
 
+    // Caller Diagnostics: Full Interactive Call-Stack Tree in DevTools
+    try {
+      if (typeof console !== 'undefined') {
+        const titleStyle = 'color: #0284c7; font-weight: bold;';
+        const actStyle = 'color: #10b981; font-weight: bold; font-size: 1.1em;';
+        const targetStyle = 'color: #d97706; font-weight: bold;';
+
+        if (typeof console.groupCollapsed === 'function') {
+          console.groupCollapsed(
+            `%c[SRemote:SDK:cmd] %c${actionName}%c on %c[${targetOrId ?? 'auto'}]%c 🔍 (Expand for full Call-Stack Tree)`,
+            titleStyle,
+            actStyle,
+            titleStyle,
+            targetStyle,
+            'color: #64748b; font-style: italic;',
+          );
+          console.log('Action:', actionName);
+          console.log('Target:', targetOrId ?? 'auto');
+          console.log('Payload:', payload);
+          console.log('Context:', context);
+          console.log('Timestamp:', new Date().toISOString());
+          if (typeof console.trace === 'function') {
+            console.trace('Full Call-Stack Tree:');
+          }
+          console.groupEnd();
+        } else if (typeof console.trace === 'function') {
+          console.trace(`[SRemote:SDK:cmd] ${actionName} on [${targetOrId ?? 'auto'}]`, { payload, context });
+        }
+      }
+    } catch {}
+
     // 1. Check FSM: if transport is not yet connected, auto-queue the command
     if (!this.connectionManager.isConnected) {
       this.logger.debug(`[Auto-Queue] Enqueuing '${actionName}' while connecting...`);

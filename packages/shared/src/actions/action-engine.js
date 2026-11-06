@@ -68,6 +68,23 @@ export async function safePlayMedia(el) {
       setNativeMediaProp(el, 'currentTime', 0);
     }
 
+    // Await active seeking transition (e.g. following seek(0) or SponsorBlock auto-skip)
+    if (el.seeking) {
+      await new Promise(resolve => {
+        let timer = null;
+        const onSeeked = () => {
+          if (timer) clearTimeout(timer);
+          resolve();
+        };
+        timer = setTimeout(onSeeked, 150);
+        try {
+          el.addEventListener('seeked', onSeeked, { once: true });
+        } catch {
+          resolve();
+        }
+      });
+    }
+
     let res;
     // 1. Try instance play() first
     if (typeof el.play === 'function') {
@@ -86,12 +103,29 @@ export async function safePlayMedia(el) {
     if (res && typeof res.then === 'function') {
       try {
         await res;
-      } catch {
-        // If play was rejected (e.g. Autoplay without user interaction), attempt simulated click on player container
-        try {
-          const container = el.closest?.('.bpx-player-video-area, .bilibili-player-video, .player-container, video') || el;
-          container.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-        } catch {}
+      } catch (err) {
+        // Crucial: Do NOT attempt click simulation on AbortError!
+        // AbortError indicates play() was interrupted by an asynchronous seek (e.g. SponsorBlock skip, timeline scrubber) or pause().
+        // Blindly clicking on the player container toggles playback state on YouTube/HTML5 players, triggering play/pause storms.
+        if (err && (err.name === 'AbortError' || String(err?.message || err).includes('interrupted'))) {
+          return res;
+        }
+
+        // Only handle Autoplay rejection (NotAllowedError) when video is genuinely paused
+        if (err?.name === 'NotAllowedError' && el.paused) {
+          try {
+            // Prioritize dedicated play button elements over generic container click; never click bare video element
+            const playBtn = el.parentElement?.querySelector?.('.ytp-large-play-button, .vjs-big-play-button, .bpx-player-ctrl-play') || null;
+            if (playBtn) {
+              playBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+            } else {
+              const container = el.closest?.('.bpx-player-video-area, .bilibili-player-video, .player-container') || null;
+              if (container && container !== el) {
+                container.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+              }
+            }
+          } catch {}
+        }
       }
     }
     return res;
@@ -461,10 +495,6 @@ async function executeNativeAction(el, norm, value, isPureGet) {
         const curTime = getNativeMediaProp(el, 'currentTime', 0) ?? 0;
         const targetTime = Math.max(0, Math.min(dur || Infinity, curTime + Number(value)));
         setNativeMediaProp(el, 'currentTime', targetTime);
-        try {
-          el.dispatchEvent(new Event('seeking'));
-          el.dispatchEvent(new Event('seeked'));
-        } catch {}
       }
       return true;
 
@@ -474,10 +504,6 @@ async function executeNativeAction(el, norm, value, isPureGet) {
         const dur = getNativeMediaProp(el, 'duration', 0) || 0;
         const targetTime = Math.max(0, Math.min(dur || Infinity, Number(value)));
         setNativeMediaProp(el, 'currentTime', targetTime);
-        try {
-          el.dispatchEvent(new Event('seeking'));
-          el.dispatchEvent(new Event('seeked'));
-        } catch {}
       }
       return true;
 

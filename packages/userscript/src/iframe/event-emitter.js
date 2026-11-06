@@ -98,6 +98,31 @@ export function createMediaEventEmitter(options) {
 
         const currentState = getVideoState(video, activeResolver?.getActiveMedia(), activeResolver?.resolveActiveMedia);
 
+        if (evtName === 'play' || evtName === 'pause') {
+          try {
+            if (typeof console !== 'undefined' && typeof console.groupCollapsed === 'function') {
+              const tagText = isProgrammatic ? '[SRemote Programmatic]' : '[External: SponsorBlock/Player]';
+              const tagStyle = isProgrammatic ? 'color: #10b981; font-weight: bold;' : 'color: #ef4444; font-weight: bold; font-size: 1.05em;';
+              console.groupCollapsed(
+                `%c[SRemote:Iframe:event] %c${evtName.toUpperCase()}%c | %c${tagText}%c 🔍 (Expand for event stack tree)`,
+                'color: #8b5cf6; font-weight: bold;',
+                'color: #ec4899; font-weight: bold; font-size: 1.1em;',
+                'color: inherit;',
+                tagStyle,
+                'color: #64748b; font-style: italic;',
+              );
+              console.log('Event:', evtName);
+              console.log('isProgrammatic:', isProgrammatic);
+              console.log('currentTime:', currentState?.currentTime);
+              console.log('paused:', currentState?.paused);
+              if (typeof console.trace === 'function') {
+                console.trace('Event Stack Tree:');
+              }
+              console.groupEnd();
+            }
+          } catch {}
+        }
+
         if (evtName === 'play' || evtName === 'playing') {
           startRVFCLoop();
         } else if (evtName === 'pause' || evtName === 'ended' || evtName === 'emptied') {
