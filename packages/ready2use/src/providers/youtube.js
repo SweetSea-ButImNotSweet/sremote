@@ -161,6 +161,7 @@ export class YouTubeProvider extends BaseProvider {
     let timeupdateTimer = null;
     let isSeeking = false;
     let lastReportedTime = 0;
+    let repeatMode = 'off';
 
     const isPlaying = () => {
       if (!player || typeof player.getPlayerState !== 'function') return false;
@@ -311,10 +312,10 @@ export class YouTubeProvider extends BaseProvider {
           player.previousVideo();
         }
       },
-      setRepeat(mode) {
+      repeat(mode) {
+        repeatMode = mode === 'one' || mode === true ? 'one' : mode === 'all' ? 'all' : 'off';
         if (player && typeof player.setLoop === 'function') {
-          const loop = mode === 'one' || mode === 'all' || mode === true;
-          player.setLoop(loop);
+          player.setLoop(repeatMode === 'one' || repeatMode === 'all');
         }
       },
       setShuffle(enable) {
@@ -366,6 +367,13 @@ export class YouTubeProvider extends BaseProvider {
           stopTimeupdate();
           adapter.emit?.('pause', { state });
         } else if (stateVal === 0) {
+          if (repeatMode === 'one') {
+            try {
+              player.seekTo(0, true);
+              player.playVideo();
+            } catch {}
+            return;
+          }
           notifySeeked(state);
           stopTimeupdate();
           adapter.emit?.('ended', { state: { ...state, paused: true, ended: true } });

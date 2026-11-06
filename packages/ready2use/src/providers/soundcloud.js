@@ -62,6 +62,7 @@ export class SoundCloudProvider extends BaseProvider {
     let currentTime = 0;
     let volume = 1;
     let isMuted = false;
+    let repeatMode = 'off';
 
     if (widget && typeof widget.getDuration === 'function') {
       widget.getDuration(d => {
@@ -137,6 +138,9 @@ export class SoundCloudProvider extends BaseProvider {
       paused() {
         return !isPlaying;
       },
+      repeat(mode) {
+        repeatMode = mode === 'one' || mode === true ? 'one' : mode === 'all' ? 'all' : 'off';
+      },
       next() {
         if (widget && typeof widget.next === 'function') {
           widget.next();
@@ -181,6 +185,11 @@ export class SoundCloudProvider extends BaseProvider {
       });
 
       widget.bind(SC.Widget.Events.FINISH, () => {
+        if (repeatMode === 'one') {
+          widget.seekTo(0);
+          widget.play();
+          return;
+        }
         isPlaying = false;
         adapter.emit?.('ended', { state: { paused: true, ended: true, currentTime: duration, duration } });
       });

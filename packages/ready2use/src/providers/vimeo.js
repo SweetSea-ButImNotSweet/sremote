@@ -142,7 +142,7 @@ export class VimeoProvider extends BaseProvider {
       paused() {
         return isPaused;
       },
-      setRepeat(mode) {
+      repeat(mode) {
         const loop = mode === 'one' || mode === 'all' || mode === true;
         player?.setLoop?.(loop).catch(() => {});
       },

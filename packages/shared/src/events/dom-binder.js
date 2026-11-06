@@ -83,7 +83,7 @@ export function bindDomMedia(media, onEvent, options = {}) {
 
         const dur = Number.isFinite(media.duration) ? media.duration : null;
         const curTime = media.currentTime || 0;
-        if (dur && dur > ALMOST_END_MIN_DURATION_SEC && curTime >= dur - ALMOST_END_THRESHOLD_SEC && curTime <= dur) {
+        if (!media.loop && dur && dur > ALMOST_END_MIN_DURATION_SEC && curTime >= dur - ALMOST_END_THRESHOLD_SEC && curTime <= dur) {
           if (!hasEmittedAlmostEnd) {
             hasEmittedAlmostEnd = true;
             const almostEndEvent = treatAlmostEndAsEnd ? 'ended' : 'almostend';

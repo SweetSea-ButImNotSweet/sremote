@@ -104,7 +104,7 @@ export class BaseProvider {
       quality: hasFn('setQuality'),
       subtitles: hasFn('setSubtitle') || hasFn('getSubtitles'),
       shuffle: hasFn('setShuffle'),
-      repeat: hasFn('setRepeat'),
+      repeat: hasFn('repeat'),
       next: hasFn('next'),
       previous: hasFn('previous'),
       load: hasFn('load'),

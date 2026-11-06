@@ -434,8 +434,8 @@ async function executeAdapterAction(target, norm, value, isPureGet, logger) {
 
     case 'repeat':
       if (!isPureGet) {
-        if (typeof target.setRepeat === 'function') {
-          return target.setRepeat(value);
+        if (typeof target.repeat === 'function') {
+          return target.repeat(value);
         }
         if (target.mediaElement) {
           target.mediaElement.loop = value === true || value === 'one';

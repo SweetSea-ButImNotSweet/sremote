@@ -65,4 +65,4 @@ export const STATE_CHANGING_EVENTS = new Set(['play', 'pause', 'playing', 'ended
 /**
  * Standard action methods to intercept on adapters for programmatic tracking.
  */
-export const ACTION_METHODS = ['play', 'pause', 'toggle', 'stop', 'seekTo', 'seek', 'volume', 'mute', 'speed', 'playbackRate'];
+export const ACTION_METHODS = ['play', 'pause', 'toggle', 'stop', 'seekTo', 'seek', 'volume', 'mute', 'speed', 'playbackRate', 'repeat'];

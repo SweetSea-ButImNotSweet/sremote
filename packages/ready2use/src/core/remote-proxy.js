@@ -245,7 +245,7 @@ export function createRemoteProxy(adapter, sremoteClient = null, instanceId = nu
 
     repeat(mode = true) {
       return this._enqueue(() => {
-        if (typeof safeAdapter.setRepeat === 'function') return safeAdapter.setRepeat(mode);
+        if (typeof safeAdapter.repeat === 'function') return safeAdapter.repeat(mode);
         return Promise.resolve();
       });
     }

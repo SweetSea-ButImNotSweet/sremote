@@ -63,6 +63,7 @@ export class NicoNicoProvider extends BaseProvider {
     let currentTime = 0;
     let isPlaying = false;
     let volume = 1;
+    let repeatMode = 'off';
 
     function sendToNico(eventName, data = {}) {
       if (iframe?.contentWindow) {
@@ -110,6 +111,9 @@ export class NicoNicoProvider extends BaseProvider {
       paused() {
         return !isPlaying;
       },
+      repeat(mode) {
+        repeatMode = mode === 'one' || mode === true ? 'one' : mode === 'all' ? 'all' : 'off';
+      },
       getState() {
         return { paused: !isPlaying, currentTime, duration, volume };
       },
@@ -145,6 +149,11 @@ export class NicoNicoProvider extends BaseProvider {
           isPlaying = false;
           adapter.emit?.('pause', { state: { paused: true, currentTime, duration } });
         } else if (data?.playerStatus === 4) {
+          if (repeatMode === 'one') {
+            adapter.seekTo(0);
+            adapter.play();
+            return;
+          }
           // Ended
           isPlaying = false;
           adapter.emit?.('ended', { state: { paused: true, ended: true, currentTime: duration, duration } });
