@@ -42,9 +42,16 @@ export class AdapterDriver {
     return result;
   }
 
-  register(rawAdapter, customInstanceId = null) {
+  register(rawAdapter, customInstanceId = null, adapterOptions = {}) {
     if (!rawAdapter || typeof rawAdapter !== 'object') return null;
-    const targetId = customInstanceId || instance.generateId('adapter');
+
+    let targetId = customInstanceId;
+    let extraOpts = adapterOptions;
+    if (customInstanceId && typeof customInstanceId === 'object') {
+      extraOpts = customInstanceId;
+      targetId = extraOpts.instanceId || null;
+    }
+    targetId = targetId || instance.generateId('adapter');
 
     const onEmit = (ev, payload) => {
       if (this.options.emitter && typeof this.options.emitter.emit === 'function') {
@@ -55,7 +62,7 @@ export class AdapterDriver {
       }
     };
 
-    const wrapped = actions.wrapAdapter(rawAdapter, { instanceId: targetId, transactionTracker: this.transactionTracker, logger: this.logger, onEmit });
+    const wrapped = actions.wrapAdapter(rawAdapter, { instanceId: targetId, transactionTracker: this.transactionTracker, logger: this.logger, onEmit, ...extraOpts });
 
     this.adaptersMap.set(targetId, wrapped);
 

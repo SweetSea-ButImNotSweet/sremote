@@ -85,14 +85,17 @@ export function evaluateCapabilities(target) {
   const isVideo = target.tagName === 'VIDEO';
   const hasFn = fn => typeof target[fn] === 'function';
 
+  const isRaw = target.mode === 'raw' || target.strict === true;
+  const allowPolyfill = !isRaw && target.interventions?.polyfill !== false;
+
   return {
     play: hasNative || hasFn('play'),
     pause: hasNative || hasFn('pause'),
-    toggle: hasFn('toggle') || (hasNative && (hasFn('play') || hasFn('pause'))),
-    stop: hasFn('stop') || hasNative,
+    toggle: hasFn('toggle') || (allowPolyfill && (hasNative || (hasFn('play') && hasFn('pause')))),
+    stop: hasFn('stop') || (allowPolyfill && (hasNative || hasFn('pause'))),
     seek: hasNative || hasFn('seek') || hasFn('seekTo') || hasFn('setCurrentTime'),
     volume: hasNative || hasFn('volume') || hasFn('setVolume'),
-    muted: hasNative || hasFn('mute') || hasFn('setMuted'),
+    muted: hasNative || hasFn('mute') || hasFn('setMuted') || (allowPolyfill && (hasFn('volume') || hasFn('setVolume'))),
     speed: hasNative || hasFn('speed') || hasFn('setPlaybackRate'),
     playbackRate: hasNative || hasFn('setPlaybackRate'),
     pip: (isVideo && typeof document !== 'undefined' && Boolean(document.pictureInPictureEnabled || target.requestPictureInPicture)) || hasFn('requestPip') || hasFn('pip'),

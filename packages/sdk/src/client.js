@@ -126,8 +126,8 @@ export class SRemoteClient {
     };
 
     this.adapters = {
-      register: (adapter, instanceId) => {
-        const registeredId = this.adapterDriver.register(adapter, instanceId);
+      register: (adapter, instanceId, options) => {
+        const registeredId = this.adapterDriver.register(adapter, instanceId, options);
         this.syncGlobalAdapters();
         if (this.mode === 'detecting' || !this.bridgeDriver.isAvailable()) {
           this.mode = 'dom-direct';

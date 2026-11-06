@@ -1,13 +1,13 @@
 /**
  * Universal Action Engine for SRemote.
  * Consolidates media control execution for HTMLMediaElement, DOM elements, and Custom Adapters.
- * Single Source of Truth for action dispatching.
+ * Table-driven dispatcher powered by Centralized Action Fallback Matrix.
  */
 
 import { wrapAdapter } from '../events/index.js';
-import { getNativeMediaProp, setNativeMediaProp, callNative } from '../dom/native-media.js';
+import { ACTION_MATRIX, normalizeActionKey, safePlayMedia, safePauseMedia, adapterPreviousVolumeMap } from './action-matrix.js';
 
-const adapterPreviousVolumeMap = new WeakMap();
+export { ACTION_MATRIX, normalizeActionKey, safePlayMedia, safePauseMedia, adapterPreviousVolumeMap };
 
 /**
  * Resolves a media element from a selector, DOM node, or same-origin iframe.
@@ -52,579 +52,12 @@ export function resolveMediaElement(target, doc = typeof document !== 'undefined
 }
 
 /**
- * Safely plays a media element, recovering from ended state, unstarted videos,
- * or prototype overrides by third-party players (e.g. Bilibili Nano/Dash).
- * @param {HTMLMediaElement} el
- * @returns {Promise<void>}
+ * Checks whether an object is a SRemote Custom Adapter.
+ * @param {any} target
+ * @returns {boolean}
  */
-export async function safePlayMedia(el) {
-  if (!el) return;
-  try {
-    const isEnded = Boolean(el.ended);
-    const curTime = el.currentTime ?? 0;
-    const dur = el.duration ?? 0;
-
-    if (isEnded || (dur > 0 && Math.abs(dur - curTime) <= 0.1)) {
-      setNativeMediaProp(el, 'currentTime', 0);
-    }
-
-    // Await active seeking transition (e.g. following seek(0) or SponsorBlock auto-skip)
-    if (el.seeking) {
-      await new Promise(resolve => {
-        let timer = null;
-        const onSeeked = () => {
-          if (timer) clearTimeout(timer);
-          resolve();
-        };
-        timer = setTimeout(onSeeked, 150);
-        try {
-          el.addEventListener('seeked', onSeeked, { once: true });
-        } catch {
-          resolve();
-        }
-      });
-    }
-
-    let res;
-    // 1. Try instance play() first
-    if (typeof el.play === 'function') {
-      try {
-        res = el.play();
-      } catch {}
-    }
-
-    // 2. If instance play() returned nothing or failed, try native prototype play
-    if (!res) {
-      try {
-        res = callNative(el, 'play');
-      } catch {}
-    }
-
-    if (res && typeof res.then === 'function') {
-      try {
-        await res;
-      } catch (err) {
-        // Crucial: Do NOT attempt click simulation on AbortError!
-        // AbortError indicates play() was interrupted by an asynchronous seek (e.g. SponsorBlock skip, timeline scrubber) or pause().
-        // Blindly clicking on the player container toggles playback state on YouTube/HTML5 players, triggering play/pause storms.
-        if (err && (err.name === 'AbortError' || String(err?.message || err).includes('interrupted'))) {
-          return res;
-        }
-
-        // Only handle Autoplay rejection (NotAllowedError) when video is genuinely paused
-        if (err?.name === 'NotAllowedError' && el.paused) {
-          try {
-            // Prioritize dedicated play button elements over generic container click; never click bare video element
-            const playBtn = el.parentElement?.querySelector?.('.ytp-large-play-button, .vjs-big-play-button, .bpx-player-ctrl-play') || null;
-            if (playBtn) {
-              playBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-            } else {
-              const container = el.closest?.('.bpx-player-video-area, .bilibili-player-video, .player-container') || null;
-              if (container && container !== el) {
-                container.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-              }
-            }
-          } catch {}
-        }
-      }
-    }
-    return res;
-  } catch (err) {
-    if (typeof console !== 'undefined') {
-      console.warn('[sremote:action] safePlayMedia error:', err);
-    }
-  }
-}
-
-/**
- * Safely pauses a media element, recovering from prototype overrides.
- * @param {HTMLMediaElement} el
- */
-export function safePauseMedia(el) {
-  if (!el) return;
-  try {
-    if (typeof el.pause === 'function') {
-      el.pause();
-    }
-  } catch {}
-  try {
-    callNative(el, 'pause');
-  } catch (err) {
-    if (typeof console !== 'undefined') {
-      console.warn('[sremote:action] safePauseMedia error:', err);
-    }
-  }
-}
-
-/**
- * Executes a normalized action on a Custom Adapter target.
- * @private
- */
-async function executeAdapterAction(target, norm, value, isPureGet, logger) {
-  let emittedDuringAction = false;
-  const autoEmit = (eventName, payload = {}) => {
-    if (!isPureGet && typeof target.emit === 'function' && !emittedDuringAction) {
-      try {
-        target.emit(eventName, { programmatic: true, isProgrammatic: true, ...payload });
-      } catch (err) {
-        if (logger?.warn) logger.warn(`[sremote] Error auto-emitting '${eventName}':`, err);
-      }
-    }
-  };
-
-  switch (norm) {
-    case 'play':
-      if (!isPureGet && typeof target.play === 'function') {
-        await target.play();
-        autoEmit('play');
-      }
-      return true;
-
-    case 'pause':
-      if (!isPureGet && typeof target.pause === 'function') {
-        await target.pause();
-        autoEmit('pause');
-      }
-      return true;
-
-    case 'toggle':
-      if (!isPureGet) {
-        if (typeof target.toggle === 'function') {
-          await target.toggle();
-          const isPaused = typeof target.paused === 'function' ? target.paused() : typeof target.paused === 'boolean' ? target.paused : null;
-          if (isPaused !== null) autoEmit(isPaused ? 'pause' : 'play');
-          else autoEmit('toggle');
-        } else if (typeof target.play === 'function' && typeof target.pause === 'function') {
-          const isPaused = typeof target.paused === 'function' ? target.paused() : typeof target.paused === 'boolean' ? target.paused : true;
-          if (isPaused) {
-            await target.play();
-            autoEmit('play');
-          } else {
-            await target.pause();
-            autoEmit('pause');
-          }
-        }
-      }
-      return true;
-
-    case 'stop':
-      if (!isPureGet) {
-        if (typeof target.stop === 'function') {
-          await target.stop();
-        } else {
-          if (typeof target.pause === 'function') await target.pause();
-          if (typeof target.seekTo === 'function') {
-            await target.seekTo(0);
-          } else if (typeof target.setCurrentTime === 'function') {
-            await target.setCurrentTime(0);
-          }
-        }
-        autoEmit('pause');
-        autoEmit('stop');
-      }
-      return true;
-
-    case 'seek':
-      if (!isPureGet) {
-        if (typeof target.seek === 'function') {
-          await target.seek(Number(value));
-        } else if (typeof target.seekTo === 'function' || typeof target.setCurrentTime === 'function') {
-          let cur = 0;
-          if (typeof target.getCurrentTime === 'function') {
-            cur = Number((await target.getCurrentTime()) || 0);
-          }
-          const targetTime = Math.max(0, cur + Number(value));
-          if (typeof target.seekTo === 'function') {
-            await target.seekTo(targetTime);
-          } else {
-            await target.setCurrentTime(targetTime);
-          }
-        }
-        autoEmit('seeking');
-        autoEmit('seeked');
-      }
-      return true;
-
-    case 'currenttime':
-    case 'seekto':
-      if (!isPureGet) {
-        const targetTime = Number(value);
-        if (typeof target.seekTo === 'function') {
-          await target.seekTo(targetTime);
-        } else if (typeof target.setCurrentTime === 'function') {
-          await target.setCurrentTime(targetTime);
-        } else if (typeof target.seek === 'function') {
-          let cur = 0;
-          if (typeof target.getCurrentTime === 'function') {
-            cur = Number((await target.getCurrentTime()) || 0);
-          }
-          await target.seek(targetTime - cur);
-        }
-        autoEmit('seeking');
-        autoEmit('seeked');
-      }
-      return true;
-
-    case 'volume':
-      if (!isPureGet) {
-        const targetVol = Math.max(0, Math.min(1, Number(value)));
-        if (targetVol > 0) {
-          adapterPreviousVolumeMap.set(target, targetVol);
-        }
-        if (typeof target.setVolume === 'function') {
-          await target.setVolume(targetVol);
-        } else if (typeof target.volume === 'function') {
-          await target.volume(targetVol);
-        } else if (target.mediaElement) {
-          target.mediaElement.volume = targetVol;
-          target.mediaElement.muted = false;
-        }
-
-        if (typeof target.setMuted === 'function') {
-          try {
-            await target.setMuted(false);
-          } catch {}
-        } else if (typeof target.mute === 'function') {
-          try {
-            await target.mute(false);
-          } catch {}
-        }
-
-        autoEmit('volumechange', { volume: targetVol, muted: false });
-      }
-      return true;
-
-    case 'muted':
-    case 'mute':
-      if (!isPureGet) {
-        const isMuted = Boolean(value);
-        const prevVol = adapterPreviousVolumeMap.get(target) || 1;
-        if (isMuted) {
-          let curVol = 1;
-          if (typeof target.getVolume === 'function') {
-            try {
-              curVol = Number(await target.getVolume());
-            } catch {}
-          } else if (target.mediaElement) {
-            curVol = target.mediaElement.volume;
-          }
-          if (curVol > 0) {
-            adapterPreviousVolumeMap.set(target, curVol);
-          }
-        }
-
-        if (typeof target.setMuted === 'function') {
-          await target.setMuted(isMuted);
-        } else if (typeof target.mute === 'function') {
-          await target.mute(isMuted);
-        } else if (typeof target.setVolume === 'function') {
-          await target.setVolume(isMuted ? 0 : prevVol);
-        } else if (typeof target.volume === 'function') {
-          await target.volume(isMuted ? 0 : prevVol);
-        } else if (target.mediaElement) {
-          target.mediaElement.muted = isMuted;
-        }
-
-        autoEmit('volumechange', { muted: isMuted });
-      }
-      return true;
-
-    case 'speed':
-    case 'rate':
-    case 'playbackrate':
-      if (!isPureGet && value !== undefined && value !== null) {
-        const rate = Number(value) || 1;
-        if (typeof target.setPlaybackRate === 'function') {
-          await target.setPlaybackRate(rate);
-        } else if (typeof target.playbackRate === 'function') {
-          await target.playbackRate(rate);
-        } else if (typeof target.setSpeed === 'function') {
-          await target.setSpeed(rate);
-        } else if (typeof target.speed === 'function') {
-          await target.speed(rate);
-        } else if (target.mediaElement) {
-          target.mediaElement.playbackRate = rate;
-        }
-        autoEmit('ratechange', { playbackRate: rate });
-      }
-      return true;
-
-    case 'pip':
-      if (!isPureGet) {
-        const shouldEnable = typeof value === 'boolean' ? value : true;
-        if (shouldEnable) {
-          if (typeof target.requestPip === 'function') {
-            await target.requestPip(true);
-          } else if (typeof target.pip === 'function') {
-            await target.pip(true);
-          } else if (target.mediaElement && typeof target.mediaElement.requestPictureInPicture === 'function') {
-            await target.mediaElement.requestPictureInPicture();
-          }
-        } else {
-          if (typeof target.requestPip === 'function') {
-            await target.requestPip(false);
-          } else if (typeof target.pip === 'function') {
-            await target.pip(false);
-          } else if (typeof document !== 'undefined' && document.pictureInPictureElement) {
-            await document.exitPictureInPicture?.();
-          }
-        }
-      }
-      return true;
-
-    case 'enterpip':
-      if (!isPureGet) {
-        if (typeof target.requestPip === 'function') {
-          await target.requestPip(true);
-        } else if (typeof target.pip === 'function') {
-          await target.pip(true);
-        } else if (target.mediaElement && typeof target.mediaElement.requestPictureInPicture === 'function') {
-          await target.mediaElement.requestPictureInPicture();
-        }
-      }
-      return true;
-
-    case 'exitpip':
-      if (!isPureGet) {
-        if (typeof target.requestPip === 'function') {
-          await target.requestPip(false);
-        } else if (typeof target.pip === 'function') {
-          await target.pip(false);
-        } else if (typeof document !== 'undefined' && document.pictureInPictureElement) {
-          await document.exitPictureInPicture?.();
-        }
-      }
-      return true;
-
-    case 'load':
-      if (!isPureGet && typeof target.load === 'function') {
-        return target.load(value);
-      }
-      return false;
-
-    case 'quality':
-      if (!isPureGet && typeof target.setQuality === 'function') {
-        return target.setQuality(value);
-      }
-      return false;
-
-    case 'getqualities':
-      if (typeof target.getQualities === 'function') {
-        return target.getQualities();
-      }
-      return [];
-
-    case 'subtitle':
-      if (!isPureGet && typeof target.setSubtitle === 'function') {
-        return target.setSubtitle(value);
-      }
-      return false;
-
-    case 'getsubtitles':
-      if (typeof target.getSubtitles === 'function') {
-        return target.getSubtitles();
-      }
-      return [];
-
-    case 'shuffle':
-      if (!isPureGet && typeof target.setShuffle === 'function') {
-        return target.setShuffle(value);
-      }
-      return false;
-
-    case 'repeat':
-      if (!isPureGet) {
-        if (typeof target.repeat === 'function') {
-          return target.repeat(value);
-        }
-        if (target.mediaElement) {
-          target.mediaElement.loop = value === true || value === 'one';
-        }
-      }
-      return true;
-
-    case 'next':
-      if (!isPureGet && typeof target.next === 'function') {
-        return target.next();
-      }
-      return false;
-
-    case 'previous':
-      if (!isPureGet && typeof target.previous === 'function') {
-        return target.previous();
-      }
-      return false;
-
-    default:
-      return false;
-  }
-}
-
-/**
- * Executes a normalized action on an HTMLMediaElement target.
- * @private
- */
-async function executeNativeAction(el, norm, value, isPureGet) {
-  switch (norm) {
-    case 'play':
-      if (!isPureGet) await safePlayMedia(el);
-      return true;
-
-    case 'pause':
-      if (!isPureGet) safePauseMedia(el);
-      return true;
-
-    case 'toggle':
-      if (!isPureGet) {
-        const isPaused = getNativeMediaProp(el, 'paused', true);
-        if (isPaused) await safePlayMedia(el);
-        else safePauseMedia(el);
-      }
-      return true;
-
-    case 'stop':
-      if (!isPureGet) {
-        safePauseMedia(el);
-        setNativeMediaProp(el, 'currentTime', 0);
-      }
-      return true;
-
-    case 'seek':
-      if (!isPureGet && value !== undefined && value !== null) {
-        const dur = getNativeMediaProp(el, 'duration', 0) || 0;
-        const curTime = getNativeMediaProp(el, 'currentTime', 0) ?? 0;
-        const targetTime = Math.max(0, Math.min(dur || Infinity, curTime + Number(value)));
-        setNativeMediaProp(el, 'currentTime', targetTime);
-      }
-      return true;
-
-    case 'currenttime':
-    case 'seekto':
-      if (!isPureGet && value !== undefined && value !== null) {
-        const dur = getNativeMediaProp(el, 'duration', 0) || 0;
-        const targetTime = Math.max(0, Math.min(dur || Infinity, Number(value)));
-        setNativeMediaProp(el, 'currentTime', targetTime);
-      }
-      return true;
-
-    case 'volume':
-      if (!isPureGet && value !== undefined && value !== null) {
-        const targetVol = Math.max(0, Math.min(1, Number(value)));
-        setNativeMediaProp(el, 'volume', targetVol);
-        setNativeMediaProp(el, 'muted', false);
-        try {
-          el.dispatchEvent(new Event('volumechange'));
-        } catch {}
-      }
-      return true;
-
-    case 'muted':
-    case 'mute':
-      if (!isPureGet) {
-        const curMuted = getNativeMediaProp(el, 'muted', false);
-        const nextMuted = typeof value === 'boolean' ? value : !curMuted;
-        setNativeMediaProp(el, 'muted', nextMuted);
-        try {
-          el.dispatchEvent(new Event('volumechange'));
-        } catch {}
-      }
-      return true;
-
-    case 'speed':
-    case 'rate':
-    case 'playbackrate':
-      if (!isPureGet && value !== undefined && value !== null) {
-        const rate = Number(value) || 1;
-        setNativeMediaProp(el, 'playbackRate', rate);
-        try {
-          el.dispatchEvent(new Event('ratechange'));
-        } catch {}
-      }
-      return true;
-
-    case 'pip':
-    case 'enterpip':
-      if (!isPureGet && typeof document !== 'undefined') {
-        if (el.tagName !== 'VIDEO') {
-          throw new Error('[sremote:action] Element must be <video> for picture-in-picture');
-        }
-        if (document.pictureInPictureElement !== el && el.requestPictureInPicture) {
-          return el.requestPictureInPicture();
-        }
-      }
-      return true;
-
-    case 'exitpip':
-      if (!isPureGet && typeof document !== 'undefined') {
-        if (document.pictureInPictureElement) {
-          return document.exitPictureInPicture?.();
-        }
-      }
-      return true;
-
-    case 'load':
-      if (!isPureGet && typeof value === 'string' && value) {
-        el.src = value;
-        if (typeof el.load === 'function') el.load();
-      }
-      return true;
-
-    case 'repeat':
-      if (!isPureGet) {
-        el.loop = value === true || value === 'one';
-      }
-      return true;
-
-    case 'subtitle':
-      if (!isPureGet && el.textTracks) {
-        const targetLang = value === null || value === 'off' || value === false ? null : String(value).toLowerCase();
-        for (let i = 0; i < el.textTracks.length; i++) {
-          const t = el.textTracks[i];
-          if (!targetLang) {
-            t.mode = 'disabled';
-          } else if (t.id === targetLang || t.language?.toLowerCase() === targetLang || t.label?.toLowerCase() === targetLang) {
-            t.mode = 'showing';
-          } else {
-            t.mode = 'disabled';
-          }
-        }
-      }
-      return true;
-
-    case 'getsubtitles':
-      if (el.textTracks) {
-        const tracks = [];
-        for (let i = 0; i < el.textTracks.length; i++) {
-          const t = el.textTracks[i];
-          tracks.push({ id: t.id || String(i), label: t.label || t.language || `Track ${i + 1}`, language: t.language });
-        }
-        return tracks;
-      }
-      return [];
-
-    default:
-      return false;
-  }
-}
-
-/**
- * Executes a normalized action on a target (HTMLMediaElement or Custom Adapter).
- *
- * @param {HTMLMediaElement|Object} target
- * @param {string} action
- * @param {*} [value]
- * @param {Object} [options={}]
- * @param {boolean} [options.isPureGet=false]
- * @param {Object} [options.transactionTracker=null]
- * @param {string} [options.instanceId='unknown']
- * @returns {Promise<any>}
- */
-export async function executeMediaAction(target, action, value = undefined, options = {}) {
-  if (!target) return false;
-  const { isPureGet = false, transactionTracker = null, instanceId = 'unknown', logger = null } = options;
-  const norm = String(action || '').toLowerCase();
-
-  const isAdapter = Boolean(
+export function isAdapterTarget(target) {
+  return Boolean(
     target &&
       (typeof target.getState === 'function' ||
         typeof target.useAdapter === 'function' ||
@@ -634,6 +67,115 @@ export async function executeMediaAction(target, action, value = undefined, opti
         target.capabilities?.hasAdapter ||
         (!target.tagName && typeof target.play === 'function' && typeof target.pause === 'function')),
   );
+}
+
+/**
+ * Resolves the intervention policy for a given target.
+ * @param {any} target
+ * @returns {{ isRaw: boolean, allowPolyfill: boolean, allowAutoEmit: boolean, allowDomFallback: boolean }}
+ */
+export function resolveInterventionPolicy(target) {
+  if (!target || typeof target !== 'object') {
+    return { isRaw: false, allowPolyfill: true, allowAutoEmit: true, allowDomFallback: true };
+  }
+
+  const isRaw = target.mode === 'raw' || target.strict === true;
+  const userInterventions = target.interventions || {};
+
+  return {
+    isRaw,
+    allowPolyfill: !isRaw && userInterventions.polyfill !== false,
+    allowAutoEmit: !isRaw && userInterventions.autoEmit !== false,
+    allowDomFallback: !isRaw && userInterventions.domFallback !== false,
+  };
+}
+
+/**
+ * Checks if a target supports a specific action under its current intervention policy.
+ * @param {any} target
+ * @param {string} action
+ * @returns {boolean}
+ */
+export function hasActionSupport(target, action) {
+  if (!target) return false;
+  const norm = normalizeActionKey(action);
+  const entry = ACTION_MATRIX[norm];
+  if (!entry) return false;
+
+  const isAdapter = isAdapterTarget(target);
+  if (!isAdapter) {
+    return Boolean(entry.executeNative);
+  }
+
+  const policy = resolveInterventionPolicy(target);
+
+  // 1. Adapter direct method
+  if (norm === 'play' && typeof target.play === 'function') return true;
+  if (norm === 'pause' && typeof target.pause === 'function') return true;
+  if (norm === 'toggle' && typeof target.toggle === 'function') return true;
+  if (norm === 'stop' && typeof target.stop === 'function') return true;
+  if (norm === 'seek' && typeof target.seek === 'function') return true;
+  if (norm === 'seekto' && (typeof target.seekTo === 'function' || typeof target.setCurrentTime === 'function')) return true;
+  if (norm === 'volume' && (typeof target.setVolume === 'function' || typeof target.volume === 'function')) return true;
+  if (norm === 'mute' && (typeof target.setMuted === 'function' || typeof target.mute === 'function')) return true;
+  if (norm === 'speed' && (typeof target.setPlaybackRate === 'function' || typeof target.playbackRate === 'function' || typeof target.setSpeed === 'function')) return true;
+  if (norm === 'enterpip' && (typeof target.requestPip === 'function' || typeof target.pip === 'function')) return true;
+  if (norm === 'exitpip' && (typeof target.requestPip === 'function' || typeof target.pip === 'function')) return true;
+  if (norm === 'load' && typeof target.load === 'function') return true;
+  if (norm === 'quality' && typeof target.setQuality === 'function') return true;
+  if (norm === 'getqualities' && typeof target.getQualities === 'function') return true;
+  if (norm === 'subtitle' && typeof target.setSubtitle === 'function') return true;
+  if (norm === 'getsubtitles' && typeof target.getSubtitles === 'function') return true;
+  if (norm === 'shuffle' && (typeof target.setShuffle === 'function' || typeof target.shuffle === 'function')) return true;
+  if (norm === 'repeat' && (typeof target.setRepeat === 'function' || typeof target.repeat === 'function')) return true;
+  if (norm === 'next' && typeof target.next === 'function') return true;
+  if (norm === 'previous' && typeof target.previous === 'function') return true;
+
+  // 2. Polyfill support
+  if (policy.allowPolyfill && entry.polyfill) {
+    if (norm === 'toggle' && typeof target.play === 'function' && typeof target.pause === 'function') return true;
+    if (norm === 'stop' && typeof target.pause === 'function') return true;
+    if (norm === 'seek' && (typeof target.seekTo === 'function' || typeof target.setCurrentTime === 'function')) return true;
+    if (norm === 'seekto' && typeof target.seek === 'function') return true;
+    if (norm === 'mute' && (typeof target.setVolume === 'function' || typeof target.volume === 'function')) return true;
+  }
+
+  // 3. Attached DOM fallback
+  if (policy.allowDomFallback && target.mediaElement && entry.executeNative) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Executes a normalized action on a target (HTMLMediaElement or Custom Adapter)
+ * using the Centralized Action Fallback Matrix.
+ *
+ * @param {HTMLMediaElement|Object} target
+ * @param {string} action
+ * @param {*} [value]
+ * @param {Object} [options={}]
+ * @param {boolean} [options.isPureGet=false]
+ * @param {Object} [options.transactionTracker=null]
+ * @param {string} [options.instanceId='unknown']
+ * @param {Object} [options.logger=null]
+ * @returns {Promise<any>}
+ */
+export async function executeMediaAction(target, action, value = undefined, options = {}) {
+  if (!target) return false;
+  const { isPureGet = false, transactionTracker = null, instanceId = 'unknown', logger = null } = options;
+  const norm = normalizeActionKey(action);
+
+  const entry = ACTION_MATRIX[norm];
+  if (!entry) {
+    if (logger?.warn) {
+      logger.warn(`[sremote:action] Không có chức năng tương ứng cho hành động '${action}' trên đối tượng [${instanceId}]`);
+    }
+    return false;
+  }
+
+  const isAdapter = isAdapterTarget(target);
 
   if (!isPureGet && transactionTracker && typeof transactionTracker.startTransaction === 'function') {
     transactionTracker.startTransaction(norm, value, instanceId);
@@ -643,10 +185,100 @@ export async function executeMediaAction(target, action, value = undefined, opti
     logger.debug(`[ActionEngine] Executing '${norm}' on ${isAdapter ? 'Adapter' : target.tagName || 'Object'}`, { value, instanceId });
   }
 
+  // ----------------------------------------------------
+  // Branch A: Custom Adapter Execution
+  // ----------------------------------------------------
   if (isAdapter) {
-    return executeAdapterAction(target, norm, value, isPureGet, logger);
+    const policy = resolveInterventionPolicy(target);
+    let execResult = { handled: false };
+
+    // 1. Direct Adapter execution
+    if (entry.executeAdapter) {
+      try {
+        execResult = await entry.executeAdapter(target, value, options);
+      } catch (err) {
+        if (logger?.warn) logger.warn(`[sremote:action] Error executing '${norm}' on adapter:`, err);
+        throw err;
+      }
+    }
+
+    // 2. Synthetic Polyfill (if permitted)
+    if (!execResult.handled && policy.allowPolyfill && entry.polyfill) {
+      try {
+        execResult = await entry.polyfill(target, value, options);
+        if (execResult.handled && logger?.debug) {
+          logger.debug(`[sremote:action] Polyfilled '${norm}' on adapter [${target.name || instanceId}]`);
+        }
+      } catch (err) {
+        if (logger?.warn) logger.warn(`[sremote:action] Error polyfilling '${norm}':`, err);
+      }
+    }
+
+    // 3. Attached DOM fallback (if permitted and element exists)
+    if (!execResult.handled && policy.allowDomFallback && target.mediaElement && entry.executeNative) {
+      try {
+        execResult = await entry.executeNative(target.mediaElement, value, options);
+        if (execResult.handled && logger?.debug) {
+          logger.debug(`[sremote:action] Fallback '${norm}' to attached mediaElement on adapter [${target.name || instanceId}]`);
+        }
+      } catch (err) {
+        if (logger?.warn) logger.warn(`[sremote:action] Error executing native fallback for '${norm}':`, err);
+      }
+    }
+
+    // 4. Handle Unsupported Action
+    if (!execResult.handled) {
+      if (logger?.warn) {
+        logger.warn(
+          `[sremote:action] Không có chức năng tương ứng cho hành động '${action}' trên Adapter [${target.name || instanceId}] ` +
+            `(chế độ: ${target.mode || (target.strict ? 'raw' : 'managed')}, polyfill: ${policy.allowPolyfill})`,
+        );
+      }
+      return false;
+    }
+
+    // 5. Automatic Event Emission (if permitted)
+    if (policy.allowAutoEmit && !isPureGet && typeof target.emit === 'function' && entry.eventsToEmit) {
+      try {
+        const events = entry.eventsToEmit(execResult);
+        if (Array.isArray(events)) {
+          for (const evItem of events) {
+            const evName = evItem.event || evItem;
+            const evPayload = evItem.payload || {};
+            target.emit(evName, { programmatic: true, isProgrammatic: true, ...evPayload });
+          }
+        }
+      } catch (err) {
+        if (logger?.warn) logger.warn(`[sremote:action] Error auto-emitting events for '${norm}':`, err);
+      }
+    }
+
+    return execResult.result ?? true;
   }
-  return executeNativeAction(target, norm, value, isPureGet);
+
+  // ----------------------------------------------------
+  // Branch B: Native HTMLMediaElement Execution
+  // ----------------------------------------------------
+  if (entry.executeNative) {
+    try {
+      const execResult = await entry.executeNative(target, value, options);
+      if (!execResult.handled) {
+        if (logger?.warn) {
+          logger.warn(`[sremote:action] Không có chức năng tương ứng cho '${action}' trên phần tử Native Media [${instanceId}]`);
+        }
+        return false;
+      }
+      return execResult.result ?? true;
+    } catch (err) {
+      if (logger?.warn) logger.warn(`[sremote:action] Error executing native '${norm}':`, err);
+      throw err;
+    }
+  }
+
+  if (logger?.warn) {
+    logger.warn(`[sremote:action] Không có chức năng tương ứng cho '${action}' trên phần tử Native Media [${instanceId}]`);
+  }
+  return false;
 }
 
-export const actions = { execute: executeMediaAction, safePlay: safePlayMedia, safePause: safePauseMedia, wrapAdapter };
+export const actions = { execute: executeMediaAction, safePlay: safePlayMedia, safePause: safePauseMedia, wrapAdapter, hasSupport: hasActionSupport, isAdapter: isAdapterTarget };

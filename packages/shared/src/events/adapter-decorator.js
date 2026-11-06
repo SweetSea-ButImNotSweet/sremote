@@ -25,6 +25,16 @@ export function wrapAdapter(rawAdapter, options = {}) {
   const adapter = Object.create(rawAdapter);
   const originalEmit = typeof rawAdapter.emit === 'function' ? rawAdapter.emit.bind(rawAdapter) : null;
 
+  // Interventions & Mode configuration
+  const isRaw = rawAdapter.mode === 'raw' || rawAdapter.strict === true || options.mode === 'raw' || options.strict === true;
+  adapter.mode = isRaw ? 'raw' : rawAdapter.mode || options.mode || 'managed';
+  adapter.strict = isRaw;
+  adapter.interventions = {
+    polyfill: !isRaw && rawAdapter.interventions?.polyfill !== false && options.interventions?.polyfill !== false,
+    autoEmit: !isRaw && rawAdapter.interventions?.autoEmit !== false && options.interventions?.autoEmit !== false,
+    domFallback: !isRaw && rawAdapter.interventions?.domFallback !== false && options.interventions?.domFallback !== false,
+  };
+
   // Explicitly declared handled events by the adapter
   const declaredHandledEvents = new Set(Array.isArray(rawAdapter.handledEvents) ? rawAdapter.handledEvents.map(e => String(e).toLowerCase()) : []);
   const lastAdapterEmitTimeMap = new Map(); // event -> timestamp
@@ -113,7 +123,7 @@ export function wrapAdapter(rawAdapter, options = {}) {
     }
   };
 
-  if (typeof adapter.toggle !== 'function' && typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
+  if (adapter.interventions.polyfill && typeof adapter.toggle !== 'function' && typeof adapter.play === 'function' && typeof adapter.pause === 'function') {
     adapter.toggle = async function () {
       const isPaused = typeof adapter.paused === 'function' ? adapter.paused() : Boolean(adapter.paused ?? true);
       return isPaused ? adapter.play() : adapter.pause();
@@ -136,7 +146,7 @@ export function wrapAdapter(rawAdapter, options = {}) {
       targetMediaEl[Symbol.for('__sremote_adapter__')] = instanceId;
     } catch {}
 
-    if (rawAdapter.fallbackEvents !== false) {
+    if (rawAdapter.fallbackEvents !== false && adapter.interventions.domFallback) {
       const allowedFallbackEvents = Array.isArray(rawAdapter.fallbackEvents)
         ? rawAdapter.fallbackEvents.map(e => String(e).toLowerCase())
         : rawAdapter.fallbackLifecycle === true
