@@ -1,6 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
-import { toggle, seekTo } from '../core/polyfill.js';
 import { loadSpotifySdk } from '../utils/sdk-loader.js';
 
 /**
@@ -99,36 +98,43 @@ export class SpotifyProvider extends BaseProvider {
     };
 
     const adapter = {
+      interventions: { autoEmit: false },
       play() {
         if (typeof EmbedController?.resume === 'function') {
-          EmbedController.resume();
+          return EmbedController.resume();
         } else {
-          EmbedController?.play?.();
+          return EmbedController?.play?.();
         }
       },
       pause() {
-        EmbedController?.pause?.();
+        return EmbedController?.pause?.();
+      },
+      toggle() {
+        if (typeof EmbedController?.togglePlay === 'function') {
+          return EmbedController.togglePlay();
+        }
+        return isPaused ? this.play() : this.pause();
       },
       stop() {
         if (EmbedController && typeof EmbedController.pause === 'function' && typeof EmbedController.seek === 'function') {
           EmbedController.pause();
-          EmbedController.seek(0);
+          return EmbedController.seek(0);
         }
       },
       seek(offset) {
         const target = Math.max(0, position + Number(offset));
         isSeeking = true;
         adapter.emit?.('seeking', { state: { paused: isPaused, currentTime: target, duration } });
-        EmbedController?.seek?.(target);
+        return EmbedController?.seek?.(target);
       },
       seekTo(seconds) {
         const target = Number(seconds);
         isSeeking = true;
         adapter.emit?.('seeking', { state: { paused: isPaused, currentTime: target, duration } });
-        EmbedController?.seek?.(target);
+        return EmbedController?.seek?.(target);
       },
       setCurrentTime(seconds) {
-        this.seekTo(seconds);
+        return this.seekTo(seconds);
       },
       getCurrentTime() {
         return position;
@@ -140,7 +146,7 @@ export class SpotifyProvider extends BaseProvider {
         return isPaused;
       },
       load(uri) {
-        EmbedController?.loadUri?.(uri);
+        return EmbedController?.loadUri?.(uri);
       },
       getState() {
         return { paused: isPaused, currentTime: position, duration };
@@ -179,9 +185,6 @@ export class SpotifyProvider extends BaseProvider {
         }
       });
     }
-
-    toggle(adapter);
-    seekTo(adapter);
 
     return adapter;
   }

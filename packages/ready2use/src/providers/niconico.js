@@ -1,6 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes, waitForIframeLoad } from '../core/dom-utils.js';
-import { toggle, seekTo, setCurrentTime, Volume } from '../core/polyfill.js';
 
 /**
  * Provider for NicoNico Player (postMessage protocol)
@@ -40,7 +39,16 @@ export class NicoNicoProvider extends BaseProvider {
       };
 
       const onMsg = e => {
-        if (e.origin === 'https://embed.nicovideo.jp' && e.data?.playerId === playerId && (e.data?.eventName === 'loadComplete' || e.data?.eventName === 'playerMetadataChange')) {
+        if (e.origin !== 'https://embed.nicovideo.jp') return;
+        let data = e.data;
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch {
+            return;
+          }
+        }
+        if (data?.playerId === playerId && (data?.eventName === 'loadComplete' || data?.eventName === 'playerMetadataChange')) {
           onDone();
         }
       };
@@ -72,6 +80,7 @@ export class NicoNicoProvider extends BaseProvider {
     }
 
     const adapter = {
+      interventions: { autoEmit: false },
       play() {
         sendToNico('play');
       },
@@ -84,13 +93,13 @@ export class NicoNicoProvider extends BaseProvider {
       },
       seek(offset) {
         const target = Math.max(0, currentTime + Number(offset));
-        sendToNico('seek', { time: target * 1000 });
-      },
-      setCurrentTime(seconds) {
-        sendToNico('seek', { time: Number(seconds) * 1000 });
+        this.seekTo(target);
       },
       seekTo(seconds) {
-        this.setCurrentTime(seconds);
+        sendToNico('seek', { time: Number(seconds) * 1000 });
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getVolume() {
         return volume;
@@ -125,9 +134,18 @@ export class NicoNicoProvider extends BaseProvider {
     };
 
     const messageHandler = e => {
-      if (e.origin !== 'https://embed.nicovideo.jp' || e.data?.playerId !== playerId) return;
+      if (e.origin !== 'https://embed.nicovideo.jp') return;
+      let msgData = e.data;
+      if (typeof msgData === 'string') {
+        try {
+          msgData = JSON.parse(msgData);
+        } catch {
+          return;
+        }
+      }
+      if (msgData?.playerId !== playerId) return;
 
-      const { eventName, data } = e.data;
+      const { eventName, data } = msgData;
 
       if (eventName === 'loadComplete') {
         if (data?.videoInfo?.lengthInSeconds) {
@@ -164,11 +182,6 @@ export class NicoNicoProvider extends BaseProvider {
     if (typeof window !== 'undefined') {
       window.addEventListener('message', messageHandler);
     }
-
-    toggle(adapter);
-    setCurrentTime(adapter);
-    seekTo(adapter);
-    new Volume(volume).apply(adapter);
 
     return adapter;
   }

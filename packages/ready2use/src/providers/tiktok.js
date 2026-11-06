@@ -1,6 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes, waitForIframeLoad } from '../core/dom-utils.js';
-import { toggle, seekTo, setCurrentTime } from '../core/polyfill.js';
 
 /**
  * Provider for TikTok Official Embed Player API (v1)
@@ -39,7 +38,16 @@ export class TikTokProvider extends BaseProvider {
       };
 
       const onMsg = e => {
-        if (e.origin === 'https://www.tiktok.com' && e.data?.['x-tiktok-player']) {
+        if (e.origin !== 'https://www.tiktok.com') return;
+        let data = e.data;
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch {
+            return;
+          }
+        }
+        if (data?.['x-tiktok-player']) {
           onDone();
         }
       };
@@ -71,6 +79,7 @@ export class TikTokProvider extends BaseProvider {
     }
 
     const adapter = {
+      interventions: { autoEmit: false },
       play() {
         sendToTikTok('play');
       },
@@ -83,15 +92,13 @@ export class TikTokProvider extends BaseProvider {
       },
       seek(offset) {
         const target = Math.max(0, currentTime + Number(offset));
-        currentTime = target;
-        sendToTikTok('seekTo', target);
-      },
-      setCurrentTime(seconds) {
-        currentTime = Number(seconds);
-        sendToTikTok('seekTo', currentTime);
+        this.seekTo(target);
       },
       seekTo(seconds) {
-        this.setCurrentTime(seconds);
+        sendToTikTok('seekTo', Number(seconds));
+      },
+      setCurrentTime(seconds) {
+        this.seekTo(seconds);
       },
       getVolume() {
         return isMuted ? 0 : 1;
@@ -131,9 +138,17 @@ export class TikTokProvider extends BaseProvider {
 
     const messageHandler = e => {
       if (e.origin !== 'https://www.tiktok.com') return;
-      if (!e.data?.['x-tiktok-player']) return;
+      let data = e.data;
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch {
+          return;
+        }
+      }
+      if (!data?.['x-tiktok-player']) return;
 
-      const { type, value } = e.data;
+      const { type, value } = data;
 
       if (type === 'onStateChange') {
         // 0: ended, 1: playing, 2: paused, 3: buffering
@@ -162,10 +177,6 @@ export class TikTokProvider extends BaseProvider {
     if (typeof window !== 'undefined') {
       window.addEventListener('message', messageHandler);
     }
-
-    toggle(adapter);
-    setCurrentTime(adapter);
-    seekTo(adapter);
 
     return adapter;
   }

@@ -22,7 +22,4 @@ export { threads } from './providers/threads.js';
 export { applemusic } from './providers/applemusic.js';
 export { applemusickit } from './providers/musickit.js';
 
-export { toggle, seek, seekTo, setCurrentTime, Volume } from './core/polyfill.js';
-import { toggle, seek, seekTo, setCurrentTime, Volume } from './core/polyfill.js';
-export const Polyfills = [toggle, seek, seekTo, setCurrentTime, Volume];
 export { createRemoteProxy } from './core/remote-proxy.js';

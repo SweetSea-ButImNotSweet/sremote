@@ -1,6 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
-import { toggle, seekTo, Volume } from '../core/polyfill.js';
 import { loadTwitchSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -28,8 +27,8 @@ export class TwitchProvider extends BaseProvider {
     const playerOptions = {
       width: '100%',
       height: '100%',
-      channel: options.channel || (!options.video && !options.collection ? 'the8bitdrummer' : undefined),
-      video: options.video,
+      channel: options.channel || (!options.video && !options.videoId && !options.collection ? 'the8bitdrummer' : undefined),
+      video: options.video || options.videoId,
       collection: options.collection,
       parent: parentList,
       autoplay: options.autoplay ?? false,
@@ -69,8 +68,15 @@ export class TwitchProvider extends BaseProvider {
     };
   }
 
-  createAdapter(player) {
+  createAdapter(player, context) {
     const Twitch = typeof window !== 'undefined' ? window.Twitch : null;
+    const isLive = Boolean(
+      context?.options?.isLive !== undefined
+        ? context.options.isLive
+        : context?.options?.live !== undefined
+          ? context.options.live
+          : context?.options?.channel || (!context?.options?.video && !context?.options?.videoId && !context?.options?.collection),
+    );
 
     const adapter = {
       play() {
@@ -80,30 +86,12 @@ export class TwitchProvider extends BaseProvider {
         player?.pause?.();
       },
       stop() {
-        if (player && typeof player.pause === 'function' && typeof player.seek === 'function') {
+        if (player && typeof player.pause === 'function') {
           player.pause();
-          player.seek(0);
+          if (!isLive && typeof player.seek === 'function') {
+            player.seek(0);
+          }
         }
-      },
-      seek(offset) {
-        if (player && typeof player.getCurrentTime === 'function' && typeof player.seek === 'function') {
-          const cur = player.getCurrentTime() || 0;
-          const target = Math.max(0, cur + Number(offset));
-          const state = { ...adapter.getState(), currentTime: target };
-          adapter.emit?.('seeking', { state });
-          player.seek(target);
-          adapter.emit?.('seeked', { state });
-        }
-      },
-      seekTo(seconds) {
-        const target = Number(seconds);
-        const state = { ...adapter.getState(), currentTime: target };
-        adapter.emit?.('seeking', { state });
-        player?.seek?.(target);
-        adapter.emit?.('seeked', { state });
-      },
-      setCurrentTime(seconds) {
-        this.seekTo(seconds);
       },
       getCurrentTime() {
         return player?.getCurrentTime ? player.getCurrentTime() : 0;
@@ -151,6 +139,29 @@ export class TwitchProvider extends BaseProvider {
       },
     };
 
+    if (!isLive) {
+      adapter.seek = function (offset) {
+        if (player && typeof player.getCurrentTime === 'function' && typeof player.seek === 'function') {
+          const cur = player.getCurrentTime() || 0;
+          const target = Math.max(0, cur + Number(offset));
+          const state = { ...adapter.getState(), currentTime: target };
+          adapter.emit?.('seeking', { state });
+          player.seek(target);
+          adapter.emit?.('seeked', { state });
+        }
+      };
+      adapter.seekTo = function (seconds) {
+        const target = Number(seconds);
+        const state = { ...adapter.getState(), currentTime: target };
+        adapter.emit?.('seeking', { state });
+        player?.seek?.(target);
+        adapter.emit?.('seeked', { state });
+      };
+      adapter.setCurrentTime = function (seconds) {
+        this.seekTo(seconds);
+      };
+    }
+
     if (Twitch && player && typeof player.addEventListener === 'function') {
       player.addEventListener(Twitch.Player.PLAY, () => {
         adapter.emit?.('play', {
@@ -171,9 +182,7 @@ export class TwitchProvider extends BaseProvider {
       });
     }
 
-    toggle(adapter);
-    seekTo(adapter);
-    new Volume(adapter.getVolume ? adapter.getVolume() : 1).apply(adapter);
+    adapter.capabilities = { ...this.getCapabilities(adapter), seek: !isLive };
 
     return adapter;
   }

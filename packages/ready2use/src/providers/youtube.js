@@ -1,6 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
-import { toggle, Volume } from '../core/polyfill.js';
 import { loadYouTubeIframeApi } from '../utils/sdk-loader.js';
 
 /**
@@ -218,6 +217,7 @@ export class YouTubeProvider extends BaseProvider {
     };
 
     const adapter = {
+      interventions: { autoEmit: false },
       play() {
         if (player && typeof player.playVideo === 'function') {
           player.playVideo();
@@ -388,9 +388,6 @@ export class YouTubeProvider extends BaseProvider {
         adapter.emit?.('ratechange', { state });
       });
     }
-
-    toggle(adapter);
-    new Volume(adapter.getVolume ? adapter.getVolume() : 1).apply(adapter);
 
     return adapter;
   }

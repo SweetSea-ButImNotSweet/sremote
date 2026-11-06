@@ -1,6 +1,5 @@
 import * as ready2use from '../src/index.js';
 import { BaseProvider } from '../src/core/base-provider.js';
-import { toggle, seek, seekTo, Volume } from '../src/core/polyfill.js';
 import { createRemoteProxy } from '../src/core/remote-proxy.js';
 
 let passed = 0;
@@ -17,77 +16,8 @@ function assert(condition, message) {
 
 console.log('=== [Ready2Use] Sanity & Providers Audit Test ===\n');
 
-// 1. Audit Polyfills & Helpers
-console.log('1. Checking Polyfills & Enhancers:');
-
-// Toggle test
-const mockToggle = {
-  _paused: true,
-  play() {
-    this._paused = false;
-  },
-  pause() {
-    this._paused = true;
-  },
-  paused() {
-    return this._paused;
-  },
-};
-toggle(mockToggle);
-assert(typeof mockToggle.toggle === 'function', 'toggle() function polyfilled');
-mockToggle.toggle();
-assert(mockToggle._paused === false, 'toggle() plays when paused');
-mockToggle.toggle();
-assert(mockToggle._paused === true, 'toggle() pauses when playing');
-
-// HTML5 Seek / setCurrentTime test
-let seekTarget = 0;
-const mockSeek = {
-  _currentTime: 10,
-  getCurrentTime() {
-    return this._currentTime;
-  },
-  setCurrentTime(sec) {
-    seekTarget = sec;
-    this._currentTime = sec;
-  },
-};
-seek(mockSeek);
-seekTo(mockSeek);
-assert(typeof mockSeek.seek === 'function', 'seek() (relative) was polyfilled');
-await mockSeek.seek(15);
-assert(seekTarget === 25, 'seek(+15) relative seek from 10 correctly moved to 25');
-mockSeek.seekTo(50);
-assert(seekTarget === 50, 'seekTo(50) absolute seek correctly moved to 50');
-
-// Volume class test
-const vol = new Volume(0.8);
-let curVol = 0.8;
-let curMuted = false;
-const mockVolAdapter = vol.apply({
-  setVolume(v) {
-    curVol = v;
-  },
-  getVolume() {
-    return curVol;
-  },
-  setMuted(m) {
-    curMuted = m;
-  },
-  getMuted() {
-    return curMuted;
-  },
-});
-await mockVolAdapter.setMuted(true);
-assert(curMuted === true, 'Volume adapter muted');
-assert(vol.previousVolume === 0.8, 'Volume remembered previous volume');
-await mockVolAdapter.setVolume(0.5);
-assert(curVol === 0.5 && curMuted === false, 'Setting volume auto-unmutes');
-
-console.log(`  ✓ Polyfills verified (${passed} assertions)\n`);
-
-// 2. Audit Remote Proxy
-console.log('2. Checking Remote Proxy:');
+// 1. Audit Remote Proxy
+console.log('1. Checking Remote Proxy:');
 let played = false;
 let paused = false;
 let currentVolume = 1;
@@ -192,8 +122,8 @@ assert(clientActionCalled === true, 'Delegated fluent action executed');
 
 console.log(`  ✓ Remote Proxy & Fluent Chaining verified\n`);
 
-// 3. Audit all 22 providers
-console.log('3. Auditing All Platform Providers:');
+// 2. Audit all 22 providers
+console.log('2. Auditing All Platform Providers:');
 
 const providerKeys = [
   'youtube',

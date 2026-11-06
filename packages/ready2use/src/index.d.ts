@@ -131,23 +131,6 @@ export interface ProviderCreateResult<TPlayer = any> {
  */
 export interface ProviderMountResult<TPlayer = any> extends ProviderCreateResult<TPlayer> {}
 
-/**
- * Polyfill helpers for provider custom adapters.
- */
-export declare function toggle<T extends SRemoteCustomAdapter>(adapter: T): T;
-export declare function seek<T extends SRemoteCustomAdapter>(adapter: T): T;
-export declare function seekTo<T extends SRemoteCustomAdapter>(adapter: T): T;
-export declare function setCurrentTime<T extends SRemoteCustomAdapter>(adapter: T): T;
-
-export declare class Volume {
-  previousVolume: number;
-  constructor(initialVolume?: number);
-  record(vol: number): void;
-  apply<T extends SRemoteCustomAdapter>(adapter: T): T;
-}
-
-export declare const Polyfills: readonly [typeof toggle, typeof seek, typeof seekTo, typeof setCurrentTime, typeof Volume];
-
 export declare function createRemoteProxy(adapter: SRemoteCustomAdapter, sremoteClient?: any, instanceId?: string): PlayerRemoteControl;
 
 /**

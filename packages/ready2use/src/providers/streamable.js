@@ -47,13 +47,17 @@ export class StreamableProvider extends BaseProvider {
   createAdapter(playerInfo, context) {
     const iframe = context?.iframe || playerInfo?.iframe;
 
-    return {
+    const adapter = {
       load(shortcode) {
         if (iframe) {
           iframe.src = buildStreamableEmbedUrl(shortcode);
         }
       },
     };
+
+    adapter.capabilities = { ...this.getCapabilities(adapter), seek: false };
+
+    return adapter;
   }
 }
 

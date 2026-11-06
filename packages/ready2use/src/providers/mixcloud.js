@@ -1,6 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes } from '../core/dom-utils.js';
-import { toggle, seekTo } from '../core/polyfill.js';
 import { loadMixcloudSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -61,34 +60,44 @@ export class MixcloudProvider extends BaseProvider {
     }
 
     const adapter = {
+      interventions: { autoEmit: false },
       play() {
         if (widget && typeof widget.play === 'function') {
-          widget.play();
           isPlaying = true;
+          return widget.play();
         }
       },
       pause() {
         if (widget && typeof widget.pause === 'function') {
-          widget.pause();
           isPlaying = false;
+          return widget.pause();
         }
+      },
+      toggle() {
+        if (widget && typeof widget.togglePlay === 'function') {
+          return widget.togglePlay();
+        }
+        return isPlaying ? this.pause() : this.play();
       },
       stop() {
         if (widget && typeof widget.pause === 'function' && typeof widget.seek === 'function') {
-          widget.pause();
-          widget.seek(0);
           isPlaying = false;
+          widget.pause();
+          return widget.seek(0);
         }
       },
       seek(offset) {
         if (widget && typeof widget.seek === 'function') {
-          widget.seek(Math.max(0, currentTime + Number(offset)));
+          return widget.seek(Math.max(0, currentTime + Number(offset)));
         }
       },
       seekTo(seconds) {
         if (widget && typeof widget.seek === 'function') {
-          widget.seek(Number(seconds));
+          return widget.seek(Number(seconds));
         }
+      },
+      setCurrentTime(seconds) {
+        return this.seekTo(seconds);
       },
       getCurrentTime() {
         return currentTime;
@@ -101,7 +110,7 @@ export class MixcloudProvider extends BaseProvider {
       },
       load(feed) {
         if (widget && typeof widget.load === 'function') {
-          widget.load(feed, true);
+          return widget.load(feed, true);
         }
       },
       getState() {
@@ -131,9 +140,6 @@ export class MixcloudProvider extends BaseProvider {
         adapter.emit?.('ended', { state: { paused: true, ended: true, currentTime: duration, duration } });
       });
     }
-
-    toggle(adapter);
-    seekTo(adapter);
 
     return adapter;
   }

@@ -1,6 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes, createTempNode } from '../core/dom-utils.js';
-import { toggle, seekTo, setCurrentTime, Volume } from '../core/polyfill.js';
 import { loadFacebookSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -154,6 +153,7 @@ export class FacebookProvider extends BaseProvider {
     };
 
     const adapter = {
+      interventions: { autoEmit: false },
       play() {
         player?.play?.();
       },
@@ -170,21 +170,16 @@ export class FacebookProvider extends BaseProvider {
         if (player && typeof player.seek === 'function') {
           const cur = typeof player.getCurrentPosition === 'function' ? player.getCurrentPosition() : currentTime;
           const target = Math.max(0, (cur || 0) + Number(offset));
-          const state = { ...updateSnapshot(), currentTime: target };
-          adapter.emit?.('seeking', { state });
-          player.seek(target);
-          adapter.emit?.('seeked', { state });
+          this.seekTo(target);
+        }
+      },
+      seekTo(seconds) {
+        if (player && typeof player.seek === 'function') {
+          player.seek(Number(seconds));
         }
       },
       setCurrentTime(seconds) {
-        const target = Number(seconds);
-        const state = { ...updateSnapshot(), currentTime: target };
-        adapter.emit?.('seeking', { state });
-        player?.seek?.(target);
-        adapter.emit?.('seeked', { state });
-      },
-      seekTo(seconds) {
-        this.setCurrentTime(seconds);
+        this.seekTo(seconds);
       },
       getCurrentTime() {
         return typeof player?.getCurrentPosition === 'function' ? player.getCurrentPosition() : currentTime;
@@ -265,11 +260,6 @@ export class FacebookProvider extends BaseProvider {
         });
       } catch {}
     }
-
-    toggle(adapter);
-    setCurrentTime(adapter);
-    seekTo(adapter);
-    new Volume(volume).apply(adapter);
 
     return adapter;
   }

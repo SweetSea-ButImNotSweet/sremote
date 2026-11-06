@@ -48,13 +48,17 @@ export class KickProvider extends BaseProvider {
   createAdapter(playerInfo, context) {
     const iframe = context?.iframe || playerInfo?.iframe;
 
-    return {
+    const adapter = {
       load(channel) {
         if (iframe) {
           iframe.src = buildKickEmbedUrl(channel);
         }
       },
     };
+
+    adapter.capabilities = { ...this.getCapabilities(adapter), seek: false };
+
+    return adapter;
   }
 }
 

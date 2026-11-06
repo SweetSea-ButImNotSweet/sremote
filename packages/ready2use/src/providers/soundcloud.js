@@ -1,6 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes } from '../core/dom-utils.js';
-import { toggle, seekTo, Volume } from '../core/polyfill.js';
 import { loadSoundCloudSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -61,7 +60,6 @@ export class SoundCloudProvider extends BaseProvider {
     let duration = 0;
     let currentTime = 0;
     let volume = 1;
-    let isMuted = false;
     let repeatMode = 'off';
 
     if (widget && typeof widget.getDuration === 'function') {
@@ -71,30 +69,37 @@ export class SoundCloudProvider extends BaseProvider {
     }
 
     const adapter = {
+      interventions: { autoEmit: false },
       play() {
         if (widget && typeof widget.play === 'function') {
-          widget.play();
           isPlaying = true;
+          return widget.play();
         }
       },
       pause() {
         if (widget && typeof widget.pause === 'function') {
-          widget.pause();
           isPlaying = false;
+          return widget.pause();
         }
+      },
+      toggle() {
+        if (widget && typeof widget.toggle === 'function') {
+          return widget.toggle();
+        }
+        return isPlaying ? this.pause() : this.play();
       },
       stop() {
         if (widget && typeof widget.pause === 'function' && typeof widget.seekTo === 'function') {
           widget.pause();
-          widget.seekTo(0);
           isPlaying = false;
+          return widget.seekTo(0);
         }
       },
       seek(offset) {
         if (widget && typeof widget.getPosition === 'function' && typeof widget.seekTo === 'function') {
-          widget.getPosition(pos => {
+          return widget.getPosition(pos => {
             const targetSec = Math.max(0, (pos || 0) / 1000 + Number(offset));
-            adapter.emit?.('seeking', { state: { paused: !isPlaying, currentTime: targetSec, duration, volume, muted: isMuted } });
+            adapter.emit?.('seeking', { state: { ...adapter.getState(), currentTime: targetSec } });
             widget.seekTo(targetSec * 1000);
           });
         }
@@ -102,12 +107,12 @@ export class SoundCloudProvider extends BaseProvider {
       seekTo(seconds) {
         if (widget && typeof widget.seekTo === 'function') {
           const targetSec = Number(seconds);
-          adapter.emit?.('seeking', { state: { paused: !isPlaying, currentTime: targetSec, duration, volume, muted: isMuted } });
-          widget.seekTo(targetSec * 1000);
+          adapter.emit?.('seeking', { state: { ...adapter.getState(), currentTime: targetSec } });
+          return widget.seekTo(targetSec * 1000);
         }
       },
       setCurrentTime(seconds) {
-        this.seekTo(seconds);
+        return this.seekTo(seconds);
       },
       getCurrentTime() {
         return currentTime;
@@ -119,20 +124,12 @@ export class SoundCloudProvider extends BaseProvider {
         return volume;
       },
       setVolume(vol) {
-        volume = Number(vol);
+        const v = Number(vol);
+        const norm = v > 1 ? v / 100 : v;
+        volume = Math.min(1, Math.max(0, norm));
         if (widget && typeof widget.setVolume === 'function') {
           widget.setVolume(Math.min(100, Math.max(0, volume * 100)));
-          adapter.emit?.('volumechange', { state: { volume, muted: isMuted } });
-        }
-      },
-      getMuted() {
-        return isMuted;
-      },
-      setMuted(muted) {
-        isMuted = Boolean(muted);
-        if (widget && typeof widget.setVolume === 'function') {
-          widget.setVolume(isMuted ? 0 : volume * 100);
-          adapter.emit?.('volumechange', { state: { volume, muted: isMuted } });
+          adapter.emit?.('volumechange', { state: { ...adapter.getState(), volume } });
         }
       },
       paused() {
@@ -143,21 +140,21 @@ export class SoundCloudProvider extends BaseProvider {
       },
       next() {
         if (widget && typeof widget.next === 'function') {
-          widget.next();
+          return widget.next();
         }
       },
       previous() {
         if (widget && typeof widget.prev === 'function') {
-          widget.prev();
+          return widget.prev();
         }
       },
       load(trackUrl, options = {}) {
         if (widget && typeof widget.load === 'function') {
-          widget.load(trackUrl, options);
+          return widget.load(trackUrl, options);
         }
       },
       getState() {
-        return { paused: !isPlaying, currentTime, duration, volume, muted: isMuted };
+        return { paused: !isPlaying, currentTime, duration, volume, muted: volume === 0 };
       },
     };
 
@@ -194,10 +191,6 @@ export class SoundCloudProvider extends BaseProvider {
         adapter.emit?.('ended', { state: { paused: true, ended: true, currentTime: duration, duration } });
       });
     }
-
-    toggle(adapter);
-    seekTo(adapter);
-    new Volume(volume).apply(adapter);
 
     return adapter;
   }

@@ -12,16 +12,92 @@ function resolveSRemote(opts = {}) {
   if (opts.sremote && typeof opts.sremote === 'object' && opts.sremote.adapters) {
     return opts.sremote;
   }
-  if (typeof globalThis !== 'undefined' && globalThis[Symbol.for('__sremote_client__')]) {
-    return globalThis[Symbol.for('__sremote_client__')];
+  if (typeof globalThis !== 'undefined') {
+    const symbolClient = globalThis[Symbol.for('__sremote_client__')];
+    if (symbolClient) return symbolClient;
+    if (globalThis.sremote?.adapters) return globalThis.sremote;
   }
   if (typeof window !== 'undefined' && window.sremote?.adapters) {
     return window.sremote;
   }
-  if (typeof globalThis !== 'undefined' && globalThis.sremote?.adapters) {
-    return globalThis.sremote;
-  }
   return null;
+}
+
+/**
+ * Creates an event bus and attaches event methods (on, off, emit) to the adapter if missing.
+ * @param {Object|null} adapter
+ * @returns {{ emit: (event: string, payload?: any) => void }}
+ */
+function attachEventBus(adapter) {
+  const listeners = new Map();
+
+  const emit = (event, payload = {}) => {
+    const ev = String(event || '').toLowerCase();
+    const handlers = listeners.get(ev);
+    if (handlers) {
+      for (const fn of handlers) {
+        try {
+          fn(payload);
+        } catch {}
+      }
+    }
+    const wildcard = listeners.get('*');
+    if (wildcard) {
+      for (const fn of wildcard) {
+        try {
+          fn({ ...payload, event: ev });
+        } catch {}
+      }
+    }
+  };
+
+  if (adapter) {
+    if (typeof adapter.emit !== 'function') {
+      adapter.emit = emit;
+    }
+    if (typeof adapter.on !== 'function') {
+      adapter.on = (ev, fn) => {
+        const key = String(ev || '').toLowerCase();
+        let set = listeners.get(key);
+        if (!set) {
+          set = new Set();
+          listeners.set(key, set);
+        }
+        set.add(fn);
+        return () => listeners.get(key)?.delete(fn);
+      };
+    }
+    if (typeof adapter.off !== 'function') {
+      adapter.off = (ev, fn) => {
+        const key = String(ev || '').toLowerCase();
+        if (fn) {
+          listeners.get(key)?.delete(fn);
+        } else {
+          listeners.delete(key);
+        }
+      };
+    }
+  }
+
+  return { emit };
+}
+
+/**
+ * Attaches SRemote DOM metadata attributes and adapter reference to the element.
+ * @param {HTMLElement|null} element
+ * @param {string} instanceId
+ * @param {string} providerName
+ * @param {Object|null} adapter
+ */
+function annotateElement(element, instanceId, providerName, adapter) {
+  if (!element) return;
+  element.setAttribute('data-sremote-id', instanceId);
+  element.setAttribute('data-sremote-provider', providerName);
+  if (adapter) {
+    try {
+      element[Symbol.for('__sremote_adapter__')] = adapter;
+    } catch {}
+  }
 }
 
 /**
@@ -89,7 +165,7 @@ export class BaseProvider {
     if (adapter?.capabilities && typeof adapter.capabilities === 'object') {
       return { ...adapter.capabilities };
     }
-    const hasFn = fnName => Boolean(adapter && typeof adapter[fnName] === 'function');
+    const hasFn = fnName => typeof adapter?.[fnName] === 'function';
     return {
       play: hasFn('play'),
       pause: hasFn('pause'),
@@ -138,6 +214,7 @@ export class BaseProvider {
     const { player, element, iframe, destroy: customDestroy } = await this.initPlayer(initOptions, instanceId);
 
     const targetElement = iframe || element;
+    const resolvedIframe = iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null);
 
     // 3. Mount into target container if provided
     if (container && targetElement && targetElement.parentNode !== container) {
@@ -145,58 +222,12 @@ export class BaseProvider {
     }
 
     // 4. Create custom adapter with built-in event dispatcher
-    const listeners = new Map();
-    const emit = (event, payload = {}) => {
-      const ev = String(event || '').toLowerCase();
-      const handlers = listeners.get(ev);
-      if (handlers) {
-        for (const fn of handlers) {
-          try {
-            fn(payload);
-          } catch {}
-        }
-      }
-      const wildcard = listeners.get('*');
-      if (wildcard) {
-        for (const fn of wildcard) {
-          try {
-            fn({ ...payload, event: ev });
-          } catch {}
-        }
-      }
-    };
+    // First setup the dispatcher so we can pass emit to createAdapter context
+    let boundEmit;
+    const adapter = this.createAdapter(player, { options: opts, instanceId, element: targetElement, iframe: resolvedIframe, emit: (event, payload) => boundEmit(event, payload) });
 
-    const adapter = this.createAdapter(player, {
-      options: opts,
-      instanceId,
-      element: targetElement,
-      iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null),
-      emit,
-    });
-
-    if (adapter) {
-      if (typeof adapter.emit !== 'function') {
-        adapter.emit = emit;
-      }
-      if (typeof adapter.on !== 'function') {
-        adapter.on = (ev, fn) => {
-          const key = String(ev || '').toLowerCase();
-          if (!listeners.has(key)) listeners.set(key, new Set());
-          listeners.get(key).add(fn);
-          return () => listeners.get(key)?.delete(fn);
-        };
-      }
-      if (typeof adapter.off !== 'function') {
-        adapter.off = (ev, fn) => {
-          const key = String(ev || '').toLowerCase();
-          if (fn) {
-            listeners.get(key)?.delete(fn);
-          } else {
-            listeners.delete(key);
-          }
-        };
-      }
-    }
+    const eventBus = attachEventBus(adapter);
+    boundEmit = eventBus.emit;
 
     if (adapter && !adapter.capabilities) {
       adapter.capabilities = this.getCapabilities(adapter);
@@ -205,21 +236,13 @@ export class BaseProvider {
     const capabilities = adapter?.capabilities || this.getCapabilities(null);
 
     // 5. Annotate DOM element with SRemote metadata
-    if (targetElement) {
-      targetElement.setAttribute('data-sremote-id', instanceId);
-      targetElement.setAttribute('data-sremote-provider', this.name);
-      if (adapter) {
-        try {
-          targetElement[Symbol.for('__sremote_adapter__')] = adapter;
-        } catch {}
-      }
-    }
+    annotateElement(targetElement, instanceId, this.name, adapter);
 
     // 6. Automatically register into SRemote Client if available
     let sremoteClient = null;
     if (opts.register !== false && opts.autoRegister !== false) {
       sremoteClient = resolveSRemote(opts);
-      if (adapter && sremoteClient?.adapters && typeof sremoteClient.adapters.register === 'function') {
+      if (adapter && typeof sremoteClient?.adapters?.register === 'function') {
         sremoteClient.adapters.register(adapter, instanceId);
       }
     }
@@ -235,9 +258,9 @@ export class BaseProvider {
 
       // Eager unregister from SRemote client & bridge
       try {
-        if (sremoteClient?.instances && typeof sremoteClient.instances.remove === 'function') {
+        if (typeof sremoteClient?.instances?.remove === 'function') {
           sremoteClient.instances.remove(instanceId);
-        } else if (sremoteClient?.adapters && typeof sremoteClient.adapters.unregister === 'function') {
+        } else if (typeof sremoteClient?.adapters?.unregister === 'function') {
           sremoteClient.adapters.unregister(instanceId);
         }
       } catch {}
@@ -253,20 +276,18 @@ export class BaseProvider {
       try {
         if (typeof customDestroy === 'function') {
           customDestroy();
-        } else if (player && typeof player.destroy === 'function') {
+        } else if (typeof player?.destroy === 'function') {
           player.destroy();
         }
       } catch {}
 
       // Remove element from DOM
       try {
-        if (targetElement?.parentNode) {
-          targetElement.parentNode.removeChild(targetElement);
-        }
+        targetElement?.parentNode?.removeChild(targetElement);
       } catch {}
     };
 
-    return { element: targetElement, iframe: iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null), adapter, remote, player, instanceId, capabilities, destroy };
+    return { element: targetElement, iframe: resolvedIframe, adapter, remote, player, instanceId, capabilities, destroy };
   }
 
   /**

@@ -159,28 +159,10 @@ Adapters created in `@sremote/ready2use` follow the `HTML5MediaElement` specific
 
 ---
 
-## 🧰 Polyfill Helpers & Utilities
-
-`@sremote/ready2use` exports core helpers for provider authors:
-
-```javascript
-import { Polyfills, BaseProvider } from '@sremote/ready2use';
-
-const { setCurrentTime, seekTo, seek, toggle, Volume } = Polyfills;
-```
-
-- **`setCurrentTime(adapter, nativeSeekFn)`**: Normalizes core seek behavior.
-- **`seekTo(adapter)`**: Configures `seekTo` alias to `setCurrentTime`.
-- **`seek(adapter)`**: Configures relative seeking based on `getCurrentTime()`.
-- **`toggle(adapter)`**: Configures play/pause toggling based on `isPaused()`.
-- **`Volume` class**: Manages volume levels `[0..1]`, caching, mute/unmute states, and sync callbacks to native SDKs.
-
----
-
 ## 🏗️ Implementing a Custom Provider with `BaseProvider`
 
 ```javascript
-import { BaseProvider, Polyfills } from '@sremote/ready2use';
+import { BaseProvider } from '@sremote/ready2use';
 
 export class CustomPlayerProvider extends BaseProvider {
   constructor() {
@@ -209,21 +191,17 @@ export class CustomPlayerProvider extends BaseProvider {
   }
 
   createAdapter(player, context) {
-    const volumeManager = new Polyfills.Volume({
-      onVolumeChange: (vol) => player.setVolume(vol * 100),
-      onMuteChange: (muted) => player.setMuted(muted)
-    });
-
-    const adapter = {
+    return {
       play: () => player.play(),
       pause: () => player.pause(),
       getCurrentTime: () => player.getTime() || 0,
+      setCurrentTime: (sec) => player.seek(sec),
       getDuration: () => player.getDuration() || 0,
       isPaused: () => player.paused(),
-      getVolume: () => volumeManager.getVolume(),
-      setVolume: (vol) => volumeManager.setVolume(vol),
-      getMuted: () => volumeManager.getMuted(),
-      setMuted: (m) => volumeManager.setMuted(m),
+      getVolume: () => player.getVolume() / 100,
+      setVolume: (vol) => player.setVolume(vol * 100),
+      getMuted: () => player.isMuted(),
+      setMuted: (m) => player.setMuted(m),
       load: (src) => player.load(src),
       getState: () => ({
         paused: player.paused(),
@@ -231,14 +209,6 @@ export class CustomPlayerProvider extends BaseProvider {
         duration: player.getDuration() || 0
       })
     };
-
-    // Attach HTML5 polyfill helpers
-    Polyfills.setCurrentTime(adapter, (sec) => player.seek(sec));
-    Polyfills.seekTo(adapter);
-    Polyfills.seek(adapter);
-    Polyfills.toggle(adapter);
-
-    return adapter;
   }
 }
 ```

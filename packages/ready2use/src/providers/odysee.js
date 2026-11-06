@@ -45,13 +45,17 @@ export class OdyseeProvider extends BaseProvider {
   createAdapter(playerInfo, context) {
     const iframe = context?.iframe || playerInfo?.iframe;
 
-    return {
+    const adapter = {
       load(video) {
         if (iframe) {
           iframe.src = buildOdyseeEmbedUrl(video);
         }
       },
     };
+
+    adapter.capabilities = { ...this.getCapabilities(adapter), seek: false };
+
+    return adapter;
   }
 }
 

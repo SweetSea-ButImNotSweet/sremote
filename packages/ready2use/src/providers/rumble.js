@@ -48,13 +48,17 @@ export class RumbleProvider extends BaseProvider {
   createAdapter(playerInfo, context) {
     const iframe = context?.iframe || playerInfo?.iframe;
 
-    return {
+    const adapter = {
       load(video) {
         if (iframe) {
           iframe.src = buildRumbleEmbedUrl(video);
         }
       },
     };
+
+    adapter.capabilities = { ...this.getCapabilities(adapter), seek: false };
+
+    return adapter;
   }
 }
 

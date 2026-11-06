@@ -1,6 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { createTempNode, applyElementAttributes } from '../core/dom-utils.js';
-import { toggle, seekTo, Volume } from '../core/polyfill.js';
 import { loadDailymotionSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -78,6 +77,7 @@ export class DailymotionProvider extends BaseProvider {
     let isMuted = false;
 
     const adapter = {
+      interventions: { autoEmit: false },
       play() {
         player?.play?.();
       },
@@ -223,10 +223,6 @@ export class DailymotionProvider extends BaseProvider {
         });
       }
     }
-
-    toggle(adapter);
-    seekTo(adapter);
-    new Volume(volume).apply(adapter);
 
     return adapter;
   }

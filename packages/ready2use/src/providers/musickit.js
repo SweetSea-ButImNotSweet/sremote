@@ -1,5 +1,4 @@
 import { BaseProvider } from '../core/base-provider.js';
-import { toggle, Volume } from '../core/polyfill.js';
 import { loadMusicKitSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -87,11 +86,16 @@ export class AppleMusicKitProvider extends BaseProvider {
     };
 
     const adapter = {
+      interventions: { autoEmit: false },
       async play() {
         return mk?.play?.();
       },
       async pause() {
         return mk?.pause?.();
+      },
+      async toggle() {
+        const paused = typeof this.paused === 'function' ? this.paused() : !isPlaying;
+        return paused ? this.play() : this.pause();
       },
       async stop() {
         return mk?.stop?.();
@@ -138,9 +142,17 @@ export class AppleMusicKitProvider extends BaseProvider {
       setMuted(muted) {
         isMuted = Boolean(muted);
         if (mk) {
-          mk.volume = isMuted ? 0 : volume || 1;
+          if (typeof mk.mute === 'function' && typeof mk.unmute === 'function') {
+            if (isMuted) mk.mute();
+            else mk.unmute();
+          } else {
+            mk.volume = isMuted ? 0 : volume || 1;
+          }
         }
         adapter.emit?.('volumechange', { state: { ...updateSnapshot(), muted: isMuted } });
+      },
+      paused() {
+        return !isPlaying;
       },
       async next() {
         return mk?.skipToNextItem?.();
@@ -191,9 +203,6 @@ export class AppleMusicKitProvider extends BaseProvider {
         mk.addEventListener('queueItemDidChange', event => adapter.emit?.('trackchange', { item: event.item, state: updateSnapshot() }));
       } catch {}
     }
-
-    toggle(adapter);
-    new Volume(volume).apply(adapter);
 
     return adapter;
   }

@@ -1,6 +1,5 @@
 import { BaseProvider } from '../core/base-provider.js';
 import { applyElementAttributes } from '../core/dom-utils.js';
-import { toggle, seek, seekTo, Volume } from '../core/polyfill.js';
 import { loadVimeoSdk } from '../utils/sdk-loader.js';
 
 /**
@@ -84,6 +83,7 @@ export class VimeoProvider extends BaseProvider {
     }
 
     const adapter = {
+      interventions: { autoEmit: false },
       play() {
         player?.play?.().catch(() => {});
       },
@@ -240,11 +240,6 @@ export class VimeoProvider extends BaseProvider {
         adapter.emit?.('buffered', { state: { paused: isPaused, currentTime, duration, isBuffering: false } });
       });
     }
-
-    toggle(adapter);
-    seek(adapter);
-    seekTo(adapter);
-    new Volume(volume).apply(adapter);
 
     return adapter;
   }
