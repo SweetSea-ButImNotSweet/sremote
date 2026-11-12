@@ -1,11 +1,10 @@
 import { MEDIA_EVENTS, SAFE_FALLBACK_EVENTS, STATE_CHANGING_EVENTS, ACTION_METHODS, TIMEUPDATE_LOG_THROTTLE_MS } from './constants.js';
 import { captureMediaSnapshot } from './snapshot.js';
 import { buildEventPayload } from './payload.js';
-import { isProgrammatic } from './origin-detector.js';
+import { isProgrammatic, runInActionScope, getActiveActionScope } from './origin-detector.js';
 import { bindDomMedia } from './dom-binder.js';
 import { evaluateCapabilities } from './validator.js';
 import { defaultLogger } from '../logger.js';
-import { getTransactionTracker } from '../pipeline/transaction-tracker.js';
 
 /**
  * Decorates a user-provided custom adapter without mutating the original object.
@@ -40,14 +39,12 @@ export function wrapAdapter(rawAdapter, options = {}) {
   const lastAdapterEmitTimeMap = new Map(); // event -> timestamp
 
   let detachDomFallback = null;
-  let programmaticActionTimestamp = 0;
 
-  // Intercept action methods to detect programmatic calls
+  // Intercept action methods to run within explicit programmatic scope
   for (const method of ACTION_METHODS) {
     if (typeof rawAdapter[method] === 'function') {
       adapter[method] = function (...args) {
-        programmaticActionTimestamp = Date.now();
-        return rawAdapter[method].apply(this, args);
+        return runInActionScope(method, args[0], { instanceId }, () => rawAdapter[method].apply(this, args));
       };
     }
   }
@@ -80,13 +77,22 @@ export function wrapAdapter(rawAdapter, options = {}) {
       } catch {}
 
       const payloadObj = typeof payload === 'object' && payload !== null ? payload : { value: payload };
+      const activeScope = getActiveActionScope();
       const isProg =
         payloadObj.isProgrammatic ??
         payloadObj.programmatic ??
-        isProgrammatic({ eventName: ev, instanceId, value: payloadObj.value, tracker: getTransactionTracker(), timestampGetter: () => programmaticActionTimestamp });
+        isProgrammatic({ eventName: ev, instanceId, value: payloadObj.value });
 
       const state = captureMediaSnapshot(adapter);
-      const fullPayload = buildEventPayload(ev, { source, instanceId, mediaType: 'adapter', isProgrammatic: isProg, ...(state ? { state } : {}), ...payloadObj });
+      const fullPayload = buildEventPayload(ev, {
+        source,
+        instanceId,
+        mediaType: 'adapter',
+        isProgrammatic: isProg,
+        ...(activeScope?.cmdId ? { causedBy: activeScope.cmdId } : {}),
+        ...(state ? { state } : {}),
+        ...payloadObj,
+      });
 
       const shouldLogAdapterEvent = ev !== 'timeupdate' || now - lastTimeupdateAdapterLog >= TIMEUPDATE_LOG_THROTTLE_MS;
       if (ev === 'timeupdate' && shouldLogAdapterEvent) {
@@ -179,7 +185,6 @@ export function wrapAdapter(rawAdapter, options = {}) {
           source: 'adapter-dom-fallback',
           events: allowedFallbackEvents,
           excludedEvents: declaredHandledEvents,
-          programmaticActionTimestampGetter: () => programmaticActionTimestamp,
         },
       );
     }

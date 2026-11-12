@@ -1,10 +1,9 @@
-import { dom, state, capabilities, actions, events, instance, pipeline } from '@sremote/shared';
+import { dom, state, capabilities, actions, events, instance } from '@sremote/shared';
 
 export class DomDriver {
   constructor(options = {}) {
     this.options = { passkey: null, ...options };
     this.logger = options.logger || null;
-    this.transactionTracker = options.transactionTracker || pipeline.getTracker();
 
     this.instanceManager =
       options.instanceManager ||
@@ -78,7 +77,7 @@ export class DomDriver {
       (evtName, payload) => {
         this.emit(evtName, payload);
       },
-      { instanceId: instId, source: 'dom', treatAlmostEndAsEnd: this.treatAlmostEndAsEnd, transactionTracker: this.transactionTracker },
+      { instanceId: instId, source: 'dom', treatAlmostEndAsEnd: this.treatAlmostEndAsEnd },
     );
   }
 
@@ -148,7 +147,8 @@ export class DomDriver {
     if (actionName === 'mute') mappedAction = 'muted';
     if (actionName === 'pip') mappedAction = payload ? 'pip' : 'exitpip';
 
-    return actions.execute(resolved.instance, mappedAction, payload, { transactionTracker: this.transactionTracker, instanceId: instId, logger: this.logger });
+    const cmdId = context?.cmdId || null;
+    return actions.execute(resolved.instance, mappedAction, payload, { cmdId, isProgrammatic: true, instanceId: instId, logger: this.logger });
   }
 
   async status(target) {

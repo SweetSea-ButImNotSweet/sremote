@@ -1,6 +1,6 @@
 import { logger } from '../config.js';
 import { mockMediaSessionInstance } from './media-session.js';
-import { actions, capabilities, pipeline, state } from '@sremote/shared';
+import { actions, capabilities, state } from '@sremote/shared';
 
 /**
  * Resolves media target safely from parameters or resolver.
@@ -79,11 +79,11 @@ export function createMediaController(options = {}) {
   const sendMediaSessionState = ctx.sendMediaSessionState || options.sendMediaSessionState;
 
   // --- Strategy 1: Custom Ready2Use Adapter ---
-  async function execAdapter(media, action, norm, value, isPureGet) {
+  async function execAdapter(media, action, norm, value, isPureGet, cmdId = null) {
     if (!isPureGet) {
-      logger.scope('action').log(`(Userscript) Executing '${action}' via Adapter [${media.name || instanceId}]`, { action, value, instanceId });
+      logger.scope('action').log(`(Userscript) Executing '${action}' via Adapter [${media.name || instanceId}]`, { action, value, instanceId, cmdId });
     }
-    const handled = await actions.execute(media, norm, value, { isPureGet, instanceId, transactionTracker: pipeline.getTracker() });
+    const handled = await actions.execute(media, norm, value, { isPureGet, cmdId, isProgrammatic: true, instanceId, logger });
     if (!handled) return false;
     if (isPureGet && typeof media.getState === 'function') {
       try {
@@ -109,10 +109,10 @@ export function createMediaController(options = {}) {
   }
 
   // --- Strategy 3: HTML5 Native DOM Element (<video>/<audio>) ---
-  async function execDomMedia(media, action, norm, value, isPureGet) {
+  async function execDomMedia(media, action, norm, value, isPureGet, cmdId = null) {
     if (!isPureGet) {
       const tag = media.tagName ? media.tagName.toLowerCase() : 'media';
-      logger.scope('action').log(`(Userscript) Executing '${action}' via DOM <${tag}> [${instanceId}]`, { action, value, instanceId });
+      logger.scope('action').log(`(Userscript) Executing '${action}' via DOM <${tag}> [${instanceId}]`, { action, value, instanceId, cmdId });
     }
 
     if (norm === 'bindmetadata') {
@@ -135,15 +135,15 @@ export function createMediaController(options = {}) {
       }
     }
 
-    const handled = await actions.execute(media, norm, value, { isPureGet, instanceId, transactionTracker: pipeline.getTracker(), logger });
+    const handled = await actions.execute(media, norm, value, { isPureGet, cmdId, isProgrammatic: true, instanceId, logger });
     if (handled && isPureGet) {
       notifyState?.(action, state.get(media));
     }
     return Boolean(handled);
   }
 
-  return async function executeControl(action, value, isPureGet = false) {
-    if (!isPureGet && ctx) ctx.programmaticTime = Date.now();
+  return async function executeControl(action, value, isPureGet = false, controlOptions = {}) {
+    const cmdId = controlOptions?.cmdId || null;
     const norm = String(action || '').toLowerCase();
 
     resolver?.resolveActiveMedia?.();
@@ -160,7 +160,7 @@ export function createMediaController(options = {}) {
 
     // 1. Adapter execution
     if (mediaType === 'adapter' && media && typeof media === 'object') {
-      return execAdapter(media, action, norm, value, isPureGet);
+      return execAdapter(media, action, norm, value, isPureGet, cmdId);
     }
 
     // 2. MediaSession execution
@@ -173,7 +173,7 @@ export function createMediaController(options = {}) {
 
     // 3. HTML5 Video/Audio DOM execution
     if ((mediaType === 'video' || mediaType === 'audio') && media) {
-      return execDomMedia(media, action, norm, value, isPureGet);
+      return execDomMedia(media, action, norm, value, isPureGet, cmdId);
     }
 
     return false;

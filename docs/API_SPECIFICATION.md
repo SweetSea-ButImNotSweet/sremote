@@ -5,7 +5,7 @@
 > 1. **Public User Fluent API**: **Loại bỏ hoàn toàn tiền tố `get*` và `set*`**. Chỉ sử dụng các động từ/danh từ ngắn gọn, biểu cảm (`volume`, `speed`, `mute`, `seekTo`, `seek`). Việc đọc trạng thái được nhất quán 100% qua **`remote.state`** (đọc đồng bộ tức thì) hoặc **`.tap(state => ...)`** (đọc snapshot trong chuỗi).
 > 2. **Adapter Interface**: Giữ nguyên và tuân thủ nghiêm ngặt mô hình **`HTML5MediaElement`** (`setCurrentTime`, `setVolume`, `setPlaybackRate`, `setMuted`, `getCurrentTime`, `getVolume`, v.v.).
 > 3. **Pipeline Flow & Error Recovery**: Mặc định **Fail-Fast** với Transaction Rollback. Hỗ trợ **`.lenient()`** (bỏ qua mọi lỗi trong chuỗi), **`.strict()`** (bật lại Fail-Fast) và **`.catch()`** (Error Boundary phục hồi chuỗi).
-> 4. **Private Internal Engine**: Mapping 1-1 qua `SREMOTE_ACTIONS`, phân giải DOM native an toàn và điều phối qua `IDriver` + `pipeline.Tracker`.
+> 4. **Private Internal Engine**: Mapping 1-1 qua `SREMOTE_ACTIONS`, phân giải DOM native an toàn và điều phối qua `IDriver` + `runInActionScope`.
 
 ---
 
@@ -106,7 +106,7 @@
 | 35 | **Đăng ký Adapter** | `sremote.adapters.register(adapter, id)` | Truyền adapter tuân thủ contract | `adapterDriver.register(adapter, id)` | Đăng ký adapter với độ ưu tiên cao nhất trong pipeline |
 | 36 | **Hủy đăng ký Adapter** | `sremote.adapters.unregister(id)` | Gọi `adapter.destroy?.()` | `adapterDriver.unregister(id)` | Xóa adapter khỏi driver map |
 | 37 | **Dọn dẹp Lifecycle** | `provider.mount().then(r => r.destroy())` / `sremote.destroy()` | `adapter.destroy()` | `destroy()` dọn dẹp DOM element, unregister adapter, giải phóng timer | Gỡ bỏ element khỏi DOM và ngắt toàn bộ observers |
-| 38 | **Transaction Tracking** | Tự động bên dưới các lệnh | Tự động nhận `isProgrammatic: true` | `pipeline.Tracker.startTransaction(action, val)` | Chống xung đột microtask và race condition khi lệnh dispatch liên tục |
+| 38 | **Programmatic Action Scoping** | Tự động bên dưới các lệnh | Tự động nhận `isProgrammatic: true` | `runInActionScope(action, val, meta, fn)` | Explicit causality tagging không phụ thuộc heuristic TTL |
 | 39 | **Native Driver Discovery** | `await sremote.ready()` | Không yêu cầu | `window[Symbol.for('__sremote_native_driver__')]` / `sremote:driver:ready` | Zero-polling driver discovery (loại bỏ hoàn toàn polling 50ms) |
 
 ---

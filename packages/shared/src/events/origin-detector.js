@@ -1,43 +1,90 @@
-import { PROGRAMMATIC_WINDOW_MS } from './constants.js';
+/**
+ * @typedef {Object} ActionScope
+ * @property {string} action
+ * @property {*} [value]
+ * @property {string|null} [cmdId]
+ * @property {string} [instanceId]
+ * @property {number} timestamp
+ */
+
+/** @type {ActionScope|null} */
+let currentActiveScope = null;
+
+function deferMicrotask(cb) {
+  if (typeof globalThis !== 'undefined' && typeof globalThis.queueMicrotask === 'function') {
+    globalThis.queueMicrotask(cb);
+  } else {
+    Promise.resolve()
+      .then(cb)
+      .catch(() => {});
+  }
+}
 
 /**
- * Heuristically detects whether an event was triggered programmatically by SRemote or by human interaction.
+ * Runs a function within an explicit programmatic action scope.
+ * While this scope is active, events triggered by the media element or adapter
+ * are accurately recognized as `isProgrammatic: true` and associated with `cmdId`.
+ *
+ * @template T
+ * @param {string} action - Action being executed (e.g. 'play', 'seekto', 'volume')
+ * @param {*} value - Action parameter or payload
+ * @param {Object} [meta={}] - Metadata { cmdId, instanceId }
+ * @param {() => T} fn - Function executing the underlying DOM or adapter action
+ * @returns {T}
+ */
+export function runInActionScope(action, value, meta = {}, fn) {
+  const normAction = String(action || '').toLowerCase();
+  const instanceId = meta?.instanceId || 'unknown';
+  const cmdId = meta?.cmdId || null;
+
+  currentActiveScope = { action: normAction, value, cmdId, instanceId, timestamp: Date.now() };
+
+  try {
+    const res = fn();
+    if (res && typeof res.then === 'function') {
+      return res.finally(() => {
+        // Keep active for one microtask to catch synchronous / immediate DOM events
+        deferMicrotask(() => {
+          if (currentActiveScope?.cmdId === cmdId) {
+            currentActiveScope = null;
+          }
+        });
+      });
+    }
+    return res;
+  } finally {
+    deferMicrotask(() => {
+      if (currentActiveScope?.cmdId === cmdId) {
+        currentActiveScope = null;
+      }
+    });
+  }
+}
+
+/**
+ * Gets the currently active action scope, if any.
+ * @returns {ActionScope|null}
+ */
+export function getActiveActionScope() {
+  return currentActiveScope;
+}
+
+/**
+ * Detects whether an event was triggered programmatically by SRemote or by human interaction.
  *
  * @param {Object} params
  * @param {string} params.eventName - Event being inspected
- * @param {string} params.instanceId - Instance target ID
- * @param {import('../pipeline/transaction-tracker.js').TransactionTracker} [params.tracker]
- * @param {() => number} [params.timestampGetter] - Function returning timestamp of last programmatic call
- * @param {HTMLMediaElement} [params.media] - Underlying media element
- * @param {*} [params.value] - Action parameter value
+ * @param {string} [params.instanceId] - Instance target ID
  * @returns {boolean} True if programmatic
  */
-export function isProgrammatic({ eventName, instanceId, tracker, timestampGetter, media, value }) {
+export function isProgrammatic({ eventName, instanceId } = {}) {
   if (!eventName) return false;
-  const ev = String(eventName).toLowerCase();
 
-  // 1. Transaction Tracker inspection
-  if (tracker && typeof tracker.hasActiveTransaction === 'function') {
-    let actionKey = null;
-    if (ev === 'play' || ev === 'playing') actionKey = 'play';
-    else if (ev === 'pause') actionKey = 'pause';
-    else if (ev === 'seeking' || ev === 'seeked') actionKey = 'currenttime';
-    else if (ev === 'ratechange') actionKey = 'rate';
-    else if (ev === 'volumechange') {
-      actionKey = media?.muted ? 'muted' : 'volume';
-    }
-
-    if (actionKey) {
-      if (tracker.hasActiveTransaction(instanceId, actionKey, value)) {
-        return true;
-      }
-    }
-  }
-
-  // 2. Programmatic Timestamp Window fallback
-  if (typeof timestampGetter === 'function') {
-    const lastTs = timestampGetter();
-    if (typeof lastTs === 'number' && Date.now() - lastTs < PROGRAMMATIC_WINDOW_MS) {
+  // Explicit Active Action Scope (Zero heuristic)
+  if (currentActiveScope) {
+    const scopeInst = currentActiveScope.instanceId;
+    const instanceMatch = !scopeInst || scopeInst === 'unknown' || !instanceId || instanceId === 'unknown' || scopeInst === instanceId;
+    if (instanceMatch) {
       return true;
     }
   }

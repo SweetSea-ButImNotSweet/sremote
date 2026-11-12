@@ -181,12 +181,6 @@ export declare const events: {
   readonly SAFE_FALLBACK_EVENTS: readonly string[];
 };
 
-export declare const pipeline: {
-  getTracker(): ActionTransactionTracker;
-  createTracker(options?: { defaultTtlMs?: number }): ActionTransactionTracker;
-  Tracker: typeof ActionTransactionTracker;
-};
-
 export declare const instance: { createManager(options?: InstanceManagerOptions): InstanceManager; generateId(prefix?: string): string };
 
 export declare const logger: {
@@ -253,14 +247,6 @@ export interface Logger {
   warn: (...args: any[]) => void;
   error: (...args: any[]) => void;
   scope: (prefix: string) => { log: (...args: any[]) => void; debug: (...args: any[]) => void; warn: (...args: any[]) => void; error: (...args: any[]) => void };
-}
-
-export declare class ActionTransactionTracker {
-  constructor(options?: { defaultTtlMs?: number });
-  startTransaction(action: string, targetValue?: any, instanceId?: string, ttlMs?: number): string;
-  matchAndConsume(eventName: string, payload?: Record<string, any>): { isProgrammatic: boolean; token: string | null; shouldSuppressEcho: boolean };
-  isEcho(action: string, value: any, instanceId?: string): boolean;
-  clear(): void;
 }
 
 export declare const API_SPEC: any;
@@ -345,16 +331,15 @@ export declare const createCommandAck: typeof createCmdAck;
 export declare function createEventEnvelope(eventName: string, payload?: any, meta?: any): SRemoteEnvelope;
 export declare function parseEnvelope(raw: any, namespace?: string): SRemoteEnvelope | null;
 
-export declare function getTransactionTracker(): ActionTransactionTracker;
-export declare function createTransactionTracker(options?: { defaultTtlMs?: number }): ActionTransactionTracker;
-
 export declare function buildEventPayload(event: string, options?: any): SRemoteEventPayload;
 
 export declare function isValidMedia(media: any, options?: { minSize?: number; requireConnected?: boolean }): boolean;
 
 export declare function hasMediaSource(media: any): boolean;
 
-export declare function isProgrammatic(params: { eventName: string; instanceId?: string; tracker?: any; timestampGetter?: () => number; media?: any; value?: any }): boolean;
+export declare function runInActionScope<T>(action: string, value: any, meta: { cmdId?: string | null; instanceId?: string }, fn: () => T): T;
+export declare function getActiveActionScope(): { action: string; value?: any; cmdId?: string | null; instanceId?: string; timestamp: number } | null;
+export declare function isProgrammatic(params: { eventName: string; instanceId?: string }): boolean;
 
 export declare function bindDomMedia(media: any, onEvent: (event: string, payload: any) => void, options?: any): () => void;
 

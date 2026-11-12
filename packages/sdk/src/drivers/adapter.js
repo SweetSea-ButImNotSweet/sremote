@@ -1,11 +1,10 @@
-import { state, capabilities, actions, instance, pipeline } from '@sremote/shared';
+import { state, capabilities, actions, instance } from '@sremote/shared';
 
 export class AdapterDriver {
   constructor(options = {}) {
     this.options = { passkey: null, ...options };
     this.logger = options.logger || null;
     this.instanceManager = options.instanceManager || null;
-    this.transactionTracker = options.transactionTracker || pipeline.getTracker();
     this.adaptersMap = new Map();
   }
 
@@ -62,7 +61,7 @@ export class AdapterDriver {
       }
     };
 
-    const wrapped = actions.wrapAdapter(rawAdapter, { instanceId: targetId, transactionTracker: this.transactionTracker, logger: this.logger, onEmit, ...extraOpts });
+    const wrapped = actions.wrapAdapter(rawAdapter, { instanceId: targetId, logger: this.logger, onEmit, ...extraOpts });
 
     this.adaptersMap.set(targetId, wrapped);
 
@@ -184,6 +183,7 @@ export class AdapterDriver {
     if (actionName === 'seekTo') mappedAction = 'seekto';
     if (actionName === 'mute') mappedAction = 'muted';
 
-    return actions.execute(resolved.instance, mappedAction, payload, { transactionTracker: this.transactionTracker, instanceId: instId, logger: this.logger });
+    const cmdId = context?.cmdId || null;
+    return actions.execute(resolved.instance, mappedAction, payload, { cmdId, isProgrammatic: true, instanceId: instId, logger: this.logger });
   }
 }

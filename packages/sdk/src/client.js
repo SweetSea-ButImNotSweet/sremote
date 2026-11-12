@@ -657,34 +657,10 @@ export class SRemoteClient {
 
   _setupInternalEventHub() {
     this._eventListeners = new Map(); // event -> Set of { handler, key }
-    this._recentEventSignatures = new Map(); // sig -> timestamp
-
-    // Dedup helper: returns true if already dispatched within 200ms
-    const isDuplicate = (event, payload) => {
-      const instId = payload?.instanceId || 'unknown';
-      const stateSig = payload?.state ? `${payload.state.currentTime}_${payload.state.paused}` : '';
-      const sig = `${event}:${instId}:${stateSig}:${payload?.value ?? ''}`;
-      const now = Date.now();
-      const last = this._recentEventSignatures.get(sig);
-      if (last && now - last < 200) {
-        return true;
-      }
-      this._recentEventSignatures.set(sig, now);
-      // Clean old signatures if map grows large
-      if (this._recentEventSignatures.size > 100) {
-        for (const [k, ts] of this._recentEventSignatures.entries()) {
-          if (now - ts > 1000) this._recentEventSignatures.delete(k);
-        }
-      }
-      return false;
-    };
 
     // Central dispatching function
     this._dispatchClientEvent = (event, payload) => {
       const ev = String(event || '').toLowerCase();
-      if (ev !== 'timeupdate' && isDuplicate(ev, payload)) {
-        return;
-      }
 
       const listeners = this._eventListeners.get(ev);
       if (listeners) {
@@ -832,7 +808,6 @@ export class SRemoteClient {
       this._unbindUserscriptDriver = null;
     }
     this._eventListeners?.clear();
-    this._recentEventSignatures?.clear();
 
     if (this.domDriver && typeof this.domDriver.destroy === 'function') {
       try {

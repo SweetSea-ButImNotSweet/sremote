@@ -38,6 +38,9 @@ async function runTestSuite() {
   const playRes = await actions.execute(rawAdapter, 'play');
   assert(playRes === true && rawPlayCalled, 'Direct play() executed successfully in raw mode');
 
+  const pauseRes = await actions.execute(rawAdapter, 'pause');
+  assert(pauseRes === true && rawPauseCalled, 'Direct pause() executed successfully in raw mode');
+
   // Synthetic toggle must be rejected (false)
   const toggleRes = await actions.execute(rawAdapter, 'toggle');
   assert(toggleRes === false, 'Synthetic toggle() returns false when mode="raw"');

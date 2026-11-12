@@ -1,8 +1,7 @@
 import { MEDIA_EVENTS, TIMEUPDATE_THROTTLE_MS, PROGRESS_THROTTLE_MS, ALMOST_END_THRESHOLD_SEC, ALMOST_END_MIN_DURATION_SEC, ALMOST_END_RESET_THRESHOLD_SEC } from './constants.js';
 import { captureMediaSnapshot } from './snapshot.js';
 import { buildEventPayload } from './payload.js';
-import { isProgrammatic } from './origin-detector.js';
-import { getTransactionTracker } from '../pipeline/transaction-tracker.js';
+import { isProgrammatic, getActiveActionScope } from './origin-detector.js';
 
 /**
  * Attaches standardized event listeners to an HTMLMediaElement with smart end/almostend handling and throttled progress/timeupdate.
@@ -23,9 +22,6 @@ export function bindDomMedia(media, onEvent, options = {}) {
     treatAlmostEndAsEnd = false,
     events = MEDIA_EVENTS,
     excludedEvents = null,
-    programmaticTimeGetter = null,
-    programmaticActionTimestampGetter = programmaticTimeGetter,
-    transactionTracker = getTransactionTracker(),
   } = options;
 
   const excludedSet = excludedEvents ? (excludedEvents instanceof Set ? excludedEvents : new Set(Array.from(excludedEvents).map(e => String(e).toLowerCase()))) : null;
@@ -43,7 +39,8 @@ export function bindDomMedia(media, onEvent, options = {}) {
   const boundListeners = [];
 
   const dispatchStandardizedEvent = (evtName, eventObj) => {
-    const isProg = isProgrammatic({ eventName: evtName, instanceId, media, tracker: transactionTracker, timestampGetter: programmaticActionTimestampGetter });
+    const activeScope = getActiveActionScope();
+    const isProg = isProgrammatic({ eventName: evtName, instanceId, media });
 
     onEvent(
       evtName,
@@ -53,6 +50,7 @@ export function bindDomMedia(media, onEvent, options = {}) {
         mediaType: media.tagName?.toLowerCase() ?? 'video',
         state: captureMediaSnapshot(media),
         isProgrammatic: isProg,
+        ...(activeScope?.cmdId ? { causedBy: activeScope.cmdId } : {}),
         originalEvent: eventObj,
       }),
     );
@@ -87,7 +85,8 @@ export function bindDomMedia(media, onEvent, options = {}) {
           if (!hasEmittedAlmostEnd) {
             hasEmittedAlmostEnd = true;
             const almostEndEvent = treatAlmostEndAsEnd ? 'ended' : 'almostend';
-            const isProg = isProgrammatic({ eventName: almostEndEvent, instanceId, media, tracker: transactionTracker, timestampGetter: programmaticActionTimestampGetter });
+            const activeScope = getActiveActionScope();
+            const isProg = isProgrammatic({ eventName: almostEndEvent, instanceId, media });
             onEvent(
               almostEndEvent,
               buildEventPayload(almostEndEvent, {
@@ -96,6 +95,7 @@ export function bindDomMedia(media, onEvent, options = {}) {
                 mediaType: media.tagName?.toLowerCase() ?? 'video',
                 state: captureMediaSnapshot(media),
                 isProgrammatic: isProg,
+                ...(activeScope?.cmdId ? { causedBy: activeScope.cmdId } : {}),
               }),
             );
           }

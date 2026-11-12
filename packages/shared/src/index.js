@@ -3,7 +3,6 @@ export * from './dom/dom-hunter.js';
 export * from './state/fsm.js';
 export * from './actions/action-engine.js';
 export * from './events/index.js';
-export * from './pipeline/transaction-tracker.js';
 export * from './instance-manager.js';
 export * from './logger.js';
 export * from './constants.js';

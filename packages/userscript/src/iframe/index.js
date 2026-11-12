@@ -1,7 +1,7 @@
 import { logger, descriptors } from '../config.js';
 import { VERSION, NS, ENABLE_DEBUG_API } from '../const.js';
 import { Storage } from '../core/storage.js';
-import { generateInstanceId } from '@sremote/shared';
+import { generateInstanceId, isProgrammatic, getActiveActionScope } from '@sremote/shared';
 import { checkPermission, safeSetProp, normalizeOrigin } from '../core/utils.js';
 import { showConnectedIndicator, hideConnectedIndicator } from '../ui/indicator-badge.js';
 import { IframeStyleEngine } from './style-engine.js';
@@ -76,7 +76,6 @@ export function initIframeAgent() {
   const mediaWaiters = [];
   const createdMediaPool = new WeakSet();
   let treatAlmostEndAsEnd = false;
-  let programmaticActionTimestamp = 0;
   let originalMediaSrcBeforeDebug = null;
   let observer = null;
   let livenessScheduled = null;
@@ -113,11 +112,14 @@ export function initIframeAgent() {
 
   function sendMediaSessionState(action, specificValue) {
     const ms = navigator.mediaSession || mockMediaSessionInstance;
+    const activeScope = getActiveActionScope();
+    const isProg = isProgrammatic({ eventName: action || 'mediaSessionState', instanceId });
     const payload = {
       playbackState: ms?.playbackState,
       metadata: ms?.metadata ? { title: ms.metadata.title, artist: ms.metadata.artist, album: ms.metadata.album, artwork: ms.metadata.artwork || [] } : null,
       supportedActions: Array.from(mockMediaSessionInstance._handlers.keys()),
-      isProgrammatic: Date.now() - programmaticActionTimestamp < 500,
+      isProgrammatic: isProg,
+      ...(activeScope?.cmdId ? { causedBy: activeScope.cmdId } : {}),
     };
     if (action) payload.event = action;
     if (specificValue !== undefined) payload.value = specificValue;
@@ -125,7 +127,8 @@ export function initIframeAgent() {
   }
 
   function notifyState(action, specificValue) {
-    const isProgrammatic = Date.now() - programmaticActionTimestamp < 500;
+    const activeScope = getActiveActionScope();
+    const isProg = isProgrammatic({ eventName: action || 'state', instanceId });
     const mediaType = resolver.getMediaType();
     switch (mediaType) {
       case 'adapter':
@@ -134,7 +137,8 @@ export function initIframeAgent() {
         emitToParent(action || 'state', {
           ...(action ? { event: action } : {}),
           ...(specificValue !== undefined ? { value: specificValue } : {}),
-          isProgrammatic,
+          isProgrammatic: isProg,
+          ...(activeScope?.cmdId ? { causedBy: activeScope.cmdId } : {}),
           state: getVideoState(null, resolver.getActiveMedia(), resolver.resolveActiveMedia),
         });
         break;
@@ -176,12 +180,6 @@ export function initIframeAgent() {
     },
     set treatAlmostEndAsEnd(v) {
       treatAlmostEndAsEnd = v;
-    },
-    get programmaticTime() {
-      return programmaticActionTimestamp;
-    },
-    set programmaticTime(ts) {
-      programmaticActionTimestamp = ts;
     },
     get originalMediaSrc() {
       return originalMediaSrcBeforeDebug;

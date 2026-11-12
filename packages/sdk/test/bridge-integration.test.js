@@ -71,7 +71,7 @@ async function runTests() {
     pause(id) {
       return Promise.resolve({ success: true, instanceId: id, action: 'pause' });
     },
-    on(event, handler) {
+    on(_event, _handler) {
       return () => {};
     },
     off() {},

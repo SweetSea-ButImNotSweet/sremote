@@ -4,7 +4,7 @@
  * Table-driven dispatcher powered by Centralized Action Fallback Matrix.
  */
 
-import { wrapAdapter } from '../events/index.js';
+import { wrapAdapter, runInActionScope } from '../events/index.js';
 import { ACTION_MATRIX, normalizeActionKey, safePlayMedia, safePauseMedia, adapterPreviousVolumeMap } from './action-matrix.js';
 
 export { ACTION_MATRIX, normalizeActionKey, safePlayMedia, safePauseMedia, adapterPreviousVolumeMap };
@@ -157,14 +157,15 @@ export function hasActionSupport(target, action) {
  * @param {*} [value]
  * @param {Object} [options={}]
  * @param {boolean} [options.isPureGet=false]
- * @param {Object} [options.transactionTracker=null]
+ * @param {string|null} [options.cmdId=null]
+ * @param {boolean} [options.isProgrammatic=true]
  * @param {string} [options.instanceId='unknown']
  * @param {Object} [options.logger=null]
  * @returns {Promise<any>}
  */
 export async function executeMediaAction(target, action, value = undefined, options = {}) {
   if (!target) return false;
-  const { isPureGet = false, transactionTracker = null, instanceId = 'unknown', logger = null } = options;
+  const { isPureGet = false, cmdId = null, isProgrammatic = true, instanceId = 'unknown', logger = null } = options;
   const norm = normalizeActionKey(action);
 
   const entry = ACTION_MATRIX[norm];
@@ -177,108 +178,112 @@ export async function executeMediaAction(target, action, value = undefined, opti
 
   const isAdapter = isAdapterTarget(target);
 
-  if (!isPureGet && transactionTracker && typeof transactionTracker.startTransaction === 'function') {
-    transactionTracker.startTransaction(norm, value, instanceId);
-  }
+  const executeCore = async () => {
+    if (logger?.debug) {
+      logger.debug(`[ActionEngine] Executing '${norm}' on ${isAdapter ? 'Adapter' : target.tagName || 'Object'}`, { value, instanceId, cmdId });
+    }
 
-  if (logger?.debug) {
-    logger.debug(`[ActionEngine] Executing '${norm}' on ${isAdapter ? 'Adapter' : target.tagName || 'Object'}`, { value, instanceId });
-  }
+    // ----------------------------------------------------
+    // Branch A: Custom Adapter Execution
+    // ----------------------------------------------------
+    if (isAdapter) {
+      const policy = resolveInterventionPolicy(target);
+      let execResult = { handled: false };
 
-  // ----------------------------------------------------
-  // Branch A: Custom Adapter Execution
-  // ----------------------------------------------------
-  if (isAdapter) {
-    const policy = resolveInterventionPolicy(target);
-    let execResult = { handled: false };
+      // 1. Direct Adapter execution
+      if (entry.executeAdapter) {
+        try {
+          execResult = await entry.executeAdapter(target, value, options);
+        } catch (err) {
+          if (logger?.warn) logger.warn(`[sremote:action] Error executing '${norm}' on adapter:`, err);
+          throw err;
+        }
+      }
 
-    // 1. Direct Adapter execution
-    if (entry.executeAdapter) {
+      // 2. Synthetic Polyfill (if permitted)
+      if (!execResult.handled && policy.allowPolyfill && entry.polyfill) {
+        try {
+          execResult = await entry.polyfill(target, value, options);
+          if (execResult.handled && logger?.debug) {
+            logger.debug(`[sremote:action] Polyfilled '${norm}' on adapter [${target.name || instanceId}]`);
+          }
+        } catch (err) {
+          if (logger?.warn) logger.warn(`[sremote:action] Error polyfilling '${norm}':`, err);
+        }
+      }
+
+      // 3. Attached DOM fallback (if permitted and element exists)
+      if (!execResult.handled && policy.allowDomFallback && target.mediaElement && entry.executeNative) {
+        try {
+          execResult = await entry.executeNative(target.mediaElement, value, options);
+          if (execResult.handled && logger?.debug) {
+            logger.debug(`[sremote:action] Fallback '${norm}' to attached mediaElement on adapter [${target.name || instanceId}]`);
+          }
+        } catch (err) {
+          if (logger?.warn) logger.warn(`[sremote:action] Error executing native fallback for '${norm}':`, err);
+        }
+      }
+
+      // 4. Handle Unsupported Action
+      if (!execResult.handled) {
+        if (logger?.warn) {
+          logger.warn(
+            `[sremote:action] Không có chức năng tương ứng cho hành động '${action}' trên Adapter [${target.name || instanceId}] ` +
+              `(chế độ: ${target.mode || (target.strict ? 'raw' : 'managed')}, polyfill: ${policy.allowPolyfill})`,
+          );
+        }
+        return false;
+      }
+
+      // 5. Automatic Event Emission (if permitted)
+      if (policy.allowAutoEmit && !isPureGet && typeof target.emit === 'function' && entry.eventsToEmit) {
+        try {
+          const events = entry.eventsToEmit(execResult);
+          if (Array.isArray(events)) {
+            for (const evItem of events) {
+              const evName = evItem.event || evItem;
+              const evPayload = evItem.payload || {};
+              target.emit(evName, { programmatic: true, isProgrammatic: true, ...(cmdId ? { causedBy: cmdId } : {}), ...evPayload });
+            }
+          }
+        } catch (err) {
+          if (logger?.warn) logger.warn(`[sremote:action] Error auto-emitting events for '${norm}':`, err);
+        }
+      }
+
+      return execResult.result ?? true;
+    }
+
+    // ----------------------------------------------------
+    // Branch B: Native HTMLMediaElement Execution
+    // ----------------------------------------------------
+    if (entry.executeNative) {
       try {
-        execResult = await entry.executeAdapter(target, value, options);
+        const execResult = await entry.executeNative(target, value, options);
+        if (!execResult.handled) {
+          if (logger?.warn) {
+            logger.warn(`[sremote:action] Không có chức năng tương ứng cho '${action}' trên phần tử Native Media [${instanceId}]`);
+          }
+          return false;
+        }
+        return execResult.result ?? true;
       } catch (err) {
-        if (logger?.warn) logger.warn(`[sremote:action] Error executing '${norm}' on adapter:`, err);
+        if (logger?.warn) logger.warn(`[sremote:action] Error executing native '${norm}':`, err);
         throw err;
       }
     }
 
-    // 2. Synthetic Polyfill (if permitted)
-    if (!execResult.handled && policy.allowPolyfill && entry.polyfill) {
-      try {
-        execResult = await entry.polyfill(target, value, options);
-        if (execResult.handled && logger?.debug) {
-          logger.debug(`[sremote:action] Polyfilled '${norm}' on adapter [${target.name || instanceId}]`);
-        }
-      } catch (err) {
-        if (logger?.warn) logger.warn(`[sremote:action] Error polyfilling '${norm}':`, err);
-      }
+    if (logger?.warn) {
+      logger.warn(`[sremote:action] Không có chức năng tương ứng cho '${action}' trên phần tử Native Media [${instanceId}]`);
     }
+    return false;
+  };
 
-    // 3. Attached DOM fallback (if permitted and element exists)
-    if (!execResult.handled && policy.allowDomFallback && target.mediaElement && entry.executeNative) {
-      try {
-        execResult = await entry.executeNative(target.mediaElement, value, options);
-        if (execResult.handled && logger?.debug) {
-          logger.debug(`[sremote:action] Fallback '${norm}' to attached mediaElement on adapter [${target.name || instanceId}]`);
-        }
-      } catch (err) {
-        if (logger?.warn) logger.warn(`[sremote:action] Error executing native fallback for '${norm}':`, err);
-      }
-    }
-
-    // 4. Handle Unsupported Action
-    if (!execResult.handled) {
-      if (logger?.warn) {
-        logger.warn(
-          `[sremote:action] Không có chức năng tương ứng cho hành động '${action}' trên Adapter [${target.name || instanceId}] ` +
-            `(chế độ: ${target.mode || (target.strict ? 'raw' : 'managed')}, polyfill: ${policy.allowPolyfill})`,
-        );
-      }
-      return false;
-    }
-
-    // 5. Automatic Event Emission (if permitted)
-    if (policy.allowAutoEmit && !isPureGet && typeof target.emit === 'function' && entry.eventsToEmit) {
-      try {
-        const events = entry.eventsToEmit(execResult);
-        if (Array.isArray(events)) {
-          for (const evItem of events) {
-            const evName = evItem.event || evItem;
-            const evPayload = evItem.payload || {};
-            target.emit(evName, { programmatic: true, isProgrammatic: true, ...evPayload });
-          }
-        }
-      } catch (err) {
-        if (logger?.warn) logger.warn(`[sremote:action] Error auto-emitting events for '${norm}':`, err);
-      }
-    }
-
-    return execResult.result ?? true;
+  if (!isPureGet && isProgrammatic) {
+    return runInActionScope(norm, value, { cmdId, instanceId }, executeCore);
   }
 
-  // ----------------------------------------------------
-  // Branch B: Native HTMLMediaElement Execution
-  // ----------------------------------------------------
-  if (entry.executeNative) {
-    try {
-      const execResult = await entry.executeNative(target, value, options);
-      if (!execResult.handled) {
-        if (logger?.warn) {
-          logger.warn(`[sremote:action] Không có chức năng tương ứng cho '${action}' trên phần tử Native Media [${instanceId}]`);
-        }
-        return false;
-      }
-      return execResult.result ?? true;
-    } catch (err) {
-      if (logger?.warn) logger.warn(`[sremote:action] Error executing native '${norm}':`, err);
-      throw err;
-    }
-  }
-
-  if (logger?.warn) {
-    logger.warn(`[sremote:action] Không có chức năng tương ứng cho '${action}' trên phần tử Native Media [${instanceId}]`);
-  }
-  return false;
+  return executeCore();
 }
 
 export const actions = { execute: executeMediaAction, safePlay: safePlayMedia, safePause: safePauseMedia, wrapAdapter, hasSupport: hasActionSupport, isAdapter: isAdapterTarget };

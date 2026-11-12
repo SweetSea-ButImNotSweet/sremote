@@ -3,7 +3,7 @@ export * from './constants.js';
 export { captureMediaSnapshot } from './snapshot.js';
 export { buildEventPayload } from './payload.js';
 export { isValidMedia, hasMediaSource, evaluateCapabilities } from './validator.js';
-export { isProgrammatic } from './origin-detector.js';
+export { isProgrammatic, runInActionScope, getActiveActionScope } from './origin-detector.js';
 export { bindDomMedia } from './dom-binder.js';
 export { wrapAdapter } from './adapter-decorator.js';
 

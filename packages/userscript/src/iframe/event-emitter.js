@@ -1,7 +1,7 @@
 import { MEDIA_EVENTS, descriptors } from '../config.js';
 import { safeGetProp } from '../core/utils.js';
 import { getVideoState } from './controller.js';
-import { pipeline, TIMEUPDATE_THROTTLE_MS, PROGRESS_THROTTLE_MS } from '@sremote/shared';
+import { isProgrammatic, getActiveActionScope, TIMEUPDATE_THROTTLE_MS, PROGRESS_THROTTLE_MS } from '@sremote/shared';
 
 /**
  * Creates the media event listener and rVFC frame-loop manager for video elements inside the iframe.
@@ -12,7 +12,6 @@ export function createMediaEventEmitter(options) {
     emitToParent = ctx?.emitToParent || options.emitToParent,
     instanceIdGetter = ctx ? () => ctx.instanceId : options.instanceIdGetter,
     treatAlmostEndAsEndGetter = ctx ? () => ctx.treatAlmostEndAsEnd : options.treatAlmostEndAsEndGetter,
-    programmaticActionTimestampGetter = ctx ? () => ctx.programmaticTime : options.programmaticActionTimestampGetter,
   } = options;
   const getResolver = () => ctx?.resolver || options.resolver;
   const boundMediaElements = new WeakSet();
@@ -43,20 +42,22 @@ export function createMediaEventEmitter(options) {
 
       const activeResolver = getResolver();
       const currentState = getVideoState(video, activeResolver?.getActiveMedia(), activeResolver?.resolveActiveMedia);
-      const isProgrammatic = Date.now() - programmaticActionTimestampGetter() < 500;
+      const activeScope = getActiveActionScope();
+      const isProg = isProgrammatic({ eventName: 'timeupdate', instanceId: instanceIdGetter() });
+      const causedBy = activeScope?.cmdId || null;
       const dur = currentState?.duration || (Number.isFinite(video.duration) ? video.duration : null);
       const curTime = mediaTime ?? safeGetProp(video, descriptors.currentTime, 'currentTime') ?? video.currentTime ?? 0;
 
       if (dur && dur > 3 && curTime >= dur - 0.8 && curTime <= dur) {
         if (!hasEmittedAlmostEnd) {
           hasEmittedAlmostEnd = true;
-          emitToParent(treatAlmostEndAsEndGetter() ? 'ended' : 'almostend', { isProgrammatic, state: currentState });
+          emitToParent(treatAlmostEndAsEndGetter() ? 'ended' : 'almostend', { isProgrammatic: isProg, ...(causedBy ? { causedBy } : {}), state: currentState });
         }
       } else if (dur && curTime < dur - 1.5) {
         hasEmittedAlmostEnd = false;
       }
 
-      emitToParent('timeupdate', { isProgrammatic, state: currentState });
+      emitToParent('timeupdate', { isProgrammatic: isProg, ...(causedBy ? { causedBy } : {}), state: currentState });
     };
 
     const startRVFCLoop = () => {
@@ -87,22 +88,18 @@ export function createMediaEventEmitter(options) {
         activeResolver?.setMediaType(video.tagName ? video.tagName.toLowerCase() : 'video');
 
         const now = Date.now();
-        let isProgrammatic = false;
-        const tracker = pipeline.getTracker();
-        if (tracker && typeof tracker.matchAndConsume === 'function') {
-          isProgrammatic = tracker.matchAndConsume(evtName, { instanceId: instanceIdGetter(), video }).isProgrammatic;
-        }
-        if (!isProgrammatic) {
-          isProgrammatic = now - programmaticActionTimestampGetter() < 500;
-        }
+        const activeScope = getActiveActionScope();
+        const instId = instanceIdGetter();
+        const isProg = isProgrammatic({ eventName: evtName, instanceId: instId });
+        const causedBy = activeScope?.cmdId || null;
 
         const currentState = getVideoState(video, activeResolver?.getActiveMedia(), activeResolver?.resolveActiveMedia);
 
         if (evtName === 'play' || evtName === 'pause') {
           try {
             if (typeof console !== 'undefined' && typeof console.groupCollapsed === 'function') {
-              const tagText = isProgrammatic ? '[SRemote Programmatic]' : '[External: SponsorBlock/Player]';
-              const tagStyle = isProgrammatic ? 'color: #10b981; font-weight: bold;' : 'color: #ef4444; font-weight: bold; font-size: 1.05em;';
+              const tagText = isProg ? '[SRemote Programmatic]' : '[External: SponsorBlock/Player]';
+              const tagStyle = isProg ? 'color: #10b981; font-weight: bold;' : 'color: #ef4444; font-weight: bold; font-size: 1.05em;';
               console.groupCollapsed(
                 `%c[SRemote:Iframe:event] %c${evtName.toUpperCase()}%c | %c${tagText}%c 🔍 (Expand for event stack tree)`,
                 'color: #8b5cf6; font-weight: bold;',
@@ -112,7 +109,8 @@ export function createMediaEventEmitter(options) {
                 'color: #64748b; font-style: italic;',
               );
               console.log('Event:', evtName);
-              console.log('isProgrammatic:', isProgrammatic);
+              console.log('isProgrammatic:', isProg);
+              if (causedBy) console.log('causedBy:', causedBy);
               console.log('currentTime:', currentState?.currentTime);
               console.log('paused:', currentState?.paused);
               if (typeof console.trace === 'function') {
@@ -151,7 +149,7 @@ export function createMediaEventEmitter(options) {
           if (dur && dur > 0 && Math.abs(dur - curTime) > 1.5) return;
         }
 
-        emitToParent(evtName, { isProgrammatic, state: currentState });
+        emitToParent(evtName, { isProgrammatic: isProg, ...(causedBy ? { causedBy } : {}), state: currentState });
       });
     }
 

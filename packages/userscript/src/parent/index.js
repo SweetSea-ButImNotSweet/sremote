@@ -8,7 +8,7 @@ import { pendingCommandQueue, trackCmd } from './queue.js';
 import { createExportedApi } from './api.js';
 import { createParentTransport } from './transport.js';
 import { setupTopMediaTracker } from './top-media.js';
-import { actions, dom, instance, pipeline, createCmd } from '@sremote/shared';
+import { actions, dom, instance, createCmd } from '@sremote/shared';
 
 export function initParentController() {
   const currentOrigin = location.origin;
@@ -110,7 +110,7 @@ export function initParentController() {
 
     logger.scope('action').log(`Top DOM executing -> ${action}`, { action, value });
     try {
-      return actions.execute(mediaEl, action, value, { instanceId: mediaEl.id || 'top-media', transactionTracker: pipeline.getTracker(), logger });
+      return actions.execute(mediaEl, action, value, { instanceId: mediaEl.id || 'top-media', isProgrammatic: true, logger });
     } catch (e) {
       logger.warn(`[sremote] Error executing top media action '${action}':`, e);
       return false;

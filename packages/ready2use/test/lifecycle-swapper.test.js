@@ -1,6 +1,5 @@
 import * as ready2use from '../src/index.js';
 import { BaseProvider } from '../src/core/base-provider.js';
-import { createMediaSwapper } from '../src/core/media-swapper.js';
 
 let passed = 0;
 let failed = 0;
@@ -64,7 +63,7 @@ class MockTrackProvider extends BaseProvider {
     };
   }
 
-  createAdapter(playerInfo, context) {
+  createAdapter(_playerInfo, _context) {
     return {
       name: this.name,
       load: source => {
