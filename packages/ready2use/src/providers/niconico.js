@@ -149,7 +149,7 @@ export class NicoNicoProvider extends BaseProvider {
 
       if (eventName === 'loadComplete') {
         if (data?.videoInfo?.lengthInSeconds) {
-          duration = data.videoInfo.lengthInSeconds / 1000;
+          duration = data.videoInfo.lengthInSeconds;
         }
       } else if (eventName === 'playerMetadataChange') {
         if (data?.duration !== undefined) duration = data.duration / 1000;
