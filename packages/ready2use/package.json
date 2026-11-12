@@ -35,7 +35,7 @@
   },
   "files": ["dist", "src", "README.md"],
   "publishConfig": { "access": "public" },
-  "scripts": { "build": "vite build", "dev": "vite build --watch", "test": "node test/providers.test.js" },
+  "scripts": { "build": "vite build", "dev": "vite build --watch", "test": "node test/providers.test.js && node test/url-resolver.test.js && node test/lifecycle-swapper.test.js" },
   "keywords": ["sremote", "youtube", "vimeo", "html5", "adapter", "ready-to-use", "player", "preset"],
   "author": "sweetsea (https://github.com/SweetSea-ButImNotSweet)",
   "repository": { "type": "git", "url": "git+https://github.com/SweetSea-ButImNotSweet/sremote.git", "directory": "packages/ready2use" },

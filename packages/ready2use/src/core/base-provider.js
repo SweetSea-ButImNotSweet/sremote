@@ -1,5 +1,6 @@
 import { resolveElement } from './dom-utils.js';
 import { createRemoteProxy } from './remote-proxy.js';
+import { createMediaSwapper } from './media-swapper.js';
 
 let providerCounter = 0;
 
@@ -88,14 +89,21 @@ function attachEventBus(adapter) {
  * @param {string} instanceId
  * @param {string} providerName
  * @param {Object|null} adapter
+ * @param {boolean} [bare=false]
  */
-function annotateElement(element, instanceId, providerName, adapter) {
+function annotateElement(element, instanceId, providerName, adapter, bare = false) {
   if (!element) return;
   element.setAttribute('data-sremote-id', instanceId);
   element.setAttribute('data-sremote-provider', providerName);
   if (adapter) {
     try {
       element[Symbol.for('__sremote_adapter__')] = adapter;
+    } catch {}
+  }
+  if (bare) {
+    try {
+      element.style.width = '';
+      element.style.height = '';
     } catch {}
   }
 }
@@ -206,12 +214,42 @@ export class BaseProvider {
     const opts = this._normalizeOptions(options);
     const instanceId = this.generateInstanceId(opts.instanceId);
 
-    // 1. Ensure provider SDK is ready
-    await this.loadSdk();
+    // Resolve SRemote Client early to allow lifecycle dispatch
+    let sremoteClient = null;
+    if (opts.register !== false && opts.autoRegister !== false) {
+      sremoteClient = resolveSRemote(opts);
+    }
 
-    // 2. Initialize native player
-    const initOptions = container ? { ...opts, container } : opts;
-    const { player, element, iframe, destroy: customDestroy } = await this.initPlayer(initOptions, instanceId);
+    const emitLifecycle = (eventName, payload = {}) => {
+      try {
+        if (sremoteClient && typeof sremoteClient.emit === 'function') {
+          sremoteClient.emit(eventName, payload);
+        }
+      } catch {}
+    };
+
+    emitLifecycle('provider:loading', { provider: this.name, instanceId, options: opts });
+
+    let player = null;
+    let element = null;
+    let iframe = null;
+    let customDestroy = null;
+
+    try {
+      // 1. Ensure provider SDK is ready
+      await this.loadSdk();
+
+      // 2. Initialize native player
+      const initOptions = container ? { ...opts, container } : opts;
+      const res = await this.initPlayer(initOptions, instanceId);
+      player = res.player;
+      element = res.element;
+      iframe = res.iframe;
+      customDestroy = res.destroy;
+    } catch (err) {
+      emitLifecycle('provider:error', { provider: this.name, instanceId, error: err, diagnostics: { message: err?.message, name: err?.name } });
+      throw err;
+    }
 
     const targetElement = iframe || element;
     const resolvedIframe = iframe || (targetElement?.tagName === 'IFRAME' ? targetElement : null);
@@ -236,19 +274,19 @@ export class BaseProvider {
     const capabilities = adapter?.capabilities || this.getCapabilities(null);
 
     // 5. Annotate DOM element with SRemote metadata
-    annotateElement(targetElement, instanceId, this.name, adapter);
+    annotateElement(targetElement, instanceId, this.name, adapter, opts.bare);
 
     // 6. Automatically register into SRemote Client if available
-    let sremoteClient = null;
-    if (opts.register !== false && opts.autoRegister !== false) {
-      sremoteClient = resolveSRemote(opts);
-      if (adapter && typeof sremoteClient?.adapters?.register === 'function') {
-        sremoteClient.adapters.register(adapter, instanceId);
-      }
+    if (sremoteClient && adapter && typeof sremoteClient?.adapters?.register === 'function') {
+      sremoteClient.adapters.register(adapter, instanceId);
     }
 
+    // Context for in-place media swapping
+    const mountContext = { container, currentProvider: this, currentResult: null, instanceId, sremoteClient, commonOptions: opts };
+    const swapper = createMediaSwapper(mountContext);
+
     // 7. Create unified remote control
-    const remote = createRemoteProxy(adapter, sremoteClient, instanceId);
+    const remote = createRemoteProxy(adapter, sremoteClient, instanceId, swapper);
 
     // 8. Lifecycle cleanup / destroy function
     let isDestroyed = false;
@@ -287,7 +325,12 @@ export class BaseProvider {
       } catch {}
     };
 
-    return { element: targetElement, iframe: resolvedIframe, adapter, remote, player, instanceId, capabilities, destroy };
+    const result = { element: targetElement, iframe: resolvedIframe, adapter, remote, player, instanceId, capabilities, destroy, swap: swapper };
+
+    mountContext.currentResult = result;
+    emitLifecycle('provider:ready', { provider: this.name, instanceId, capabilities, element: targetElement });
+
+    return result;
   }
 
   /**

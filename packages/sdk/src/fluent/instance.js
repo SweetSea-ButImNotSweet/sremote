@@ -243,6 +243,10 @@ export class FluentInstance {
     return this._enqueue('previous');
   }
 
+  swap(urlOrOptions) {
+    return this._enqueue('swap', urlOrOptions);
+  }
+
   // --- Scoped Inspection & Events ---
   status() {
     return this.state;

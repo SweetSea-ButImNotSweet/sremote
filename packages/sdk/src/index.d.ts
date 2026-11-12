@@ -520,6 +520,7 @@ export interface SRemoteFluentInstance extends PromiseLike<SRemoteFluentInstance
   repeat(mode?: RepeatModeDTO): this;
   next(): this;
   previous(): this;
+  swap(urlOrOptions: string | object): this;
 
   // Scoped Inspection & Events
   status(): SRemoteMediaState | null;
@@ -567,6 +568,7 @@ export interface SRemoteFluentGroupInstance extends PromiseLike<SRemoteFluentGro
   repeat(mode?: RepeatModeDTO): this;
   next(): this;
   previous(): this;
+  swap(urlOrOptions: string | object): this;
 
   // Lifecycle
   destroy(): this;

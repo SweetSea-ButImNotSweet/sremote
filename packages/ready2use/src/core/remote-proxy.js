@@ -5,9 +5,10 @@
  * @param {Object} adapter - The custom adapter instance
  * @param {Object} [sremoteClient] - Optional SRemote client instance
  * @param {string} [instanceId] - SRemote instance ID
+ * @param {Function} [swapper] - Optional in-place media swapper callback
  * @returns {Object} Unified remote controller
  */
-export function createRemoteProxy(adapter, sremoteClient = null, instanceId = null) {
+export function createRemoteProxy(adapter, sremoteClient = null, instanceId = null, swapper = null) {
   // If SRemote client is provided and supports select() or get()
   if (sremoteClient && instanceId) {
     if (typeof sremoteClient.select === 'function') {
@@ -20,13 +21,21 @@ export function createRemoteProxy(adapter, sremoteClient = null, instanceId = nu
           if (instanceId && !fluent.instanceId) {
             Object.defineProperty(fluent, 'instanceId', { get: () => instanceId, configurable: true });
           }
+          if (swapper && !fluent.swap) {
+            fluent.swap = urlOrOptions => fluent._enqueue(() => swapper(urlOrOptions));
+          }
           return fluent;
         }
       } catch {}
     } else if (typeof sremoteClient.get === 'function') {
       try {
         const instanceRemote = sremoteClient.get(instanceId);
-        if (instanceRemote) return instanceRemote;
+        if (instanceRemote) {
+          if (swapper && !instanceRemote.swap) {
+            instanceRemote.swap = urlOrOptions => swapper(urlOrOptions);
+          }
+          return instanceRemote;
+        }
       } catch {}
     }
   }
@@ -37,6 +46,7 @@ export function createRemoteProxy(adapter, sremoteClient = null, instanceId = nu
     constructor() {
       this._chain = Promise.resolve();
       this._lenient = false;
+      this._swapper = swapper;
     }
 
     get instanceId() {
@@ -246,6 +256,14 @@ export function createRemoteProxy(adapter, sremoteClient = null, instanceId = nu
     repeat(mode = true) {
       return this._enqueue(() => {
         if (typeof safeAdapter.repeat === 'function') return safeAdapter.repeat(mode);
+        return Promise.resolve();
+      });
+    }
+
+    swap(urlOrOptions) {
+      return this._enqueue(async () => {
+        if (typeof this._swapper === 'function') return this._swapper(urlOrOptions);
+        if (typeof safeAdapter.swap === 'function') return safeAdapter.swap(urlOrOptions);
         return Promise.resolve();
       });
     }

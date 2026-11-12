@@ -78,34 +78,34 @@ Version 4.0 is a milestone architectural overhaul that synchronizes developer er
 
 ## 📦 Version 4.1 — Next-Gen Ready2Use Architecture & Media Lifecycle
 
-Version 4.1 focuses on a complete architectural revamp of `@sremote/ready2use`, introducing intelligent dynamic provider resolution, explicit lifecycle diagnostics, and seamless in-place media swapping.
+Version 4.1 focuses on a complete architectural revamp of `@sremote/ready2use`, introducing intelligent provider resolution, explicit lifecycle diagnostics, and seamless in-place media swapping.
 
-### 1. Smart URL Creator with Lazy Dynamic Imports (`ready2use.create(url)`)
-- [ ] **Universal Media Factory**:
+### 1. Smart URL Creator & Universal Provider Registry (`ready2use.create(url)`)
+- [x] **Universal Media Factory**:
   - Automatically resolves media URLs via regex pattern matching across all 22 supported platforms (YouTube, Bilibili, Niconico, SoundCloud, Vimeo, Spotify, Twitch, etc.):
     ```javascript
     const player = await ready2use.create('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '#box');
     await player.play().seek(15).volume(0.9);
     ```
-- [ ] **Lazy Dynamic Imports**:
-  - Dynamically loads only the matching provider (`() => import('./providers/youtube.js')`) rather than bundling all 22 providers statically, cutting bundle sizes drastically for modern web apps.
+- [x] **Bundler-Safe Provider Registry (`registerProvider`)**:
+  - Replaces fragile dynamic relative imports with a centralized sync Registry (`getProvider`, `registerProvider`, `listProviders`), ensuring zero bundler breakage across both ESM (`dist/index.mjs`) and IIFE (`dist/index.global.js`) formats while deferring heavy third-party SDK loads to `loadSdk()` on mount.
 
 ### 2. Comprehensive Provider Lifecycle Events
-- [ ] **Deterministic Lifecycle Transitions**:
+- [x] **Deterministic Lifecycle Transitions**:
   - Explicit event transitions: `provider:loading` ➔ `provider:ready` (or `provider:error` with detailed CDN/network/timeout diagnostics).
   - Enables host applications (e.g. PJSK Music Player) to display custom loading skeletons, spinners, and trigger automatic fallback link retries when third-party embeds fail.
 
 ### 3. Smart In-Place Media Swapping (`.swap()`)
-- [ ] **Native In-Place Loading (Same Platform)**:
+- [x] **Native In-Place Loading (Same Platform)**:
   - When switching songs on the same platform (e.g. YouTube video A ➔ YouTube video B), invoke the provider's native in-place load API (e.g. `loadVideoById` / `widget.load`) without destroying and re-mounting iframe DOM nodes.
-- [ ] **Hot DOM Swapping (Cross-Platform)**:
+- [x] **Hot DOM Swapping (Cross-Platform)**:
   - When switching between different platforms (e.g. YouTube ➔ Niconico), seamlessly tear down the underlying iframe and mount the new provider into the same container while **preserving the parent `instanceId`, event listeners, and Fluent handle intact**.
 
 ### 4. Zero-Opinion Bare DOM Styling & Granular Exports
-- [ ] **Bare DOM Flexibility**:
-  - Ready2Use embeds pure, unopinionated iframes/elements without forced wrapper styling or hardcoded aspect ratios, granting host developers 100% styling autonomy.
-- [ ] **Subpath Exports & Granular Tree-Shaking**:
-  - Verify and guarantee clean subpath imports for single-provider consumption:
+- [x] **Bare DOM Flexibility**:
+  - Ready2Use embeds pure, unopinionated iframes/elements with `bare: true` option omitting inline dimensions, granting host developers 100% styling autonomy via CSS classes.
+- [x] **Subpath Exports & Granular Tree-Shaking**:
+  - Verified and guaranteed clean subpath imports for single-provider consumption:
     ```javascript
     import { youtube } from '@sremote/ready2use/youtube';
     ```

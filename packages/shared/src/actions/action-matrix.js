@@ -372,7 +372,6 @@ export const ACTION_MATRIX = {
   mute: {
     executeAdapter: async (targetAdapter, actionPayload) => {
       const isMuted = Boolean(actionPayload);
-      const prevVol = adapterPreviousVolumeMap.get(targetAdapter) || 1;
       if (isMuted) {
         let curVol = 1;
         if (typeof targetAdapter.getVolume === 'function') {
@@ -553,9 +552,7 @@ export const ACTION_MATRIX = {
       return { handled: false };
     },
     polyfill: null,
-    executeNative: async () => {
-      return { handled: false }; // Native media elements do not have standard setQuality API
-    },
+    executeNative: async () => ({ handled: false }), // Native media elements do not have standard setQuality API
     mediaSessionAction: null,
     eventsToEmit: null,
   },
@@ -569,9 +566,7 @@ export const ACTION_MATRIX = {
       return { handled: false };
     },
     polyfill: null,
-    executeNative: async () => {
-      return { handled: true, result: [] };
-    },
+    executeNative: async () => ({ handled: true, result: [] }),
     mediaSessionAction: null,
     eventsToEmit: null,
   },
@@ -649,9 +644,7 @@ export const ACTION_MATRIX = {
       return { handled: false };
     },
     polyfill: null,
-    executeNative: async () => {
-      return { handled: false };
-    },
+    executeNative: async () => ({ handled: false }),
     mediaSessionAction: null,
     eventsToEmit: null,
   },
@@ -686,9 +679,7 @@ export const ACTION_MATRIX = {
       return { handled: false };
     },
     polyfill: null,
-    executeNative: async () => {
-      return { handled: false };
-    },
+    executeNative: async () => ({ handled: false }),
     mediaSessionAction: 'nexttrack',
     eventsToEmit: null,
   },
@@ -702,10 +693,26 @@ export const ACTION_MATRIX = {
       return { handled: false };
     },
     polyfill: null,
-    executeNative: async () => {
-      return { handled: false };
-    },
+    executeNative: async () => ({ handled: false }),
     mediaSessionAction: 'previoustrack',
     eventsToEmit: null,
+  },
+
+  swap: {
+    executeAdapter: async (targetAdapter, actionPayload) => {
+      if (typeof targetAdapter.swap === 'function') {
+        const res = await targetAdapter.swap(actionPayload);
+        return { handled: true, result: res ?? true };
+      }
+      if (typeof targetAdapter.load === 'function') {
+        const res = await targetAdapter.load(actionPayload);
+        return { handled: true, result: res ?? true };
+      }
+      return { handled: false };
+    },
+    polyfill: null,
+    executeNative: async () => ({ handled: false }),
+    mediaSessionAction: null,
+    eventsToEmit: () => [{ event: 'provider:swapped' }],
   },
 };

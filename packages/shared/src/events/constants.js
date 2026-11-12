@@ -36,6 +36,10 @@ export const MEDIA_EVENTS = [
   'encrypted',
   'enterpictureinpicture',
   'exitpictureinpicture',
+  'provider:loading',
+  'provider:ready',
+  'provider:error',
+  'provider:swapped',
 ];
 
 /**
@@ -65,4 +69,4 @@ export const STATE_CHANGING_EVENTS = new Set(['play', 'pause', 'playing', 'ended
 /**
  * Standard action methods to intercept on adapters for programmatic tracking.
  */
-export const ACTION_METHODS = ['play', 'pause', 'toggle', 'stop', 'seekTo', 'seek', 'volume', 'mute', 'speed', 'playbackRate', 'repeat'];
+export const ACTION_METHODS = ['play', 'pause', 'toggle', 'stop', 'seekTo', 'seek', 'volume', 'mute', 'speed', 'playbackRate', 'repeat', 'swap'];

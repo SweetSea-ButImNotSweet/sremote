@@ -226,6 +226,10 @@ export class FluentGroupInstance {
     return this._enqueue('previous');
   }
 
+  swap(urlOrOptions) {
+    return this._enqueue('swap', urlOrOptions);
+  }
+
   /**
    * Subscribes to events across all instances currently in the group.
    * @param {string} event

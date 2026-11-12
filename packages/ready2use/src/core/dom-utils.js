@@ -8,13 +8,13 @@
  * @returns {HTMLElement|null}
  */
 export function resolveElement(target) {
-  if (typeof document === 'undefined') return null;
   if (!target) return null;
+  if (target?.nodeType === 1 || (typeof target === 'object' && target !== null && typeof target.appendChild === 'function')) {
+    return target;
+  }
+  if (typeof document === 'undefined') return null;
   if (typeof target === 'string') {
     return document.querySelector(target);
-  }
-  if (target?.nodeType === 1) {
-    return target;
   }
   return null;
 }

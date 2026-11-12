@@ -76,6 +76,7 @@ export interface PlayerRemoteControl extends PromiseLike<PlayerRemoteControl> {
   subtitle(track: string | null): this;
   shuffle(enable?: boolean): this;
   repeat(mode?: RepeatModeDTO): this;
+  swap(urlOrOptions: string | object): this;
 
   // Error boundary
   catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): this & Promise<any | TResult>;
@@ -124,6 +125,11 @@ export interface ProviderCreateResult<TPlayer = any> {
    * Destroys the player, cleans up DOM, and releases memory listeners.
    */
   destroy: () => void;
+
+  /**
+   * Seamlessly swaps media in-place or cross-platform while preserving instanceId.
+   */
+  swap: (urlOrOptions: string | object) => Promise<ProviderMountResult<any>>;
 }
 
 /**
@@ -131,7 +137,16 @@ export interface ProviderCreateResult<TPlayer = any> {
  */
 export interface ProviderMountResult<TPlayer = any> extends ProviderCreateResult<TPlayer> {}
 
-export declare function createRemoteProxy(adapter: SRemoteCustomAdapter, sremoteClient?: any, instanceId?: string): PlayerRemoteControl;
+export declare function create(urlOrOptions: string | object, options?: BaseProviderOptions): Promise<ProviderCreateResult>;
+export declare function mount(container: string | HTMLElement, urlOrOptions: string | object, options?: BaseProviderOptions): Promise<ProviderMountResult>;
+export declare function resolveProviderFromUrl(url: string, extraOptions?: object): { providerName: string; options: Record<string, any> } | null;
+export declare function isSupportedMediaUrl(url: string): boolean;
+export declare function getProvider(name: string): BaseProvider | null;
+export declare function hasProvider(name: string): boolean;
+export declare function registerProvider(name: string, provider: BaseProvider): void;
+export declare function listProviders(): string[];
+
+export declare function createRemoteProxy(adapter: SRemoteCustomAdapter, sremoteClient?: any, instanceId?: string, swapper?: any): PlayerRemoteControl;
 
 /**
  * Abstract BaseProvider class for creating provider implementations
