@@ -76,33 +76,64 @@ Version 4.0 is a milestone architectural overhaul that synchronizes developer er
 
 ---
 
-## 🎨 Version 4.1 — Tri-Dialect Event System & Next-Gen Ready2Use Overhaul
+## 📦 Version 4.1 — Next-Gen Ready2Use Architecture & Media Lifecycle
 
-Version 4.1 focuses on expressive developer experience, stylized playback events, and a complete architectural revamp of `@sremote/ready2use`.
+Version 4.1 focuses on a complete architectural revamp of `@sremote/ready2use`, introducing intelligent dynamic provider resolution, explicit lifecycle diagnostics, and seamless in-place media swapping.
 
-### 1. Next-Gen Ready2Use (Dynamic Factory, Lifecycle & Media Swapping)
-- [ ] **Smart URL Creator with Lazy Dynamic Imports (`ready2use.create(url)`)**:
-  - Universal media factory resolving URLs via pattern matching and dynamically loading only the matching provider (`() => import('./providers/youtube.js')`), preventing bundle bloat:
+### 1. Smart URL Creator with Lazy Dynamic Imports (`ready2use.create(url)`)
+- [ ] **Universal Media Factory**:
+  - Automatically resolves media URLs via regex pattern matching across all 22 supported platforms (YouTube, Bilibili, Niconico, SoundCloud, Vimeo, Spotify, Twitch, etc.):
     ```javascript
     const player = await ready2use.create('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '#box');
     await player.play().seek(15).volume(0.9);
     ```
-- [ ] **Comprehensive Provider Lifecycle Events**:
-  - Emit explicit lifecycle transitions: `provider:loading` ➔ `provider:ready` (or `provider:error` with detailed CDN/timeout diagnostics) allowing host apps to display custom loading skeletons or retry UI.
-- [ ] **Smart In-Place Media Swapping**:
-  - When playing a playlist in the same slot:
-    - If the platform remains the same and supports native track switching, invoke the provider's in-place load API (e.g. `loadVideoById`).
-    - If cross-platform or missing in-place APIs, automatically tear down the underlying player and remount the new platform DOM node while **preserving the parent `instanceId` and Fluent handle intact**.
-- [ ] **Zero-Opinion Bare DOM Styling**:
-  - Ready2Use embeds pure, unopinionated iframes without forced CSS containers or hardcoded aspect-ratio wrappers, granting developers 100% styling autonomy.
+- [ ] **Lazy Dynamic Imports**:
+  - Dynamically loads only the matching provider (`() => import('./providers/youtube.js')`) rather than bundling all 22 providers statically, cutting bundle sizes drastically for modern web apps.
+
+### 2. Comprehensive Provider Lifecycle Events
+- [ ] **Deterministic Lifecycle Transitions**:
+  - Explicit event transitions: `provider:loading` ➔ `provider:ready` (or `provider:error` with detailed CDN/network/timeout diagnostics).
+  - Enables host applications (e.g. PJSK Music Player) to display custom loading skeletons, spinners, and trigger automatic fallback link retries when third-party embeds fail.
+
+### 3. Smart In-Place Media Swapping (`.swap()`)
+- [ ] **Native In-Place Loading (Same Platform)**:
+  - When switching songs on the same platform (e.g. YouTube video A ➔ YouTube video B), invoke the provider's native in-place load API (e.g. `loadVideoById` / `widget.load`) without destroying and re-mounting iframe DOM nodes.
+- [ ] **Hot DOM Swapping (Cross-Platform)**:
+  - When switching between different platforms (e.g. YouTube ➔ Niconico), seamlessly tear down the underlying iframe and mount the new provider into the same container while **preserving the parent `instanceId`, event listeners, and Fluent handle intact**.
+
+### 4. Zero-Opinion Bare DOM Styling & Granular Exports
+- [ ] **Bare DOM Flexibility**:
+  - Ready2Use embeds pure, unopinionated iframes/elements without forced wrapper styling or hardcoded aspect ratios, granting host developers 100% styling autonomy.
 - [ ] **Subpath Exports & Granular Tree-Shaking**:
-  - Support granular imports for single-provider consumption:
+  - Verify and guarantee clean subpath imports for single-provider consumption:
     ```javascript
     import { youtube } from '@sremote/ready2use/youtube';
     ```
 
-### 2. Tri-Dialect Event System (HTML5, SRemote & Vivid BAD SQUAD Presets)
+---
 
+## 🎛️ Version 4.2 — Deep Media Inspection & Advanced Playback Capabilities
+
+Elevate SRemote's API coverage to 100% parity with HTML5 MediaElement specifications and professional web players:
+
+- [ ] **Multi-Segment Buffered & Seekable TimeRanges**:
+  - `bufferedRanges()`: Parse native `TimeRanges` into serializable segments `[{ start, end }]` allowing developers to render segmented buffer bars accurately on custom UI.
+  - `seekableRanges()`: Expose sliding seekable windows critical for dynamic time-shifting.
+- [ ] **Cross-Origin Fullscreen Orchestration**:
+  - `requestFullscreen(target)` / `exitFullscreen()` / `isFullscreen()` bypassing iframe sandbox restrictions (`allow="fullscreen"`).
+- [ ] **Deep Playback Diagnostics & Stall Sensing**:
+  - Expose `isBuffering`, `isStalled`, `readyState`, and `networkState` across all drivers.
+  - Detect browser Autoplay Policy rejection (`NotAllowedError`), enabling host applications to prompt users with a clean *"Click to unmute / play"* fallback banner.
+- [ ] **Video Frame Metrics & Dimension Sensing**:
+  - Dynamically read `videoWidth`, `videoHeight`, and computed `aspectRatio` directly from active video frames to allow responsive layout auto-fitting on the host page.
+
+---
+
+## 🎨 Version 4.3 — Tri-Dialect Event System & Live Stream Synchronization
+
+Version 4.3 introduces expressive developer dialects and continuous live media synchronization:
+
+### 1. Tri-Dialect Event System (HTML5, SRemote & Vivid BAD SQUAD Presets)
 - [ ] **Zero-Config Multi-Alias Dispatch**:
   - Support seamless event naming across classic HTML5, clear modern Semantic labels, and a stylized street-music **Vivid BAD SQUAD** dialect:
 
@@ -127,24 +158,11 @@ Version 4.1 focuses on expressive developer experience, stylized playback events
 - [ ] **Configurable Event Dialect**:
   - Configurable via `createSRemote({ eventDialect: 'html5' | 'sremote' | 'vivid' })`, defaulting to `'html5'` for standard HTML5 media compatibility.
 
----
-
-## 🎛️ Version 4.2 — Deep Media Inspection & Advanced Playback Capabilities
-
-Elevate SRemote's API coverage to 100% parity with HTML5 MediaElement specifications and professional web players:
-
-- [ ] **Multi-Segment Buffered & Seekable TimeRanges**:
-  - `bufferedRanges()`: Parse native `TimeRanges` into serializable segments `[{ start, end }]` allowing developers to render segmented buffer bars accurately on custom UI.
-  - `seekableRanges()`: Expose sliding seekable windows critical for Live Stream time-shifting (HLS / DASH).
-- [ ] **Cross-Origin Fullscreen Orchestration**:
-  - `requestFullscreen(target)` / `exitFullscreen()` / `isFullscreen()` bypassing iframe sandbox restrictions (`allow="fullscreen"`).
-- [ ] **Live Stream Detection & Live-Edge Catchup**:
-  - `isLive()` / `seekToLive()`: Automatically detect continuous streams (duration = `Infinity` or live stream signatures) and provide a one-click method to jump straight to the live edge.
-- [ ] **Deep Playback Diagnostics & Stall Sensing**:
-  - Expose `isBuffering`, `isStalled`, `readyState`, and `networkState` across all drivers.
-  - Detect browser Autoplay Policy rejection, enabling host applications to prompt users with a clean *"Click to unmute / play"* fallback banner.
-- [ ] **Video Frame Metrics & Dimension Sensing**:
-  - Dynamically read `videoWidth`, `videoHeight`, and computed `aspectRatio` directly from active video frames to allow responsive layout auto-fitting on the host page.
+### 2. Live Stream Detection & Live-Edge Catchup
+- [ ] **Continuous Stream Recognition (`isLive()`)**:
+  - Automatically detect continuous live streams (duration = `Infinity` or live stream signatures from YouTube, Twitch, etc.).
+- [ ] **Live-Edge Catchup (`seekToLive()`)**:
+  - Provide a one-click method to jump straight to the live edge buffer window.
 
 ---
 
