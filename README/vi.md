@@ -242,7 +242,7 @@ Nếu bạn được trang web chuyển hướng sang đây để cài Userscrip
 ## 📖 Tài liệu kỹ thuật & Tham khảo
 
 - 📘 **Tài liệu Kỹ thuật:** [SRemote Documentation](../docs/index.html)
-- 🍳 **Cookbook / Thư viện code mẫu:** [Recipes](../docs/recipes.html)
+- 🍳 **Cookbook / Thư viện code mẫu:** [Code Samples](../docs/code-samples.html)
 - 🎮 **Test Harness:** [Demo](../demo/index.html)
 
 ---

@@ -78,10 +78,7 @@ export function wrapAdapter(rawAdapter, options = {}) {
 
       const payloadObj = typeof payload === 'object' && payload !== null ? payload : { value: payload };
       const activeScope = getActiveActionScope();
-      const isProg =
-        payloadObj.isProgrammatic ??
-        payloadObj.programmatic ??
-        isProgrammatic({ eventName: ev, instanceId, value: payloadObj.value });
+      const isProg = payloadObj.isProgrammatic ?? payloadObj.programmatic ?? isProgrammatic({ eventName: ev, instanceId, value: payloadObj.value });
 
       const state = captureMediaSnapshot(adapter);
       const fullPayload = buildEventPayload(ev, {
@@ -180,12 +177,7 @@ export function wrapAdapter(rawAdapter, options = {}) {
             onEmit?.(evtName, forwarded);
           } catch {}
         },
-        {
-          instanceId,
-          source: 'adapter-dom-fallback',
-          events: allowedFallbackEvents,
-          excludedEvents: declaredHandledEvents,
-        },
+        { instanceId, source: 'adapter-dom-fallback', events: allowedFallbackEvents, excludedEvents: declaredHandledEvents },
       );
     }
   }

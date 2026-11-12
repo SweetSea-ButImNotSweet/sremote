@@ -11,12 +11,12 @@ SRemote bundles a dedicated **`sremote.debug`** namespace that allows developers
 ```javascript
 import { sremote } from '@sremote/sdk';
 
-// 1. Run the comprehensive test suite across all active connections:
-const testResults = await sremote.debug.runAllTests();
-console.table(testResults);
+// 1. Quickly scan all active iframes and media states across the page:
+const activeIframes = sremote.debug.scan();
+console.table(activeIframes);
 
 // 2. Dump complete internal states of handshakes, adapters, and instances:
-console.log(sremote.debug.dumpState());
+sremote.debug.dump();
 ```
 
 ---

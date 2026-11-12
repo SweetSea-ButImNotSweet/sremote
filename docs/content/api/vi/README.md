@@ -48,7 +48,7 @@ Các hàm điều khiển phát nhanh tác động lên instance đang active (h
 | **Tua tuyệt đối** | `seekTo(time, instanceId?, key?)` | Nhảy đến mốc thời gian cụ thể (giây) |
 | **Âm lượng** | `volume(vol, instanceId?, key?)` | Thiết lập âm lượng từ `0.0` đến `1.0` |
 | **Tắt / Bật tiếng** | `mute(muted?, instanceId?, key?)` | Bật/tắt mute hoặc đảo trạng thái |
-| **Tốc độ phát** | `speed(rate, instanceId?, key?)`<br>`rate(rate, instanceId?, key?)`<br>`playbackRate(rate, instanceId?, key?)` | Đổi tốc độ phát (0.25 - 4.0) |
+| **Tốc độ phát** | `speed(rate, targetOrId?, key?)` | Đổi tốc độ phát (0.25 - 4.0) |
 | **Tải nguồn phát mới** | `load(source, instanceId?, key?)` | Nạp nguồn/video mới (ID video, URL hoặc object cấu hình) |
 | **Độ phân giải / Quality** | `quality(level, instanceId?, key?)`<br>`getQualities(instanceId?, key?)` | Thiết lập hoặc lấy danh sách chất lượng video (`'1080p'`, `'720p'`, `'auto'`) |
 | **Phụ đề / Subtitle** | `subtitle(track, instanceId?, key?)`<br>`getSubtitles(instanceId?, key?)` | Bật/tắt phụ đề (`'vi'`, `'en'`, `null`) hoặc lấy danh sách subtitle tracks |
@@ -76,6 +76,7 @@ Các hàm điều khiển phát nhanh tác động lên instance đang active (h
 | **Chế độ độc quyền** | `instances.setExclusive(mode, key?)` | Thiết lập phát độc quyền (`'auto'` / `instanceId` / `null`) |
 | **Quét chủ động GM** | `instances.query(key?)` | Kích hoạt quét tìm các frame đang phát ngầm qua GM Storage |
 | **Ghi chú Instance** | `instances.note(dict, key?)` | Đặt nhãn/ghi chú gợi nhớ cho các instance |
+| **Xóa Instance** | `instances.remove(instanceId, key?)` | Xóa và giải phóng instance khỏi hệ thống SRemote |
 
 ---
 
@@ -83,7 +84,6 @@ Các hàm điều khiển phát nhanh tác động lên instance đang active (h
 
 | Hàm API | Cú pháp | Mô tả |
 | :--- | :--- | :--- |
-| **Tạo Universal Adapter** | `createUniversalAdapter(options)` | Tạo adapter chuẩn hóa để bọc bất kỳ trình phát tùy biến nào của trang |
 | **Đăng ký Adapter** | `adapters.register(adapter, instanceId?, key?)` | Đăng ký một custom adapter cho player nhúng đặc thù (YouTube, SoundCloud, Spotify, Vimeo...) |
 | **Hủy Adapter** | `adapters.unregister(instanceId?, key?)` | Gỡ bỏ adapter đã đăng ký khỏi hệ thống |
 | **Lấy Adapter** | `adapters.get(instanceId?, key?)` | Lấy đối tượng adapter đang hoạt động |

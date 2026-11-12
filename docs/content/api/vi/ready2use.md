@@ -143,28 +143,27 @@ interface ProviderMountResult {
 
 ---
 
-## 5. Trình điều khiển độc lập (`PlayerRemoteControl`)
+## 5. Trình điều khiển Fluent độc lập (`remote` / `FluentRemoteProxy`)
 
-Đối tượng `remote` trả về từ `mount()` và `create()` cho phép bạn trực tiếp điều khiển player theo phong cách hướng đối tượng mà không cần truyền `instanceId`:
+Đối tượng `remote` trả về từ `mount()` và `create()` hỗ trợ cú pháp Fluent chaining chuẩn Clean API của SRemote, cho phép bạn gọi chuỗi async mượt mà mà không cần truyền `instanceId`:
 
-| Phương thức | Cú pháp | Mô tả |
+| Phương thức / Thuộc tính | Cú pháp | Mô tả |
 | :--- | :--- | :--- |
-| `play()` | `remote.play(): Promise<any>` | Bắt đầu phát media. |
-| `pause()` | `remote.pause(): Promise<any>` | Tạm dừng media. |
-| `toggle()` | `remote.toggle(): Promise<any>` | Đảo trạng thái phát / tạm dừng. |
-| `stop()` | `remote.stop(): Promise<any>` | Dừng phát và đưa currentTime về 0. |
-| `seek()` | `remote.seek(seconds: number): Promise<any>` | Tua tương đối tiến (+) hoặc lùi (-). |
-| `seekTo()` | `remote.seekTo(seconds: number): Promise<any>` | Tua trực tiếp đến mốc thời gian (giây). |
-| `setVolume()` | `remote.setVolume(volume: number): Promise<any>` | Đặt âm lượng (`0.0` đến `1.0`). |
-| `getVolume()` | `remote.getVolume(): Promise<number>` | Lấy mức âm lượng hiện tại. |
-| `setMuted()` | `remote.setMuted(muted: boolean): Promise<any>` | Bật hoặc tắt tiếng. |
-| `isMuted()` | `remote.isMuted(): Promise<boolean>` | Kiểm tra trạng thái tắt tiếng. |
-| `setPlaybackRate()` | `remote.setPlaybackRate(rate: number): Promise<any>` | Thay đổi tốc độ phát. |
-| `getPlaybackRate()` | `remote.getPlaybackRate(): Promise<number>` | Lấy tốc độ phát hiện tại. |
-| `next()` | `remote.next(): Promise<any>` | Chuyển sang bài tiếp theo trong danh sách. |
-| `previous()` | `remote.previous(): Promise<any>` | Quay lại bài trước đó trong danh sách. |
-| `load()` | `remote.load(source: any): Promise<any>` | Tải bài hát, video ID hoặc nguồn mới. |
-| `getState()` | `remote.getState(): Promise<Record<string, any>>` | Lấy snapshot trạng thái phát hiện tại của player. |
+| `play()` | `remote.play()` | Bắt đầu phát media. |
+| `pause()` | `remote.pause()` | Tạm dừng media. |
+| `toggle()` | `remote.toggle()` | Đảo trạng thái phát / tạm dừng. |
+| `stop()` | `remote.stop()` | Dừng phát và đưa currentTime về 0. |
+| `seek()` | `remote.seek(seconds)` | Tua tương đối tiến (+) hoặc lùi (-). |
+| `seekTo()` | `remote.seekTo(seconds)` | Tua trực tiếp đến mốc thời gian (giây). |
+| `volume()` | `remote.volume(val)` | Đặt âm lượng (`0.0` đến `1.0`). |
+| `mute()` | `remote.mute(muted?)` | Bật hoặc tắt tiếng. |
+| `speed()` | `remote.speed(rate)` | Thay đổi tốc độ phát. |
+| `swap()` | `remote.swap(urlOrOptions)` | Đổi nguồn/URL media in-place mà không làm mất instanceId hay event listener. |
+| `tap()` | `remote.tap(state => ...)` | Đọc snapshot trạng thái giữa chừng trong chuỗi lệnh fluent. |
+| `state` | `remote.state` | Getter đồng bộ đọc tức thì snapshot trạng thái (`currentTime`, `paused`, `volume`...). |
+| `next()` | `remote.next()` | Chuyển sang bài tiếp theo trong danh sách. |
+| `previous()` | `remote.previous()` | Quay lại bài trước đó trong danh sách. |
+| `load()` | `remote.load(source)` | Tải bài hát, video ID hoặc nguồn mới. |
 
 ---
 
@@ -172,7 +171,7 @@ interface ProviderMountResult {
 
 Toàn bộ adapter của `@sremote/ready2use` được chuẩn hóa theo mô hình `HTML5MediaElement`:
 
-- **Playback**: `play()`, `pause()`, `toggle()`
+- **Playback**: `play()`, `pause()`, `toggle()`, `stop()`
 - **Vị trí & Tua (Seeking)**:
   - `getCurrentTime()`: Lấy vị trí thời gian hiện tại (giây).
   - `setCurrentTime(seconds)`: Phương thức cốt lõi đặt vị trí phát tuyệt đối (chuẩn HTML5).
@@ -184,24 +183,27 @@ Toàn bộ adapter của `@sremote/ready2use` được chuẩn hóa theo mô hì
 
 ---
 
-## 7. Bộ tiện ích `Polyfills`
+## 7. Smart URL Creator & Provider Registry (v4.1+)
 
-`@sremote/ready2use` xuất khẩu đối tượng `Polyfills` giúp việc xây dựng các adapter tùy biến trở nên dễ dàng và nhất quán:
+`@sremote/ready2use` cung cấp bộ nhận diện URL thông minh giúp tự động chọn đúng provider mà không cần gọi từng đối tượng thủ công:
 
+### A. Tự động nhận diện URL với `ready2use.create` & `ready2use.mount`
 ```javascript
-import { Polyfills } from '@sremote/ready2use';
+import * as ready2use from '@sremote/ready2use';
 
-const { setCurrentTime, seekTo, seek, toggle, Volume } = Polyfills;
+// Nhúng trực tiếp từ bất kỳ URL nào của 22 nền tảng:
+const player = await ready2use.mount('#player-box', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+await player.remote.play().seek(15).volume(0.9);
+
+// Đổi sang bài hát khác trên cùng nền tảng hoặc nền tảng khác:
+await player.remote.swap('https://soundcloud.com/artist/track-name');
 ```
 
-- **`setCurrentTime(adapter, nativeSeekFn)`**: Gắn phương thức đặt thời gian tuyệt đối và đồng bộ trạng thái.
-- **`seekTo(adapter)`**: Tự động gán alias `adapter.seekTo` trỏ đến `adapter.setCurrentTime`.
-- **`seek(adapter)`**: Cung cấp hàm tua tương đối dựa trên `adapter.getCurrentTime()`.
-- **`toggle(adapter)`**: Tự động phát/dừng dựa trên trạng thái `isPaused()`.
-- **Class `Volume`**: Quản lý volume tập trung:
-  - Chuẩn hóa khoảng giá trị `[0..1]`.
-  - Hỗ trợ lưu trữ trạng thái trước khi mute để khôi phục khi unmute.
-  - Cung cấp hook callback `onVolumeChange(vol)` và `onMuteChange(muted)` để đồng bộ với SDK gốc.
+### B. Tra cứu và quản lý Provider
+- `ready2use.getProvider(name)`: Lấy provider theo tên định danh (`'youtube'`, `'spotify'`).
+- `ready2use.registerProvider(name, provider)`: Đăng ký một custom provider mới vào hệ thống.
+- `ready2use.listProviders()`: Liệt kê danh sách toàn bộ các provider hiện có.
+- `ready2use.resolveProviderFromUrl(url)`: Phân tích URL và trả về metadata provider phù hợp.
 
 ---
 
@@ -210,14 +212,14 @@ const { setCurrentTime, seekTo, seek, toggle, Volume } = Polyfills;
 Nếu bạn muốn tạo một provider đóng gói sẵn mới cho một player chuyên biệt hoặc private player nội bộ:
 
 > [!TIP]
-> **So sánh `BaseProvider` và `sremote.adapters.set`:**
-> - Dùng **`sremote.adapters.set()`**: Khi bạn đã có sẵn thẻ iframe trên trang và chỉ cần viết một adapter object để điều khiển.
+> **So sánh `BaseProvider` và `sremote.adapters.register`:**
+> - Dùng **`sremote.adapters.register()`**: Khi bạn đã có sẵn thẻ iframe trên trang và chỉ cần viết một adapter object để điều khiển.
 > - Kế thừa **`BaseProvider`**: Khi bạn muốn tạo một package hoặc module tái sử dụng, tự động tải SDK của bên thứ 3, tự sinh thẻ iframe, cung cấp cả `create()` lẫn `mount()`, và tích hợp sẵn `remote` controller cùng quản lý vòng đời `destroy()`.
 
 ### Mẫu triển khai Provider mở rộng:
 
 ```javascript
-import { BaseProvider, Polyfills } from '@sremote/ready2use';
+import { BaseProvider } from '@sremote/ready2use';
 
 export class MyCustomVideoProvider extends BaseProvider {
   constructor() {
@@ -252,34 +254,38 @@ export class MyCustomVideoProvider extends BaseProvider {
 
   // 3. Ánh xạ thành SRemote Custom Adapter theo chuẩn HTML5
   createAdapter(player, context) {
-    const volume = new Polyfills.Volume({
-      onVolumeChange: (vol) => player.setVolume(vol * 100),
-      onMuteChange: (muted) => player.setMuted(muted)
-    });
+    let currentVolume = 1;
+    let isMuted = false;
 
     const adapter = {
       play: () => player.play(),
       pause: () => player.pause(),
       getCurrentTime: () => player.currentTime || 0,
+      setCurrentTime: (sec) => player.seek(sec),
+      seekTo: (sec) => player.seek(sec),
+      seek: (delta) => player.seek((player.currentTime || 0) + delta),
       getDuration: () => player.duration || 0,
       isPaused: () => player.isPaused(),
-      getVolume: () => volume.getVolume(),
-      setVolume: (vol) => volume.setVolume(vol),
-      getMuted: () => volume.getMuted(),
-      setMuted: (muted) => volume.setMuted(muted),
+      getVolume: () => currentVolume,
+      setVolume: (vol) => {
+        currentVolume = vol;
+        player.setVolume(vol * 100);
+      },
+      getMuted: () => isMuted,
+      setMuted: (muted) => {
+        isMuted = muted;
+        player.setMuted(muted);
+      },
+      toggle: () => (player.isPaused() ? player.play() : player.pause()),
       load: (source) => player.load(source),
       getState: () => ({
         paused: player.isPaused(),
         currentTime: player.currentTime || 0,
-        duration: player.duration || 0
+        duration: player.duration || 0,
+        volume: currentVolume,
+        muted: isMuted
       })
     };
-
-    // Gắn các tiện ích chuẩn HTML5
-    Polyfills.setCurrentTime(adapter, (sec) => player.seek(sec));
-    Polyfills.seekTo(adapter);
-    Polyfills.seek(adapter);
-    Polyfills.toggle(adapter);
 
     // Lắng nghe event từ SDK gốc của Player và phát signal sự kiện
     if (player && typeof player.on === 'function') {

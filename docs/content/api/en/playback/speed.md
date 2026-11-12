@@ -1,11 +1,10 @@
-# sremote.speed / sremote.rate
+# sremote.speed
 
-Sets the playback rate (speed) of the media inside the target iframe or adapter.
+Sets the playback speed of the media inside the target iframe or adapter.
 
 ## Signatures
 - `sremote.speed(rate, targetOrId?, key?)`
-- `sremote.rate(rate, targetOrId?, key?)` *(Alias)*
-- `sremote.playbackRate(rate, targetOrId?, key?)` *(Alias)*
+- `sremote(target).speed(rate)` *(Fluent Instance)*
 
 ## Parameters
 | Parameter | Type | Default | Description |
@@ -22,6 +21,6 @@ Returns a Promise resolving to a command result object indicating success or fai
 // Set speed to 1.5x on current active player
 await sremote.speed(1.5);
 
-// Set speed on a specific instance
-await sremote.speed(2.0, 'iframe-youtube');
+// Fluent chaining on a specific instance
+await sremote('#iframe-youtube').speed(2.0).play();
 ```

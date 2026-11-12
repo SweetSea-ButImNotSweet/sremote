@@ -48,7 +48,7 @@ Target the active instance or a specifically designated `instanceId`:
 | **Absolute Seek** | `seekTo(time, instanceId?, key?)` | Jumps to a specific timestamp in seconds |
 | **Volume** | `volume(vol, instanceId?, key?)` | Sets volume level from `0.0` to `1.0` |
 | **Mute / Unmute** | `mute(muted?, instanceId?, key?)` | Sets or toggles muted state |
-| **Playback Rate** | `speed(rate, instanceId?, key?)`<br>`rate(rate, instanceId?, key?)`<br>`playbackRate(rate, instanceId?, key?)` | Changes playback speed (0.25 - 4.0) |
+| **Playback Rate** | `speed(rate, targetOrId?, key?)` | Changes playback speed (0.25 - 4.0) |
 | **Load New Source** | `load(source, instanceId?, key?)` | Loads a new media source (Video ID, URL string, or config object) |
 | **Quality / Resolution** | `quality(level, instanceId?, key?)`<br>`getQualities(instanceId?, key?)` | Sets or retrieves available video resolution qualities (`'1080p'`, `'720p'`, `'auto'`) |
 | **Subtitle / Captions** | `subtitle(track, instanceId?, key?)`<br>`getSubtitles(instanceId?, key?)` | Sets or disables subtitle (`'vi'`, `'en'`, `null`) or retrieves available subtitle tracks |
@@ -76,6 +76,7 @@ Target the active instance or a specifically designated `instanceId`:
 | **Exclusive Mode** | `instances.setExclusive(mode, key?)` | Sets playback exclusivity (`'auto'`, `instanceId`, or `null`) |
 | **Active GM Query** | `instances.query(key?)` | Proactively discovers background frames via GM storage |
 | **Annotate Instance**| `instances.note(dict, key?)` | Assigns semantic labels/notes to instances |
+| **Remove Instance** | `instances.remove(instanceId, key?)` | Removes and cleans up an instance from SRemote |
 
 ---
 
@@ -83,7 +84,6 @@ Target the active instance or a specifically designated `instanceId`:
 
 | API Method | Signature | Description |
 | :--- | :--- | :--- |
-| **Create Universal Adapter** | `createUniversalAdapter(options)` | Creates a standardized adapter to wrap any in-page custom player |
 | **Register Adapter** | `adapters.register(adapter, instanceId?, key?)` | Registers a custom adapter for proprietary embeds |
 | **Unregister Adapter**| `adapters.unregister(instanceId?, key?)` | Removes a registered custom adapter |
 | **Get Adapter** | `adapters.get(instanceId?, key?)` | Retrieves an active custom adapter instance |

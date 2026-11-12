@@ -11,12 +11,12 @@ SRemote tích hợp sẵn một namespace **`sremote.debug`** cho phép bạn ki
 ```javascript
 import { sremote } from '@sremote/sdk';
 
-// 1. Chạy bộ kiểm thử tự động toàn diện trên tất cả các kết nối:
-const testResults = await sremote.debug.runAllTests();
-console.table(testResults);
+// 1. Quét nhanh toàn bộ iframe và trạng thái media trên trang:
+const activeIframes = sremote.debug.scan();
+console.table(activeIframes);
 
-// 2. Xuất toàn bộ trạng thái handshake, adapter và instance:
-console.log(sremote.debug.dumpState());
+// 2. Xuất toàn bộ trạng thái handshake, adapter và instance ra console:
+sremote.debug.dump();
 ```
 
 ---

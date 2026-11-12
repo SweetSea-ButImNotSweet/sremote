@@ -15,7 +15,7 @@ A client-side library for controlling embedded media players via [SRemote](https
 ## 📖 Documentation & Links
 
 - 📘 **Technical Documentation:** [API Guide](https://github.com/SweetSea-ButImNotSweet/sremote/blob/main/README.md)
-- 🍳 **Cookbook / Embed Recipes:** [Recipes](https://sweetsea-butimnotsweet.github.io/sremote/docs/recipes.html)
+- 🍳 **Cookbook / Embed Recipes:** [Code Samples](https://sweetsea-butimnotsweet.github.io/sremote/docs/code-samples.html)
 - 🎮 **Developer Test Harness:** [Live Demo](https://sweetsea-butimnotsweet.github.io/sremote/demo/index.html)
 
 ---
@@ -142,12 +142,12 @@ if (!remote.isUserscriptAvailable()) {
 | :--- | :--- |
 | **Lifecycle & Status** | `.ready()`, `.isUserscriptAvailable()`, `.status(id?)`, `.list()` |
 | **Playback Controls** | `.play(id?)`, `.pause(id?)`, `.toggle(id?)`, `.stop(id?)` |
-| **Track & Audio** | `.seek(offset, id?)`, `.seekTo(time, id?)`, `.volume(val, id?)`, `.mute(state?, id?)`, `.playbackRate(speed, id?)` |
-| **Adapters & Custom Drivers** | `.adapters.set(adapter, id?)`, `.getCustomAdapter(id?)`, `.removeAdapter(id?)` |
+| **Track & Audio** | `.seek(offset, id?)`, `.seekTo(time, id?)`, `.volume(val, id?)`, `.mute(state?, id?)`, `.speed(rate, id?)` |
+| **Adapters & Custom Drivers** | `.adapters.register(adapter, id?)`, `.adapters.get(id?)`, `.adapters.unregister(id?)` |
 | **Events** | `.on(event, handler)`, `.off(event, handler)` |
 
 > 📖 **Full API Reference & TypeScript Definitions:**  
-> For detailed parameters, return types, payload schemas, and advanced configuration options, see the [SRemote Technical Documentation](../../docs/content/api/en/README.md) or explore the [Cookbook Recipes](https://sweetsea-butimnotsweet.github.io/sremote/docs/recipes.html).
+> For detailed parameters, return types, payload schemas, and advanced configuration options, see the [SRemote Technical Documentation](../../docs/content/api/en/README.md) or explore the [Cookbook Recipes](https://sweetsea-butimnotsweet.github.io/sremote/docs/code-samples.html).
 
 ---
 

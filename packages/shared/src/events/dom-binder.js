@@ -16,13 +16,7 @@ export function bindDomMedia(media, onEvent, options = {}) {
     return () => {};
   }
 
-  const {
-    instanceId = 'dom-media',
-    source = 'dom',
-    treatAlmostEndAsEnd = false,
-    events = MEDIA_EVENTS,
-    excludedEvents = null,
-  } = options;
+  const { instanceId = 'dom-media', source = 'dom', treatAlmostEndAsEnd = false, events = MEDIA_EVENTS, excludedEvents = null } = options;
 
   const excludedSet = excludedEvents ? (excludedEvents instanceof Set ? excludedEvents : new Set(Array.from(excludedEvents).map(e => String(e).toLowerCase()))) : null;
   const targetEvents = excludedSet?.size > 0 ? events.filter(evt => !excludedSet.has(evt.toLowerCase())) : events;

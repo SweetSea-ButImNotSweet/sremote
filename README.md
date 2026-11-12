@@ -242,7 +242,7 @@ If a website redirected you here to install the SRemote Userscript:
 ## 📖 Documentation & Links
 
 - 📘 **Technical Documentation:** [SRemote Documentation](docs/index.html)
-- 🍳 **Cookbook / Embed Recipes:** [Recipes](docs/recipes.html)
+- 🍳 **Cookbook / Embed Recipes:** [Code Samples](docs/code-samples.html)
 - 🎮 **Developer Test Harness:** [Live Demo](demo/index.html)
 
 ---

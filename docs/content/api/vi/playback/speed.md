@@ -1,11 +1,10 @@
-# sremote.speed / sremote.rate
+# sremote.speed
 
 Thay đổi tốc độ phát của media bên trong iframe hoặc adapter đích.
 
 ## Cú pháp
 - `sremote.speed(rate, targetOrId?, key?)`
-- `sremote.rate(rate, targetOrId?, key?)` *(Alias)*
-- `sremote.playbackRate(rate, targetOrId?, key?)` *(Alias)*
+- `sremote(target).speed(rate)` *(Fluent Instance)*
 
 ## Tham số
 | Tham số | Kiểu dữ liệu | Mặc định | Mô tả |
@@ -22,6 +21,6 @@ Trả về một Promise chứa kết quả thực thi lệnh (`success: true/fa
 // Đặt tốc độ 1.5x cho player đang active
 await sremote.speed(1.5);
 
-// Đặt tốc độ 2.0x cho một instance cụ thể
-await sremote.speed(2.0, 'iframe-youtube');
+// Fluent chaining trên instance cụ thể
+await sremote('#iframe-youtube').speed(2.0).play();
 ```

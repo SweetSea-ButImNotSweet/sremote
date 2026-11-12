@@ -143,28 +143,27 @@ interface ProviderMountResult {
 
 ---
 
-## 5. Standalone Remote Controller (`PlayerRemoteControl`)
+## 5. Standalone Fluent Remote Controller (`remote` / `FluentRemoteProxy`)
 
-The `remote` object returned by `mount()` and `create()` gives you direct programmatic control over the player instance without needing to reference the `instanceId`:
+The `remote` object returned by `mount()` and `create()` supports SRemote's Clean Fluent API chaining, enabling seamless asynchronous invocation without passing an `instanceId`:
 
-| Method | Signature | Description |
+| Method / Property | Signature | Description |
 | :--- | :--- | :--- |
-| `play()` | `remote.play(): Promise<any>` | Requests playback to start. |
-| `pause()` | `remote.pause(): Promise<any>` | Pauses media playback. |
-| `toggle()` | `remote.toggle(): Promise<any>` | Toggles between play and pause. |
-| `stop()` | `remote.stop(): Promise<any>` | Stops playback and resets currentTime to 0. |
-| `seek()` | `remote.seek(seconds: number): Promise<any>` | Relative seek forward (+) or backward (-). |
-| `seekTo()` | `remote.seekTo(seconds: number): Promise<any>` | Absolute seek to a timestamp in seconds. |
-| `setVolume()` | `remote.setVolume(volume: number): Promise<any>` | Sets volume level (`0.0` to `1.0`). |
-| `getVolume()` | `remote.getVolume(): Promise<number>` | Retrieves current volume level. |
-| `setMuted()` | `remote.setMuted(muted: boolean): Promise<any>` | Sets or toggles mute state. |
-| `isMuted()` | `remote.isMuted(): Promise<boolean>` | Checks if player is muted. |
-| `setPlaybackRate()` | `remote.setPlaybackRate(rate: number): Promise<any>` | Changes playback speed. |
-| `getPlaybackRate()` | `remote.getPlaybackRate(): Promise<number>` | Retrieves current playback speed. |
-| `next()` | `remote.next(): Promise<any>` | Skips to next track/video (if supported). |
-| `previous()` | `remote.previous(): Promise<any>` | Jumps to previous track/video (if supported). |
-| `load()` | `remote.load(source: any): Promise<any>` | Loads a new track, video ID, or source. |
-| `getState()` | `remote.getState(): Promise<Record<string, any>>` | Retrieves the current player playback state. |
+| `play()` | `remote.play()` | Starts media playback. |
+| `pause()` | `remote.pause()` | Pauses media playback. |
+| `toggle()` | `remote.toggle()` | Toggles between play and pause. |
+| `stop()` | `remote.stop()` | Stops playback and resets currentTime to 0. |
+| `seek()` | `remote.seek(seconds)` | Relative seek forward (+) or backward (-). |
+| `seekTo()` | `remote.seekTo(seconds)` | Direct seek to absolute timestamp (seconds). |
+| `volume()` | `remote.volume(val)` | Sets volume level (`0.0` to `1.0`). |
+| `mute()` | `remote.mute(muted?)` | Sets or toggles mute state. |
+| `speed()` | `remote.speed(rate)` | Changes playback speed. |
+| `swap()` | `remote.swap(urlOrOptions)` | Swaps media source/URL in-place while preserving instance ID and listeners. |
+| `tap()` | `remote.tap(state => ...)` | Inspects state snapshot midway through a fluent chain. |
+| `state` | `remote.state` | Synchronous getter for instant playback state snapshot. |
+| `next()` | `remote.next()` | Advances to next track/video in playlist. |
+| `previous()` | `remote.previous()` | Returns to previous track/video in playlist. |
+| `load()` | `remote.load(source)` | Loads a new track, video ID, or source. |
 
 ---
 
@@ -172,7 +171,7 @@ The `remote` object returned by `mount()` and `create()` gives you direct progra
 
 All adapters built in `@sremote/ready2use` adhere to the `HTML5MediaElement` standard:
 
-- **Playback**: `play()`, `pause()`, `toggle()`
+- **Playback**: `play()`, `pause()`, `toggle()`, `stop()`
 - **Position & Seeking**:
   - `getCurrentTime()`: Retrieves current playback position (seconds).
   - `setCurrentTime(seconds)`: Core HTML5 method to set absolute playback position.
@@ -184,31 +183,34 @@ All adapters built in `@sremote/ready2use` adhere to the `HTML5MediaElement` sta
 
 ---
 
-## 7. Polyfill Utilities (`Polyfills`)
+## 7. Smart URL Creator & Provider Registry (v4.1+)
 
-`@sremote/ready2use` exports helper functions and classes to streamline custom adapter development:
+`@sremote/ready2use` features intelligent URL resolution that automatically resolves and mounts the right provider without manual instantiation:
 
+### A. Universal URL Resolution with `ready2use.create` & `ready2use.mount`
 ```javascript
-import { Polyfills } from '@sremote/ready2use';
+import * as ready2use from '@sremote/ready2use';
 
-const { setCurrentTime, seekTo, seek, toggle, Volume } = Polyfills;
+// Mount directly from any supported URL across 22 platforms:
+const player = await ready2use.mount('#player-box', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+await player.remote.play().seek(15).volume(0.9);
+
+// Seamlessly swap to another media source:
+await player.remote.swap('https://soundcloud.com/artist/track-name');
 ```
 
-- **`setCurrentTime(adapter, nativeSeekFn)`**: Attaches absolute seek logic and synchronizes playback state.
-- **`seekTo(adapter)`**: Automatically attaches `adapter.seekTo` alias to `adapter.setCurrentTime`.
-- **`seek(adapter)`**: Provides relative seeking based on `adapter.getCurrentTime()`.
-- **`toggle(adapter)`**: Toggles play/pause based on `adapter.isPaused()`.
-- **Class `Volume`**: Centralized volume manager:
-  - Normalizes volume levels between `[0..1]`.
-  - Caches pre-mute volumes and handles toggle mute/unmute cleanly.
-  - Exposes `onVolumeChange(vol)` and `onMuteChange(muted)` hooks to sync with native SDKs.
+### B. Provider Registry & Introspection
+- `ready2use.getProvider(name)`: Retrieves a provider instance by name (`'youtube'`, `'spotify'`).
+- `ready2use.registerProvider(name, provider)`: Registers a custom provider into the central registry.
+- `ready2use.listProviders()`: Lists all registered provider names.
+- `ready2use.resolveProviderFromUrl(url)`: Analyzes a URL and returns matched provider metadata.
 
 ---
 
 ## 8. Creating a Custom Provider with `BaseProvider`
 
 ```javascript
-import { BaseProvider, Polyfills } from '@sremote/ready2use';
+import { BaseProvider } from '@sremote/ready2use';
 
 export class MyCustomVideoProvider extends BaseProvider {
   constructor() {
@@ -243,34 +245,38 @@ export class MyCustomVideoProvider extends BaseProvider {
 
   // 3. Map to HTML5 Media Element compliant SRemote Adapter
   createAdapter(player, context) {
-    const volume = new Polyfills.Volume({
-      onVolumeChange: (vol) => player.setVolume(vol * 100),
-      onMuteChange: (muted) => player.setMuted(muted)
-    });
+    let currentVolume = 1;
+    let isMuted = false;
 
     const adapter = {
       play: () => player.play(),
       pause: () => player.pause(),
       getCurrentTime: () => player.currentTime || 0,
+      setCurrentTime: (sec) => player.seek(sec),
+      seekTo: (sec) => player.seek(sec),
+      seek: (delta) => player.seek((player.currentTime || 0) + delta),
       getDuration: () => player.duration || 0,
       isPaused: () => player.isPaused(),
-      getVolume: () => volume.getVolume(),
-      setVolume: (vol) => volume.setVolume(vol),
-      getMuted: () => volume.getMuted(),
-      setMuted: (muted) => volume.setMuted(muted),
+      getVolume: () => currentVolume,
+      setVolume: (vol) => {
+        currentVolume = vol;
+        player.setVolume(vol * 100);
+      },
+      getMuted: () => isMuted,
+      setMuted: (muted) => {
+        isMuted = muted;
+        player.setMuted(muted);
+      },
+      toggle: () => (player.isPaused() ? player.play() : player.pause()),
       load: (source) => player.load(source),
       getState: () => ({
         paused: player.isPaused(),
         currentTime: player.currentTime || 0,
-        duration: player.duration || 0
+        duration: player.duration || 0,
+        volume: currentVolume,
+        muted: isMuted
       })
     };
-
-    // Attach standard HTML5 utilities
-    Polyfills.setCurrentTime(adapter, (sec) => player.seek(sec));
-    Polyfills.seekTo(adapter);
-    Polyfills.seek(adapter);
-    Polyfills.toggle(adapter);
 
     // Listen to native player events and emit SRemote signals
     if (player && typeof player.on === 'function') {
