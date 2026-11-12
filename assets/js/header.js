@@ -155,7 +155,7 @@
       }
 
       const path = window.location.pathname.replace(/\\/g, '/');
-      if (path.endsWith('/demo/') || path.endsWith('/demo/index.html')) return 'demo';
+      if (path.includes('/demo/') || path.includes('sdkless-sandbox')) return 'demo';
       if (path.includes('code-samples.html') || path.includes('recipes.html')) return 'code-samples';
       if (path.includes('/docs/api.html')) return 'api';
       if (path.includes('/docs/')) return 'docs';
@@ -172,7 +172,7 @@
       const docsHref = `${base}docs/index.html`;
       const apiHref = `${base}docs/api.html`;
       const codeSamplesHref = `${base}docs/code-samples.html`;
-      const demoHref = `${base}demo/index.html`;
+      const demoHref = `${base}demo/sdkless-sandbox/index.html`;
       const changelogHref = `${base}changelog.html`;
 
       this.innerHTML = `

@@ -6,8 +6,6 @@
         "assets/js/header.js",
         "demo/sdkless-sandbox/script.js",
         "demo/sdkless-sandbox/i18n.js",
-        "demo/apps/*/app.js",
-        "demo/apps/common.js",
         "docs/assets/js/docs-viewer.js",
         "docs/assets/js/recipes-data.js",
         "docs/assets/js/recipes-runtime.js",
