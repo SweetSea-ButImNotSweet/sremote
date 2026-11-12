@@ -67,35 +67,45 @@ sremote.on('timeupdate', ({ instanceId, state }) => {
   console.log(`[${instanceId}] Vị trí hiện tại: ${state.currentTime}s / ${state.duration}s`);
 });
 
-// 3. Gửi tín hiệu bắt tay tìm kiếm sau khi DOM đã tải xong
-document.addEventListener('DOMContentLoaded', () => {
-  sremote.hello();
-});
+// 3. Khởi động kết nối: ready() tự động gửi tín hiệu bắt tay hello ngầm
+await sremote.ready();
+
+// 4. Điều khiển trực tiếp iframe xuyên domain bằng Fluent API (SRemote 4.0):
+await sremote('#cross-origin-frame').play().seek(15).volume(0.8);
 ```
 
 ---
 
 ## 4. Bước 3: Xử lý UX khi người dùng chưa cài Userscript
 
-Nếu người dùng truy cập trang mà chưa cài Userscript, SRemote SDK sẽ nhận biết và kích hoạt chế độ `'unsupported'` đối với các iframe cross-origin.
-
-Bạn có thể hiển thị một Modal hướng dẫn cài đặt cực kỳ thân thiện chỉ với 1 dòng lệnh:
+Đối với các thẻ iframe cross-origin không có sẵn SDK nội bộ, trang cha bắt buộc cần cầu nối Userscript để giao tiếp. Khi người dùng truy cập trang mà chưa cài script, bạn có thể kiểm tra và hiển thị ngay một Modal hướng dẫn cài đặt trực quan:
 
 ```javascript
-import { sremote, showInstallModal } from '@sremote/sdk';
+import { sremote } from '@sremote/sdk';
 
 await sremote.ready();
 
-if (sremote.mode === 'unsupported') {
-  // Hiển thị modal hướng dẫn người dùng cài đặt extension chỉ với 1 cú click
-  showInstallModal({
-    lang: 'vi', // 'vi' hoặc 'en'
-    onDismiss: () => console.log('Người dùng đã đóng modal')
+// Kiểm tra xem cầu nối Userscript có khả dụng hay không:
+if (!sremote.isUserscriptAvailable()) {
+  sremote.showInstallModal({
+    onSuccess: () => {
+      console.log('🎉 Userscript đã được phát hiện và kích hoạt thành công!');
+    },
+    onClose: ({ success }) => {
+      console.log('Modal đã đóng. Trạng thái kích hoạt:', success);
+    }
   });
 }
 ```
 
-Modal tích hợp sẵn giao diện đẹp mắt, hướng dẫn rõ ràng từng bước cài đặt Tampermonkey và nạp Userscript mà bạn không cần phải tự thiết kế lại từ đầu.
+> [!NOTE]
+> **Tại sao nên dùng `!sremote.isUserscriptAvailable()` thay vì kiểm tra `mode === 'unsupported'`?**  
+> Mặc định SDK bật cờ `fallbackToDom: true`. Khi không có Userscript, SRemote sẽ tự động chuyển sang chế độ `mode = 'dom-direct'` (để điều khiển các thẻ video/audio nội bộ cùng trang). Do đó, `sremote.isUserscriptAvailable()` là phương thức kiểm tra chính xác nhất sự hiện diện của Userscript.
+
+Modal tích hợp sẵn các ưu điểm:
+- **Tự động nhận diện trình duyệt**: Hiển thị nút cài đặt Tampermonkey tương ứng với trình duyệt người dùng đang mở (Chrome, Edge, Firefox, Safari...).
+- **Cách ly giao diện tuyệt đối (Shadow DOM)**: Không lo bị xung đột CSS hay vỡ layout trang web của bạn.
+- **Tự động kích hoạt (`autoDetect`)**: Khi người dùng vừa bấm cài xong userscript trên Tampermonkey, modal sẽ tự động nhận diện và cập nhật trạng thái thành công mà không bắt người dùng phải tải lại trang.
 
 ---
 

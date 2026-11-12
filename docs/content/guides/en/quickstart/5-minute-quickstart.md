@@ -70,6 +70,14 @@ sremote.on('statechange', ({ state }) => {
 });
 ```
 
+> [!TIP]
+> **Zero-Config URL Embedding (Smart URL Creator):** Instead of importing provider modules manually, pass raw media URLs directly:
+> ```javascript
+> import * as ready2use from '@sremote/ready2use';
+> const player = await ready2use.mount('#player-box', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+> await player.remote.play().seek(15).volume(0.8);
+> ```
+
 ---
 
 ## 3. How It Works

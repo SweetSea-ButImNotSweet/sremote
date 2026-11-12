@@ -98,6 +98,14 @@ sremote.on('timeupdate', ({ state }) => {
 });
 ```
 
+> [!TIP]
+> **Nhúng siêu tốc từ URL (Smart URL Creator):** Thay vì nạp từng provider, bạn có thể truyền thẳng đường link video bất kỳ:
+> ```javascript
+> import * as ready2use from '@sremote/ready2use';
+> const player = await ready2use.mount('#player-box', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+> await player.remote.play().seek(15).volume(0.8);
+> ```
+
 #### Quản lý Lifecycle an toàn trong React:
 ```jsx
 import React, { useEffect, useRef } from 'react';

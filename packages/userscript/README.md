@@ -7,39 +7,38 @@ A userscript created to solve a frustrating modern web problem: a webpage embeds
 
 ---
 
-## If you randomly stumbled across this project and want to install it...
-Hold on before hitting that install button, no matter how cool this project might sound! At its core, SRemote is a **developer SDK / technical bridge**. Unless you are a developer looking to control iframes, or a website specifically redirected you here to watch movies or listen to music... installing it will just take up space in Tampermonkey without doing any standalone magic. Don't rush to install it!
+## 📌 Who is this userscript for?
 
-## If you were casually surfing the internet and got redirected here...
-Did a webpage ask you to come here and install this userscript? Before you write a passionate complaint message to their developers, let me explain why **they were completely powerless and had no other choice**, and a quick secret: I was once in the exact same position as those developers.
+### 1. If you are an end-user redirected here by a website:
+Did a website ask you to install this userscript to watch video or listen to audio? Here is why:
 
-Picture this: You visit a friend's house to watch a movie together. But your friend refuses to give you the remote controller; whenever you want to change something, you have to ask them. You want to fast-forward, adjust the volume, or pick a different video? Nope, they won't give you the remote, and they play whatever they want. Frustrating, right?
+> **The TV Remote Analogy:** Imagine visiting a friend's house to watch a movie, but your friend keeps the remote control hidden. You can't pause to grab a snack, adjust the volume, or fast-forward without asking them every single time.
+>
+> On the modern web, the exact same thing happens:
+> 1. **No External API:** Many third-party media platforms (like Bilibili, Kick, or Rumble) let websites embed their video players, but provide zero JavaScript APIs to control playback from the outside.
+> 2. **Same-Origin Policy (SOP):** Web browsers strictly prevent a parent webpage from interacting with content inside a cross-domain `<iframe>`.
 
-The exact same thing happens on the web, though the underlying technology is slightly different:
+**SRemote Userscript** acts as that missing remote control. Once installed, it bridges the cross-origin gap safely, allowing the hosting website to pause, seek, and control playback seamlessly.
 
-- **In short:** The website you are browsing doesn't have a remote to control the video it embedded from another platform.
-- **In detail:** There are two main technical hurdles:
-  1. **No External API:** The third-party platform does not provide an API for the hosting website (an API is essentially a unified communication channel between two services). In plain terms, the other platform chooses to ignore messages from the hosting page.
-  2. **Same-Origin Policy (SOP):** Web browsers strictly prevent one webpage from touching or modifying content inside an iframe if they are hosted on different domains.
-
-Because of these limitations, **SRemote** was created with a single mission: to provide a universal remote controller for websites to control embedded media from third-party services that still don't offer a remote in 2026.
+### 2. If you are a developer:
+SRemote is a technical bridge designed to pair with `@sremote/sdk`. It automatically inspects cross-origin child media frames and establishes an authenticated, low-latency `MessageChannel` bridge to the parent page.
 
 ---
 
-## How do I install this userscript?
-1. Install a userscript manager extension in your browser (we recommend [Tampermonkey](https://www.tampermonkey.net/) or [Violentmonkey](https://violentmonkey.github.io/)).
-2. Add and enable the script `dist/sremote.user.js` in your userscript manager:
+## 🚀 How to Install
+1. Install a userscript manager extension in your browser ([Tampermonkey](https://www.tampermonkey.net/) or [Violentmonkey](https://violentmonkey.github.io/) recommended).
+2. Install the userscript via one of the links below:
    - **Direct Install:** [sremote.user.js](https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.user.js)
-   - **Minified Install:** [sremote.min.user.js](https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.min.user.js)
-3. When you visit or reload a page with embedded media, if a permission prompt appears, click **Allow** (you can also check "Remember for this site").
+   - **Minified Build:** [sremote.min.user.js](https://raw.githubusercontent.com/SweetSea-ButImNotSweet/sremote/main/dist/sremote.min.user.js)
+3. Visit or refresh the website embedding the media. When prompted by the SRemote permission dialog, click **Allow** (optionally tick "Remember for this site").
 
 ---
 
-## How it works under the hood
-When installed, the userscript runs in the background of web pages and iframes:
-1. It securely inspects child media frames (`<video>`, `<audio>`, and custom player instances).
-2. It establishes an authenticated, bidirectional `MessageChannel` / `postMessage` bridge between the top-level parent page and the embedded iframe.
-3. The parent page can then send standard playback actions (`play`, `pause`, `seek`, `volume`, `rate`) without violating Same-Origin restrictions.
+## 🛠️ How it works under the hood
+When active, the userscript operates securely in the background:
+1. It automatically inspects child media frames (`<video>`, `<audio>`, and custom player DOM nodes).
+2. It establishes an authenticated, bidirectional `MessageChannel` / `postMessage` bridge between the parent page and the iframe.
+3. The parent page can dispatch standard media commands (`play`, `pause`, `seek`, `volume`, `speed`) with zero frame-dropping DOM scanning.
 
 ---
 

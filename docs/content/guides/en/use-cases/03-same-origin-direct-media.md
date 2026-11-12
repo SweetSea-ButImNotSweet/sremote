@@ -31,13 +31,9 @@ npm install @sremote/sdk
 
 ### JavaScript:
 ```javascript
-import { createSRemoteClient } from '@sremote/sdk';
+import { sremote } from '@sremote/sdk';
 
-// Initialize SRemote client
-const sremote = createSRemoteClient({
-  fallbackToDom: true // Automatically fallback to direct DOM media if no userscript is found
-});
-
+// SRemote automatically detects media in the DOM and switches to 'dom-direct' mode
 await sremote.ready();
 console.log('Operating mode:', sremote.mode); // Prints: 'dom-direct'
 
@@ -51,6 +47,9 @@ sremote.on('timeupdate', ({ state }) => {
   console.log(`Local video progress: ${state.currentTime}s / ${state.duration}s`);
 });
 ```
+
+> [!TIP]
+> You can also create a custom client instance via `createSRemote({ fallbackToDom: true })` if you need custom timeout or passkey options.
 
 ---
 

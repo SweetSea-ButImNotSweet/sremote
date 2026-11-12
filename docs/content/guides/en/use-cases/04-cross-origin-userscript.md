@@ -67,35 +67,45 @@ sremote.on('timeupdate', ({ instanceId, state }) => {
   console.log(`[${instanceId}] Current position: ${state.currentTime}s / ${state.duration}s`);
 });
 
-// 3. Dispatch handshake signal once the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  sremote.hello();
-});
+// 3. Initialize connection: ready() automatically dispatches handshake hello in the background
+await sremote.ready();
+
+// 4. Control the cross-origin iframe directly using Fluent API (SRemote 4.0):
+await sremote('#cross-origin-frame').play().seek(15).volume(0.8);
 ```
 
 ---
 
 ## 4. Step 3: Friendly Fallback UX when Userscript is Missing
 
-If a user visits your website without having the userscript installed, SRemote SDK detects this and marks cross-origin iframes as `'unsupported'`.
-
-You can display a polite, fully-styled installation modal with a single function call:
+For cross-origin iframes without embedded SDKs, a companion userscript bridge is required. If a visitor accesses your page without the script installed, verify its availability and display a built-in guide modal:
 
 ```javascript
-import { sremote, showInstallModal } from '@sremote/sdk';
+import { sremote } from '@sremote/sdk';
 
 await sremote.ready();
 
-if (sremote.mode === 'unsupported') {
-  // Present a 1-click guide modal helping the user install the companion script
-  showInstallModal({
-    lang: 'en', // 'en' or 'vi'
-    onDismiss: () => console.log('User dismissed the modal')
+// Check if the companion userscript bridge is active:
+if (!sremote.isUserscriptAvailable()) {
+  sremote.showInstallModal({
+    onSuccess: () => {
+      console.log('🎉 Userscript detected and activated successfully!');
+    },
+    onClose: ({ success }) => {
+      console.log('Modal closed. Activated status:', success);
+    }
   });
 }
 ```
 
-The built-in modal provides step-by-step instructions for installing Tampermonkey and loading the Userscript, saving you from designing custom UI from scratch.
+> [!NOTE]
+> **Why use `!sremote.isUserscriptAvailable()` instead of `mode === 'unsupported'`?**  
+> SRemote enables `fallbackToDom: true` by default. When no userscript is present, it automatically enters `mode = 'dom-direct'` to manage local same-origin media. Calling `sremote.isUserscriptAvailable()` directly inspects the bridge status and is the most reliable check.
+
+Built-in modal advantages:
+- **Automatic Browser Detection**: Highlights the appropriate Tampermonkey extension link for the user's active browser (Chrome, Edge, Firefox, Safari...).
+- **Shadow DOM Isolation**: Renders inside an isolated Shadow DOM container with zero CSS bleeding or style conflicts with your page.
+- **Auto-Detection (`autoDetect`)**: Automatically senses when the user installs and enables the script, transitioning to success state without requiring a manual page refresh.
 
 ---
 

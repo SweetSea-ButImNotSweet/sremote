@@ -30,10 +30,13 @@ SRemote handles this automatically with a single line of code:
 ```javascript
 // Enable automated exclusive playback:
 sremote.instances.setExclusive('auto');
+
+// Or disable exclusive playback:
+sremote.instances.setExclusive(null);
 ```
 
 - **`'auto'`**: Whenever any instance starts playing, SRemote automatically dispatches `pause()` commands to every other active instance on the page.
-- **`'none'`**: Allows simultaneous playback across multiple players (default behavior).
+- **`null`**: Allows simultaneous playback across multiple players (default behavior).
 
 ---
 
@@ -72,6 +75,38 @@ if (state) {
   });
 }
 ```
+
+---
+
+## 5. Multi-Instance Broadcasting (`sremote.all`)
+
+Introduced in SRemote 4.0, `sremote.all(selector?)` lets you dispatch commands simultaneously across multiple players (e.g. global "Pause All", "Mute All" dashboard actions, or batch-controlling a subset of players sharing a CSS class):
+
+```javascript
+// 1. Pause every player on the page and lower volume to 0.3:
+await sremote.all()
+  .pause()
+  .volume(0.3)
+  .tap(states => console.log(`Simultaneously controlled ${states.length} players`));
+
+// 2. Or broadcast only to players matching a CSS selector:
+await sremote.all('.course-video').mute(true);
+
+// 3. Read snapshot states across the entire group:
+const allStates = sremote.all().state; // Array of SRemoteMediaState[]
+```
+
+`sremote.all()` returns a `FluentGroupInstance` executing commands in parallel via `Promise.allSettled`, supporting intermediate inspection via `.tap(states => ...)`, snapshot array `.state`, and bulk lifecycle cleanup via `.destroy()`.
+
+---
+
+## 💡 Comparing the 3 Coordination Models
+
+| Paradigm | Signature | When to Use? |
+| :--- | :--- | :--- |
+| **Scoped** | `sremote('#player-1').play()` | Precise control of a single targeted player. |
+| **Exclusive** | `sremote.instances.setExclusive('auto')` | Prevents audio overlap: playing A automatically pauses B, C. |
+| **Broadcasting** | `sremote.all('.videos').pause()` | Batch actions executed across multiple players in one fluent call. |
 
 ---
 

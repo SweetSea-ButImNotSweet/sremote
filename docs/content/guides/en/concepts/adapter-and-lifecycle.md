@@ -8,6 +8,11 @@ That standard is the **`HTML5MediaElement`** specification.
 
 ## 1. Adapter Standardization based on `HTML5MediaElement`
 
+> [!IMPORTANT]
+> **Understanding SRemote's Two Architecture Layers:**
+> 1. **Public Client / Fluent API** *(For application developers)*: Designed with a **Clean Fluent Design philosophy (Zero `get*` / `set*`)**, e.g., `sremote.volume(0.8)`, `sremote.speed(1.25)`, `sremote.seekTo(30)`, and synchronous `sremote.state`.
+> 2. **Adapter Contract** *(For authors writing Custom Adapters or integrating players)*: Conforms strictly to the traditional **`HTML5MediaElement`** specification (`setCurrentTime`, `setVolume`, `getVolume`, `getMuted`...) allowing the SRemote engine to accurately map commands directly into native media behaviors.
+
 Every Adapter in the SRemote ecosystem (whether for YouTube, Vimeo, Spotify, or an in-house custom video player) conforms to the following standardized interfaces:
 
 ### A. Playback Controls

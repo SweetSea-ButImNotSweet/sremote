@@ -31,13 +31,9 @@ npm install @sremote/sdk
 
 ### JavaScript:
 ```javascript
-import { createSRemoteClient } from '@sremote/sdk';
+import { sremote } from '@sremote/sdk';
 
-// Khởi tạo client SRemote
-const sremote = createSRemoteClient({
-  fallbackToDom: true // Tự động nhận diện media trên DOM nếu không có userscript
-});
-
+// SRemote tự động phát hiện và chuyển sang chế độ 'dom-direct' khi có media trên DOM
 await sremote.ready();
 console.log('Chế độ hoạt động:', sremote.mode); // Sẽ in ra: 'dom-direct'
 
@@ -51,6 +47,9 @@ sremote.on('timeupdate', ({ state }) => {
   console.log(`Tiến độ video nội bộ: ${state.currentTime}s / ${state.duration}s`);
 });
 ```
+
+> [!TIP]
+> Bạn cũng có thể khởi tạo instance tùy biến qua `createSRemote({ fallbackToDom: true })` nếu cần cấu hình passkey hoặc thời gian timeout riêng.
 
 ---
 

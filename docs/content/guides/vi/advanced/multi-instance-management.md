@@ -30,10 +30,13 @@ SRemote giải quyết vấn đề này tự động chỉ với 1 dòng lệnh:
 ```javascript
 // Bật chế độ tự động độc quyền:
 sremote.instances.setExclusive('auto');
+
+// Hoặc tắt chế độ độc quyền:
+sremote.instances.setExclusive(null);
 ```
 
 - **`'auto'`**: Bất cứ khi nào một instance phát tín hiệu `play`, SRemote sẽ tự động gửi lệnh `pause()` tới tất cả các instance còn lại trên trang.
-- **`'none'`**: Cho phép nhiều video/audio phát đồng thời (mặc định).
+- **`null`**: Cho phép nhiều video/audio phát đồng thời (mặc định).
 
 ---
 
@@ -72,6 +75,38 @@ if (state) {
   });
 }
 ```
+
+---
+
+## 5. Phát sóng hàng loạt với `sremote.all()` (Multi-Instance Broadcasting)
+
+Kể từ SRemote 4.0, bạn có thể gửi lệnh đồng loạt tới tất cả các player trên trang (ví dụ: nút "Dừng tất cả", "Tắt tiếng tất cả" trên Dashboard, hoặc điều phối một nhóm player theo CSS class) bằng cú pháp Fluent cực kỳ tiện lợi:
+
+```javascript
+// 1. Tạm dừng toàn bộ video trên trang và giảm âm lượng về 0.3:
+await sremote.all()
+  .pause()
+  .volume(0.3)
+  .tap(states => console.log(`Đã điều khiển đồng thời ${states.length} player`));
+
+// 2. Hoặc chỉ broadcast tới các phần tử khớp CSS selector:
+await sremote.all('.course-video').mute(true);
+
+// 3. Đọc snapshot trạng thái của toàn bộ group:
+const allStates = sremote.all().state; // Mảng SRemoteMediaState[]
+```
+
+`sremote.all()` trả về đối tượng `FluentGroupInstance`, điều phối lệnh song song qua `Promise.allSettled`, hỗ trợ hook `.tap(states => ...)`, snapshot `.state`, và hủy dọn dẹp hàng loạt qua `.destroy()`.
+
+---
+
+## 💡 Bảng so sánh 3 mô hình điều phối
+
+| Mô hình | Cú pháp | Khi nào nên dùng? |
+| :--- | :--- | :--- |
+| **Đích danh (Scoped)** | `sremote('#player-1').play()` | Điều khiển chính xác một player cụ thể. |
+| **Độc quyền (Exclusive)** | `sremote.instances.setExclusive('auto')` | Tránh chồng chéo âm thanh: phát A thì tự động dừng B, C. |
+| **Phát sóng (Broadcasting)** | `sremote.all('.videos').pause()` | Tác động đồng loạt lên nhiều player trong 1 lệnh duy nhất. |
 
 ---
 

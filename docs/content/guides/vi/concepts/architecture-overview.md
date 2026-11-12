@@ -80,12 +80,15 @@ flowchart TD
 Khi khởi tạo `@sremote/sdk`, SDK sẽ tự động thăm dò và kích hoạt một trong ba chế độ phù hợp:
 
 ```javascript
-import { createSRemoteClient } from '@sremote/sdk';
+import { createSRemote, sremote } from '@sremote/sdk';
 
-const client = createSRemoteClient();
+// Cách 1: Dùng trực tiếp sremote singleton (Khuyên dùng)
+await sremote.ready();
+console.log('Chế độ hoạt động hiện tại:', sremote.mode);
+
+// Cách 2: Tùy biến cấu hình qua createSRemote
+const client = createSRemote({ timeout: 3000, fallbackToDom: true });
 await client.ready();
-
-console.log('Chế độ hoạt động hiện tại:', client.mode);
 ```
 
 | Chế độ (`client.mode`) | Điều kiện kích hoạt | Cơ chế điều khiển |

@@ -8,6 +8,11 @@ Chuẩn API đó chính là mô hình **`HTML5MediaElement`**.
 
 ## 1. Chuẩn hóa Adapter theo `HTML5MediaElement`
 
+> [!IMPORTANT]
+> **Phân biệt hai tầng giao tiếp cốt lõi trong SRemote:**
+> 1. **Public Client / Fluent API** *(Dành cho lập trình viên phát triển ứng dụng)*: Thiết kế theo triết lý **Clean Fluent Design (Zero `get*` / `set*`)**, ví dụ: `sremote.volume(0.8)`, `sremote.speed(1.25)`, `sremote.seekTo(30)` và thuộc tính đồng bộ `sremote.state`.
+> 2. **Adapter Contract** *(Dành cho tác giả viết Custom Adapter hoặc tích hợp Player mới)*: Tuân thủ nghiêm ngặt mô hình **`HTML5MediaElement`** truyền thống với đầy đủ các hàm getter/setter chuẩn W3C (`setCurrentTime`, `setVolume`, `getVolume`, `getMuted`...) để SRemote engine có thể ánh xạ chính xác vào hành vi gốc của trình phát.
+
 Mọi Adapter trong hệ sinh thái SRemote (dù là YouTube, Vimeo, Spotify, hay một Video Player tự phát triển) đều tuân theo các giao diện chuẩn sau:
 
 ### A. Nhóm điều khiển phát (Playback)

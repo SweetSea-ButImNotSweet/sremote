@@ -80,12 +80,15 @@ flowchart TD
 Upon initialization, `@sremote/sdk` automatically tests the environment and engages one of three operating modes:
 
 ```javascript
-import { createSRemoteClient } from '@sremote/sdk';
+import { createSRemote, sremote } from '@sremote/sdk';
 
-const client = createSRemoteClient();
+// Approach 1: Directly use the sremote singleton (Recommended)
+await sremote.ready();
+console.log('Current Operating Mode:', sremote.mode);
+
+// Approach 2: Customize configuration via createSRemote
+const client = createSRemote({ timeout: 3000, fallbackToDom: true });
 await client.ready();
-
-console.log('Current Operating Mode:', client.mode);
 ```
 
 | Mode (`client.mode`) | Trigger Condition | Control Mechanism |
